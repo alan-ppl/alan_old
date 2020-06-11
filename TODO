@@ -1,0 +1,12 @@
+can define normal and Normal as different.
+need extra info (K, groups) alongside the distribution, and its hard to put that in as arguments to the distribution?
+normal(2, 3, K=4, group="a")
+
+Put dists in trace!
+
+sub-distributions 
+
+trace["a"](Normal(2, 3), K=..., group=...)
+
+a = normal(trace["a"], 2, 3, K=..., group=...)
+
