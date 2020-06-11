@@ -1,0 +1,12 @@
+Papers:
+single standard proposal in each dimension followed by Gibbs sampling for k \in {0, 1}
+  good balance of simplicity and efficiency
+  with symmetric MHMC proposal, don't even need to compute proposal probability!
+  extension: multiple samples in each dimension (PNAS 2014)
+use VI objective and recognition model to estimate good proposal bandwidth
+  reparameterise for HMC/Langevin
+define proposals/variational posteriors that capture strong prior correlation by conditioning
+reparameterised tensorised Langevin/HMC
+  need full joint rejection
+  initially use non-indexed samples IID N(0, 1)
+  later add attraction between all samples, such that marginally, particles still generated N(0, 1) + likelihood
