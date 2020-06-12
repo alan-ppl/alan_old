@@ -25,8 +25,7 @@ def log_prob(dist, data, sample):
     assert (data is None) != (sample is None)
     result = data if (data is not None) else sample
     return result, {"log_prob": dist.log_prob(result)}
-    
-
+  
 
 class Trace:
     """

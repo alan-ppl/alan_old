@@ -2,37 +2,73 @@ import re
 import torch
 import operator
 
-def names(args):
+def names(*args, **kwargs):
     """
-    ref is the reference list showing the cannonical ordering.
+    extracts all the names in args and kwargs, and lists them in alphabetical order.
     """
-    # get all the names in the NTensors
     names = []
-    for arg in args:
+    pos = 0
+    for arg in [*args, *kwargs.values()]:
         if isinstance(arg, NTensor):
+            pos = max(pos, arg.positional)
+
             for name in arg.tensor.names:
                 if name is not None:
                     names.append(name)
                     assert name in ref
-    # convert to set to remove duplicates
-    return sorted(set(names))
+
+        elif isinstance(arg, torch.Tensor):
+            pos = max(pos, len(arg.shape))
+
+            #Any torch.Tensors are unnamed
+            assert arg.names == len(arg.shape)*(None,)
+    # convert to set to remove duplicates, sort, and pad with Nones for positionals nones
+    return (*sorted(set(names)), *(pos*(None,)))
+
+def nones(ls):
+    return sum(l is None for l in ls)
+
+def broadcast_arg(arg, names):
+    if isinstance(arg, NTensor):
+        # The goal is to get tensor.names == names.  
+        # But this is harder than should be because align_to doesn't understand Nones...
+        tensor = arg.tensor
+
+        # positional args in names, tensor and the difference
+        none_names = nones(names)
+        none_tensor = nones(tensor.names)
+        none_diff = none_names - none_tensor
+
+        #align tensor, but with the wrong number of positional args
+        not_none_names = names[:-none_names]
+        tensor = arg.tensor.clone().align_to(*not_none_names, '...')
+
+        # view doesn't work yet with named tensors, so drop named args
+        tensor = tensor.rename(None)
+        # introduce singleton dims
+        tensor = tensor.view((*tensor.shape[:-none_tensor], 
+                              *(none_diff * (1,)), 
+                              *tensor.shape[-none_tensor:]))
+        
+        tensor = tensor.refine_names(*names)
+        return tensor
+    else:
+        # leave torch.Tensor and other types
+        return arg
+
+
+def broadcast_args(*args, **kwargs):
+    _names = names(*args, **kwargs)
+    args = [broadcast_arg(arg, _names) for arg in args]
+    kwargs = {k: broadcast_arg(v, names) for (k, v) in kwargs.items()}
+    return args, kwargs
 
 def broadcast(f):
-    def inner(*args):
-        return NTensor(f(*broadcast_args(*args)))
+    def inner(*args, **kwargs):
+        args, kwargs = broadcast_args(*args, **kwargs)
+        return NTensor(f(*args, **kwargs))
     return inner
 
-def broadcast_args(*args):
-    _names = names(args)
-    _args = []
-    for arg in args:
-        if isinstance(arg, NTensor):
-             _args.append(arg.tensor.clone().align_to(*_names, '...'))
-        elif isinstance(arg, torch.Tensor):
-             raise Exception("Encountered torch.Tensor, expected NTensor")
-        else:
-             _args.append(arg)
-    return _args
 
 
 class NTensor:
@@ -69,6 +105,10 @@ class NTensor:
         return NTensor(self.tensor.reshape(*self.tensor.shape_named, *args))
     def transpose(self):
         raise NotImplementedError()
+
+    _sum = broadcast(torch.sum)
+    def sum(self, dim, keepdim=False, dtype=None):
+        return self._sum(dim, keepdim=keepdim, dtype=None)
 
 
     __add__ = broadcast(operator.add)
@@ -153,7 +193,7 @@ log_prob = broadcast(_log_prob)
 class NDist:
     """
     Wrapper for primitive distributions
-    we need this architecture (saving args and kwargs), because we need to broadcast together parameters and inputs
+    saves args and kwargs as NTensors (because we need to broadcast together parameters and inputs)
     """
     def __init__(self, dist, *args, **kwargs):
         self.dist = dist
@@ -163,16 +203,52 @@ class NDist:
         return rsample(self.dist, *self.args, **self.kwargs)
     def log_prob(self, x):
         return log_prob(self.dist, x, *self.args, **self.kwargs)
+
+
+
+##### Wrapped nn.Module from base.
+class NClass():
+    """
+    wrap the classes, NOT objects from torch.nn
     
+    __call__ instantiates the nn.Module, and wraps it in an NModule
+    """
+    def __init__(self, cl):
+        self.cl = cl
+
+    def __call__(self, *args, **kwargs):
+        return NModule(self.cl(*args, **kwargs))
+
+class NModule():
+    """
+    Need to wrap torch base modules, because they need to unwrap inputs
+    """
+    def __init__(self, mod):
+        self.mod = mod
+        self._call = broadcast(self.mod.__call__)
+
+    def __call__(self, *args, **kwargs):
+        return self._call(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        return getattr(self.mod, attr)
+
+
+class Nnn():
+    """
+    Use in place of torch.nn library
+    """
+    def __getattr__(self, attr):
+        
+        return NClass(getattr(torch.nn, attr))
+nnn = Nnn()
 
 
 
 nt = NT()
 
 ref = ['c', 'b', 'a', 'z']
-nt1 = NTensor(torch.ones(2,3,4,5), ("c", "b", "a"))
-nt2 = NTensor(torch.ones(2,3,4,5), ("z", "b", "a"))
+nt1 = NTensor(torch.ones(2,3,4,5,6), ("c", "b", "a"))
+nt2 = NTensor(torch.ones(2,3,4,6), ("z", "b", "a"))
 
 res = broadcast(operator.add)(nt1, nt2)
-
-
