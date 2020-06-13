@@ -205,42 +205,18 @@ class NDist:
         return log_prob(self.dist, x, *self.args, **self.kwargs)
 
 
-
-##### Wrapped nn.Module from base.
-class NClass():
-    """
-    wrap the classes, NOT objects from torch.nn
-    
-    __call__ instantiates the nn.Module, and wraps it in an NModule
-    """
-    def __init__(self, cl):
-        self.cl = cl
-
-    def __call__(self, *args, **kwargs):
-        return NModule(self.cl(*args, **kwargs))
-
-class NModule():
-    """
-    Need to wrap torch base modules, because they need to unwrap inputs
-    """
-    def __init__(self, mod):
-        self.mod = mod
-        self._call = broadcast(self.mod.__call__)
-
-    def __call__(self, *args, **kwargs):
-        return self._call(*args, **kwargs)
-
-    def __getattr__(self, attr):
-        return getattr(self.mod, attr)
-
-
 class Nnn():
     """
     Use in place of torch.nn library
+    __getattr__ is a factor function that creates a new class, inheriting from e.g. nn.Linear,
+    and overrides __call__
     """
     def __getattr__(self, attr):
-        
-        return NClass(getattr(torch.nn, attr))
+        class Inner(getattr(torch.nn, attr)):
+            def __call__(self, *args, **kwargs):
+                return broadcast(super().__call__)(*args, **kwargs)
+            #also wrap repr
+        return Inner
 nnn = Nnn()
 
 
