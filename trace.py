@@ -114,7 +114,9 @@ class SampleLogProbK():
             new_dim_names = [*new_dim_names_no_pad, *positional_dim_names(padding)]
 
             sample = dist.rsample(sample_shape=t.Size(new_dim_shape), new_names=new_dim_names)
-            sample = sample.rename(*sample.names[:-self.protected_dims], *positional_dim_names(self.protected_dims))
+            # make sure positional dims have the right name,
+            sample = sample.rename(*sample.names[:-self.protected_dims], 
+                                   *positional_dim_names(self.protected_dims))
 
             # align to global plate names
             sample = sample.align_to(*self.plate_names[::-1], "_K", *positional_dim_names(self.protected_dims))
