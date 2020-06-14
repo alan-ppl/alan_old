@@ -1,3 +1,13 @@
+Alternative approach:
+  trace has a number of protected dimensions
+  trace builds up a list of names
+  distribution calls check that we aren't encroaching on those dimensions
+  
+
+  fixed, named dims
+  increment dim each time you encounter a new distribution
+  
+
 Papers:
 single standard proposal in each dimension followed by Gibbs sampling for k \in {0, 1}
   good balance of simplicity and efficiency

@@ -1,20 +1,5 @@
-Named Tensor
-=========
-Generally, we should be importing
-```
-import tpp.torch as t
-import tpp.torch.nn as nn
-import tpp.torch.distributions as distributions
-
-```
-These libraries behave like their pytorch counterparts.
-
-Torch
-----
-
-NN
---
-
-There are two types of nn.Module that we need to consider.
-First, in the standard pre-defined modules need wrapping so that they work with 
+Sampling always happens with a single extra dimension, even if we e.g. eventually sum out discrete variables, so this should be simple.
+Then, we compute log_prob on a second pass.
+  log_prob dynamically rearranges samples before returning them.
+  fn should be an object, with state
 
