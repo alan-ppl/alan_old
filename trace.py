@@ -64,7 +64,7 @@ def log_prob(dist, data, sample):
 def concat_prefix(prefix, key):
     return prefix + "__" + key
 
-def positional_arg_names(dims):
+def positional_dim_names(dims):
     return [f"pos_{i}" for i in string.ascii_uppercase[:dims]]
 
 def plate_dim_names(key, dims):
@@ -73,8 +73,8 @@ def plate_dim_names(key, dims):
     else:
         return [f"plate_{key}_{i}" for i in string.ascii_uppercase[:dims]]
 
-def argname(key):
-    return f"_k{key}"
+def k_dim_name(addr):
+    return f"_k{addr}"
 
 class SampleLogProbK():
     """
@@ -87,19 +87,23 @@ class SampleLogProbK():
         self.protected_dims = protected_dims
         self.plate_names = []
 
-    def __call__(self, prefix_trace, dist, plate_shape, plate_name, in_kwargs):
+    def __call__(self, prefix_trace, dist, plate_name, plate_shape, in_kwargs):
         data = in_kwargs["data"]
 
-        plate_names = ["_plate_" + pn for pn in plate_name]
-        assert all(pn not in self.plate_names for pn in plate_names)
-        self.plate_names = plate_names + self.plate_names
+        if plate_name is not None:
+            plate_name = "_plate_" + plate_name
+            self.plate_names.append(plate_name)
 
         if data is not None:
             assert plate == t.Size([])
             return data, {}
         else:
-            new_dim_shape_no_pad = [*plate_shape]
-            new_dim_names_no_pad = plate_names
+            if (plate_name is not None) and (plate_name not in dist.unified_names):
+                new_dim_shape_no_pad = [plate_shape]
+                new_dim_names_no_pad = [plate_name]
+            else:
+                new_dim_shape_no_pad = []
+                new_dim_names_no_pad = []
 
             if "_K" not in dist.unified_names:
                 new_dim_shape_no_pad.append(self.K)
@@ -107,12 +111,13 @@ class SampleLogProbK():
             padding = max(0, self.protected_dims - len(dist.unified_names))
 
             new_dim_shape = [*new_dim_shape_no_pad, *(padding*[1])]
-            new_dim_names = [*new_dim_names_no_pad, *positional_arg_names(padding)]
+            new_dim_names = [*new_dim_names_no_pad, *positional_dim_names(padding)]
 
             sample = dist.rsample(sample_shape=t.Size(new_dim_shape), new_names=new_dim_names)
+            sample = sample.rename(*sample.names[:-self.protected_dims], *positional_dim_names(self.protected_dims))
 
             # align to global plate names
-            sample = sample.refine_names(*self.plate_names, "_K", *positional_arg_names(self.protected_dims))
+            sample = sample.align_to(*self.plate_names[::-1], "_K", *positional_dim_names(self.protected_dims))
             lp = dist.log_prob(sample)
             return sample, {"sample": sample, "log_prob": lp}
 
@@ -134,18 +139,18 @@ class LogProbK():
         self.plate_names = plate_names
 
         self.protected_dims = protected_dims
-        self.pos_names = positional_arg_names(protected_dims)
+        self.pos_names = positional_dim_names(protected_dims)
 
         self.arg_names = []
 
-    def __call__(self, prefix_trace, dist, plate_shape, plate_name, in_kwargs):
+    def __call__(self, prefix_trace, dist, plate_name, plate_shape, in_kwargs):
         sample, data = in_kwargs["sample"], in_kwargs["data"]
 
         assert (sample is None) or (data is None)
         if data is not None:
             return data, {"log_prob": dist.log_prob(data)}
         else:
-            new_dim = argname(prefix_trace.prefix)
+            new_dim = k_dim_name(prefix_trace.prefix)
             self.arg_names.append(new_dim)
 
             # introduce dims for all plates,
@@ -164,7 +169,7 @@ class LogProbK():
         Removes arg_names, and squeezes corresponding dimensions out of tensors.
         Must put ALL tensors that you're going to use in future through this function, otherwise dims won't align
         """
-        names = [argname(concat_prefix(trace_prefix.prefix, name)) for name in names]
+        names = [k_dim_name(concat_prefix(trace_prefix.prefix, name)) for name in names]
 
         for name in names:
             # remove errors if name isn't present
@@ -183,7 +188,7 @@ class PrefixTrace():
     def __getitem__(self, key):
         return PrefixTrace(concat_prefix(self.prefix, key), self.trace)
 
-    def __call__(self, dist, plate_shape=t.Size([]), plate_name=[]):
+    def __call__(self, dist, plate_name=None, plate_shape=None):
         """
         compute out_dicts from in_dicts for the current primitive
         """
@@ -197,7 +202,7 @@ class PrefixTrace():
             in_kwargs[key] = in_dict.get(self.prefix)
 
         # map in_kwargs to out_kwargs using self.fn
-        result, out_kwargs = fn(self, dist, plate_shape, plate_name, in_kwargs)
+        result, out_kwargs = fn(self, dist, plate_name, plate_shape, in_kwargs)
 
         # put out_kwargs into out_dicts, not
         for key in out_kwargs:
@@ -238,8 +243,8 @@ def trace(in_dicts, fn):
 
 
 def dist(trace):
-    a = trace["a"](WrappedDist(Normal, t.ones(3), 3), plate_shape=t.Size([3]), plate_name=["A"])
-    b = trace["b"](WrappedDist(Normal, a, 3),         plate_shape=t.Size([4]), plate_name=["B"])
+    a = trace["a"](WrappedDist(Normal, t.ones(3), 3), plate_name="A", plate_shape=3)
+    b = trace["b"](WrappedDist(Normal, a, 3),         plate_name="B", plate_shape=4)
     c = trace["c"](WrappedDist(Normal, b, 3))
     (c,) = trace.delete_names(("a", "b"), (c,))
     d = trace["d"](WrappedDist(Normal, c, 3))
