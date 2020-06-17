@@ -1,12 +1,9 @@
-can define normal and Normal as different.
-need extra info (K, groups) alongside the distribution, and its hard to put that in as arguments to the distribution?
-normal(2, 3, K=4, group="a")
+Trace:          program -> list of log_prob tensors
+Combine:        list of log_prob tensors -> list of log_prob tensors, summed across groups
+Rearrange:      dict of log_prob tensors -> dict of dicts of log_prob tensors, dividing by plates
+(Optimization): choose a good order to sum over variables
+Sum:            sum over each plate
 
-Put dists in trace!
 
-sub-distributions 
-
-trace["a"](Normal(2, 3), K=..., group=...)
-
-a = normal(trace["a"], 2, 3, K=..., group=...)
+groups (otherwise, we will conflate _k_dims and latent variables)
 

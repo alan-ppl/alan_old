@@ -1,3 +1,4 @@
+import re
 import string
 import torch as t
 from torch.distributions import Normal
@@ -93,12 +94,14 @@ class SampleLogProbK():
         if plate_name is not None:
             plate_name = "_plate_" + plate_name
             self.plate_names.append(plate_name)
+            assert plate_name not in dist.unified_names
+
 
         if data is not None:
             assert plate == t.Size([])
             return data, {}
         else:
-            if (plate_name is not None) and (plate_name not in dist.unified_names):
+            if plate_name is not None:
                 new_dim_shape_no_pad = [plate_shape]
                 new_dim_names_no_pad = [plate_name]
             else:
@@ -138,7 +141,7 @@ class LogProbK():
     names: [*arg, *plates, *pos]
     """
     def __init__(self, plate_names, protected_dims):
-        self.plate_names = plate_names
+        self.plate_names = plate_names[::-1]
 
         self.protected_dims = protected_dims
         self.pos_names = positional_dim_names(protected_dims)
@@ -256,3 +259,40 @@ tr1 = trace({"data": {}}, SampleLogProbK(4, 2))
 val = dist(tr1)
 tr2 = trace({"data": {}, "sample": tr1.trace.out_dicts["sample"]}, LogProbK(tr1.trace.fn.plate_names, 2))
 val = dist(tr2)
+
+
+#### rearrange
+# convert dict of log_probs to heirarchical dict, with first layer of the heirarchy being plates.
+# the level of any tensor in the heirarchy defined by first non-1 plate index.
+
+def plate_idxs(lp):
+    return [i for (i, dim_name) in enumerate(lp.names) if re.match('_plate', dim_name)]
+
+def plate_names(lp):
+    return [lp.names[i] for i in plate_idxs(lp)]
+
+def plate_shapes(lp):
+    return [lp.shape[i] for i in plate_idxs(lp)]
+    
+def rearrange(lps):
+    # assert that the plates on all tensors are the same
+    pns = [plate_names(lp) for lp in lps.values()]
+    for pn in pns:
+        assert pn == pns[0]
+
+    pns = pns[0]
+
+    # two level dict: plate, variable
+    result = {pn: dict() for pn in pns}
+
+    for key, lp in lps.items():
+        _plate_shapes = plate_shapes(lp)
+        if all(ps == 1 for ps in _plate_shapes):
+            plate_name = "_plate"
+        else:
+            plate_idx = next(i for (i, shape) in enumerate(_plate_shapes) if 1<shape)
+            plate_name = plate_names(lp)[plate_idx]
+        result[plate_name][key] = lp
+    return result
+        
+
