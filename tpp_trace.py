@@ -1,3 +1,9 @@
+"""
+    Helpers to manage not just Pytorch named dimensions, 
+    but three types of named dimension with their own orderings:
+    plate dims, sample dim, and underlying latent dims.
+    Also trace objects to track the tensors at each point.
+"""
 import re
 import string
 import torch as t
@@ -74,16 +80,16 @@ class SampleLogProbK():
         self.K = K
         self.protected_dims = protected_dims
         self.plate_names = []
-
+    
     def __call__(self, prefix_trace, dist, plate_name, plate_shape, in_kwargs):
         data = in_kwargs["data"]
-
+        
         if plate_name is not None:
             plate_name = "_plate_" + plate_name
             self.plate_names.append(plate_name)
             assert plate_name not in dist.unified_names
-
-
+        
+        
         if data is not None:
             assert plate == t.Size([])
             return data, {}
@@ -99,15 +105,15 @@ class SampleLogProbK():
                 new_dim_shape_no_pad.append(self.K)
                 new_dim_names_no_pad.append("_K")
             padding = max(0, self.protected_dims - len(dist.unified_names))
-
+            
             new_dim_shape = [*new_dim_shape_no_pad, *(padding*[1])]
             new_dim_names = [*new_dim_names_no_pad, *positional_dim_names(padding)]
-
+            
             sample = dist.rsample(sample_shape=t.Size(new_dim_shape), new_names=new_dim_names)
             # make sure positional dims have the right name,
             sample = sample.rename(*sample.names[:-self.protected_dims], 
                                    *positional_dim_names(self.protected_dims))
-
+            
             # align to global plate names
             sample = sample.align_to(*self.plate_names[::-1], "_K", *positional_dim_names(self.protected_dims))
             lp = dist.log_prob(sample)
@@ -175,7 +181,7 @@ class LogProbK():
         return [squeeze_dims(tensor, names) for tensor in tensors]
 
 
-
+# model -> list of sample or log_prob tensors
 class PrefixTrace():
     def __init__(self, prefix, trace):
         self.prefix = prefix
@@ -192,7 +198,8 @@ class PrefixTrace():
         out_dicts = self.trace.out_dicts
         fn = self.trace.fn
 
-        # use self.prefix to index into all the in_dicts, returning None if the in_dict is empty
+        # use self.prefix to index into all the in_dicts, 
+        # returning None if the in_dict is empty
         in_kwargs = {}
         for key, in_dict in in_dicts.items():
             in_kwargs[key] = in_dict.get(self.prefix)
@@ -238,6 +245,35 @@ def trace(in_dicts, fn):
     return PrefixTrace("", Trace(in_dicts, fn))
 
 
+def sampler(draws, nProtected, data={}):
+    return trace( {"data":data}, \
+                 SampleLogProbK(K=draws, protected_dims=nProtected) )
+
+
+def evaluator(wrapper, nProtected, data={}) :
+    tr = wrapper.trace
+    samples = tr.out_dicts.get("sample")
+    assert(samples is not None)
+    
+    d = {"data": data, "sample": samples} 
+    lpk = LogProbK(plate_names=tr.fn.plate_names, protected_dims=nProtected)
+    
+    return trace(d, lpk)
+
+
+def sample_and_eval(model, draws, nProtected, data={}) :
+    tr1 = sampler(draws, nProtected, data=data)
+    val = model(tr1)
+    print("Plates:", tr1.trace.fn.plate_names)
+    print(val.names)
+    
+    tr2 = evaluator(tr1, nProtected, data=data)
+    val = model(tr2)
+    print(val.names)
+    
+    return tr2
+
+
 def dist(trace):
     a = trace["a"](WrappedDist(Normal, t.ones(3), 3))
     b = trace["b"](WrappedDist(Normal, a, 3))
@@ -262,7 +298,7 @@ def plate_dist(trace):
 if __name__ == "__main__" :
     tr1 = trace({"data": {}}, SampleLogProbK(4, 2))
     d = WrappedDist(Normal, t.ones(3), 3)
-    a = tr1["a"](d) # crashes here, but only in __main__!
+    a = tr1["a"](d) 
     val = dist(tr1)
     tr2 = trace({"data": {}, "sample": tr1.trace.out_dicts["sample"]}, LogProbK(tr1.trace.fn.plate_names, 2))
     val = dist(tr2)
