@@ -2,48 +2,22 @@ import torch as t
 import numpy as np
 
 
-# Combine: 
-# list of log_prob tensors -> list of log_prob tensors, multiplied and summed out dims
-# TODO: add data handling
-# TODO: add plates
-def combine_tensors(tensors_dict) :
-    dims = list(tensors_dict.keys()) 
+def logmeanexp(X, Y):
+    xmax = X.max()
+    ymax = Y.max()
+    X = X - xmax
+    Y = Y - ymax
     
-    # 1. Take all indices $$I$$ in the tensors 
-    # make a unified set of them
-    all_names = [tensors_dict[dim].names for dim in dims]
-    all_names = set([item for t in all_names for item in t])
+    log_exp_prod = (X.exp() * Y.exp()).log()
     
-    k_dims = [name for name in all_names \
-                  if k_dim_name("") in name]
+    if len(X.size()) > 1 :
+        size = X.size(1)
+    else : 
+        size = X.size(0)
     
-    # 2. use torch names to get all their dims in same order
-    for k, tensor in tensors_dict.items() :
-        tensors_dict[k] = tensor.align_to(*k_dims, ...)
+    log_sizes = t.log(t.ones((), device=X.device) * size)
     
-    # 3. for each k dim, get tensors that depend on dim
-    for dim in k_dims :
-        tensors, i_tensors = get_dependent_factors(tensors_dict, dim)
-        
-        s = i_tensors[0].shape
-        T = t.ones(s)
-        # 4. multiply them, as in `*`
-        for tensor in i_tensors :
-            T *= tensor
-            
-        # 5. sum out `__a`
-        T = T.sum(dim)
-    
-    # 6. if anything is left in `pos_` dims, get rid of them
-    
-    return #tensors, T
-
-
-"""
-    tr = sample_and_eval(chain_dist, draws=kappa, nProtected=2)
-    tensors = tr.trace.out_dicts['log_prob']
-    combine_tensors(tensors)
-"""
+    return X + Y + log_exp_prod - log_sizes
 
 
 # from https://github.com/anonymous-78913/tmc-anon/blob/master/non-fac/model.py

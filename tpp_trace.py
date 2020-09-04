@@ -56,8 +56,14 @@ class WrappedDist:
 def concat_prefix(prefix, key):
     return prefix + "__" + key
 
+
+def pos_name(i) :
+    return f"pos_{i}"
+
+
 def positional_dim_names(dims):
-    return [f"pos_{i}" for i in string.ascii_uppercase[:dims]]
+    return [pos_name(i) for i in string.ascii_uppercase[:dims]]
+
 
 def plate_dim_names(key, dims):
     if dims==1:
@@ -274,7 +280,9 @@ def sample_and_eval(model, draws, nProtected, data={}) :
     return tr2
 
 
-def dist(trace):
+# example directed graph without plate repeats
+# the real stuff happens as side effects to trace's dicts
+def chain_dist(trace):
     a = trace["a"](WrappedDist(Normal, t.ones(3), 3))
     b = trace["b"](WrappedDist(Normal, a, 3))
     c = trace["c"](WrappedDist(Normal, b, 3))
@@ -284,6 +292,8 @@ def dist(trace):
     return d
 
 
+# example directed graph with plate repeats
+# 3(a) -> 4(b) -> c -> d
 def plate_dist(trace):
     a = trace["a"](WrappedDist(Normal, t.ones(3), 3), plate_name="A", plate_shape=3)
     b = trace["b"](WrappedDist(Normal, a, 3),         plate_name="B", plate_shape=4)
