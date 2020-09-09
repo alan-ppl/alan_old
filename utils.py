@@ -23,8 +23,13 @@ def logmulexp(X, Y, dim):
         :param X: tensor of log probabilities
         :param Y: tensor of log probabilities, possibly placeholder
         :param dim: dimension to average over
+        
+        X and Y have their names aligned beforehand
     """
+    assert(X.names == Y.names)
+    
     # 1. get max of each dimension
+    # TODO: max of every dimension except dim?
     xmaxs = [ max_k(X, k) \
                 for k in X.names]
     xsum = sum(xmaxs)
@@ -37,16 +42,17 @@ def logmulexp(X, Y, dim):
     
     # matmul happens in probability space, not log space
     # hence exp first
-    log_exp_prod = (X.exp() * Y.exp())
+    log_exp_prod = (X.exp() * Y.exp()).log()
     
-    # then sum out dim
-    log_sum = log_exp_prod.sum(dim) \
-                .log()
+    # then sum out dim? 
+    # No: prevents next iteration
+    #log_sum = log_exp_prod.sum(dim) \
+    #            .log()
     
     # normalise via minus log
     log_size = t.log(denominator(X, dim))
     
-    return log_sum + xsum + ysum - log_size
+    return log_exp_prod + xsum + ysum - log_size
       
 
 
@@ -54,10 +60,10 @@ def logmulexp(X, Y, dim):
 # from https://github.com/anonymous-78913/tmc-anon/blob/master/non-fac/model.py
 def logmmmeanexp(X, Y):
     xmax = X.max(dim=1, keepdim=True)[0]
-    #print(xmax)
+    
     ymax = Y.max(dim=0, keepdim=True)[0]
     X = X - xmax
-    #print(X)
+    
     Y = Y - ymax
     # NB: need t.matmul instead if broadcasting
     log_exp_prod = t.mm(X.exp(), Y.exp()).log()
