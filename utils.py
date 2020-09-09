@@ -2,35 +2,68 @@ import torch as t
 import numpy as np
 
 
-def logmeanexp(X, Y):
-    xmax = X.max()
-    ymax = Y.max()
-    X = X - xmax
-    Y = Y - ymax
+
+def max_k(T, k) :
+    if k is not None :
+        m = T.max(dim=k, keepdim=True)[0]
+    else :
+        m = t.ones(())
     
-    log_exp_prod = (X.exp() * Y.exp()).log()
-    
-    if len(X.size()) > 1 :
-        size = X.size(1)
-    else : 
-        size = X.size(0)
-    
-    log_sizes = t.log(t.ones((), device=X.device) * size)
-    
-    return X + Y + log_exp_prod - log_sizes
+    return m
 
 
+def denominator(T, i) :
+    return t.ones((), device=T.device) * T.size(i)
+
+
+# Stable general tensor inner product
+# TODO: unfinished
+def logmulexp(X, Y, dim):
+    """
+        :param X: tensor of log probabilities
+        :param Y: tensor of log probabilities, possibly placeholder
+        :param dim: dimension to average over
+    """
+    # 1. get max of each dimension
+    xmaxs = [ max_k(X, k) \
+                for k in X.names]
+    xsum = sum(xmaxs)
+    ymaxs = [ max_k(Y, k) \
+                for k in Y.names]
+    ysum = sum(ymaxs)
+
+    X = X - xsum
+    Y = Y - ysum
+    
+    # matmul happens in probability space, not log space
+    # hence exp first
+    log_exp_prod = (X.exp() * Y.exp())
+    
+    # then sum out dim
+    log_sum = log_exp_prod.sum(dim) \
+                .log()
+    
+    # normalise via minus log
+    log_size = t.log(denominator(X, dim))
+    
+    return log_sum + xsum + ysum - log_size
+      
+
+
+# 2D case
 # from https://github.com/anonymous-78913/tmc-anon/blob/master/non-fac/model.py
 def logmmmeanexp(X, Y):
     xmax = X.max(dim=1, keepdim=True)[0]
+    #print(xmax)
     ymax = Y.max(dim=0, keepdim=True)[0]
     X = X - xmax
+    #print(X)
     Y = Y - ymax
     # NB: need t.matmul instead if broadcasting
     log_exp_prod = t.mm(X.exp(), Y.exp()).log()
     
-    return x + y + log_exp_prod \
-            - t.log(t.ones((), device=x.device)*X.size(1))
+    return xmax + ymax + log_exp_prod \
+            - t.log(t.ones((), device=xmax.device)*X.size(1))
 
 
 
