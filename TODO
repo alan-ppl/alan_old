@@ -1,9 +1,0 @@
-Trace:          program -> list of log_prob tensors
-Combine:        list of log_prob tensors -> list of log_prob tensors, summed across groups
-Rearrange:      dict of log_prob tensors -> dict of dicts of log_prob tensors, dividing by plates
-(Optimization): choose a good order to sum over variables
-Sum:            sum over each plate
-
-
-groups (otherwise, we will conflate _k_dims and latent variables)
-

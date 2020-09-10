@@ -95,9 +95,8 @@ class SampleLogProbK():
             self.plate_names.append(plate_name)
             assert plate_name not in dist.unified_names
         
-        
         if data is not None:
-            assert plate == t.Size([])
+            assert (plate_shape == t.Size([])) or (plate_shape is None)
             return data, {}
         else:
             if plate_name is not None:
@@ -276,6 +275,7 @@ def sample_and_eval(model, draws, nProtected, data={}) :
     tr2 = evaluator(tr1, nProtected, data=data)
     val = model(tr2)
     print(val.names)
+    print()
     
     return tr2
 
@@ -309,9 +309,11 @@ if __name__ == "__main__" :
     tr1 = trace({"data": {}}, SampleLogProbK(4, 2))
     d = WrappedDist(Normal, t.ones(3), 3)
     a = tr1["a"](d) 
-    val = dist(tr1)
+    val = chain_dist(tr1)
     tr2 = trace({"data": {}, "sample": tr1.trace.out_dicts["sample"]}, LogProbK(tr1.trace.fn.plate_names, 2))
-    val = dist(tr2)
+    val = chain_dist(tr2)
+    
+    print(tr2.trace.out_dicts["log_prob"])
 
         
 
