@@ -4,6 +4,32 @@ from utils import *
 import numpy as np
 
 
+def named_example_2D() :
+    X = t.Tensor([[.2,.1],\
+                  [.1,.3]])
+    X = X.refine_names('_k__a', '_k__b')
+    Y = t.Tensor([[.3,.2],\
+                  [.1,.1]])
+    Y = Y.refine_names('_k__a', '_k__b')
+    
+    return X, Y, '_k__a'
+
+
+def test_logmulmeanexp() :
+    X, Y, dim = named_example_2D()
+    log_mean_prod_exp = logmulmeanexp(X, Y, dim)
+    
+    reference = logmmmeanexp(X, Y) \
+                .rename(None) \
+                .diag()
+    stripped = log_mean_prod_exp \
+                .rename(None) \
+                .squeeze()
+    
+    assert(t.allclose(stripped, reference) )
+
+
+
 def bivariate_example() :
     x_mean, x_var = -1, 3
     y_mean, y_var = 1, 12

@@ -3,22 +3,16 @@ import numpy as np
 
 
 
-def max_k(T, k) :
-    if k is not None :
-        m = T.max(dim=k, keepdim=True)[0]
-    else :
-        m = t.ones(())
-    
-    return m
+def max_k(T, k) :    
+    return T.max(dim=k, keepdim=True)[0]
 
 
 def denominator(T, i) :
     return t.ones((), device=T.device) * T.size(i)
 
 
-# Stable general tensor inner product
-# TODO: unfinished
-def logmulexp(X, Y, dim):
+# Stable general tensor product. Part of the inner product.
+def logmulmeanexp(X, Y, dim):
     """
         :param X: tensor of log probabilities
         :param Y: tensor of log probabilities, possibly placeholder
@@ -28,31 +22,19 @@ def logmulexp(X, Y, dim):
     """
     assert(X.names == Y.names)
     
-    # 1. get max of each dimension
-    # TODO: max of every dimension except dim?
-    xmaxs = [ max_k(X, k) \
-                for k in X.names]
-    xsum = sum(xmaxs)
-    ymaxs = [ max_k(Y, k) \
-                for k in Y.names]
-    ysum = sum(ymaxs)
+    xmax = max_k(X, dim)           
+    ymax = max_k(Y, dim)
 
-    X = X - xsum
-    Y = Y - ysum
+    X = X - xmax
+    Y = Y - ymax
     
-    # matmul happens in probability space, not log space
-    # hence exp first
-    log_exp_prod = (X.exp() * Y.exp()).log()
-    
-    # then sum out dim? 
-    # No: prevents next iteration
-    #log_sum = log_exp_prod.sum(dim) \
-    #            .log()
-    
-    # normalise via minus log
-    log_size = t.log(denominator(X, dim))
-    
-    return log_exp_prod + xsum + ysum - log_size
+    # prod happens in probability space, not log space
+    # * is hadamard
+    log_mean_prod_exp = (X.exp() * Y.exp()) \
+                        .mean(dim, keepdim=True) \
+                        .log()
+
+    return log_mean_prod_exp + xmax + ymax 
       
 
 
@@ -60,10 +42,8 @@ def logmulexp(X, Y, dim):
 # from https://github.com/anonymous-78913/tmc-anon/blob/master/non-fac/model.py
 def logmmmeanexp(X, Y):
     xmax = X.max(dim=1, keepdim=True)[0]
-    
     ymax = Y.max(dim=0, keepdim=True)[0]
     X = X - xmax
-    
     Y = Y - ymax
     # NB: need t.matmul instead if broadcasting
     log_exp_prod = t.mm(X.exp(), Y.exp()).log()
@@ -71,6 +51,13 @@ def logmmmeanexp(X, Y):
     return xmax + ymax + log_exp_prod \
             - t.log(t.ones((), device=xmax.device)*X.size(1))
 
+
+def logmmmeanexp(X, Y):
+    x = X.max(dim=1, keepdim=True)[0]
+    y = Y.max(dim=0, keepdim=True)[0]
+    X = X - x
+    Y = Y - y
+    return x + y + t.mm(X.exp(), Y.exp()).log() - t.log(t.ones((), device=x.device)*X.size(1))
 
 
 # mu_{x1|x2}. just bivariate norm
