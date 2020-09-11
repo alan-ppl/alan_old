@@ -266,16 +266,20 @@ def evaluator(wrapper, nProtected, data={}) :
     return trace(d, lpk)
 
 
-def sample_and_eval(model, draws, nProtected, data={}) :
+def sample_and_eval(model, draws, nProtected, data={}, verbose=False) :
     tr1 = sampler(draws, nProtected, data=data)
     val = model(tr1)
-    print("Plates:", tr1.trace.fn.plate_names)
-    print(val.names)
+    
+    sampled_names = val.names
     
     tr2 = evaluator(tr1, nProtected, data=data)
     val = model(tr2)
-    print(val.names)
-    print()
+    
+    if verbose :
+        print("Plates", tr1.trace.fn.plate_names)
+        print(sampled_names)
+        print(val.names)
+        print()
     
     return tr2
 

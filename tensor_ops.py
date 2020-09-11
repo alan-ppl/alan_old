@@ -6,17 +6,17 @@ import utils as u
 
 # TODO: add data handling
 # TODO: add plates
-def combine_tensors(tensors_dict) :    
+def combine_tensors(tensors_dict, naive=False) :    
     """
         :param tensors_dict: dict of log_prob tensors 
         :return: scalar of log_prob tensors, multiplied and summed out dims
     """
-    # 1. Take all indices $$I$$ in the tensors 
+    # 1. Take all indices I in the tensors 
     # make a unified set of them
     all_names = get_all_names(tensors_dict)
     k_dims = filter_names(all_names, plates=False)
     
-    # 2. if anything is left in `pos_` dims, get rid of them (sum out)
+    # 2. if anything is left in `pos_` dims, sum out
     # TODO: maybe do this before `combine_tensors`.
     tensors_dict = clear_user_dims(tensors_dict, all_names)
     
@@ -24,7 +24,11 @@ def combine_tensors(tensors_dict) :
     while k_dims :
         random_index = random.randrange(len(k_dims))
         dim = k_dims.pop(random_index)
-        tensors_dict = naive_reduce_by_dim(tensors_dict, dim)
+        
+        if naive :
+            tensors_dict = naive_reduce_by_dim(tensors_dict, dim)
+        else :
+            tensors_dict = reduce_by_dim(tensors_dict, dim)
     
     return tensors_dict
 
@@ -93,21 +97,22 @@ def reduce_by_dim(d, dim):
     all_names = get_all_names(i_tensors)
     k_dims = filter_names(all_names, plates=False)
     
-    # 4. use torch names to get all their dims in same order
-    for d, tensor in i_tensors.items() :
-        i_tensors[d] = tensor.align_to(*k_dims, ...)
+    if i_tensors :
+        # 4. use torch names to get all their dims in same order
+        for k, tensor in i_tensors.items() :
+            i_tensors[k] = tensor.align_to(*k_dims)#, ...)
+        
+        key = list(i_tensors.keys())[0]
+        T = i_tensors.pop(key) 
     
-    key = list(i_tensors.keys())[0]
-    T = i_tensors.pop(key) 
-    
-    # 5. multiply 
-    for k, tensor in i_tensors.items() :
-        T = u.logmulexp(tensor, T, dim)
+        # 5. multiply 
+        for k, tensor in i_tensors.items() :
+            T = u.logmulmeanexp(tensor, T, dim)
 
-    # 6. sum out dim
-    T = T.sum(dim)
-    
-    other_tensors[dim] = T
+        # 6. sum out dim
+        T = T.sum(dim)
+
+        other_tensors[dim] = T
     
     return other_tensors
 
