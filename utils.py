@@ -73,14 +73,34 @@ def biv_norm_conditional_var(var1, rho) :
     return var1 - (1 - rho**2)
 
 
+
+def generate_linear_data(N, w, sigma, interval) :
+    X = np.random.uniform(low=interval[0], high=interval[1], size=(N, 1))
+    noise = np.random.normal(size=(N, 1), scale=sigma)
+    Y = w * X + noise
+    
+    return X, Y
+
+
+# Analytical solution for lognormal
+# gives log_probs, likelihood
+def log_norm(x, mu, std):    
+    var = std**2
+    norm_constant = -0.5 * t.log(2*np.pi*var)
+    sqerror = (x - mu)**2
+    prec = 1/var
+    
+    return norm_constant - (0.5 * prec * sqerror)
+
+
 def analytical_posterior_var(var, X) :
-    scaled_prec = (1/var**2) * X.T @ X +1
+    scaled_prec = (1/var**2) * np.matmul(X.T, X) + 1
     
     return scaled_prec**-1
 
 
 def analytical_posterior_mean(prior_mean, var, X, Y) :
-    scaled_cov = (1/var**2) * X.T @ Y
+    scaled_cov = (1/var**2) * np.matmul(X.T, Y)
     post_var = analytical_posterior_var(var, X)
     
     return post_var * (prior_mean + scaled_cov)
