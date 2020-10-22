@@ -20,13 +20,15 @@ def names(*args, **kwargs):
         elif isinstance(arg, torch.Tensor):
             pos = max(pos, len(arg.shape))
 
-            #Any torch.Tensors are unnamed
+            # Any torch.Tensors are unnamed
             assert arg.names == len(arg.shape)*(None,)
     # convert to set to remove duplicates, sort, and pad with Nones for positionals nones
     return (*sorted(set(names)), *(pos*(None,)))
 
+
 def nones(ls):
     return sum(l is None for l in ls)
+
 
 def broadcast_arg(arg, names):
     if isinstance(arg, NTensor):
@@ -100,9 +102,9 @@ class NTensor:
         return sum(name is     None for name in self.tensor.names)
 
     def view(self, *args):
-        return NTensor(self.tensor.view(*self.tensor.shape_named, *args))
+        return NTensor(self.tensor.view(*self.shape_named, *args))
     def reshape(self, *args):
-        return NTensor(self.tensor.reshape(*self.tensor.shape_named, *args))
+        return NTensor(self.tensor.reshape(*self.shape_named, *args))
     def transpose(self):
         raise NotImplementedError()
 
@@ -175,6 +177,8 @@ class NDistributions:
             def inner(trace, *args, K=None, group=None, **kwargs):
                 return trace.primitive(_NDist(*args, **kwargs), K=K, group=group)
             return inner
+
+
 ndistributions = NDistributions()
 
 #x, *args and **kwargs are tensors, so all can be broadcast
@@ -183,13 +187,18 @@ def _rsample(dist, *args, **kwargs):
     broadcastable rsample, that takes the distribution's args and kwargs as Tensor arguments
     """
     return dist(*args, **kwargs).rsample()
+
 rsample = broadcast(_rsample)
+
 def _log_prob(dist, x, *args, **kwargs):
     """
     broadcastable log-prob, that takes the the location, x, and the distribution's args and kwargs as Tensor arguments
     """
     return dist(*args, **kwargs).log_prob(x)
+
 log_prob = broadcast(_log_prob)
+
+
 class NDist:
     """
     Wrapper for primitive distributions
@@ -199,8 +208,10 @@ class NDist:
         self.dist = dist
         self.args = args
         self.kwargs = kwargs
+        
     def rsample(self):
         return rsample(self.dist, *self.args, **self.kwargs)
+    
     def log_prob(self, x):
         return log_prob(self.dist, x, *self.args, **self.kwargs)
 
@@ -217,6 +228,7 @@ class Nnn():
                 return broadcast(super().__call__)(*args, **kwargs)
             #also wrap repr
         return Inner
+
 nnn = Nnn()
 
 

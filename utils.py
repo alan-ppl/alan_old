@@ -2,6 +2,11 @@ import torch as t
 import numpy as np
 
 
+def get_number_params(torch_model) :
+    params = torch_model.parameters()
+    return sum(p.numel() for p in params \
+               if p.requires_grad)
+
 
 def max_k(T, k) :    
     return T.max(dim=k, keepdim=True)[0]
@@ -75,7 +80,9 @@ def biv_norm_conditional_var(var1, rho) :
 
 
 def generate_linear_data(N, w, sigma, interval) :
-    X = np.random.uniform(low=interval[0], high=interval[1], size=(N, 1))
+    X = np.random.uniform(low=interval[0], \
+                          high=interval[1], \
+                          size=(N, 1))
     noise = np.random.normal(size=(N, 1), scale=sigma)
     Y = w * X + noise
     
@@ -93,6 +100,7 @@ def log_norm(x, mu, std):
     return norm_constant - (0.5 * prec * sqerror)
 
 
+# univariate OLS
 def analytical_posterior_var(var, X) :
     scaled_prec = (1/var**2) * np.matmul(X.T, X) + 1
     
