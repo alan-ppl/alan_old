@@ -2,11 +2,12 @@ import random
 import torch as t
 import tpp_trace as tra
 import utils as u
+import math
 
 
 # TODO: add data handling
 # TODO: add plates
-def combine_tensors(tensors_dict, naive=False) :    
+def combine_tensors(tensors_dict) :    
     """
         :param tensors_dict: dict of log_prob tensors 
         :return: scalar of log_prob tensors, multiplied and summed out dims
@@ -17,18 +18,14 @@ def combine_tensors(tensors_dict, naive=False) :
     k_dims = filter_names(all_names, plates=False)
     
     # 2. if anything is left in `pos_` dims, sum out
-    # TODO: maybe do this before `combine_tensors`.
+    # TODO: remove; doing this in forward now, before `combine_tensors`.
     tensors_dict = clear_user_dims(tensors_dict, all_names)
     
     # 3. for each k dim, get tensors that depend on dim and squash them
     while k_dims :
         random_index = random.randrange(len(k_dims))
         dim = k_dims.pop(random_index)
-        
-        if naive :
-            tensors_dict = naive_reduce_by_dim(tensors_dict, dim)
-        else :
-            tensors_dict = reduce_by_dim(tensors_dict, dim)
+        tensors_dict = reduce_by_dim(tensors_dict, dim)
     
     return tensors_dict
 
@@ -60,8 +57,7 @@ def clear_user_dims(d, names) :
     return d
 
 
-# Probably unstable
-def naive_reduce_by_dim(d, dim):
+def reduce_by_dim(d, dim):
     assert( tra.k_dim_name("") in dim )
     
     other_tensors, i_tensors = get_dependent_factors(d, dim)
@@ -69,28 +65,30 @@ def naive_reduce_by_dim(d, dim):
     all_names = get_all_names(i_tensors)
     k_dims = filter_names(all_names, plates=False)
     
-    # 4. use torch names to get all their dims in same order
+    # 4. use torch names to get all dims in same order
     for k, tensor in i_tensors.items() :
-        # TODO: watch out for that ellipsis
+        # TODO: watch that ellipsis
         i_tensors[k] = tensor.align_to(*k_dims)#, ...)
     
     # TODO: Can just pop the first i_tensor?
-    T = 1 
+    T = 0
 
-    # 5. multiply
+    # 5. multiply (as sum logs)
     for k, tensor in i_tensors.items() :
-        T = T * tensor
-
-    # 6. sum out dim
-    T = T.sum(dim)
+        T = T + tensor
     
+    nk = T.size(dim)
+    # 6. sum out dim
+    T = t.logsumexp(T, dim) - math.log(nk)
+    T = t.tensor(T, requires_grad=True)
     # 7. put it back
     other_tensors[dim] = T
     
     return other_tensors
 
 
-def reduce_by_dim(d, dim):
+# old attempt at stability
+def alt_reduce_by_dim(d, dim):
     assert( tra.k_dim_name("") in dim )
     
     other_tensors, i_tensors = get_dependent_factors(d, dim)

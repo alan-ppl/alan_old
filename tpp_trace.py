@@ -120,9 +120,11 @@ class SampleLogProbK():
                                    *positional_dim_names(self.protected_dims))
             
             # align to global plate names
-            sample = sample.align_to(*self.plate_names[::-1], "_K", *positional_dim_names(self.protected_dims))
-            lp = dist.log_prob(sample)
-            return sample, {"sample": sample, "log_prob": lp}
+            sample = sample.align_to(*self.plate_names[::-1], "_K", \
+                                     *positional_dim_names(self.protected_dims))
+            lps = dist.log_prob(sample)
+            
+            return sample, {"sample": sample, "log_prob": lps}
 
     def delete_names(self, trace_prefix, names, tensors):
         return tensors
@@ -164,7 +166,9 @@ class LogProbK():
             # rename _K, taking account of plates
             sample = sample.rename(*self.plate_names, new_dim, *self.pos_names)
             # align sample to new ordering
-            sample = sample.align_to(*self.arg_names[::-1], *self.plate_names, *self.pos_names)
+            sample = sample.align_to(*self.arg_names[::-1], \
+                                     *self.plate_names, \
+                                     *self.pos_names)
             
             log_prob = dist.log_prob(sample)
             return sample, {"sample": sample, "log_prob": log_prob}
@@ -179,7 +183,7 @@ class LogProbK():
         names = [k_dim_name(concat_prefix(trace_prefix.prefix, name)) for name in names]
 
         for name in names:
-            # `remove` errors if name isn't present. this is ~desirable
+            # `remove` intentionally causes error if name isn't present.
             self.arg_names.remove(name)
 
         # squeeze errors if name isn't present, or if dimension shape is more than one
@@ -222,6 +226,16 @@ class PrefixTrace():
 
     def delete_names(self, *args, **kwargs):
         return self.trace.fn.delete_names(self, *args, **kwargs)
+    
+    # Traverse out_dicts and sum out positional dims inplace
+    def sum_out_pos(self) :
+        for kind, d in self.trace.out_dicts.items() :
+            for k, T in d.items() :
+                posses = [dim for dim in T.names \
+                          if pos_name("") in dim]
+                for pos in posses :
+                    d[k] = d[k].sum(pos)
+
 
 
 class Trace:
@@ -248,6 +262,39 @@ class Trace:
 
 def trace(in_dicts, fn):
     return PrefixTrace("", Trace(in_dicts, fn))
+
+
+def rename_placeholders(reference, placeheld) :
+    """
+    Rename and align in Q trace
+    The ks are misaligned between trp and trq; Q's trace only has "__K"
+    a placeholder for the current sampled var
+    """
+    reference_dict = reference.trace.out_dicts
+    placeheld_dict = placeheld.trace.out_dicts
+    
+    # for sample dict and log_prob dict
+    for k, d in placeheld_dict.items() :
+        for var, tensor in d.items() :
+            tensor = tensor.rename(_K = k_dim_name(var))
+            target = reference_dict[k][var]
+            placeheld_dict[k][var] = tensor.align_as(target)
+            
+    return placeheld_dict
+
+
+def subtract_latent_log_probs(trp, trq) :
+    p_dict = trp.trace.out_dicts["log_prob"]
+    q_dict = trq.trace.out_dicts["log_prob"]
+    
+    # Check there are only latents left   
+    # P also has log_probs from the observed vars. 
+    # so looping over Q should do it
+    tensors = {}
+    for k, Q in q_dict.items() :
+        tensors[k] = p_dict[k] - Q
+    
+    return tensors
 
 
 def sampler(draws, nProtected, data={}):
@@ -310,7 +357,7 @@ def plate_dist(trace):
 
 # TODO: Work out odd munmap_chunk(): invalid pointer bug onquit
 if __name__ == "__main__" :
-    tr1 = trace({"data": {}}, SampleLogProbK(4, 2))
+    tr1 = trace({"data": {}}, SampleLogProbK(K=4, protected_dims=2))
     d = WrappedDist(Normal, t.ones(3), 3)
     a = tr1["a"](d) 
     val = chain_dist(tr1)

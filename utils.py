@@ -8,6 +8,11 @@ def get_number_params(torch_model) :
                if p.requires_grad)
 
 
+def shape_check(d) :
+    for k, v in d.items() :
+        print(v.shape)
+
+
 def max_k(T, k) :    
     return T.max(dim=k, keepdim=True)[0]
 
