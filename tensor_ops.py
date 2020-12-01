@@ -80,7 +80,7 @@ def reduce_by_dim(d, dim):
     nk = T.size(dim)
     # 6. sum out dim
     T = t.logsumexp(T, dim) - math.log(nk)
-    T = t.tensor(T, requires_grad=True)
+    #T = t.tensor(T, requires_grad=True)
     # 7. put it back
     other_tensors[dim] = T
     
