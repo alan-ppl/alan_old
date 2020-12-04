@@ -25,6 +25,11 @@ def unify_names(*nss):
     padded_nss = [ [*((length-len(ns))*(None,)), *ns] for ns in nss]
     return [unify_name(*ns) for ns in zip(*padded_nss)]
 
+#Alternative unify_names:
+#unify_names(*nss):
+#    result = sum(t.zeros(len(ns)*(0,), names=ns) for ns in nss)
+#    return result.names
+
 def unify_arg_names(*args):
     return unify_names(*(arg.names for arg in args if isinstance(arg, t.Tensor)))
 
