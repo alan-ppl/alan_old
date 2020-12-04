@@ -72,48 +72,34 @@ class SampleLogProbK():
     names: [*plates, _K, *pos]
     """
     def __init__(self, K, protected_dims):
-        self.K = K
-        self.protected_dims = protected_dims
-        self.plate_names = []
+        self.dim_names = ["_K", *(protected_dims*(None,))]
+        self.dim_shape = [K, *(protected_dims*(1,))]
     
     def __call__(self, prefix_trace, dist, plate_name, plate_shape, in_kwargs):
-        data = in_kwargs["data"]
+        assert "data" not in in_kwargs
         
         if plate_name is not None:
             plate_name = "_plate_" + plate_name
-            self.plate_names.append(plate_name)
-            assert plate_name not in dist.unified_names
+            assert plate_name not in self.dim_names
+            self.dim_names.insert(0, plate_name)
+            self.dim_shape.insert(0, 1)
         
-        if data is not None:
-            assert (plate_shape == t.Size([])) or (plate_shape is None)
-            return data, {}
+        if plate_name is None:
+            dim_shape = self.dim_shape
         else:
-            if plate_name is not None:
-                new_dim_shape_no_pad = [plate_shape]
-                new_dim_names_no_pad = [plate_name]
-            else:
-                new_dim_shape_no_pad = []
-                new_dim_names_no_pad = []
+            dim_shape = [plate_shape, *self.dim_shape[1:]]
 
-            if "_K" not in dist.unified_names:
-                new_dim_shape_no_pad.append(self.K)
-                new_dim_names_no_pad.append("_K")
-            padding = max(0, self.protected_dims - len(dist.unified_names))
-            
-            new_dim_shape = [*new_dim_shape_no_pad, *(padding*[1])]
-            new_dim_names = [*new_dim_names_no_pad, *positional_dim_names(padding)]
-            
-            sample = dist.rsample(sample_shape=t.Size(new_dim_shape), new_names=new_dim_names)
-            # make sure positional dims have the right name,
-            sample = sample.rename(*sample.names[:-self.protected_dims], 
-                                   *positional_dim_names(self.protected_dims))
-            
-            # align to global plate names
-            sample = sample.align_to(*self.plate_names[::-1], "_K", \
-                                     *positional_dim_names(self.protected_dims))
-            lps = dist.log_prob(sample)
-            
-            return sample, {"sample": sample, "log_prob": lps}
+        #how much of the final shape is missing in dist.unified_names
+        N = len(self.dim_names) - len(dist.unified_names) 
+
+        #the shape and dims we need to add to make it up to the right shape.
+        sample_shape = dim_shape[:N]
+        sample_names = self.dim_names[:N]
+        
+        sample = dist.rsample(sample_shape=t.Size(sample_shape), new_names=sample_names)
+        lps = dist.log_prob(sample)
+        
+        return sample, {"sample": sample, "log_prob": lps}
 
     def delete_names(self, trace_prefix, names, tensors):
         return tensors
@@ -132,13 +118,14 @@ class LogProbK():
     Takes plate_names as input
     names: [*arg, *plates, *pos]
     """
-    def __init__(self, plate_names, protected_dims):
-        self.plate_names = plate_names[::-1]
+    def __init__(self, dim_names): #plate_names, protected_dims):
+        self.protected_dims = sum(x==None for x in dim_names)
+        self.plate_names = dim_names[:-(protected_dims+1)]
 
-        self.protected_dims = protected_dims
-        self.pos_names = positional_dim_names(protected_dims)
+        self.pos_names = positional_dim_names(self.protected_dims)
 
         self.arg_names = []
+        self.ordered_plate_names = []
 
     def __call__(self, prefix_trace, dist, plate_name, plate_shape, in_kwargs):
         sample, data = in_kwargs["sample"], in_kwargs["data"]
@@ -150,6 +137,8 @@ class LogProbK():
             new_dim = k_dim_name(prefix_trace.prefix)
             self.arg_names.append(new_dim)
 
+            # name positional dims
+            sample = sample.refine_names(..., *self.pos_names)
             # introduce dims for all plates,
             sample = sample.align_to(*self.plate_names, "_K", *self.pos_names)
             # rename _K, taking account of plates
@@ -158,6 +147,8 @@ class LogProbK():
             sample = sample.align_to(*self.arg_names[::-1], \
                                      *self.plate_names, \
                                      *self.pos_names)
+            # remove positional names
+            sample = sample.rename(*sample.names[:-self.protected_dims], *(self.protected_dims*(None,)))
             
             log_prob = dist.log_prob(sample)
             return sample, {"sample": sample, "log_prob": log_prob}
@@ -240,7 +231,6 @@ class Trace:
       log_prob (log-probability of data and latent variables)
     """
     def __init__(self, in_dicts, fn):
-        assert "data" in in_dicts
         self.in_dicts = in_dicts
         self.out_dicts = {}
         self.fn = fn
@@ -286,9 +276,8 @@ def subtract_latent_log_probs(trp, trq) :
     return tensors
 
 
-def sampler(draws, nProtected, data={}):
-    return trace( {"data":data}, \
-                 SampleLogProbK(K=draws, protected_dims=nProtected) )
+def sampler(draws, nProtected):
+    return trace({}, SampleLogProbK(K=draws, protected_dims=nProtected))
 
 
 def evaluator(wrapper, nProtected, data={}) :
@@ -346,14 +335,13 @@ def plate_dist(trace):
 
 # TODO: Work out odd munmap_chunk(): invalid pointer bug onquit
 if __name__ == "__main__" :
-    tr1 = trace({"data": {}}, SampleLogProbK(K=4, protected_dims=2))
-    d = WrappedDist(Normal, t.ones(3), 3)
-    a = tr1["a"](d) 
-    val = chain_dist(tr1)
-    tr2 = trace({"data": {}, "sample": tr1.trace.out_dicts["sample"]}, LogProbK(tr1.trace.fn.plate_names, 2))
+    protected_dims = 2
+    tr1 = trace({}, SampleLogProbK(K=4, protected_dims=protected_dims))
+    val = plate_dist(tr1)
+    tr2 = trace({"data": {}, "sample": tr1.trace.out_dicts["sample"]}, LogProbK(tr1.trace.fn.dim_names))
     val = chain_dist(tr2)
     
-    print(tr2.trace.out_dicts["log_prob"])
+    #print(tr2.trace.out_dicts["log_prob"])
 
         
 
