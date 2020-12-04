@@ -10,25 +10,9 @@ import torch as t
 from torch.distributions import Normal
 
 
-#### Workarounds because torch.distributions doesn't know about named tensors
-def unify_name(*names):
-    not_none_names = [name for name in names if name is not None]
-    assert all(name == not_none_names[0] for name in not_none_names)
-    if 0 < len(not_none_names):
-        assert isinstance(not_none_names[0], str)
-        return not_none_names[0]
-    else:
-        return None
-
 def unify_names(*nss):
-    length = max([0, *[len(ns) for ns in nss]])
-    padded_nss = [ [*((length-len(ns))*(None,)), *ns] for ns in nss]
-    return [unify_name(*ns) for ns in zip(*padded_nss)]
-
-#Alternative unify_names:
-#unify_names(*nss):
-#    result = sum(t.zeros(len(ns)*(0,), names=ns) for ns in nss)
-#    return result.names
+    result = sum(t.zeros(len(ns)*(0,), names=ns) for ns in nss)
+    return result.names
 
 def unify_arg_names(*args):
     return unify_names(*(arg.names for arg in args if isinstance(arg, t.Tensor)))
