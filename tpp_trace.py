@@ -131,9 +131,19 @@ class LogProbK():
         sample, data = in_kwargs["sample"], in_kwargs["data"]
 
         assert (sample is None) or (data is None)
+
+
         if data is not None:
+            assert plate_name is None
             return data, {"log_prob": dist.log_prob(data)}
         else:
+
+            if plate_name is not None:
+                plate_name = "_plate_" + plate_name
+                assert plate_name not in self.ordered_plate_names
+                self.ordered_plate_names.append(plate_name)
+                assert plate_name in sample.names
+
             new_dim = k_dim_name(prefix_trace.prefix)
             self.arg_names.append(new_dim)
 
@@ -339,7 +349,7 @@ if __name__ == "__main__" :
     tr1 = trace({}, SampleLogProbK(K=4, protected_dims=protected_dims))
     val = plate_dist(tr1)
     tr2 = trace({"data": {}, "sample": tr1.trace.out_dicts["sample"]}, LogProbK(tr1.trace.fn.dim_names))
-    val = chain_dist(tr2)
+    val = plate_dist(tr2)
     
     #print(tr2.trace.out_dicts["log_prob"])
 
