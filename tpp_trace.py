@@ -7,7 +7,7 @@
 import re
 import string
 import torch as t
-from torch.distributions import Normal
+import torch.distributions as td
 
 
 def unify_names(*nss):
@@ -189,7 +189,8 @@ class PrefixTrace():
     def __getitem__(self, key):
         return PrefixTrace(concat_prefix(self.prefix, key), self.trace)
 
-    def __call__(self, dist, plate_name=None, plate_shape=None):
+
+    def call(self, dist, plate_name=None, plate_shape=None):
         """
         compute out_dicts from in_dicts for the current primitive
         """
@@ -226,6 +227,47 @@ class PrefixTrace():
                 for pos in posses :
                     d[k] = d[k].sum(pos)
 
+dist_names = [
+    "Bernoulli",
+    "Beta",
+    "Binomial",
+    "Categorical",
+    "Cauchy",
+    "Chi2",
+    "ContinuousBernoulli",
+    "Exponential",
+    "FisherSnedecor",
+    "Gamma",
+    "Geometric",
+    "Gumbel",
+    "HalfCauchy",
+    "HalfNormal",
+    "Laplace",
+    "LogNormal",
+    "NegativeBinomial",
+    "Normal",
+    "Pareto",
+    "Poisson",
+    "RelaxedBernoulli",
+    "LogitRelaxedBernoulli",
+    "StudentT",
+    "Uniform",
+    "VonMises",
+    "Weibull",
+]
+
+#Multivariate!
+#Dirichlet
+#MvNormal
+#Multinomial
+#OneHotCategorical
+#RelaxedOneHotCategorical
+
+for dist_name in dist_names:
+    def f(self, *args, plate_name=None, plate_shape=None, **kwargs):
+        dist = WrappedDist(getattr(td, dist_name), *args, **kwargs)
+        return self.call(dist, plate_name=plate_name, plate_shape=plate_shape)
+    setattr(PrefixTrace, dist_name, f)
 
 
 class Trace:
@@ -334,11 +376,11 @@ def chain_dist(trace):
 # example directed graph with plate repeats
 # 3(a) -> 4(b) -> c -> d
 def plate_dist(trace):
-    a = trace["a"](WrappedDist(Normal, t.ones(3), 3), plate_name="A", plate_shape=3)
-    b = trace["b"](WrappedDist(Normal, a, 3),         plate_name="B", plate_shape=4)
-    c = trace["c"](WrappedDist(Normal, b, 3))
+    a = trace["a"].Normal(t.ones(3), 3, plate_name="A", plate_shape=3)
+    b = trace["b"].Normal(a, 3,         plate_name="B", plate_shape=4)
+    c = trace["c"].Normal(b, 3)
     (c,) = trace.delete_names(("a", "b"), (c,))
-    d = trace["d"](WrappedDist(Normal, c, 3))
+    d = trace["d"].Normal(c, 3)
     
     return d
 
