@@ -1,11 +1,32 @@
-Alternative approach:
-  trace has a number of protected dimensions
-  trace builds up a list of names
-  distribution calls check that we aren't encroaching on those dimensions
-  
+Q returns:
+  dict[name -> logQ["plate_1", "plate_2", "K"]
+  dict[name -> sample(tensor with one "K" dim)]
 
-  fixed, named dims
-  increment dim each time you encounter a new distribution
+Q:
+  sample["a"] = Normal(..., ...)
+  logp["a"] = 
+
+We transform
+  dict[name -> sample(tensor with one "K" dim)]
+to
+  dict[name -> sample(tensor with "K_name" dims)]
+
+
+P:
+  takes:
+    dict[name -> sample(tensor with "K_name" dims)]
+  and returns:
+    dict[name -> logP(tensor with "K_name" dims)]
+  P doesn't need to know about tensor dims, because they're already in the input samples.
+  Just needs to make sure it only manipulates rightmost "positional" dimensions.
+
+
+def P(sample):
+    logp = {}
+    logp["a"] = Normal(..., ...).log_prob(sample["a"])
+    logp["b"]
+    return logp
+
   
 
 Papers:
