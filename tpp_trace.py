@@ -181,7 +181,7 @@ class LogProbK():
 
 
 # model -> list of sample or log_prob tensors
-class PrefixTrace():
+tclass PrefixTrace():
     def __init__(self, prefix, trace):
         self.prefix = prefix
         self.trace = trace

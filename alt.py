@@ -215,6 +215,12 @@ class TraceSample(Trace):
         assert isinstance(value, WrappedDist)
         assert key not in self.sample
         self.sample[key] = value.rsample()
+    
+    def set_names(*args, **kwargs):
+        pass
+    
+    def add_remove_names(*args, **kwargs):
+        pass
 
 class TensorisedTrace(Trace):
     def __init__(self, sample, data):
@@ -229,15 +235,17 @@ class TensorisedTrace(Trace):
         self.K_names = [f"K_{name}" for name in names]
         self.K_shape = [1 for name in names]
 
-    def add_remove_names(self, tensors, add_names, remove_names):
+    def add_remove_names(self, add_names, remove_names, tensors=()):
         """
-        Updates K_shape and K_names in TensorisedTrace, and in the input tensors.
+        Updates K_shape and K_names in TensorisedTrace.
+        This automatically updates names in sample a they are pulled out, so we don't have to do anything to them explicitly.
+        We also give a list of tensors, in case there are any that need dimensions updating.
         Allows us to work around limitations in the number of dimensions baked into PyTorch.
         """
         #remove names from K_names and K_shape
         #intentionally causes error if name isn't present.
         for name in remove_names:
-            self.K_names.remove(name)
+            self.K_names.remove(f"K_{name}")
             self.K_shape.pop()
 
         # remove names from tensors 
@@ -245,7 +253,7 @@ class TensorisedTrace(Trace):
         tensors = [squeeze_dims(tensor, names) for tensor in tensors]
 
         for name in add_names:
-            self.K_names.append(name)
+            self.K_names.append(f"K_{name}")
             self.K_shape.append(1)
             tensors = [tensor.unsqueeze(-1).refine_names(..., name) for tensor in tensors]
 
@@ -271,10 +279,18 @@ class TensorisedTrace(Trace):
         sample = self[key]
         self.logp[key] = value.log_prob(sample)
 
+
+
+#### Example
+
 def P(tr): 
+    tr.set_names('a', 'b')
     tr['a'] = Normal(tr.zeros(()), 1)
     tr['b'] = Normal(tr['a'], 1)
+    tr.add_remove_names(('c',), ('a',))
     tr['c'] = Normal(tr['b'], 1, sample_shape=3, sample_names='plate_a')
+    print(tr['c'].names)
+    print(tr['c'].shape)
     tr['obs'] = Normal(tr['c'], 1, sample_shape=5, sample_names='plate_b')
 
 
@@ -305,5 +321,5 @@ q(trq)
 #
 #compute logP
 trp = TensorisedTrace(trq.sample, data)
-(trp)
+P(trp)
 
