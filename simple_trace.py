@@ -7,9 +7,6 @@ Basic principle:
 Write down P and Q as probabilistic programs (functions or PyTorch modules that take a trace as input).
 These should be "compatible": if I sample from P and Q, I get tensors with same dimensions + names.
 Note that this means we need a single K dimension if we sample from P.
-
-
-
 """
 
 

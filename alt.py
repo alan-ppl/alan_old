@@ -62,7 +62,9 @@ class Trace:
         """
         Pad an external tensor with the current K_name and K_shape
         """
+        #add K_names singleton dimensions to RHS
         tensor = tensor.align_to(..., *self.K_names)
+        #expand singleton dimensions (usually only necessary in sampling approximate posterior)
         tensor = tensor.expand((*tensor.shape[:(len(tensor.shape)-len(self.K_shape))], *self.K_shape))
         return tensor
 
@@ -94,6 +96,12 @@ class Trace:
         """
         self.compatible_args(*args, **kwargs)
         return WrappedDist(dist, *args, **kwargs)
+    
+    def set_names(*args, **kwargs):
+        pass
+    
+    def add_remove_names(*args, **kwargs):
+        pass
 
 
 #### Add padded tensor initialization ops to Trace
@@ -168,12 +176,12 @@ for dist_name in dist_names:
     set_dist(dist_name)
 
 
-class TraceSampleLogP(Trace):
+class TraceSampleLogQ(Trace):
     """
     Samples a probabilistic program + evaluates log-probability.
     Usually used for sampling the approximate posterior.
-    Doesn't do any tensorisation.  All dimensions (e.g. sampling K) is managed by the user's program.
-    Note that the latents may depend on the data (as in a VAE), but it doesn't make sense to "sample" data.
+    The latents may depend on the data (as in a VAE), but it doesn't make sense to "sample" data.
+    Can high-level latents depend on plated lower-layer latents?  (I think so?)
     """
     def __init__(self, K, data=None):
         super().__init__(K_shape=(K,), K_names=("K",))
@@ -201,8 +209,7 @@ class TraceSampleLogP(Trace):
 
 class TraceSample(Trace):
     """
-    Just used e.g. to test a program or to sample from the prior, and as such it doesn't make sense for it to take data as input.
-    No K's.
+    Just used e.g. to sample fake-data.  So no K's.
     """
     def __init__(self):
         super().__init__(K_shape=(), K_names=())
@@ -215,14 +222,8 @@ class TraceSample(Trace):
         assert isinstance(value, WrappedDist)
         assert key not in self.sample
         self.sample[key] = value.rsample()
-    
-    def set_names(*args, **kwargs):
-        pass
-    
-    def add_remove_names(*args, **kwargs):
-        pass
 
-class TensorisedTrace(Trace):
+class TraceLogP(Trace):
     def __init__(self, sample, data):
         self.sample = sample
         self.data = data
@@ -314,12 +315,12 @@ P(tr_sample)
 data = {'obs': tr_sample.sample['obs']}
 
 #sample from approximate posterior
-trq = TraceSampleLogP(K=10, data=data)
+trq = TraceSampleLogQ(K=10, data=data)
 q = Q()
 q(trq)
 
 #
 #compute logP
-trp = TensorisedTrace(trq.sample, data)
+trp = TraceLogP(trq.sample, data)
 P(trp)
 
