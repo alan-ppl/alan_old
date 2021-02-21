@@ -242,7 +242,7 @@ def gibbs_sample(marginals):
     K_names = []
     #corresponding sampled indexes
     ks = []
-    for (rv, log_margs) in marginals:
+    for (rv, log_margs) in marginals[::-1]:
         #throw away log_margs without dimension of interest
         K_name = K_prefix + rv
         log_margs = [lm for lm in log_margs if (K_name in lm.names)]
