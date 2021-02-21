@@ -237,6 +237,49 @@ def sum_logpqs(logps, logqs):
 
     return sum_lps(all_lps)
 
+def gibbs_sample(marginals):
+    #names of random variables that we've sampled
+    K_names = []
+    #corresponding sampled indexes
+    ks = []
+    for (rv, log_margs) in marginals:
+        #throw away log_margs without dimension of interest
+        K_name = K_prefix + rv
+        log_margs = [lm for lm in log_margs if (K_name in lm.names)]
+
+        #index into log_margs with previously sampled ks
+        #different indexing behaviour for tuples vs lists
+        log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in lms]
+
+        #the only K left should be K_name
+        #and plates should all be the same (and there should be more than one tensor)
+        #therefore all dim_names should be the same,
+        dmss = [set(lm.names) for lm in log_margs]
+        dms0 = dmss[0]
+        for dms in dmss[1:]:
+            assert dms0 == dms
+        
+        #the only K left should be K_name
+        remaining_K_names = [n for n in dms0 if is_K(n)]
+        assert 1==len(remaining_K_names)
+        assert K_name == remaining_K_names[0]
+
+        #align and combine tensors
+        plate_names = [n for n in dms0 if is_plate(n)]
+        align_names = plate_names + remaining_K_names
+        lp = sum([lm.align_to(align_names) for lm in log_margs])
+
+        #add K_name and sample to lists
+        K_names.append(remaining_K_names[0])
+        ks.append(td.Categorical(lp).sample())
+
+    #return a dictionary of random variable names
+    return {K_name[:len(K_prefix]: k for (K_name, ks) in zip(K_names, ks)}
+
+        
+        
+
+
 
 if __name__ == "__main__":
     a = t.randn(3,3).refine_names('K_d', 'K_b')
