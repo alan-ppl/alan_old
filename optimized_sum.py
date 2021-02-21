@@ -1,3 +1,5 @@
+#Write Gibbs sampler!!
+
 import torch as t
 import opt_einsum as oe
 
@@ -63,7 +65,7 @@ def reduce_K(all_lps, K_name):
         result_p = result_p * norm_p
     result_p = result_p.mean(K_name, keepdim=True)
 
-    result_lp = (result_p.log() - sum(max_lps)).squeeze(K_name)
+    result_lp = (result_p.log() + sum(max_lps)).squeeze(K_name)
 
     other_lps.append(result_lp)
     return other_lps
@@ -181,7 +183,6 @@ def sum_lps(lps):
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
         marginals = marginals + _m
-    print(lps)
     assert 1==len(lps) 
     assert 1==lps[0].numel()
     return lps[0], marginals
@@ -207,7 +208,7 @@ def sum_logpqs(logps, logqs):
     # check all named dimensions are either plates or Ks
     for lp in all_lps:
         for n in lp.names:
-        assert is_K(n) or is_plate(n) or (n is None)
+            assert is_K(n) or is_plate(n) or (n is None)
 
     # sum over all non-plate and non-K dimensions
     logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
@@ -239,9 +240,12 @@ def sum_logpqs(logps, logqs):
 
 if __name__ == "__main__":
     a = t.randn(3,3).refine_names('K_d', 'K_b')
+    ap = t.randn(3,3).refine_names('K_b', 'K_a')
     b = t.randn(3,3,3).refine_names('K_a', 'K_b', 'plate_s')
     c = t.randn(3,3,3).refine_names('K_c', 'K_d', 'plate_s')
     d = t.randn(3,3,3).refine_names('K_a', 'K_c', 'plate_b')
     lps = (a,b,c,d)
+
+    assert t.allclose((a.exp() @ ap.exp()/3).log().rename(None), reduce_K([a, ap], 'K_b')[0].rename(None))
 
     lp, marginals = sum_lps(lps)
