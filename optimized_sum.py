@@ -162,7 +162,7 @@ def sum_plate(all_lps, plate_name=None):
 
     return higher_lps, marginals
 
-def sum_plates(lps):
+def sum_lps(lps):
     """
     The final, exported function.
     Arguments:
@@ -185,8 +185,57 @@ def sum_plates(lps):
     assert 1==len(lps) 
     assert 1==lps[0].numel()
     return lps[0], marginals
-        
+
+def sum_none_dims(lp):
+    none_dims = [i for i in range(len(lp.names)) if lp.names[i] is None]
+    if 0 != len(none_dims):
+        lp = lp.sum(none_dims)
+    return lp
+
+def sum_logpqs(logps, logqs):
+    """
+    Arguments:
+        logps: dict{rv_name -> log-probability tensor}
+        logqs: dict{rv_name -> log-probability tensor}
+    Returns:
+        elbo, used for VI
+        marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
+    """
+
+    assert len(logqs) <= len(logps) 
+
+    # check all named dimensions are either plates or Ks
+    for lp in all_lps:
+        for n in lp.names:
+        assert is_K(n) or is_plate(n) or (n is None)
+
+    # sum over all non-plate and non-K dimensions
+    logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
+    logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
+
+    # sanity checking for latents (only latents appear in logqs)
+    for rv in logqs:
+        #check that any rv in logqs is also in logps
+        assert rv in lp
+
+        lp = logps[rv]
+        lq = logqs[rv]
     
+        # check same plates appear in lp and lq
+        lp_plates = [n for n in lp.names if is_plate(n)]
+        lq_plates = [n for n in lq.names if is_plate(n)]
+        assert set(lp_plates) == set(lq_plates)
+
+        # check there is a K_name corresponding to rv name in both tensors
+        assert K_prefix+rv in lp.names
+        assert K_prefix+rv in lq.names
+
+
+    #combine all lps, negating logqs
+    all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
+
+    return sum_lps(all_lps)
+
 
 if __name__ == "__main__":
     a = t.randn(3,3).refine_names('K_d', 'K_b')
@@ -195,4 +244,4 @@ if __name__ == "__main__":
     d = t.randn(3,3,3).refine_names('K_a', 'K_c', 'plate_b')
     lps = (a,b,c,d)
 
-    lp, marginals = sum_plates(lps)
+    lp, marginals = sum_lps(lps)
