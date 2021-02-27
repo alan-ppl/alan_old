@@ -205,8 +205,16 @@ def sum_logpqs(logps, logqs):
 
     assert len(logqs) <= len(logps) 
 
-    # check all named dimensions are either plates or Ks
-    for lp in all_lps:
+    # check all named dimensions in logps are either positional, plates or "K"
+    for lp in logqs.values():
+        for n in lp.names:
+            assert n=="K" or is_plate(n) or (n is None)
+
+    # convert K 
+    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
+
+    # check all named dimensions in logps are either positional, plates or Ks
+    for lp in logps.values():
         for n in lp.names:
             assert is_K(n) or is_plate(n) or (n is None)
 
@@ -217,7 +225,7 @@ def sum_logpqs(logps, logqs):
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
         #check that any rv in logqs is also in logps
-        assert rv in lp
+        assert rv in logps
 
         lp = logps[rv]
         lq = logqs[rv]
@@ -234,10 +242,15 @@ def sum_logpqs(logps, logqs):
 
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-
+    
     return sum_lps(all_lps)
 
-def gibbs_sample(marginals):
+def vi(logps, logqs):
+    elbo, _ = sum_logpqs(logps, logqs)
+    return elbo
+
+
+def gibbs(marginals):
     #names of random variables that we've sampled
     K_names = []
     #corresponding sampled indexes
@@ -274,7 +287,7 @@ def gibbs_sample(marginals):
         ks.append(td.Categorical(lp).sample())
 
     #return a dictionary of random variable names
-    return {K_name[:len(K_prefix]: k for (K_name, ks) in zip(K_names, ks)}
+    return {K_name[len(K_prefix):] : k for (K_name, k) in zip(K_names, ks)}
 
         
         

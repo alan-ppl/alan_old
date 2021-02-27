@@ -25,8 +25,7 @@ class WrappedDist:
         if isinstance(sample_shape, int):
             sample_shape = (sample_shape,)
         if isinstance(sample_names, str):
-            sample_names = (sample_names,)
-
+            sample_names = (sample_names,) 
         if sample_names==() and sample_shape!=():
             sample_names = len(sample_shape) * (None,)
 
@@ -158,6 +157,7 @@ dist_names = [
     "VonMises",
     "Weibull",
 ]
+__all__ = dist_names
 
 #Multivariate!
 #Dirichlet
@@ -281,46 +281,4 @@ class TraceLogP(Trace):
         self.logp[key] = value.log_prob(sample)
 
 
-
-#### Example
-
-def P(tr): 
-    tr.set_names('a', 'b')
-    tr['a'] = Normal(tr.zeros(()), 1)
-    tr['b'] = Normal(tr['a'], 1)
-    tr.add_remove_names(('c',), ('a',))
-    tr['c'] = Normal(tr['b'], 1, sample_shape=3, sample_names='plate_a')
-    print(tr['c'].names)
-    print(tr['c'].shape)
-    tr['obs'] = Normal(tr['c'], 1, sample_shape=5, sample_names='plate_b')
-
-
-class Q(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.m_a = nn.Parameter(t.zeros(()))
-        self.m_b = nn.Parameter(t.zeros(()))
-        self.m_c = nn.Parameter(t.zeros((3,), names=('plate_a',)))
-
-    def forward(self, tr):
-        tr['a'] = Normal(tr.pad(self.m_a), 1)
-        tr['b'] = Normal(tr.pad(self.m_b), 1)
-        tr['c'] = Normal(tr.pad(self.m_c), 1)
-
-
-
-#sample fake data
-tr_sample = TraceSample()
-P(tr_sample)
-data = {'obs': tr_sample.sample['obs']}
-
-#sample from approximate posterior
-trq = TraceSampleLogQ(K=10, data=data)
-q = Q()
-q(trq)
-
-#
-#compute logP
-trp = TraceLogP(trq.sample, data)
-P(trp)
 
