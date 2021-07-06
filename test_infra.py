@@ -1,5 +1,6 @@
 import torch
-from attic.cartesian_tensor import CartesianTensor, _process_common_names, _get_name
+import torch.nn.functional as F
+from attic.cartesian_tensor import CartesianTensor
 from functools import partial
 
 # Testing
@@ -112,6 +113,27 @@ def test_chain_operations():
     print("Chain operations test passed...")
 
 
+def test_func_call():
+    '''
+    Test different ways of calling functions
+    '''
+    a = CartesianTensor(torch.ones(5, 6)).refine_names('Ka','Kb')
+    b = torch.randn(3, 2, 3)
+    out = a.add(b)
+    assert out.shape == (5, 6, 3, 2, 3)
+    assert out.names == ('Ka', 'Kb', None, None, None)
+    out = b.add(a)
+    assert out.shape == (5, 6, 3, 2, 3)
+    assert out.names == ('Ka', 'Kb', None, None, None)
+    assert type(out) == type(a)
+    out = torch.add(a, b)
+    assert out.shape == (5, 6, 3, 2, 3)
+    assert out.names == ('Ka', 'Kb', None, None, None)
+    assert type(out) == type(a)
+    print("Func call approaches test passed...")
+
+
 test_operators()
 test_special_functions()
 test_chain_operations()
+test_func_call()
