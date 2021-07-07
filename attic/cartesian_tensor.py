@@ -1,8 +1,10 @@
 import torch
-from torch import vmap
-import itertools
+import torch.nn.functional as F
+
+import functorch
+from functorch import vmap
 import inspect
-from functools import partial
+import warnings
 
 torch._C._debug_only_display_vmap_fallback_warnings(True)
 override_dict = torch.overrides.get_testing_overrides()
@@ -14,6 +16,7 @@ _fallback_ops = [torch.add, torch.subtract, torch.multiply,
 
 _special_binary_op_list = [
     torch.outer,
+    F.linear
 ]
 
 
@@ -30,17 +33,14 @@ def _is_binary_op(func):
     return any(map(func_params.__contains__, key_words))
 
 
-def _get_name(arg):
-    plates = []
-    ks = []
-    for name, shape in zip(arg.names, arg.shape):
-        if name is None:
-            continue
-        if 'plate' in name:
-            plates.append((name, shape))
-        elif 'K' in name:
-            ks.append((name, shape))
-    return dict(plates + ks)
+def _is_reduction_op(func):
+    if func not in override_dict:
+        return False
+    func_params = inspect.signature(override_dict[func]).parameters.keys()
+    key_words = ['dim']
+    return any(map(func_params.__contains__, key_words))
+
+# Tensor definition
 
 
 class CartesianTensor(torch.Tensor):
@@ -96,5 +96,20 @@ class CartesianTensor(torch.Tensor):
                 *output_shape, *out_compact.shape[1:])
             out_named = out_unnamed.refine_names(*sorted_unique_name_set, ...)
             return out_named
+
+        if _is_reduction_op(func):
+            if 'dim' in kwargs:
+                dim = kwargs['dim']
+            else:
+                if len(args) == 1:
+                    dim = 0
+                else:
+                    dim = args[1]
+            if isinstance(dim, int):
+                dim = (dim,)
+            all_le_zero = all(map(lambda x: x >= 0, dim))
+            if not all_le_zero:
+                warnings.warn("It is recommended to use negative `dim` when calling reduction " +
+                              f"operators to avoid unexpected behavior but dim={dim} is received")
 
         return super().__torch_function__(func, types, args, kwargs)
