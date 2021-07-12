@@ -38,6 +38,13 @@ def test_special_functions():
     assert out.shape == (2, 3, 4, 5, 5)
     assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', None)
 
+    x = CartesianTensor(torch.ones(2, 3, 4, 10)).refine_names('Ka', 'Kb', 'Kc', ...)
+    W = CartesianTensor(torch.ones(3, 5, 5, 10)).refine_names('Kb', 'Kd', ...)
+    b = torch.randn(5,)
+    out = F.linear(x, W, b)
+    assert out.shape == (2, 3, 4, 5, 5)
+    assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', None)
+
     print('Special function test passed...')
 
 
