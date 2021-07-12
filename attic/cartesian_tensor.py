@@ -80,7 +80,10 @@ class CartesianTensor(torch.Tensor):
                     in_axes = in_axes + (0,)
                 else:
                     in_axes = in_axes + (None,)
-            # Named argument
+            # Named argument, notice that we would move all tensor arguments in **kwargs
+            # to the back of args. i.e. We change named arguments to positional arguments.
+            # Xi did this because he did not know how to use kwargs together with vmap
+            # See https://github.com/facebookresearch/functorch/issues/70
             for name in list(kwargs.keys()):
                 arg = kwargs[name]
                 if isinstance(arg, torch.Tensor):
@@ -137,9 +140,6 @@ class CartesianTensor(torch.Tensor):
                 func = vmap(func, in_dims=(*in_axes,), out_dims=0)
 
             args = *(_arg_transformer(arg, use_fallback) for arg in args),
-            kwargs = {k: _arg_transformer(v, use_fallback)
-                      for k, v in kwargs.items()}
-
             out_compact = super().__torch_function__(
                 func, types, args, kwargs)  # (vmap_dim, ...)
             out_unnamed = out_compact.view(

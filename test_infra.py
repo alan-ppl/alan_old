@@ -45,6 +45,20 @@ def test_special_functions():
     assert out.shape == (2, 3, 4, 5, 5)
     assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', None)
 
+    x = CartesianTensor(torch.ones(2, 3, 4, 10)).refine_names('Ka', 'Kb', 'Kc', ...)
+    W = CartesianTensor(torch.ones(3, 5, 5, 10)).refine_names('Kb', 'Kd', ...)
+    b = CartesianTensor(torch.ones(2, 4, 5)).refine_names('Ka', 'Kc', ...)
+    out = F.linear(x, W, b)
+    assert out.shape == (2, 3, 4, 5, 5)
+    assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', None)
+
+    # Test F.conv2d
+    x = CartesianTensor(torch.ones(2, 3, 4, 8, 8, 16, 16)).refine_names('Ka', 'Kb', 'Kc', ...)
+    W = CartesianTensor(torch.ones(3, 5, 16, 8, 5, 5)).refine_names('Kb', 'Kd', ...)
+    out = F.conv2d(x, W, padding=2, stride=1)
+    assert out.shape == (2, 3, 4, 5, 8, 16, 16, 16)
+    assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', *((None,)*4))
+
     print('Special function test passed...')
 
 
