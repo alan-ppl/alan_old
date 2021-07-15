@@ -85,22 +85,13 @@ class CartesianTensor(torch.Tensor):
                     in_axes = in_axes + (0,)
                 else:
                     in_axes = in_axes + (None,)
-            # FIXME: Notice that we would move all tensor arguments in **kwargs
-            # to the back of args. As vmap does not support keywork arguments at this moment
+
+            # FIXME: Vmap does not support keywork arguments at this moment
             # See https://github.com/facebookresearch/functorch/issues/70
             for name in list(kwargs.keys()):
                 arg = kwargs[name]
                 if isinstance(arg, torch.Tensor):
-                    warnings.warn("Using keyword arguments would cause unexpected behavior," +
-                                  " please consider using positional arguments instead.")
-                    max_udf_len = max(
-                        sum(map(lambda x: x is None, arg.names)),
-                        max_udf_len)
-                    name_shape_dict = {**name_shape_dict,
-                                       **dict(zip(arg.names, arg.shape))}
-                    in_axes = in_axes + (0,)
-                    args = args + (arg,)
-                    del kwargs[name]
+                    raise NotImplementedError("Keyword arguments are not supported yet.")
 
             name_shape_dict.pop(None, None)
             sorted_name_shape_pair = sorted(name_shape_dict.items())
@@ -157,7 +148,7 @@ class CartesianTensor(torch.Tensor):
             tensor_arg_counter = 0
             in_axes = ()
             name_shape_dict = {}
-            for arg in (*args, *kwargs.values()):
+            for arg in args:
                 if isinstance(arg, torch.Tensor):
                     in_axes += (0,)
                     tensor_arg_counter += 1
@@ -172,6 +163,13 @@ class CartesianTensor(torch.Tensor):
                         *sorted_name_shape_pair)
                 else:
                     in_axes += (None,)
+            
+            # FIXME: Vmap does not support keywork arguments at this moment
+            # See https://github.com/facebookresearch/functorch/issues/70
+            for name in list(kwargs.keys()):
+                arg = kwargs[name]
+                if isinstance(arg, torch.Tensor):
+                    raise NotImplementedError("Keyword arguments are not supported yet.")
 
             if tensor_arg_counter == 0:
                 raise ValueError(
@@ -186,7 +184,7 @@ class CartesianTensor(torch.Tensor):
             args = *(_reduction_arg_transformer(arg) for arg in args),
             kwargs = {k: _reduction_arg_transformer(v)
                       for k, v in kwargs.items()}
-            func = vmap(func, (0, None), 0)
+            func = vmap(func, in_axes, 0)
             out_compact = super().__torch_function__(
                 func, types, args, kwargs)  # (vmap_dim, ...)
             out_unnamed = out_compact.view(

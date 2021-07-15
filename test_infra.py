@@ -38,6 +38,8 @@ def test_special_functions():
     assert out.shape == (2, 3, 4, 5, 5)
     assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', None)
 
+    ''' The following test cases skipped due to problem in F.linear:
+        # https://github.com/pytorch/pytorch/issues/61544
     x = CartesianTensor(torch.ones(2, 3, 4, 10)).refine_names('Ka', 'Kb', 'Kc', ...)
     W = CartesianTensor(torch.ones(3, 5, 5, 10)).refine_names('Kb', 'Kd', ...)
     b = torch.randn(5,)
@@ -51,12 +53,14 @@ def test_special_functions():
     out = F.linear(x, W, b)
     assert out.shape == (2, 3, 4, 5, 5)
     assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', None)
+    '''
 
     # Test F.conv2d
-    x = CartesianTensor(torch.ones(2, 3, 4, 8, 8, 16, 16)).refine_names('Ka', 'Kb', 'Kc', ...)
+    x = CartesianTensor(torch.ones(2, 3, 4, 1, 8, 16, 16)).refine_names('Ka', 'Kb', 'Kc', ...)
     W = CartesianTensor(torch.ones(3, 5, 16, 8, 5, 5)).refine_names('Kb', 'Kd', ...)
-    out = F.conv2d(x, W, padding=2, stride=1)
-    assert out.shape == (2, 3, 4, 5, 8, 16, 16, 16)
+    b = torch.randn(16,)
+    out = F.conv2d(x, W, b, padding=2, stride=1)
+    assert out.shape == (2, 3, 4, 5, 1, 16, 16, 16)
     assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', *((None,)*4))
 
     print('Special function test passed...')
@@ -171,7 +175,21 @@ def test_func_call():
     print("Func call approaches test passed...")
 
 
+def test_reduction_op():
+    a = CartesianTensor(torch.ones(5, 6, 3, 4)).refine_names('Ka', 'Kb', ...)
+    out = a.sum(0)
+    assert out.shape == (5, 6, 4)
+    out = a.sum(-1)
+    assert out.shape == (5, 6, 3)
+    out = a.sum(dim=-1)
+    assert out.shape == (5, 6, 3)
+    out = a.sum(dim=(0, 1))
+    assert out.shape == (5, 6)
+    print("Reduction Op test passed...")
+
+
 test_operators()
 test_special_functions()
 test_chain_operations()
 test_func_call()
+test_reduction_op()
