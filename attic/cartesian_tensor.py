@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 
 from functorch import vmap
+import warnings
 
 
 torch._C._debug_only_display_vmap_fallback_warnings(True)
@@ -15,34 +16,38 @@ _fallback_ops = [torch.add, torch.subtract, torch.multiply,
 
 # Copied from `Reduction Ops` section in https://pytorch.org/docs/stable/torch.html/
 _reduction_ops = [
-    torch.argmax,
-    torch.argmin,
-    torch.amax,
-    torch.amin,
-    torch.all,
-    torch.any,
-    torch.max,
-    torch.min,
-    torch.dist,
-    torch.logsumexp,
-    torch.mean,
-    torch.median,
-    torch.nanmedian,
-    torch.mode,
-    torch.norm,
-    torch.nansum,
-    torch.prod,
-    torch.quantile,
-    torch.nanquantile,
-    torch.std,
-    torch.std_mean,
-    torch.sum,
-    torch.unique,
-    torch.unique_consecutive,
-    torch.var,
-    torch.var_mean,
-    torch.count_nonzero
+    "argmax",
+    "argmin",
+    "amax",
+    "amin",
+    "all",
+    "any",
+    "max",
+    "min",
+    "dist",
+    "logsumexp",
+    "mean",
+    "median",
+    "nanmedian",
+    "mode",
+    "norm",
+    "nansum",
+    "prod",
+    "quantile",
+    "nanquantile",
+    "std",
+    "std_mean",
+    "sum",
+    "unique",
+    "unique_consecutive",
+    "var",
+    "var_mean",
+    "count_nonzero"
 ]
+
+
+def _is_reduction_op(func):
+    return func.__name__ in _reduction_ops
 
 
 def _require_cartesian(*args, **kwargs):
@@ -80,13 +85,14 @@ class CartesianTensor(torch.Tensor):
                     in_axes = in_axes + (0,)
                 else:
                     in_axes = in_axes + (None,)
-            # Named argument, notice that we would move all tensor arguments in **kwargs
-            # to the back of args. i.e. We change named arguments to positional arguments.
-            # Xi did this because he did not know how to use kwargs together with vmap
+            # FIXME: Notice that we would move all tensor arguments in **kwargs
+            # to the back of args. As vmap does not support keywork arguments at this moment
             # See https://github.com/facebookresearch/functorch/issues/70
             for name in list(kwargs.keys()):
                 arg = kwargs[name]
                 if isinstance(arg, torch.Tensor):
+                    warnings.warn("Using keyword arguments would cause unexpected behavior," +
+                                  " please consider using positional arguments instead.")
                     max_udf_len = max(
                         sum(map(lambda x: x is None, arg.names)),
                         max_udf_len)
@@ -118,7 +124,7 @@ class CartesianTensor(torch.Tensor):
                 arg = arg.align_to(*unique_sorted_names, ...)
                 # Step 2. Expand the padded named dimensions from 1 to their real size.
                 arg = arg.expand(*names_shapes, *arg.shape[len(names_shapes):])
-                # Step 3. Squeeze named dimensions into one giant dimension 
+                # Step 3. Squeeze named dimensions into one giant dimension
                 # such that we only need to invoke vmap once.
                 arg = arg.flatten(unique_sorted_names, 'vmap_dim').rename(None)
                 # Step 4. In case we are falling back to broadcasting mechanism,
@@ -147,36 +153,45 @@ class CartesianTensor(torch.Tensor):
             out_named = out_unnamed.refine_names(*unique_sorted_names, ...)
             return out_named
 
-        if func in _reduction_ops:
+        if _is_reduction_op(func):
             tensor_arg_counter = 0
+            in_axes = ()
+            name_shape_dict = {}
             for arg in (*args, *kwargs.values()):
                 if isinstance(arg, torch.Tensor):
+                    in_axes += (0,)
                     tensor_arg_counter += 1
                     if tensor_arg_counter > 1:
-                        raise ValueError("Reduction Ops is expected to have only 1 tensor arg")
+                        raise ValueError(
+                            "Reduction Ops is expected to have only 1 tensor arg")
                     name_shape_dict = {**name_shape_dict,
                                        **dict(zip(arg.names, arg.shape))}
                     name_shape_dict.pop(None, None)
                     sorted_name_shape_pair = sorted(name_shape_dict.items())
-                    unique_sorted_names, names_shapes = zip(*sorted_name_shape_pair)
+                    unique_sorted_names, names_shapes = zip(
+                        *sorted_name_shape_pair)
+                else:
+                    in_axes += (None,)
+
             if tensor_arg_counter == 0:
-                raise ValueError("Reduction Ops is expected to have only 1 tensor arg")
+                raise ValueError(
+                    "Reduction Ops is expected to have only 1 tensor arg")
 
             def _reduction_arg_transformer(arg):
                 if not isinstance(arg, torch.Tensor):
                     return arg
                 arg = arg.flatten(unique_sorted_names, 'vmap_dim').rename(None)
                 return arg
+
             args = *(_reduction_arg_transformer(arg) for arg in args),
             kwargs = {k: _reduction_arg_transformer(v)
                       for k, v in kwargs.items()}
-            func = vmap(func, 0, 0)
+            func = vmap(func, (0, None), 0)
             out_compact = super().__torch_function__(
                 func, types, args, kwargs)  # (vmap_dim, ...)
             out_unnamed = out_compact.view(
                 *names_shapes, *out_compact.shape[1:])
             out_named = out_unnamed.refine_names(*unique_sorted_names, ...)
             return out_named
-                
 
         return super().__torch_function__(func, types, args, kwargs)
