@@ -88,13 +88,15 @@ def pad_nones(arg, max_pos_dim):
     Pad with as many positional dimensions as necessary to reach max_pos_dim
     """
     names = arg.names
-    #current number of nones
+    #current number of None's
     pos_dim = sum(name is None for name in names)
+    #current number of named dimensions (excluding None's)
+    named_dims = len(names) - pos_dim
 
     #strip names because unsqueeze can't cope with them
     arg = arg.rename(None)
     for _ in range(max_pos_dim-pos_dim):
-        arg = arg.unsqueeze(-1)
+        arg = arg.unsqueeze(named_dims)
 
     return arg.refine_names(*names, ...)
 
