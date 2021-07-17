@@ -85,7 +85,8 @@ def cartesian_tensorfy_value(val, unified_names):
 
 def pad_nones(arg, max_pos_dim):
     """
-    Pad with as many positional dimensions as necessary to reach max_pos_dim
+    Pad with as many positional dimensions as necessary after named dimensions
+    to reach max_pos_dim
     """
     names = arg.names
     #current number of nones
@@ -93,8 +94,8 @@ def pad_nones(arg, max_pos_dim):
 
     #strip names because unsqueeze can't cope with them
     arg = arg.rename(None)
-    for _ in range(max_pos_dim-pos_dim):
-        arg = arg.unsqueeze(-1)
+    for i in range(max_pos_dim - pos_dim):
+        arg = arg.unsqueeze(-(pos_dim + 1))
 
     return arg.refine_names(*names, ...)
 
@@ -108,8 +109,7 @@ class CartesianTensor(torch.Tensor):
     def __torch_function__(self, func, types, args=(), kwargs=None):
         if kwargs is None:
             kwargs = {}
-
-        #Convert CartesianTensor to Tensor
+        # Convert CartesianTensor to Tensor to avoid recursive wrapper call.
         args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
 
         #Sorted list of all unique names
