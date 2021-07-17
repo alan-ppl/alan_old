@@ -77,6 +77,15 @@ def test_operators():
         assert out.shape == (6, 6, 3)
         assert out.names == ('Ka', 'Kb', None)
         assert type(out) == type(a)
+
+    a = CartesianTensor(torch.ones(6, 2, 3, 4).refine_names('Ka', ...))
+    b = CartesianTensor(torch.ones(6, 4).refine_names('Kb', ...))
+    for op in operators:
+        out = eval(f'a {op} b')
+        assert out.shape == (6, 6, 2, 3, 4)
+        assert out.names == ('Ka', 'Kb', None, None, None)
+        assert type(out) == type(a)
+
     # Share one common name
     a = CartesianTensor(torch.ones(5, 6, 3).refine_names('Ka', 'Kb', ...))
     b = CartesianTensor(torch.ones(6, 7, 3).refine_names('Kb', 'Kc', ...))
