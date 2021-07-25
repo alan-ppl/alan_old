@@ -7,8 +7,13 @@ K_prefix = "K_"
 plate_prefix = "plate_"
 
 def is_K(dim):
+    if dim is None:
+        return False
     return dim[:len(K_prefix)] == K_prefix
+
 def is_plate(dim):
+    if dim is None:
+        return False
     return dim[:len(plate_prefix)] == plate_prefix
 
 def ordered_unique(ls):
@@ -208,7 +213,7 @@ def sum_logpqs(logps, logqs):
     # check all named dimensions in logps are either positional, plates or "K"
     for lp in logqs.values():
         for n in lp.names:
-            assert n=="K" or is_plate(n) or (n is None)
+            assert (n is None) or n=="K" or is_plate(n)
 
     # convert K 
     logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
@@ -216,7 +221,7 @@ def sum_logpqs(logps, logqs):
     # check all named dimensions in logps are either positional, plates or Ks
     for lp in logps.values():
         for n in lp.names:
-            assert is_K(n) or is_plate(n) or (n is None)
+            assert (n is None) or is_K(n) or is_plate(n)
 
     # sum over all non-plate and non-K dimensions
     logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}

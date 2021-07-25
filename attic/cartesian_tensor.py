@@ -70,6 +70,7 @@ class CartesianTensor(torch.Tensor):
     def __torch_function__(cls, func, types, args=(), kwargs=None):
         if kwargs is None:
             kwargs = {}
+        print(func)
         if _require_cartesian(*args, **kwargs):
             in_axes = ()
             name_shape_dict = {}

@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-
 from functorch import vmap
 
 
@@ -145,6 +144,7 @@ class CartesianTensor(torch.Tensor):
 
         else:
             # pad with number of none's required to make broadcasing work
+            # notice that names will not get striped here.
             max_pos_dim = max(
                 sum(name is None for name in arg.names) for arg in tensors(args, kwargs)
             )

@@ -14,12 +14,10 @@ class Model(nn.Module):
         #sample from approximate posterior
         trq = TraceSampleLogQ(K=K, data=self.data)
         self.Q(trq)
-
         #compute logP
         trp = TraceLogP(trq.sample, self.data)
         self.P(trp)
-
-        return vi(trp.logp, trq.logp)
+        return vi(trp.log_prob(), trq.log_prob())
 
 
 def sample(P, *names):
