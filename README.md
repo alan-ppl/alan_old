@@ -1,6 +1,6 @@
 Dependency:
-Torch nightly
-Functorch: https://github.com/facebookresearch/functorch
+- Torch nightly
+- Functorch: https://github.com/facebookresearch/functorch
 
 Notes:
 - approximate posterior should be independent of data
@@ -11,5 +11,3 @@ TODOs:
 - document how to set the dimensions for data!
 - More rigorous testing workflow and cases. (e.g. Using unit test framework like pytest)
 - More examples for TPP.
-- Better implementation of _is_binary_op
-- Support multiple input operators (e.g. Ternary operators)
