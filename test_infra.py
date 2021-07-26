@@ -63,8 +63,6 @@ class tests(unittest.TestCase):
         assert out.shape == (2, 3, 4, 5, 1, 16, 16, 16)
         assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', *((None,)*4))
 
-        print('Special function test passed...')
-
 
     def test_operators(self):
         operators = ['+', '-', '*', '/', '**']
@@ -156,7 +154,6 @@ class tests(unittest.TestCase):
             assert out.shape == (5, 6, 3, 2, 3)
             assert out.names == ('Ka', 'Kb', None, None, None)
             assert type(out) == type(a)
-        print("Operator test passed...")
 
 
     def test_chain_operations(self):
@@ -169,7 +166,6 @@ class tests(unittest.TestCase):
                 CartesianTensor(torch.ones(k_shape).refine_names(k,))
         assert base_tensor.shape == len(k_list) * k_shape + base_udf_shape
         assert base_tensor.names == tuple(k_list) + (None,)
-        print("Chain operations test passed...")
 
 
     def test_func_call(self):
@@ -189,7 +185,6 @@ class tests(unittest.TestCase):
         assert out.shape == (5, 6, 3, 2, 3)
         assert out.names == ('Ka', 'Kb', None, None, None)
         assert type(out) == type(a)
-        print("Func call approaches test passed...")
 
 
     def test_reduction_op(self):
@@ -202,7 +197,6 @@ class tests(unittest.TestCase):
         assert out.shape == (5, 6, 3)
         out = a.sum(dim=(0, 1))
         assert out.shape == (5, 6)
-        print("Reduction Op test passed...")
 
 
 if __name__ == '__main__':

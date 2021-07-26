@@ -109,10 +109,9 @@ def pad_nones(arg, max_pos_dim):
 class CartesianTensor(torch.Tensor):
     def __init__(self, tensor):
         self._t = tensor
-
-    @staticmethod
+    
     def __new__(cls, tensor, *args, **kwargs):
-        return super().__new__(cls, tensor, *args, **kwargs)
+        return torch.Tensor._make_subclass(cls, tensor, *args, **kwargs)
 
     def __repr__(self):
         return "CartesianTensor" + self._t.__repr__()
