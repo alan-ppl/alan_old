@@ -110,6 +110,10 @@ class CartesianTensor(torch.Tensor):
     def __init__(self, tensor):
         self._t = tensor
 
+    @staticmethod
+    def __new__(cls, tensor, *args, **kwargs):
+        return super().__new__(cls, tensor, *args, **kwargs)
+
     def __repr__(self):
         return "CartesianTensor" + self._t.__repr__()
 
