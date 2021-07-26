@@ -1,3 +1,10 @@
+To get startted:
+
+```
+pip install -e ./
+```
+
+
 Dependency:
 - Torch nightly
 - Functorch: https://github.com/facebookresearch/functorch
