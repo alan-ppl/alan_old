@@ -1,6 +1,3 @@
-import sys
-sys.path.append('..')
-
 from tpp.prob_prog import Trace, TraceLogP
 import torch as t
 import torch.nn as nn

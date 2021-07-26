@@ -4,6 +4,9 @@ import torch.nn as nn
 from .cartesian_tensor import CartesianTensor
 from .wrapped_distribution import WrappedDist
 
+__all__ = [
+    'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
+]
 
 class Trace:
     def __init__(self, K_shape, K_names):
@@ -89,7 +92,7 @@ class TraceSample(Trace):
 
 
 class TraceLogP(Trace):
-    def __init__(self, sample, data):
+    def __init__(self, sample, data=None):
         self.sample = sample
         self.data = data
         # maintains an ordered list of tensors as they are generated
@@ -100,7 +103,6 @@ class TraceLogP(Trace):
     def __getitem__(self, key):
         # ensure tensor has been generated
         assert (key in self.data) or (key in self.sample)
-
         if key in self.sample:
             sample = self.sample[key].rename(K=f"K_{key}")
             return CartesianTensor(sample)

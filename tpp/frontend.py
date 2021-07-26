@@ -3,12 +3,11 @@ from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
 from .backend import vi, gibbs
 
 class Model(nn.Module):
-    def __init__(self, P, Q, data):
+    def __init__(self, P, Q, data=None):
         super().__init__()
         self.P = P
         self.Q = Q
         self.data = data
-
 
     def elbo(self, K):
         #sample from approximate posterior

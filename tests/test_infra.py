@@ -2,8 +2,11 @@ import sys
 sys.path.append('..')
 
 import torch
+import torch.nn as nn
+from torch.nn.parameter import Parameter
 import torch.nn.functional as F
 from tpp.cartesian_tensor import CartesianTensor
+from functorch import make_functional
 import unittest
 
 # Testing
@@ -30,7 +33,7 @@ class tests(unittest.TestCase):
 
         # Test F.linear
         x = CartesianTensor(torch.ones(2, 3, 4, 10).refine_names('Ka', 'Kb', 'Kc', ...))
-        W = torch.randn(5, 10)
+        W = Parameter(torch.randn(5, 10))
         out = F.linear(x, W)
         assert out.shape == (2, 3, 4, 5)
         assert out.names == ('Ka', 'Kb', 'Kc', None)
@@ -56,6 +59,13 @@ class tests(unittest.TestCase):
         out = F.linear(x, W, b)
         assert out.shape == (2, 3, 4, 5, 5)
         assert out.names == ('Ka', 'Kb', 'Kc', 'Kd', None)
+        
+
+        # Test nn.Linear, not working, weird...
+        func_model, params  = make_functional(nn.Linear(10, 20))
+        x = CartesianTensor(torch.ones(2, 3, 4, 10).refine_names('Ka', 'Kb', 'Kc', ...))
+        out = func_model(params, x)
+        assert out.shape == (2, 3, 4, 20)
         '''
 
         # Test F.conv2d
@@ -201,6 +211,14 @@ class tests(unittest.TestCase):
         out = a.sum(dim=(0, 1))
         assert out.shape == (5, 6)
 
+    def test_indexing(self):
+        a = CartesianTensor(torch.ones(8, 8, 4).refine_names('Ka', 'Kb', ...))
+        a_1 = a[..., :2]
+        a_2 = a[..., 2:]
+        assert isinstance(a_1, CartesianTensor)
+        assert isinstance(a_2, CartesianTensor)
+        assert a_1.names == a_2.names
+        
 
 if __name__ == '__main__':
     unittest.main()

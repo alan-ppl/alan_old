@@ -1,6 +1,3 @@
-import sys
-sys.path.append('..')
-
 import torch as t
 import torch.nn as nn
 import tpp
@@ -38,15 +35,15 @@ data = tpp.sample(P, "obs")
 model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-2)
-print("K=1")
-for i in range(2000):
-    opt.zero_grad()
-    elbo = model.elbo(K=1)
-    (-elbo).backward()
-    opt.step()
+# print("K=1")
+# for i in range(2000):
+#     opt.zero_grad()
+#     elbo = model.elbo(K=1)
+#     (-elbo).backward()
+#     opt.step()
 
-    if 0 == i%100:
-        print(elbo.item())
+#     if 0 == i%100:
+#         print(elbo.item())
     
 print("K=10")
 for i in range(2000):
