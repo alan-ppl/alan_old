@@ -1,4 +1,6 @@
-from os import register_at_fork
+import sys
+sys.path.append('..')
+
 import torch
 from tpp.wrapped_distribution import Normal, Gumbel, Laplace
 import unittest

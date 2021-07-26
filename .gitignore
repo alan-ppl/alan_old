@@ -1,4 +1,5 @@
 __pycache__
-# attic
+attic
 notebooks/.ipynb_checkpoints/
 /draft.py
+./tpp.egg-info
