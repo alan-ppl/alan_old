@@ -7,6 +7,7 @@ from torchvision import transforms
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
+import tqdm
 
 torch.manual_seed(0)
 
@@ -17,15 +18,15 @@ else:
 
 print('Using torch version {}'.format(torch.__version__))
 print('Using {} device'.format(device))
-  
+
 # Training dataset
 train_loader = torch.utils.data.DataLoader(
-    MNIST(root='/home/wangxi/data/BNN/data', train=True,
+    MNIST(root='/home/thomas/Work/data', train=True, download=True,
           transform=transforms.ToTensor()),
     batch_size=100, shuffle=True, pin_memory=False)
 # Test dataset
 test_loader = torch.utils.data.DataLoader(
-    MNIST(root='/home/wangxi/data/BNN/data', train=False,
+    MNIST(root='/home/thomas/Work/data', train=True, download=True,
     transform=transforms.ToTensor()),
     batch_size=100, shuffle=True, pin_memory=False)
 print('Dataset loaded')
@@ -41,7 +42,7 @@ class linear(nn.Module):
         x = F.relu(F.linear(x, self.w_in))
         x = F.relu(F.linear(x, self.w_mid))
         return F.linear(x, self.w_out)
-    
+
 
 class P(nn.Module):
     def __init__(self, d, D=784):
@@ -97,7 +98,7 @@ class vae(nn.Module):
         return vi(trp.log_prob(), trq.log_prob())
 
 
-d = 64
+d = 16
 D = 28 * 28
 model = vae(P(d), Q(d))
 model.to(device)
@@ -105,7 +106,7 @@ opt = torch.optim.Adam(model.parameters(), lr=1e-5)
 counter = 0
 
 for i in range(10):
-    for x, _ in train_loader:
+    for x, _ in tqdm.tqdm(train_loader):
         x = x.view(-1, D).to(device).refine_names('plate_batch', ...)
         opt.zero_grad()
         elbo = model.elbo(x)
