@@ -2,6 +2,8 @@
 
 import torch as t
 import opt_einsum as oe
+import torch.distributions as td
+import tpp
 
 K_prefix = "K_"
 plate_prefix = "plate_"
@@ -107,8 +109,8 @@ def oe_dim_order(lps, Ks_to_keep):
     """
     #create backward and forward mappings from all tensor names to opt_einsum symbols
     unified_names = unify_names(lps)
-    name2sym = dict() 
-    sym2name = dict() 
+    name2sym = dict()
+    sym2name = dict()
     for (i, name) in enumerate(unified_names):
         sym = oe.get_symbol(i)
         name2sym[name] = sym
@@ -125,7 +127,7 @@ def oe_dim_order(lps, Ks_to_keep):
     #so they must appear in the output subscripts
     out_names = [n for n in unified_names if (not is_K(n) or (n in Ks_to_keep))]
     list_out_syms = [name2sym[n] for n in out_names]
-    out_syms = ''.join(list_out_syms) 
+    out_syms = ''.join(list_out_syms)
     subscripts = ','.join(lp_syms) + '->' + out_syms
 
     #extract order from opt_einsum, and convert back to names
@@ -136,7 +138,7 @@ def oe_dim_order(lps, Ks_to_keep):
             ordered_Ks.append(sym2name[sym])
     return ordered_Ks
 
-     
+
 def sum_plate(all_lps, plate_name=None):
     """
     Arguments:
@@ -156,7 +158,7 @@ def sum_plate(all_lps, plate_name=None):
 
     #collect K's that appear in higher plates
     Ks_to_keep = [n for n in unify_names(higher_lps) if is_K(n)]
- 
+
     #sum over the K's that don't appear in higher plates
     lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
 
@@ -188,7 +190,7 @@ def sum_lps(lps):
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
         marginals = marginals + _m
-    assert 1==len(lps) 
+    assert 1==len(lps)
     assert 1==lps[0].numel()
     return lps[0], marginals
 
@@ -208,14 +210,14 @@ def sum_logpqs(logps, logqs):
         marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
     """
 
-    assert len(logqs) <= len(logps) 
+    assert len(logqs) <= len(logps)
 
     # check all named dimensions in logps are either positional, plates or "K"
     for lp in logqs.values():
         for n in lp.names:
             assert (n is None) or n=="K" or is_plate(n)
 
-    # convert K 
+    # convert K
     logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
 
     # check all named dimensions in logps are either positional, plates or Ks
@@ -234,7 +236,7 @@ def sum_logpqs(logps, logqs):
 
         lp = logps[rv]
         lq = logqs[rv]
-    
+
         # check same plates appear in lp and lq
         lp_plates = [n for n in lp.names if is_plate(n)]
         lq_plates = [n for n in lq.names if is_plate(n)]
@@ -247,7 +249,7 @@ def sum_logpqs(logps, logqs):
 
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-    
+
     return sum_lps(all_lps)
 
 def vi(logps, logqs):
@@ -262,12 +264,12 @@ def gibbs(marginals):
     ks = []
     for (rv, log_margs) in marginals[::-1]:
         #throw away log_margs without dimension of interest
-        K_name = K_prefix + rv
-        log_margs = [lm for lm in log_margs if (K_name in lm.names)]
+        K_name = rv
 
+        log_margs = [lm for lm in log_margs if (K_name in lm.names)]
         #index into log_margs with previously sampled ks
         #different indexing behaviour for tuples vs lists
-        log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in lms]
+        log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
 
         #the only K left should be K_name
         #and plates should all be the same (and there should be more than one tensor)
@@ -276,7 +278,7 @@ def gibbs(marginals):
         dms0 = dmss[0]
         for dms in dmss[1:]:
             assert dms0 == dms
-        
+
         #the only K left should be K_name
         remaining_K_names = [n for n in dms0 if is_K(n)]
         assert 1==len(remaining_K_names)
@@ -285,17 +287,17 @@ def gibbs(marginals):
         #align and combine tensors
         plate_names = [n for n in dms0 if is_plate(n)]
         align_names = plate_names + remaining_K_names
-        lp = sum([lm.align_to(align_names) for lm in log_margs])
+        lp = sum([lm.align_to(*align_names) for lm in log_margs])
 
         #add K_name and sample to lists
         K_names.append(remaining_K_names[0])
-        ks.append(td.Categorical(lp).sample())
+        ks.append(td.Categorical(lp.rename(None)).sample())
 
     #return a dictionary of random variable names
     return {K_name[len(K_prefix):] : k for (K_name, k) in zip(K_names, ks)}
 
-        
-        
+
+
 
 
 
@@ -310,3 +312,4 @@ if __name__ == "__main__":
     assert t.allclose((a.exp() @ ap.exp()/3).log().rename(None), reduce_K([a, ap], 'K_b')[0].rename(None))
 
     lp, marginals = sum_lps(lps)
+    print(gibbs(marginals))

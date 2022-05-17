@@ -97,8 +97,9 @@ class TraceLogP(Trace):
         self.data = data
         # maintains an ordered list of tensors as they are generated
         self.logp = {}
-        self.K_names = [f"K_{name}" for name in sample.keys()]
-        self.K_shape = [1 for name in sample.keys()]
+        self.K_names = [f"K_{name}" for name in list(sample) + list(data)]
+        self.K_shape = [1 for name in list(sample) + list(data)]
+
 
     def __getitem__(self, key):
         # ensure tensor has been generated

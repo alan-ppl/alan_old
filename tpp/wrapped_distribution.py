@@ -41,10 +41,12 @@ class WrappedDist:
                 .rsample(sample_shape=self.sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
 
+
     def log_prob(self, x):
         assert isinstance(x, t.Tensor)
         args = (*self.args, x)
         kwargs = self.kwargs
+
         args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
         # Sorted list of all unique names
         unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
@@ -79,6 +81,7 @@ dist_names = [
     "HalfNormal",
     "Laplace",
     "LogNormal",
+    "MultivariateNormal",
     "NegativeBinomial",
     "Normal",
     "Pareto",

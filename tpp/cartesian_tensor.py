@@ -60,10 +60,16 @@ def typemap(f, typ, args, kwargs):
 
 
 def cartesiantensormap(f, args, kwargs):
+    """
+    Applys f to args and vals in kwargs if they are CartesianTensors
+    """
     return typemap(f, CartesianTensor, args, kwargs)
 
 
 def tensormap(f, args, kwargs):
+    """
+    Applys f to args and vals in kwargs if they are torch tensors
+    """
     return typemap(f, torch.Tensor, args, kwargs)
 
 
@@ -109,7 +115,7 @@ def pad_nones(arg, max_pos_dim):
 class CartesianTensor(torch.Tensor):
     def __init__(self, tensor):
         self._t = tensor
-    
+
     def __new__(cls, tensor, *args, **kwargs):
         return torch.Tensor._make_subclass(cls, tensor, *args, **kwargs)
 
