@@ -160,7 +160,5 @@ class CartesianTensor(torch.Tensor):
             )
             args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
 
-        print(args)
-        print(kwargs)
         val = func(*args, **kwargs)
         return cartesian_tensorfy_value(val, unified_names)
