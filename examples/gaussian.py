@@ -7,8 +7,7 @@ import tqdm
 
 def P(tr):
   '''
-  Bayesian Heirarchical Model
-  Gaussian with Wishart Prior on precision
+  Bayesian Gaussian Model
   '''
   a = t.zeros(5,)
   tr['mu'] = tpp.MultivariateNormal(a, t.eye(5))

@@ -91,6 +91,7 @@ dist_names = [
     "Uniform",
     "VonMises",
     "Weibull",
+    "TransformedDistribution"
 ]
 __all__ = dist_names
 
