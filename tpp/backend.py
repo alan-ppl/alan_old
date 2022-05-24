@@ -9,11 +9,17 @@ K_prefix = "K_"
 plate_prefix = "plate_"
 
 def is_K(dim):
+    """
+    Check that dim is correctly marked as 'K_'
+    """
     if dim is None:
         return False
     return dim[:len(K_prefix)] == K_prefix
 
 def is_plate(dim):
+    """
+    Check that dim is correctly marked as 'plate_'
+    """
     if dim is None:
         return False
     return dim[:len(plate_prefix)] == plate_prefix
@@ -31,6 +37,10 @@ def ordered_unique(ls):
     return list(d.keys())
 
 def partition_tensors(lps, dim_name):
+    """
+    Partitions a list of tensors into two sets, one containing a given dim_name,
+    one that doesn't
+    """
     has_dim = [lp for lp in lps if dim_name     in lp.names]
     no_dim  = [lp for lp in lps if dim_name not in lp.names]
     return has_dim, no_dim
@@ -47,9 +57,15 @@ def args_with_dim_name(args, dim_name):
     return [arg for arg in args if isinstance(arg, t.Tensor) and dim_name in args.names]
 
 def unify_names(args):
+    """
+    Returns unique ordered list of names for tensors in args
+    """
     return ordered_unique([name for arg in args for name in arg.names])
 
 def align_tensors(args):
+    """
+    Aligns tensors in args
+    """
     unified_names = unify_names(args)
     return [arg.align_to(*unified_names) for arg in args]
 
@@ -189,12 +205,15 @@ def sum_lps(lps):
     marginals = []
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
-        marginals = marginals + _m
+        marginals = marginals + _m 
     assert 1==len(lps)
     assert 1==lps[0].numel()
     return lps[0], marginals
 
 def sum_none_dims(lp):
+    """
+    Sum over None dims in lp
+    """
     none_dims = [i for i in range(len(lp.names)) if lp.names[i] is None]
     if 0 != len(none_dims):
         lp = lp.sum(none_dims)

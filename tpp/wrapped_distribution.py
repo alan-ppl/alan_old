@@ -30,6 +30,12 @@ class WrappedDist:
         unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
         unified_names.discard(None)
         unified_names = sorted(unified_names)
+
+        #Checking the user hasn't mistakenely labelled two variables with the same plate name
+        if len(list(unified_names)) > 0:
+            assert list(unified_names) != list(self.sample_names), "Don't label two variables with the same plate, it is unneccesary!"
+
+
         # Align tensors onto that sorted list
         args, kwargs = tensormap(lambda x: x.align_to(*unified_names, ...), args, kwargs)
         max_pos_dim = max(
@@ -90,8 +96,7 @@ dist_names = [
     "StudentT",
     "Uniform",
     "VonMises",
-    "Weibull",
-    "TransformedDistribution"
+    "Weibull"
 ]
 __all__ = dist_names
 

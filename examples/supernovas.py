@@ -9,20 +9,63 @@ import torch.distributions as td
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
-### data
-J = t.tensor(8)
-y = {'obs': t.tensor([28, 8, -3, 7, -1, 1, 18, 12])}
-sigma = t.tensor([15.0, 10.0, 16.0, 11.0, 9.0, 11.0, 10.0, 18.0])
+class P(nn.Module):
+    def __init__(self, N_obs, N_SN, N_filt, t, fL, dfL, z, t0_mean, J, SNid,
+                 Kcor_N, Kcor, fluxscale, duringseason):
+        super().__init__()
+        self.N_obs = N_obs
+        self.N_SN = N_SN
+        self.N_filt = N_filt
+
+        self.t = t
+        self.fL = fL
+        self.dfL = dfL
+
+        self.z = z
+        self.t0_mean = t0_mean
+
+        self.J = J
+        self.SNid = SNid
+        self.Kcor_N = Kcor_N
+        self.Kcor = Kcor
+        self.fluxscale = fluxscale
+        self.duringseason = duringseason
+
+        self.prior_t_hF = t.zero(N_filt, 4)
+        self.prior_t_hF_s = t.zero(N_filt, 4)
+        self.prior_r_hF = t.zero(N_filt, 4)
+        self.prior_r_hF_s = t.zero(N_filt, 4)
+
+    def transform_data(self):
+
+        prior_t_hF[1,0] = -1
+        prior_t_hF[1,1] = -0.5
+        prior_t_hF[1,2] = 0
+        prior_t_hF[1,3] = 0.5
+        prior_t_hF[1,4] = 1
+
+        for i in range(N_filt):
+            prior_t_hF[0,i] = 0
+            prior_t_hF_s[0,i] = 0.1
+
+            prior_t_hF_s[1,i] = 0.1
+
+            prior_t_hF[2,i] = 0
+            prior_t_hF_s[2,i] = 0.1
+
+            prior_t_hF[3,i] = 0
+            prior_t_hF_s[3,i] = 0.1
+
+            prior_r_hF[0,i] = 0
+            prior_r_hF_s[0,i] = 0.1
 
 
-def P(tr):
-  '''
-  Heirarchical model for 8 schools example
-  '''
-  tr['mu'] = tpp.Normal(t.tensor(0.0), t.tensor(5.0))
-  tr['tau'] = tpp.HalfCauchy(t.tensor(5.0))
-  tr['theta'] = tpp.Normal(t.tensor(0.0),1,sample_shape=(1,J),sample_names="plate_1")
-  tr['obs'] = tpp.Normal(tr['mu'] + tr['tau']*tr['theta'],sigma)
+
+
+
+    def forward(self, tr):
+
+
 
 
 class Q(nn.Module):
