@@ -30,7 +30,7 @@ class P(nn.Module):
         self.SNid = SNid
         self.Kcor_N = Kcor_N
         self.Kcor = Kcor
-        self.fluxscale = fluxscale
+        self.fluxscale = fluxscale #not used?
         self.duringseason = duringseason
 
         self.prior_t_hF = t.zero(N_filt, 4)

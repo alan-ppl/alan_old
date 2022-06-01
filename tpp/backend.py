@@ -69,6 +69,22 @@ def align_tensors(args):
     unified_names = unify_names(args)
     return [arg.align_to(*unified_names) for arg in args]
 
+# def sum_plates_marg(marginals):
+#     """
+#     Take marginals and sum out all plate dimensions
+#     """
+#     margs = []
+#     for K_name, tensors in marginals:
+#         t = []
+#         for tensor in tensors:
+#             names = [name for name in tensor.names if is_plate(name)]
+#             t.append(tensor.sum(names))
+#
+#         margs.append((K_name, t))
+#
+#     return margs
+
+
 def reduce_K(all_lps, K_name):
     """
     Takes a the full list of tensors and a K_name to reduce over.
@@ -177,13 +193,22 @@ def sum_plate(all_lps, plate_name=None):
 
     #sum over the K's that don't appear in higher plates
     lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
-
+    # print(Ks_to_keep)
+    # print(plate_name)
+    # print(unify_names(lower_lps))
+    # print(marginals)
+    # #print(marginals[1])
+    # print([l for l in lower_lps])
     if plate_name is not None:
         #if we aren't at the top-level, sum over the plate to eliminate plate_name
         lower_lps = [l.sum(plate_name) for l in lower_lps]
 
+
+
+
     #append to all the higher-plate tensors
     higher_lps = higher_lps + lower_lps
+
 
     return higher_lps, marginals
 
@@ -205,9 +230,10 @@ def sum_lps(lps):
     marginals = []
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
-        marginals = marginals + _m 
+        marginals = marginals + _m
     assert 1==len(lps)
     assert 1==lps[0].numel()
+    #marginals = sum_plates_marg(marginals)
     return lps[0], marginals
 
 def sum_none_dims(lp):
@@ -277,6 +303,7 @@ def vi(logps, logqs):
 
 
 def gibbs(marginals):
+
     #names of random variables that we've sampled
     K_names = []
     #corresponding sampled indexes
@@ -285,16 +312,35 @@ def gibbs(marginals):
         #throw away log_margs without dimension of interest
         K_name = rv
 
+        print(1)
+        print(log_margs)
         log_margs = [lm for lm in log_margs if (K_name in lm.names)]
+        print(2)
+        print(log_margs)
+
         #index into log_margs with previously sampled ks
         #different indexing behaviour for tuples vs lists
-        log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
+        print([t.squeeze(lm.align_to(*K_names, '...')).shape for lm in log_margs])
+        #log_margs = [t.squeeze(lm.align_to(*K_names, '...'))[tuple(ks)] for lm in log_margs]
+        print("indexes: ")
+        print(tuple(ks))
+        log_margs_names = [lm.names for lm in log_margs]
+        log_margs = [t.squeeze(lm.align_to(*K_names, '...'))[tuple(ks)] for lm in log_margs]
+        for i in range(len(log_margs)):
+            if log_margs[i].names == ():
+                print(log_margs_names[i])
+                log_margs[i] = log_margs[i].unsqueeze(0).rename((log_margs_names[i][0]))
+        print([lm.names for lm in log_margs])
+        print(K_name)
+        print(3)
+        print(log_margs)
 
         #the only K left should be K_name
         #and plates should all be the same (and there should be more than one tensor)
         #therefore all dim_names should be the same,
         dmss = [set(lm.names) for lm in log_margs]
         dms0 = dmss[0]
+        print(dmss)
         for dms in dmss[1:]:
             assert dms0 == dms
 
@@ -310,7 +356,7 @@ def gibbs(marginals):
 
         #add K_name and sample to lists
         K_names.append(remaining_K_names[0])
-        ks.append(td.Categorical(lp.rename(None)).sample())
+        ks.append(td.Categorical(logits=lp.rename(None)).sample())
 
     #return a dictionary of random variable names
     return {K_name[len(K_prefix):] : k for (K_name, k) in zip(K_names, ks)}
@@ -331,4 +377,8 @@ if __name__ == "__main__":
     assert t.allclose((a.exp() @ ap.exp()/3).log().rename(None), reduce_K([a, ap], 'K_b')[0].rename(None))
 
     lp, marginals = sum_lps(lps)
+
+
+    data = tpp.sample(P, "obs")
+    print(data)
     print(gibbs(marginals))

@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .backend import vi, gibbs
+from .backend import vi, gibbs, sum_lps
 
 class Model(nn.Module):
     def __init__(self, P, Q, data=None):
