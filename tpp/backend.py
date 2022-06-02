@@ -69,20 +69,6 @@ def align_tensors(args):
     unified_names = unify_names(args)
     return [arg.align_to(*unified_names) for arg in args]
 
-# def sum_plates_marg(marginals):
-#     """
-#     Take marginals and sum out all plate dimensions
-#     """
-#     margs = []
-#     for K_name, tensors in marginals:
-#         t = []
-#         for tensor in tensors:
-#             names = [name for name in tensor.names if is_plate(name)]
-#             t.append(tensor.sum(names))
-#
-#         margs.append((K_name, t))
-#
-#     return margs
 
 
 def reduce_K(all_lps, K_name):
@@ -192,13 +178,9 @@ def sum_plate(all_lps, plate_name=None):
     Ks_to_keep = [n for n in unify_names(higher_lps) if is_K(n)]
 
     #sum over the K's that don't appear in higher plates
+
     lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
-    # print(Ks_to_keep)
-    # print(plate_name)
-    # print(unify_names(lower_lps))
-    # print(marginals)
-    # #print(marginals[1])
-    # print([l for l in lower_lps])
+
     if plate_name is not None:
         #if we aren't at the top-level, sum over the plate to eliminate plate_name
         lower_lps = [l.sum(plate_name) for l in lower_lps]
@@ -233,7 +215,7 @@ def sum_lps(lps):
         marginals = marginals + _m
     assert 1==len(lps)
     assert 1==lps[0].numel()
-    #marginals = sum_plates_marg(marginals)
+
     return lps[0], marginals
 
 def sum_none_dims(lp):
@@ -308,39 +290,49 @@ def gibbs(marginals):
     K_names = []
     #corresponding sampled indexes
     ks = []
+
+    K_dict = {}
+    print('STARTING')
     for (rv, log_margs) in marginals[::-1]:
+
         #throw away log_margs without dimension of interest
         K_name = rv
-
-        print(1)
-        print(log_margs)
         log_margs = [lm for lm in log_margs if (K_name in lm.names)]
-        print(2)
-        print(log_margs)
+
+
+
+        #Sample K for each dimension and then use that K to pick
+        # problem is that aligning the tensors adds a dimension to the shape
+        # so that when i come to index in, im indexing in the wrong dimension
 
         #index into log_margs with previously sampled ks
         #different indexing behaviour for tuples vs lists
-        print([t.squeeze(lm.align_to(*K_names, '...')).shape for lm in log_margs])
-        #log_margs = [t.squeeze(lm.align_to(*K_names, '...'))[tuple(ks)] for lm in log_margs]
+        print(rv)
         print("indexes: ")
         print(tuple(ks))
-        log_margs_names = [lm.names for lm in log_margs]
-        log_margs = [t.squeeze(lm.align_to(*K_names, '...'))[tuple(ks)] for lm in log_margs]
-        for i in range(len(log_margs)):
-            if log_margs[i].names == ():
-                print(log_margs_names[i])
-                log_margs[i] = log_margs[i].unsqueeze(0).rename((log_margs_names[i][0]))
-        print([lm.names for lm in log_margs])
-        print(K_name)
-        print(3)
-        print(log_margs)
+        print(K_names)
 
+
+        # log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
+        unique_K_names_in_lm = [name for name in unify_names(log_margs) if not is_plate(name)]
+        shared_names = [name for name in K_names if name in unique_K_names_in_lm]
+
+        index_tuple = tuple([K_dict[name] for name in shared_names])
+        print(index_tuple)
+        print(shared_names)
+        has_shared_dims = [lp for lp in log_margs if not set(lp.names).isdisjoint(shared_names)]
+        no_shared_dims  = [lp for lp in log_margs if set(lp.names).isdisjoint(shared_names)]
+
+        print([lm.names for lm in has_shared_dims])
+        print([lm.names for lm in no_shared_dims])
+        log_margs = [lm.align_to(*shared_names, '...')[index_tuple] for lm in has_shared_dims] #+ no_shared_dims
+        log_margs.extend(no_shared_dims)
         #the only K left should be K_name
         #and plates should all be the same (and there should be more than one tensor)
         #therefore all dim_names should be the same,
         dmss = [set(lm.names) for lm in log_margs]
         dms0 = dmss[0]
-        print(dmss)
+
         for dms in dmss[1:]:
             assert dms0 == dms
 
@@ -352,14 +344,21 @@ def gibbs(marginals):
         #align and combine tensors
         plate_names = [n for n in dms0 if is_plate(n)]
         align_names = plate_names + remaining_K_names
+        print(align_names)
+        print()
         lp = sum([lm.align_to(*align_names) for lm in log_margs])
-
+        print('final log prob shape')
+        print(lp.shape)
         #add K_name and sample to lists
         K_names.append(remaining_K_names[0])
         ks.append(td.Categorical(logits=lp.rename(None)).sample())
+        print(ks[-1])
+        K_dict[K_names[-1]] = ks[-1]
+
 
     #return a dictionary of random variable names
-    return {K_name[len(K_prefix):] : k for (K_name, k) in zip(K_names, ks)}
+    # return {K_name[len(K_prefix):] : k for (K_name, k) in zip(K_names, ks)}
+    return K_dict
 
 
 
