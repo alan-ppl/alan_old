@@ -284,6 +284,10 @@ def vi(logps, logqs):
     return elbo
 
 
+
+## TODO: figure out how to ensure samples are right shape
+## (right now the shapes corresponding to the plates can be transposed)
+## Idea: get list of plate dimensions and order corresponding to that
 def gibbs(marginals):
 
     #names of random variables that we've sampled
@@ -292,41 +296,34 @@ def gibbs(marginals):
     ks = []
 
     K_dict = {}
-    print('STARTING')
     for (rv, log_margs) in marginals[::-1]:
 
         #throw away log_margs without dimension of interest
         K_name = rv
         log_margs = [lm for lm in log_margs if (K_name in lm.names)]
+        print([lm.shape for lm in log_margs if (K_name in lm.names)])
+        print([lm.names for lm in log_margs if (K_name in lm.names)])
 
-
-
-        #Sample K for each dimension and then use that K to pick
-        # problem is that aligning the tensors adds a dimension to the shape
-        # so that when i come to index in, im indexing in the wrong dimension
 
         #index into log_margs with previously sampled ks
-        #different indexing behaviour for tuples vs lists
-        print(rv)
-        print("indexes: ")
-        print(tuple(ks))
-        print(K_names)
+        selected_lms = []
+        # after first K_name sampled for
+        if len(K_dict.keys()) > 0:
+            for name in K_dict.keys():
+                # If sampled k from name corresponds to a plate, i.e log marg will have an additional
+                # dimension corresponding to the plate sample size
+                if K_dict[name].dim() > 0:
+                    # append each log marginal from each index corresponding to a different sample in the plate
+                    for index in K_dict[name].tolist():
+                        selected_lms.extend([lm.select(name, index) for lm in log_margs if name in lm.names])
+                else: # only one index in k, i.e doesn't come from a plate
+                    selected_lms.extend([lm.select(name, K_dict[name]) for lm in log_margs if name in lm.names])
+        else: # first K_name sampled for
+            selected_lms = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
 
 
-        # log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
-        unique_K_names_in_lm = [name for name in unify_names(log_margs) if not is_plate(name)]
-        shared_names = [name for name in K_names if name in unique_K_names_in_lm]
+        log_margs = selected_lms
 
-        index_tuple = tuple([K_dict[name] for name in shared_names])
-        print(index_tuple)
-        print(shared_names)
-        has_shared_dims = [lp for lp in log_margs if not set(lp.names).isdisjoint(shared_names)]
-        no_shared_dims  = [lp for lp in log_margs if set(lp.names).isdisjoint(shared_names)]
-
-        print([lm.names for lm in has_shared_dims])
-        print([lm.names for lm in no_shared_dims])
-        log_margs = [lm.align_to(*shared_names, '...')[index_tuple] for lm in has_shared_dims] #+ no_shared_dims
-        log_margs.extend(no_shared_dims)
         #the only K left should be K_name
         #and plates should all be the same (and there should be more than one tensor)
         #therefore all dim_names should be the same,
@@ -344,23 +341,97 @@ def gibbs(marginals):
         #align and combine tensors
         plate_names = [n for n in dms0 if is_plate(n)]
         align_names = plate_names + remaining_K_names
-        print(align_names)
-        print()
+
         lp = sum([lm.align_to(*align_names) for lm in log_margs])
-        print('final log prob shape')
         print(lp.shape)
         #add K_name and sample to lists
         K_names.append(remaining_K_names[0])
         ks.append(td.Categorical(logits=lp.rename(None)).sample())
-        print(ks[-1])
         K_dict[K_names[-1]] = ks[-1]
 
-
-    #return a dictionary of random variable names
-    # return {K_name[len(K_prefix):] : k for (K_name, k) in zip(K_names, ks)}
     return K_dict
 
-
+# def gibbs(marginals):
+#
+#     #names of random variables that we've sampled
+#     K_names = []
+#     #corresponding sampled indexes
+#     ks = []
+#
+#     K_dict = {}
+#     for (rv, log_margs) in marginals[::-1]:
+#
+#         #throw away log_margs without dimension of interest
+#         K_name = rv
+#         log_margs = [lm for lm in log_margs if (K_name in lm.names)]
+#         print(log_margs)
+#
+#
+#         #Sample K for each dimension and then use that K to pick
+#         # problem is that aligning the tensors adds a dimension to the shape
+#         # so that when i come to index in, im indexing in the wrong dimension
+#
+#         #index into log_margs with previously sampled ks
+#         #different indexing behaviour for tuples vs lists
+#         # print(rv)
+#         # print("indexes: ")
+#         # print(tuple(ks))
+#         # print(K_names)
+#
+#
+#         # log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
+#         # print([lm.names for lm in log_margs])
+#         # print([lm.shape for lm in log_margs])
+#         # print(K_dict)
+#         #print([lm for lm in log_margs])
+#         selected_lms = []
+#         if len(K_dict.keys()) > 0:
+#             for name in K_dict.keys():
+#                 # print(K_dict[name].dim())
+#                 if K_dict[name].dim() > 0:
+#                     for index in K_dict[name].tolist():
+#                         selected_lms.extend([lm.select(name, index) for lm in log_margs if name in lm.names])
+#                         # print([lm.select(name, index) for lm in log_margs if name in lm.names])
+#                 else:
+#                     selected_lms.extend([lm.select(name, K_dict[name]) for lm in log_margs if name in lm.names])
+#                     # print([lm.select(name, K_dict[name]) for lm in log_margs if name in lm.names])
+#         else:
+#             selected_lms = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
+#
+#
+#         log_margs = selected_lms #+ no_shared_dims
+#
+#         #the only K left should be K_name
+#         #and plates should all be the same (and there should be more than one tensor)
+#         #therefore all dim_names should be the same,
+#         dmss = [set(lm.names) for lm in log_margs]
+#         dms0 = dmss[0]
+#
+#         for dms in dmss[1:]:
+#             assert dms0 == dms
+#
+#         #the only K left should be K_name
+#         remaining_K_names = [n for n in dms0 if is_K(n)]
+#         assert 1==len(remaining_K_names)
+#         assert K_name == remaining_K_names[0]
+#
+#         #align and combine tensors
+#         plate_names = [n for n in dms0 if is_plate(n)]
+#         align_names = plate_names + remaining_K_names
+#
+#         lp = sum([lm.align_to(*align_names) for lm in log_margs])
+#         print('final log prob shape')
+#         print(lp)
+#         print(lp.shape)
+#         #add K_name and sample to lists
+#         K_names.append(remaining_K_names[0])
+#         ks.append(td.Categorical(logits=lp.rename(None)).sample())
+#         print(ks[-1])
+#         K_dict[K_names[-1]] = ks[-1]
+#
+#
+#
+#     return K_dict
 
 
 
@@ -378,6 +449,6 @@ if __name__ == "__main__":
     lp, marginals = sum_lps(lps)
 
 
-    data = tpp.sample(P, "obs")
-    print(data)
+    # data = tpp.sample(P, "obs")
+    # print(data)
     print(gibbs(marginals))

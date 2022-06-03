@@ -41,8 +41,10 @@ trp = tpp.TraceLogP(trq.sample, data)
 P(trp)
 # print("Values!")
 # print(trp.log_prob().values())
-lp, marginals = tpp.backend.sum_logpqs(trp.log_prob(), trq.log_prob())
+logps = {rv: tpp.backend.sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}
+
+lp, marginals = tpp.backend.sum_lps(logps.values())
 # print("Marginals")
 # print(marginals)
 
-tpp.backend.gibbs(marginals)
+print(tpp.backend.gibbs(marginals))
