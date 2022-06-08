@@ -301,13 +301,12 @@ def gibbs(marginals):
         #throw away log_margs without dimension of interest
         K_name = rv
         log_margs = [lm for lm in log_margs if (K_name in lm.names)]
-        print([lm.shape for lm in log_margs if (K_name in lm.names)])
-        print([lm.names for lm in log_margs if (K_name in lm.names)])
 
 
         #index into log_margs with previously sampled ks
         selected_lms = []
         # after first K_name sampled for
+        ## TODO do we need outer if statement??
         if len(K_dict.keys()) > 0:
             for name in K_dict.keys():
                 # If sampled k from name corresponds to a plate, i.e log marg will have an additional
@@ -343,7 +342,6 @@ def gibbs(marginals):
         align_names = plate_names + remaining_K_names
 
         lp = sum([lm.align_to(*align_names) for lm in log_margs])
-        print(lp.shape)
         #add K_name and sample to lists
         K_names.append(remaining_K_names[0])
         ks.append(td.Categorical(logits=lp.rename(None)).sample())
