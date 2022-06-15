@@ -49,7 +49,6 @@ class Q(nn.Module):
 
         sigma_c = self.s_c @ self.s_c.t()
         sigma_c.add_(t.eye(2) * 1e-5)
-        sigma_c = sigma_c
         tr['c'] = tpp.MultivariateNormal(self.m_c, sigma_c)
 
         sigma_d = self.s_d @ self.s_d.t()
@@ -130,10 +129,10 @@ cov_y_by_c = t.round(t.cov(t.stack(obss).T - t.vstack([t.eye(4),t.eye(4)]) @ t.v
 cov_y_by_b = t.round(t.cov(t.stack(obss).T - t.vstack([t.eye(4),t.eye(4)]) @ t.vstack([t.eye(2),t.eye(2)]) @ t.ones(2,1) @ t.stack(bs).T))
 cov_y_by_a = t.round(t.cov(t.stack(obss).T - t.vstack([t.eye(4),t.eye(4)]) @ t.vstack([t.eye(2),t.eye(2)]) @ t.ones(2,1) @ t.stack(a).T))
 
-
-print(cov_y_by_c)
-print(cov_y_by_b)
-print(cov_y_by_a)
+#
+# print(cov_y_by_c)
+# print(cov_y_by_b)
+# print(cov_y_by_a)
 
 
 model = tpp.Model(P, Q(), {'obs': data['obs']})
@@ -141,9 +140,9 @@ model = tpp.Model(P, Q(), {'obs': data['obs']})
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 print("K=10")
-for i in range(20000):
+for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(K=10)
+    elbo = model.elbo(K=1)
     (-elbo).backward()
     opt.step()
 
@@ -154,6 +153,10 @@ for i in range(20000):
 print("Approximate mean a")
 print(model.Q.m_a)
 
+print("True Posterior a mean")
+mean_a = 1/cov_a * ((w_a.T @ t.inverse(cov_y_by_a) @ data['obs'].rename(None).flatten()))
+print(mean_a)
+
 print("Approximate variance a")
 print(model.Q.s_a @ model.Q.s_a.t())
 
@@ -163,13 +166,15 @@ w_a = t.vstack([t.eye(4),t.eye(4)]) @ t.vstack([t.eye(2),t.eye(2)]) @ t.ones(2,1
 cov_a = (1/a_prior_cov +  w_a.T @ t.inverse(cov_y_by_a) @ w_a)
 print(1/cov_a)
 
-print("Posterior a mean")
-mean_a = 1/cov_a * ((w_a.T @ t.inverse(cov_y_by_a) @ data['obs'].rename(None).flatten()))
-print(mean_a)
+
 
 
 print("Approximate mean b")
 print(model.Q.m_b)
+
+print("True Posterior b mean")
+mean_b = 1/cov_b * ((w_b.T @ t.inverse(cov_y_by_b) @  data['obs'].rename(None).flatten()))
+print(mean_b)
 
 print("Approximate variance b")
 print(model.Q.s_b @ model.Q.s_b.t())
@@ -179,13 +184,15 @@ w_b = t.vstack([t.eye(4),t.eye(4)]) @ t.vstack([t.eye(2),t.eye(2)]) @ t.ones(2,1
 cov_b = (1/b_prior_cov +  w_b.T @ t.inverse(cov_y_by_b) @ w_b)
 print(1/cov_b)
 
-print("Posterior b mean")
-mean_b = 1/cov_b * ((w_b.T @ t.inverse(cov_y_by_b) @  data['obs'].rename(None).flatten()))
-print(mean_b)
+
 
 
 print("Approximate mean c")
 print(model.Q.m_c)
+
+print("True Posterior c mean")
+mean_c = t.inverse(cov_c) @ (w_c.T @ t.inverse(cov_y_by_c) @  data['obs'].rename(None).flatten())
+print(mean_c)
 
 print("Approximate variance c")
 print(model.Q.s_c @ model.Q.s_c.t())
@@ -195,13 +202,15 @@ w_c = t.vstack([t.eye(4),t.eye(4)]) @ t.vstack([t.eye(2),t.eye(2)])
 cov_c = (t.inverse(c_prior_cov) + w_c.T @ t.inverse(cov_y_by_c) @ w_c)
 print(t.inverse(cov_c))
 
-print("Posterior c mean")
-mean_c = t.inverse(cov_c) @ (w_c.T @ t.inverse(cov_y_by_c) @  data['obs'].rename(None).flatten())
-print(mean_c)
+
 
 
 print("Approximate mean d")
 print(model.Q.m_d)
+
+print("Posterior d mean")
+mean_d = t.inverse(cov_d) @ (w_d.T @ t.inverse(t.eye(8)) @ data['obs'].rename(None).flatten())
+print(mean_d)
 
 print("Approximate variance d")
 print(model.Q.s_d @ model.Q.s_d.t())
@@ -211,9 +220,7 @@ w_d = t.vstack([t.eye(4),t.eye(4)])
 cov_d = (t.inverse(d_prior_cov) + w_d.T @ t.inverse(t.eye(8)) @ w_d)
 print(t.inverse(cov_d))
 
-print("Posterior d mean")
-mean_d = t.inverse(cov_d) @ (w_d.T @ t.inverse(t.eye(8)) @ data['obs'].rename(None).flatten())
-print(mean_d)
+
 
 # logps = {rv: tpp.backend.sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}
 #

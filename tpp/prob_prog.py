@@ -91,6 +91,9 @@ class TraceSample(Trace):
         self.sample[key] = value.rsample()
 
 
+
+
+
 class TraceLogP(Trace):
     def __init__(self, sample, data=None):
         self.sample = sample
