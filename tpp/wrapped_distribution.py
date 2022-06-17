@@ -22,7 +22,7 @@ class WrappedDist:
         self.sample_shape = sample_shape
         self.sample_names = sample_names
 
-    def rsample(self):
+    def rsample(self, K=None):
         args = self.args
         kwargs = self.kwargs
         args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
@@ -31,6 +31,14 @@ class WrappedDist:
         unified_names.discard(None)
         unified_names = sorted(unified_names)
 
+        already_K = 'K' in unified_names
+        sampling_K = K is not None and not already_K
+
+
+        sample_shape = (K, *self.sample_shape) if sampling_K else self.sample_shape
+        # print(len(sample_shape))
+        # sample_shape = K if len(sample_shape)==1 and K is not None else sample_shape
+        unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
         #Checking the user hasn't mistakenely labelled two variables with the same plate name
         if len(list(unified_names)) > 0:
             assert list(unified_names) != list(self.sample_names), "Don't label two variables with the same plate, it is unneccesary!"
@@ -44,7 +52,7 @@ class WrappedDist:
         args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
         return (self.dist(*args, **kwargs)
-                .rsample(sample_shape=self.sample_shape)
+                .rsample(sample_shape=sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
 
 

@@ -14,7 +14,7 @@ class Trace:
         Initialize all Trace objects with K_shape and K_names.
         These should form the rightmost dimensions in all tensors in the program.
         """
-        assert len(K_shape) == len(K_names)
+        # assert len(K_shape) == len(K_names)
         self.K_shape = K_shape
         self.K_names = K_names
 
@@ -39,7 +39,7 @@ class TraceSampleLogQ(Trace):
     """
 
     def __init__(self, K, data=None):
-        super().__init__(K_shape=(K,), K_names=("K",))
+        super().__init__(K_shape=K, K_names="K")
         if data is None:
             data = {}
         self.data = data
@@ -58,10 +58,12 @@ class TraceSampleLogQ(Trace):
         assert isinstance(value, WrappedDist)
         assert key not in self.data
         assert key not in self.sample
-        sample = value.rsample()
+        sample = value.rsample(K=self.K_shape)
+        # print(sample)
+        # print(sample.shape)
         sample = sample.align_to('K', ...)
         # expand singleton dimensions (usually only necessary in sampling approximate posterior)
-        sample = sample.expand(*self.K_shape, *sample.shape[1:])
+        # sample = sample.expand(*self.K_shape, *sample.shape[1:])
         self.sample[key] = sample
         self.logp[key] = value.log_prob(sample)
 

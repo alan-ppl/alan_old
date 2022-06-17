@@ -2,7 +2,6 @@ import torch as t
 import torch.nn as nn
 import tpp
 
-
 N = 2
 M = 2
 K = 2
@@ -28,39 +27,47 @@ class Q(nn.Module):
         self.w_c = nn.Parameter(t.zeros((K,1)))
         self.b_c = nn.Parameter(t.zeros((K,), names=('plate_1',)))
 
-        self.w_d = nn.Parameter(t.zeros((M, K, K)))
-        self.b_d = nn.Parameter(t.zeros((M, K), names=('plate_2','plate_1')))
+        self.w_d = nn.Parameter(t.zeros((M, K), names=('plate_2', 'plate_1')))
+        self.b_d = nn.Parameter(t.zeros((M, K), names=('plate_2', 'plate_1')))
 
-        self.log_s_a = nn.Parameter(t.zeros((1)))
+        self.log_s_a = nn.Parameter(t.zeros(()))
         self.log_s_b = nn.Parameter(t.zeros((1)))
         self.log_s_c = nn.Parameter(t.zeros((K,), names=('plate_1',)))
         self.log_s_d = nn.Parameter(t.zeros((M, K), names=('plate_2','plate_1')))
 
     def forward(self, tr):
+    # does matrix multiplication work
+    # sampling K when K already exists?
         tr['a'] = tpp.Normal(self.m_a, self.log_s_a.exp())
-
-        if 'K' in tr['a'].names:
-            a = tr['a'].mean('K')
-        else:
-            a = tr['a']
-        mean_b = self.w_b @ a + self.b_b
+        # if 'K' in tr['a'].names:
+        #     a = tr['a'].mean('K')
+        # else:
+        #     a = tr['a']
+        mean_b = self.w_b*tr['a']  + self.b_b
         tr['b'] = tpp.Normal(mean_b, self.log_s_b.exp())
+        # print(tr['b'])
+        # print(tr['b'].shape)
+        # if 'K' in tr['b'].names:
+        #     b = tr['a'].mean('K')
+        # else:
+        #     b = tr['a']
 
-        if 'K' in tr['b'].names:
-            b = tr['a'].mean('K')
-        else:
-            b = tr['a']
-        mean_c = self.w_c @ b + self.b_c
+        mean_c =  self.w_c * tr['b'] + self.b_c
+        print(self.w_c.shape)
+        print(tr['b'].shape)
         tr['c'] = tpp.Normal(mean_c, self.log_s_c.exp())
-
-        if 'K' in tr['c'].names:
-            c = tr['c'].mean('K')
-        else:
-            c = tr['c']
-        mean_d = self.w_d @ c + self.b_d
-
+        # print(tr['c'])
+        # print(tr['c'].shape)
+        # if 'K' in tr['c'].names:
+        #     c = tr['c'].mean('K')
+        # else:
+        #     c = tr['c']
+        print(self.w_d.shape)
+        print(tr['c'].shape)
+        mean_d = self.w_d.align_as(tr['c']) * tr['c'] + self.b_d
         tr['d'] = tpp.Normal(mean_d, self.log_s_d.exp())
-
+        # print(tr['d'])
+        # print(tr['d'].shape)
 
 data = tpp.sample(P)
 
@@ -133,5 +140,5 @@ print(params_post_cov)
 
 print('Exact posterior Mean')
 print(post_mean)
-print('Approximate Mean')
+print('Approximate Covariance')
 print(params_post_mean)

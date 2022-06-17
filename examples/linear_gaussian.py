@@ -44,6 +44,7 @@ class Q(nn.Module):
         sigma_nn = self.s_mu @ self.s_mu.t()
         sigma_nn.add_(t.eye(2) * 1e-5)
         tr['w'] = tpp.MultivariateNormal(self.m_mu, sigma_nn)
+        # print(tr['w'])
 
 data_y = tpp.sample(P,"obs")
 print(data_y)
@@ -55,12 +56,21 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 print("K=10")
 for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(K=10)
+    elbo = model.elbo(K=5)
     (-elbo).backward()
     opt.step()
 
     if 0 == i%1000:
         print(elbo.item())
+
+
+# ws = []
+# for i in range(1000):
+#     sample = tpp.sample(model.Q)
+#     ws.append(sample['w'].rename(None).flatten())
+#
+# print(t.round(t.cov((t.vstack(ws)).T), decimals=3))
+# print(t.mean((t.vstack(ws)), dim=0))
 
 
 print("Approximate mu")
