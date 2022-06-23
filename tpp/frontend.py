@@ -1,6 +1,7 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
 from .backend import vi, gibbs, sum_lps
+from .cartesian_tensor import CartesianTensor
 
 class Model(nn.Module):
     def __init__(self, P, Q, data=None):
@@ -28,6 +29,6 @@ def sample(P, *names):
     tr = TraceSample()
     P(tr)
     if 0 == len(names):
-        return tr.sample
+        return tr.sample._t if isinstance(tr.sample, CartesianTensor) else tr.sample
     else:
-        return {n: tr.sample[n] for n in names}
+        return {n: tr.sample[n]._t if isinstance(tr.sample, CartesianTensor) else tr.sample[n] for n in names}

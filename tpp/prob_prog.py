@@ -64,7 +64,7 @@ class TraceSampleLogQ(Trace):
         sample = sample.align_to('K', ...)
         # expand singleton dimensions (usually only necessary in sampling approximate posterior)
         # sample = sample.expand(*self.K_shape, *sample.shape[1:])
-        self.sample[key] = sample
+        self.sample[key] = CartesianTensor(sample)
         self.logp[key] = value.log_prob(sample)
 
     def __repr__(self) -> str:
@@ -110,7 +110,7 @@ class TraceLogP(Trace):
         # ensure tensor has been generated
         assert (key in self.data) or (key in self.sample)
         if key in self.sample:
-            sample = self.sample[key].rename(K=f"K_{key}")
+            sample = self.sample[key]._t.rename(K=f"K_{key}")
             return CartesianTensor(sample)
         return self.data[key]
 

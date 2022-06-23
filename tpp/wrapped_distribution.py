@@ -1,6 +1,6 @@
 import torch as t
 import torch.distributions as td
-from .cartesian_tensor import cartesiantensormap, tensormap, pad_nones, tensors
+from .cartesian_tensor import cartesiantensormap, tensormap, pad_nones, tensors, CartesianTensor
 
 
 class WrappedDist:
@@ -38,26 +38,29 @@ class WrappedDist:
         sample_shape = (K, *self.sample_shape) if sampling_K else self.sample_shape
         # print(len(sample_shape))
         # sample_shape = K if len(sample_shape)==1 and K is not None else sample_shape
-        unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
+
         #Checking the user hasn't mistakenely labelled two variables with the same plate name
         if len(list(unified_names)) > 0:
             assert list(unified_names) != list(self.sample_names), "Don't label two variables with the same plate, it is unneccesary!"
 
 
-        # Align tensors onto that sorted list
+        # # Align tensors onto that sorted list
         args, kwargs = tensormap(lambda x: x.align_to(*unified_names, ...), args, kwargs)
         max_pos_dim = max(
             sum(name is None for name in arg.names) for arg in tensors(args, kwargs)
         )
         args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
+
+        unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
+
         return (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
 
 
     def log_prob(self, x):
-        assert isinstance(x, t.Tensor)
+        assert isinstance(x, t.Tensor) or isinstance(x, CartesianTensor)
         args = (*self.args, x)
         kwargs = self.kwargs
 
@@ -73,6 +76,7 @@ class WrappedDist:
         )
         args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
+
         return (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])
                 .refine_names(*unified_names, ...))

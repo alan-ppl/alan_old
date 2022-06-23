@@ -121,7 +121,7 @@ class CartesianTensor(torch.Tensor):
         return torch.Tensor._make_subclass(cls, tensor, *args, **kwargs)
 
     def __repr__(self):
-        return "CartesianTensor" + self._t.__repr__()
+        return "CartesianTensor_" + self._t.__repr__()
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
         if kwargs is None:
@@ -156,7 +156,7 @@ class CartesianTensor(torch.Tensor):
             # pad with number of none's required to make broadcasing work
             # notice that names will not get striped here.
             max_pos_dim = max(
-                sum(name is None for name in arg.names) for arg in tensors(args, kwargs)
+                sum(name is None for name in arg.names)-1 for arg in tensors(args, kwargs)
             )
             args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
 

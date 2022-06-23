@@ -44,7 +44,7 @@ class Q(nn.Module):
         sigma_nn = self.s_mu @ self.s_mu.t()
         sigma_nn.add_(t.eye(2) * 1e-5)
         tr['w'] = tpp.MultivariateNormal(self.m_mu, sigma_nn)
-        # print(tr['w'])
+
 
 data_y = tpp.sample(P,"obs")
 print(data_y)
@@ -53,7 +53,7 @@ model = tpp.Model(P, Q(), data_y)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-print("K=10")
+print("K=5")
 for i in range(10000):
     opt.zero_grad()
     elbo = model.elbo(K=5)

@@ -38,10 +38,10 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-print("K=10")
+print("K=5")
 for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(K=10)
+    elbo = model.elbo(K=5)
     (-elbo).backward()
     opt.step()
 

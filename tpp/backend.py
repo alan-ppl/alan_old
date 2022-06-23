@@ -82,15 +82,18 @@ def reduce_K(all_lps, K_name):
 
     lps_with_K = align_tensors(lps_with_K)
 
-    max_lps = [lp.max(K_name, keepdim=True)[0] for lp in lps_with_K]
-    norm_ps = [(lp - mlp).exp() for (lp, mlp) in zip(lps_with_K, max_lps)]
+    # max_lps = [lp.max(K_name, keepdim=True)[0] for lp in lps_with_K]
+    # norm_ps = [(lp - mlp).exp() for (lp, mlp) in zip(lps_with_K, max_lps)]
+    #
+    # result_p = norm_ps[0]
+    # for norm_p in norm_ps[1:]:
+    #     result_p = result_p * norm_p
+    # result_p = result_p.mean(K_name, keepdim=True)
+    #
+    # result_lp = (result_p.log() + sum(max_lps)).squeeze(K_name)
+    K = all_lps[0].align_to(K_name,...).shape[0]
 
-    result_p = norm_ps[0]
-    for norm_p in norm_ps[1:]:
-        result_p = result_p * norm_p
-    result_p = result_p.mean(K_name, keepdim=True)
-
-    result_lp = (result_p.log() + sum(max_lps)).squeeze(K_name)
+    result_lp = t.logsumexp((sum(lps_with_K)), K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K))
 
     other_lps.append(result_lp)
     return other_lps
@@ -445,7 +448,6 @@ if __name__ == "__main__":
     assert t.allclose((a.exp() @ ap.exp()/3).log().rename(None), reduce_K([a, ap], 'K_b')[0].rename(None))
 
     lp, marginals = sum_lps(lps)
-
 
     # data = tpp.sample(P, "obs")
     # print(data)
