@@ -127,16 +127,18 @@ class CartesianTensor(torch.Tensor):
         if kwargs is None:
             kwargs = {}
         # Convert CartesianTensor to Tensor to avoid recursive wrapper call.
-        args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
 
+        args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
         # Sorted list of all unique names
         unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
         unified_names.discard(None)
         unified_names = sorted(unified_names)
 
+
         # Align tensors onto that sorted list
         args, kwargs = tensormap(lambda x: x.align_to(*unified_names, ...), args, kwargs)
-
+        # print([a.shape for a in args])
+        # print([a.names for a in args])
         if func.__name__ in vmap_ops:
             # Expand all named dimensions to be the same size for vmap
             max_shape = [
@@ -158,6 +160,7 @@ class CartesianTensor(torch.Tensor):
             max_pos_dim = max(
                 sum(name is None for name in arg.names)-1 for arg in tensors(args, kwargs)
             )
+
             args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
 
         val = func(*args, **kwargs)
