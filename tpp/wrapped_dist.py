@@ -1,6 +1,6 @@
 import torch as t
 import torch.distributions as td
-from .utils import *
+from utils import *
 
 class WrappedDist:
     """
@@ -33,13 +33,7 @@ class WrappedDist:
         else:
             sample_shape = self.sample_shape
             sample_names = (names[0]) + self.sample_names
-        print(args)
-        print(sample_shape)
-        print(sample_names)
-        print((self.dist(*args, **kwargs)
-                .rsample(sample_shape=sample_shape)))
-        print((self.dist(*args, **kwargs)
-                .rsample(sample_shape=sample_shape)['K']))
+
         return (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)[sample_names])
 

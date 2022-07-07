@@ -31,12 +31,13 @@ class Q(nn.Module):
         self.log_theta_s = nn.Parameter(t.zeros((J,)))
 
         self.z_w = nn.Parameter(t.zeros((N,J), names = ('plate_1',None)))
+        self.z_b = nn.Parameter(t.zeros((N,J), names = ('plate_1',None)))
         self.log_z_s = nn.Parameter(t.zeros((N,J), names = ('plate_1',None)))
 
 
     def forward(self, tr):
         tr['theta'] = tpp.Normal(self.theta_mu, self.log_theta_s.exp())
-        tr['z'] = tpp.Normal(self.z_w*tr['theta'], self.log_z_s.exp())
+        tr['z'] = tpp.Normal(self.z_w*tr['theta'] + self.z_b, self.log_z_s.exp())
         # print('Q')
         # print(tr['z'])
         # print(tr['z'].shape)
@@ -70,7 +71,7 @@ for i in range(10000):
     zs.append(sample['z'].rename(None).flatten())
 
 approx_theta_mean = t.mean(t.vstack(thetas).T, dim=1)
-approx_theta_cov = t.round(t.cov(t.vstack(thetas).T), decimals=2)
+approx_theta_cov = t.cov(t.vstack(thetas).T)
 
 # x is weights transposed
 x = weights.rename(None)
@@ -89,11 +90,11 @@ post_z_cov = t.inverse(t.eye(10) + x @ x.t())
 post_z_mean = post_z_cov @ (x @ data_y['obs'].t() + post_sigma_mean)
 
 print('Posterior theta mean')
-print(post_sigma_mean)
+print(t.round(post_sigma_mean, decimals=2))
 print('Approximate Posterior theta mean')
-print(approx_theta_mean)
+print(t.round(approx_theta_mean, decimals=2))
 
 print('Posterior theta cov')
-print(post_sigma_cov)
+print(t.round(post_sigma_cov, decimals=2))
 print('Approximate Posterior theta cov')
-print(approx_theta_cov)
+print(t.round(approx_theta_cov, decimals=2))

@@ -1,8 +1,10 @@
 import torch as t
 import torch.distributions as td
 import torch.nn as nn
-from .cartesian_tensor import CartesianTensor
+# from .cartesian_tensor import CartesianTensor
 from .wrapped_distribution import WrappedDist
+from .utils import *
+from torchdim import dims
 
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
@@ -15,7 +17,9 @@ class Trace:
         These should form the rightmost dimensions in all tensors in the program.
         """
         # assert len(K_shape) == len(K_names)
-        self.K_shape = K_shape
+
+        self.K_dim = dims(1)
+        self.K_dim.size = K_shape if K_shape != () else 1
         self.K_names = K_names
 
     def dist(self, dist, *args, **kwargs):
@@ -26,7 +30,7 @@ class Trace:
 
     def log_prob(self):
         return {
-            k: (v._t if isinstance(v, CartesianTensor) else v) for (k, v) in self.logp.items()
+            k: dename(v) for (k, v) in self.logp.items()
         }
 
 
@@ -58,13 +62,12 @@ class TraceSampleLogQ(Trace):
         assert isinstance(value, WrappedDist)
         assert key not in self.data
         assert key not in self.sample
-        sample = value.rsample(K=self.K_shape)
+        sample = value.rsample(K=self.K_dim)
         # print(sample)
         # print(sample.shape)
-        sample = sample.align_to('K', ...)
         # expand singleton dimensions (usually only necessary in sampling approximate posterior)
         # sample = sample.expand(*self.K_shape, *sample.shape[1:])
-        self.sample[key] = CartesianTensor(sample)
+        self.sample[key] = sample
         self.logp[key] = value.log_prob(sample)
 
     def __repr__(self) -> str:

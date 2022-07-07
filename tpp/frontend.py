@@ -1,7 +1,8 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .backend import vi, gibbs, sum_lps
-from .cartesian_tensor import CartesianTensor
+from .backend import vi, gibbs, sum_lps, sum_logpqs
+# from .cartesian_tensor import CartesianTensor
+from .utils import *
 
 class Model(nn.Module):
     def __init__(self, P, Q, data=None):
@@ -19,6 +20,16 @@ class Model(nn.Module):
         self.P(trp)
         return vi(trp.log_prob(), trq.log_prob())
 
+    def importance_sample(self, K):
+        #sample from approximate posterior
+        trq = TraceSampleLogQ(K=K, data=self.data)
+        self.Q(trq)
+        #compute logP
+        trp = TraceLogP(trq.sample, self.data)
+        self.P(trp)
+        _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob())
+        return gibbs(marginals)
+
 
 def sample(P, *names):
     """
@@ -29,6 +40,6 @@ def sample(P, *names):
     tr = TraceSample()
     P(tr)
     if 0 == len(names):
-        return tr.sample._t if isinstance(tr.sample, CartesianTensor) else tr.sample
+        return dename(tr.sample, has_K(tr.sample))
     else:
-        return {n: tr.sample[n]._t if isinstance(tr.sample, CartesianTensor) else tr.sample[n] for n in names}
+        return {n: dename(tr.sample[n], has_K(tr.sample[n])) for n in names}
