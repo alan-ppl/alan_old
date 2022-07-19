@@ -1,4 +1,3 @@
-#Write Gibbs sampler!!
 
 import torch as t
 import opt_einsum as oe
@@ -372,4 +371,3 @@ if __name__ == "__main__":
     ks = gibbs(marginals)
     print(lps)
     print(ks)
-    

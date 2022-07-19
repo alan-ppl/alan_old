@@ -11,16 +11,12 @@ __all__ = [
 ]
 
 class Trace:
-    def __init__(self, K_shape, K_names):
+    def __init__(self):
         """
         Initialize all Trace objects with K_shape and K_names.
         These should form the rightmost dimensions in all tensors in the program.
         """
         # assert len(K_shape) == len(K_names)
-
-        self.K_dim = dims(1)
-        self.K_dim.size = K_shape if K_shape != () else 1
-        self.K_names = K_names
 
     def dist(self, dist, *args, **kwargs):
         """
@@ -43,12 +39,13 @@ class TraceSampleLogQ(Trace):
     """
 
     def __init__(self, K, data=None):
-        super().__init__(K_shape=K, K_names="K")
+        super().__init__()
         if data is None:
             data = {}
         self.data = data
         self.sample = {}
         self.logp = {}
+        self.K = K
 
     def __getitem__(self, key):
         if key in self.sample:
@@ -62,11 +59,8 @@ class TraceSampleLogQ(Trace):
         assert isinstance(value, WrappedDist)
         assert key not in self.data
         assert key not in self.sample
-        sample = value.rsample(K=self.K_dim)
-        # print(sample)
-        # print(sample.shape)
-        # expand singleton dimensions (usually only necessary in sampling approximate posterior)
-        # sample = sample.expand(*self.K_shape, *sample.shape[1:])
+        sample = value.rsample(K=self.K)
+
         self.sample[key] = sample
         self.logp[key] = value.log_prob(sample)
 
@@ -84,7 +78,7 @@ class TraceSample(Trace):
     """
 
     def __init__(self):
-        super().__init__(K_shape=(), K_names=())
+        super().__init__()
         self.sample = {}
 
     def __getitem__(self, key):
@@ -112,9 +106,15 @@ class TraceLogP(Trace):
     def __getitem__(self, key):
         # ensure tensor has been generated
         assert (key in self.data) or (key in self.sample)
+        print(self.sample)
         if key in self.sample:
-            sample = self.sample[key]._t.rename(K=f"K_{key}")
-            return CartesianTensor(sample)
+            print(self.sample[key])
+            print(self.K_names)
+            print(self.K_shape)
+            print(self.sample[key].dims)
+            print(self.sample[key].dims[0].size)
+            sample = self.sample[key].rename(K=f"K_{key}")
+            return sample
         return self.data[key]
 
     def __setitem__(self, key, value):

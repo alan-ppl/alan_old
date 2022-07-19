@@ -8,7 +8,7 @@ def has_K(tensor):
         return False
 
 def dename(tensors):
-    return [tensor.order(tensor.dims) if hasattr(tensor, 'dims') else tensor for tensor in tensors]
+    return [tensor.order(*tensor.dims) if hasattr(tensor, 'dims') else tensor for tensor in tensors]
 
 
 # def dename(tensors, K):

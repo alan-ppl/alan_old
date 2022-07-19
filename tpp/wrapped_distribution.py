@@ -23,23 +23,23 @@ class WrappedDist:
 
     def rsample(self, K=None):
         names = get_names(self.args)
-        args = dename(self.args, K is not None)
+        args = dename(self.args)
         dims = get_sizes(self.args[0])
         kwargs = self.kwargs
 
         if K is not None:
             sample_shape = (K.size,) + self.sample_shape
-            sample_names = (K, names[0]) + self.sample_names
+            sample_names = (K, *names[0]) + self.sample_names
         else:
             sample_shape = self.sample_shape
             sample_names = (names[0]) + self.sample_names
-        print(args)
-        print(sample_shape)
-        print(sample_names)
-        print((self.dist(*args, **kwargs)
-                .rsample(sample_shape=sample_shape)))
-        print((self.dist(*args, **kwargs)
-                .rsample(sample_shape=sample_shape)['K']))
+        # print(args)
+        # print(sample_shape)
+        # print((K, names[0]))
+        # print((self.dist(*args, **kwargs)
+        #         .rsample(sample_shape=sample_shape)[(K, names[0])]))
+        # print((self.dist(*args, **kwargs)
+        #         .rsample(sample_shape=sample_shape)['K']))
         return (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)[sample_names])
 
@@ -47,11 +47,14 @@ class WrappedDist:
     def log_prob(self, x):
         args = (*self.args, x)
         names = get_names([x])
-        args = dename(args, False)
+        args = dename(args)
         dims = get_sizes(self.args[0])
         kwargs = self.kwargs
 
         sample_names = (names[0]) + self.sample_names
+        # print(args[:-1])
+        # print(args[-1])
+        # print(sample_names)
         return (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])[sample_names])
 

@@ -40,6 +40,6 @@ def sample(P, *names):
     tr = TraceSample()
     P(tr)
     if 0 == len(names):
-        return dename(tr.sample, has_K(tr.sample))
+        return dename(tr.sample)
     else:
-        return {n: dename(tr.sample[n], has_K(tr.sample[n])) for n in names}
+        return {n: dename(tr.sample[n]) for n in names}
