@@ -4,7 +4,7 @@ import torch.nn as nn
 # from .cartesian_tensor import CartesianTensor
 from .wrapped_distribution import WrappedDist
 from .utils import *
-from torchdim import dims
+# from torchdim import dims
 
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
@@ -26,7 +26,7 @@ class Trace:
 
     def log_prob(self):
         return {
-            k: dename(v) for (k, v) in self.logp.items()
+            k: v for (k, v) in self.logp.items()
         }
 
 
@@ -38,14 +38,14 @@ class TraceSampleLogQ(Trace):
     Can high-level latents depend on plated lower-layer latents?  (I think so?)
     """
 
-    def __init__(self, K, data=None):
+    def __init__(self, data=None, dims=None):
         super().__init__()
         if data is None:
             data = {}
         self.data = data
         self.sample = {}
         self.logp = {}
-        self.K = K
+        self.K = dims['K']
 
     def __getitem__(self, key):
         if key in self.sample:
@@ -94,26 +94,27 @@ class TraceSample(Trace):
 
 
 class TraceLogP(Trace):
-    def __init__(self, sample, data=None):
+    def __init__(self, sample, data=None, dims = None):
         self.sample = sample
         self.data = data
         # maintains an ordered list of tensors as they are generated
         self.logp = {}
-        self.K_names = [f"K_{name}" for name in list(sample)]
-        self.K_shape = [1 for name in list(sample)]
+        # self.K_names = [f"K_{name}" for name in list(sample)]
+        # self.K_shape = [1 for name in list(sample)]
+        self.dims = dims
 
 
     def __getitem__(self, key):
         # ensure tensor has been generated
         assert (key in self.data) or (key in self.sample)
-        print(self.sample)
         if key in self.sample:
-            print(self.sample[key])
-            print(self.K_names)
-            print(self.K_shape)
-            print(self.sample[key].dims)
-            print(self.sample[key].dims[0].size)
-            sample = self.sample[key].rename(K=f"K_{key}")
+            # print(self.sample[key])
+            # print(self.K_names)
+            # print(self.K_shape)
+            # print(self.sample[key].dims)
+            # print(self.sample[key].dims[0].size)
+            K_name = f"K_{key}"
+            sample = self.sample[key].order(self.dims['K'], 0)[self.dims[K_name],:]
             return sample
         return self.data[key]
 

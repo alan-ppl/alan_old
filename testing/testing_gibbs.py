@@ -36,12 +36,14 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-K = dims(1)
+K, K_mu = dims(2)
 K.size = 5
+K_mu.size = 5
+dims = {'K':K, 'K_mu':K_mu}
 print("K={}".format(K.size))
 for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(K=K)
+    elbo = model.elbo(dims=dims)
     (-elbo).backward()
     opt.step()
 

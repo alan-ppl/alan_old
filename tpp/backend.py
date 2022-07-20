@@ -229,7 +229,7 @@ def sum_none_dims(lp):
         lp = lp.sum(none_dims)
     return lp
 
-def sum_logpqs(logps, logqs):
+def sum_logpqs(logps, logqs, dims):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -247,6 +247,7 @@ def sum_logpqs(logps, logqs):
             assert (n is None) or n=="K" or is_plate(n)
 
     # convert K
+    print(logqs)
     logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
 
     # check all named dimensions in logps are either positional, plates or Ks
@@ -281,8 +282,8 @@ def sum_logpqs(logps, logqs):
 
     return sum_lps(all_lps)
 
-def vi(logps, logqs):
-    elbo, _ = sum_logpqs(logps, logqs)
+def vi(logps, logqs, dims):
+    elbo, _ = sum_logpqs(logps, logqs, dims)
     return elbo
 
 

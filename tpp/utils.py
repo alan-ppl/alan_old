@@ -1,5 +1,5 @@
 import torchdim
-
+import torch
 
 def has_K(tensor):
     if hasattr(tensor, 'dims'):
@@ -8,7 +8,15 @@ def has_K(tensor):
         return False
 
 def dename(tensors):
-    return [tensor.order(*tensor.dims) if hasattr(tensor, 'dims') else tensor for tensor in tensors]
+
+    assert isinstance(tensors, tuple)           or isinstance(tensors, list) \
+        or isinstance(tensors, torchdim.Tensor) or isinstance(tensors, torch.Tensor)
+
+    if isinstance(tensors, torchdim.Tensor):
+        return tensors.order(*tensors.dims) if hasattr(tensors, 'dims') else tensors
+    else:
+        return [tensor.order(*tensor.dims) if hasattr(tensor, 'dims') else tensor for tensor in tensors]
+
 
 
 # def dename(tensors, K):

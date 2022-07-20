@@ -11,18 +11,18 @@ class Model(nn.Module):
         self.Q = Q
         self.data = data
 
-    def elbo(self, K):
+    def elbo(self, dims):
         #sample from approximate posterior
-        trq = TraceSampleLogQ(K=K, data=self.data)
+        trq = TraceSampleLogQ(dims=dims, data=self.data)
         self.Q(trq)
         #compute logP
-        trp = TraceLogP(trq.sample, self.data)
+        trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
         return vi(trp.log_prob(), trq.log_prob())
 
-    def importance_sample(self, K):
+    def importance_sample(self, dims):
         #sample from approximate posterior
-        trq = TraceSampleLogQ(K=K, data=self.data)
+        trq = TraceSampleLogQ(dims=dims, data=self.data)
         self.Q(trq)
         #compute logP
         trp = TraceLogP(trq.sample, self.data)
