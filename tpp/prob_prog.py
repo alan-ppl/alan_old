@@ -60,7 +60,6 @@ class TraceSampleLogQ(Trace):
         assert key not in self.data
         assert key not in self.sample
         sample = value.rsample(K=self.K)
-
         self.sample[key] = sample
         self.logp[key] = value.log_prob(sample)
 
@@ -99,8 +98,6 @@ class TraceLogP(Trace):
         self.data = data
         # maintains an ordered list of tensors as they are generated
         self.logp = {}
-        # self.K_names = [f"K_{name}" for name in list(sample)]
-        # self.K_shape = [1 for name in list(sample)]
         self.dims = dims
 
 
@@ -108,13 +105,8 @@ class TraceLogP(Trace):
         # ensure tensor has been generated
         assert (key in self.data) or (key in self.sample)
         if key in self.sample:
-            # print(self.sample[key])
-            # print(self.K_names)
-            # print(self.K_shape)
-            # print(self.sample[key].dims)
-            # print(self.sample[key].dims[0].size)
             K_name = f"K_{key}"
-            sample = self.sample[key].order(self.dims['K'], 0)[self.dims[K_name],:]
+            sample = self.sample[key].index(self.dims['K'], self.dims[K_name])
             return sample
         return self.data[key]
 
@@ -122,4 +114,6 @@ class TraceLogP(Trace):
         assert isinstance(value, WrappedDist)
         assert (key in self.data) or (key in self.sample)
         sample = self[key]
+        # print(sample)
+        # print(value.log_prob(sample))
         self.logp[key] = value.log_prob(sample)

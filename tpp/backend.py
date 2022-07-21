@@ -3,25 +3,28 @@ import torch as t
 import opt_einsum as oe
 import torch.distributions as td
 import tpp
+import torchdim
 
 K_prefix = "K_"
 plate_prefix = "plate_"
 
-def is_K(dim):
+def is_K(dim_to_check, dims):
     """
     Check that dim is correctly marked as 'K_'
     """
-    if dim is None:
+    if dim_to_check is None:
         return False
-    return dim[:len(K_prefix)] == K_prefix
+    K_dims = [v for k, v in dims.items() if k[:len(K_prefix)] == K_prefix]
+    return dim_to_check in K_dims
 
-def is_plate(dim):
+def is_plate(dim_to_check, dims):
     """
     Check that dim is correctly marked as 'plate_'
     """
-    if dim is None:
+    if dim_to_check is None:
         return False
-    return dim[:len(plate_prefix)] == plate_prefix
+    plate_dims = [v for k,v in dims.items() if k[:len(plate_prefix)] == plate_prefix]
+    return dim_to_check in plate_dims
 
 def ordered_unique(ls):
     """
@@ -40,8 +43,9 @@ def partition_tensors(lps, dim_name):
     Partitions a list of tensors into two sets, one containing a given dim_name,
     one that doesn't
     """
-    has_dim = [lp for lp in lps if dim_name     in lp.names]
-    no_dim  = [lp for lp in lps if dim_name not in lp.names]
+    print(lps)
+    has_dim = [lp for lp in lps if dim_name     in lp.dims]
+    no_dim  = [lp for lp in lps if dim_name not in lp.dims]
     return has_dim, no_dim
 
 def args_with_dim_name(args, dim_name):
@@ -59,7 +63,10 @@ def unify_names(args):
     """
     Returns unique ordered list of names for tensors in args
     """
-    return ordered_unique([name for arg in args for name in arg.names])
+    if isinstance(args, torchdim.Tensor):
+        return ordered_unique([name for arg in args for name in arg.dims])
+    else:
+        return ordered_unique([name for arg in args for name in arg.names])
 
 def align_tensors(args):
     """
@@ -215,6 +222,7 @@ def sum_lps(lps):
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
         marginals = marginals + _m
+
     assert 1==len(lps)
     assert 1==lps[0].numel()
 
@@ -242,23 +250,34 @@ def sum_logpqs(logps, logqs, dims):
     assert len(logqs) <= len(logps)
 
     # check all named dimensions in logps are either positional, plates or "K"
-    for lp in logqs.values():
-        for n in lp.names:
-            assert (n is None) or n=="K" or is_plate(n)
+    # for lp in logqs.values():
+    #     for n in lp.dims:
+    #         print(type(n))
+    #         assert (n is None) or n==dims['K'] or is_plate(n, dims)
 
     # convert K
-    print(logqs)
-    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
+    # print(logqs)
+    # logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
+    logqs = {n:lp.index(dims['K'], dims[K_prefix+n]) for (n, lp) in logqs.items()}
+    # print(logqs)
 
     # check all named dimensions in logps are either positional, plates or Ks
-    for lp in logps.values():
-        for n in lp.names:
-            assert (n is None) or is_K(n) or is_plate(n)
+    # for lp in logps.values():
+    #     for n in lp.dims:
+    #         print(n)
+    #         print('K' in n)
+    #         assert (n is None) or is_K(n,dims) or is_plate(n,dims)
 
     # sum over all non-plate and non-K dimensions
+    print(logps.items())
+    print(logqs.items())
     logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
     logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
 
+    lst = [logqs['mu'], logps['mu']]
+    has_K, no_K = [t for t in lst if dims['K_mu'] in t.dims]
+    print(has_K)
+    print(no_K)
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
         #check that any rv in logqs is also in logps
@@ -268,18 +287,17 @@ def sum_logpqs(logps, logqs, dims):
         lq = logqs[rv]
 
         # check same plates appear in lp and lq
-        lp_plates = [n for n in lp.names if is_plate(n)]
-        lq_plates = [n for n in lq.names if is_plate(n)]
-        assert set(lp_plates) == set(lq_plates)
+        # lp_plates = [n for n in lp.dims if is_plate(n,dims)]
+        # lq_plates = [n for n in lq.dims if is_plate(n,dims)]
+        # assert set(lp_plates) == set(lq_plates)
 
         # check there is a K_name corresponding to rv name in both tensors
-        assert K_prefix+rv in lp.names
-        assert K_prefix+rv in lq.names
+        # assert K_prefix+rv in lp.names
+        # assert K_prefix+rv in lq.names
 
 
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-
     return sum_lps(all_lps)
 
 def vi(logps, logqs, dims):

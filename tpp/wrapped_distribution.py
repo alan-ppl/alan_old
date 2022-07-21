@@ -2,24 +2,29 @@ import torch as t
 import torch.distributions as td
 from .utils import *
 
+
 class WrappedDist:
     """
     A wrapper of torch.distributions that supports named tensor.
     """
-    def __init__(self, dist, *args, sample_shape=(), sample_names=(), **kwargs):
+    def __init__(self, dist, *args, sample_dim=(), **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.dist = dist
 
-        if isinstance(sample_shape, int):
-            sample_shape = (sample_shape,)
-        if isinstance(sample_names, str):
-            sample_names = (sample_names,)
-        if sample_names == () and sample_shape != ():
-            sample_names = len(sample_shape) * (None,)
+
+        if isinstance(sample_dim, torchdim.Dim):
+            sample_shape = (sample_dim.size,)
+            sample_dim = (sample_dim,)
+        if isinstance(sample_dim, int):
+            sample_dim = (sample_dim,)
+        if sample_dim == () :
+            sample_shape = ()
 
         self.sample_shape = sample_shape
-        self.sample_names = sample_names
+
+        self.sample_dim = sample_dim
+
 
     def rsample(self, K=None):
         names = get_names(self.args)
@@ -29,17 +34,11 @@ class WrappedDist:
 
         if K is not None:
             sample_shape = (K.size,) + self.sample_shape
-            sample_names = (K, *names[0]) + self.sample_names
+            sample_names = (K, *names[0]) + self.sample_dim
         else:
             sample_shape = self.sample_shape
-            sample_names = (names[0]) + self.sample_names
-        # print(args)
-        # print(sample_shape)
-        # print((K, names[0]))
-        # print((self.dist(*args, **kwargs)
-        #         .rsample(sample_shape=sample_shape)[(K, names[0])]))
-        # print((self.dist(*args, **kwargs)
-        #         .rsample(sample_shape=sample_shape)['K']))
+            sample_names = (names[0]) + self.sample_dim
+
         return (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)[sample_names])
 
@@ -51,7 +50,7 @@ class WrappedDist:
         dims = get_sizes(self.args[0])
         kwargs = self.kwargs
 
-        sample_names = (names[0]) + self.sample_names
+        sample_names = (names[0]) + self.sample_dim
         return (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])[sample_names])
 

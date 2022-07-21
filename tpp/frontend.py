@@ -18,7 +18,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
-        return vi(trp.log_prob(), trq.log_prob())
+        return vi(trp.log_prob(), trq.log_prob(), dims)
 
     def importance_sample(self, dims):
         #sample from approximate posterior
@@ -39,6 +39,7 @@ def sample(P, *names):
     """
     tr = TraceSample()
     P(tr)
+
     if 0 == len(names):
         return dename(tr.sample)
     else:
