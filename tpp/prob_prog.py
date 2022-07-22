@@ -114,6 +114,4 @@ class TraceLogP(Trace):
         assert isinstance(value, WrappedDist)
         assert (key in self.data) or (key in self.sample)
         sample = self[key]
-        # print(sample)
-        # print(value.log_prob(sample))
         self.logp[key] = value.log_prob(sample)

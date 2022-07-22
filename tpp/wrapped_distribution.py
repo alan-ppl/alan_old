@@ -50,7 +50,8 @@ class WrappedDist:
         dims = get_sizes(self.args[0])
         kwargs = self.kwargs
 
-        sample_names = (names[0]) + self.sample_dim
+        sample_names = (names[0])
+
         return (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])[sample_names])
 

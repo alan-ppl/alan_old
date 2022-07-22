@@ -5,6 +5,7 @@ from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
 from torchdim import dims
+from tpp.dims import *
 
 
 plate_1 = dims(1)
@@ -15,7 +16,6 @@ def P(tr):
     '''
     a = t.zeros(5,)
     tr['mu'] = tpp.MultivariateNormal(a, t.eye(5), sample_dim=plate_1)
-
     tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5))
 
 
@@ -23,7 +23,7 @@ def P(tr):
 class Q(nn.Module):
     def __init__(self):
         super().__init__()
-        self.m_mu = nn.Parameter(t.zeros(5,5))
+        self.m_mu = nn.Parameter(t.zeros(5,))
 
         self.log_s_mu = nn.Parameter(t.zeros(5,))
 
@@ -43,6 +43,8 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 K, K_mu = dims(2)
 K.size = 5
 K_mu.size = 5
+make_K([K,K_mu])
+make_plate(plate_1)
 dims = {'K':K, 'K_mu':K_mu, 'plate_1':plate_1}
 print("K={}".format(K.size))
 for i in range(10000):
