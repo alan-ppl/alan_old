@@ -10,6 +10,13 @@ from itertools import chain
 K_prefix = "K_"
 plate_prefix = "plate_"
 
+def hasdim(x, lst):
+  for element in lst:
+    if  x is element:
+      return True
+  return False
+
+
 def is_K(dim_to_check):
     """
     Check that dim is correctly marked as 'K_'
@@ -40,7 +47,6 @@ def ordered_unique(ls):
         list of unique elements, in the order they first appeared in ls
     """
     d = {l:None for l in ls}
-    print(d)
     return d.keys()
 
 def partition_tensors(lps, dim_name):
@@ -48,10 +54,9 @@ def partition_tensors(lps, dim_name):
     Partitions a list of tensors into two sets, one containing a given dim_name,
     one that doesn't
     """
-    print(lps)
-    print(dim_name)
-    has_dim = [lp for lp in lps if dim_name     in lp.dims]
-    no_dim  = [lp for lp in lps if dim_name not in lp.dims]
+
+    has_dim = [lp for lp in lps if hasdim(dim_name, lps)]
+    no_dim  = [lp for lp in lps if not hasdim(dim_name, lps)]
     return has_dim, no_dim
 
 def args_with_dim_name(args, dim_name):
@@ -130,7 +135,9 @@ def oe_dim_order(lps, Ks_to_keep):
         dim_order
     """
     #create backward and forward mappings from all tensor names to opt_einsum symbols
+    print(lps)
     unified_names = unify_names(lps)
+    print(unified_names)
     name2sym = dict()
     sym2name = dict()
     for (i, name) in enumerate(unified_names):
@@ -172,6 +179,8 @@ def sum_plate(all_lps, plate_name=None):
     """
     if plate_name is not None:
         #partition tensors into those with/without plate_name
+        print(plate_name)
+        print(all_lps)
         lower_lps, higher_lps = partition_tensors(all_lps, plate_name)
     else:
         #top-level (no plates)
@@ -181,6 +190,8 @@ def sum_plate(all_lps, plate_name=None):
     #collect K's that appear in higher plates
     Ks_to_keep = [n for n in unify_names(higher_lps) if is_K(n)]
 
+    print(lower_lps)
+    print(higher_lps)
     #sum over the K's that don't appear in higher plates
 
     lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
@@ -253,8 +264,6 @@ def sum_logpqs(logps, logqs, dims):
 
 
     # convert K
-    # print(logqs)
-    # logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
     logqs = {n:lp.index(dims['K'], dims[K_prefix+n]) for (n, lp) in logqs.items()}
     # print(logqs)
 

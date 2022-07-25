@@ -17,4 +17,4 @@ TODOs:
 - document that you have to be _really_ careful with dimensions in your programme.
 - document how to set the dimensions for data!
 - More rigorous testing workflow and cases. (e.g. Using unit test framework like pytest)
-- More examples for TPP.
+- More examples for tpp.
