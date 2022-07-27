@@ -46,6 +46,7 @@ class WrappedDist:
         kwargs = self.kwargs
 
         sample_names = (names[0]) + self.sample_names
+        print(args[-1])
         return (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])[sample_names])
 

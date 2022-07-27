@@ -41,6 +41,6 @@ def sample(P, *names):
     P(tr)
 
     if 0 == len(names):
-        return dename(tr.sample)
+        return tr.sample
     else:
-        return {n: dename(tr.sample[n]) for n in names}
+        return {n: tr.sample[n] for n in names}

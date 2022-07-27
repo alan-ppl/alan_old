@@ -135,9 +135,9 @@ def oe_dim_order(lps, Ks_to_keep):
         dim_order
     """
     #create backward and forward mappings from all tensor names to opt_einsum symbols
-    print(lps)
+
     unified_names = unify_names(lps)
-    print(unified_names)
+
     name2sym = dict()
     sym2name = dict()
     for (i, name) in enumerate(unified_names):
@@ -179,8 +179,6 @@ def sum_plate(all_lps, plate_name=None):
     """
     if plate_name is not None:
         #partition tensors into those with/without plate_name
-        print(plate_name)
-        print(all_lps)
         lower_lps, higher_lps = partition_tensors(all_lps, plate_name)
     else:
         #top-level (no plates)
@@ -190,8 +188,6 @@ def sum_plate(all_lps, plate_name=None):
     #collect K's that appear in higher plates
     Ks_to_keep = [n for n in unify_names(higher_lps) if is_K(n)]
 
-    print(lower_lps)
-    print(higher_lps)
     #sum over the K's that don't appear in higher plates
 
     lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
@@ -231,7 +227,6 @@ def sum_lps(lps):
 
     assert 1==len(lps)
     assert 1==lps[0].numel()
-    print(lps)
     return lps[0], marginals
 
 def sum_none_dims(lp):
@@ -278,7 +273,10 @@ def sum_logpqs(logps, logqs, dims):
     logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
 
 
-
+    print('log_ps')
+    print(logps)
+    print('log_qs')
+    print(logqs)
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
         #check that any rv in logqs is also in logps

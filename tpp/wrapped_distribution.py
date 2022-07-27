@@ -46,12 +46,21 @@ class WrappedDist:
     def log_prob(self, x):
         args = (*self.args, x)
         names = get_names([x])
+        print('args')
+        print(args)
         args = dename(args)
         dims = get_sizes(self.args[0])
         kwargs = self.kwargs
 
         sample_names = (names[0])
-
+        print('PRINTING ARGS')
+        print(args[-1].shape)
+        print(args[0].shape)
+        print(args[-1])
+        print(args[:-1])
+        print(self.dist(*args[:-1], **kwargs)
+                .log_prob(args[-1]).shape)
+        print('DONE')
         return (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])[sample_names])
 
