@@ -5,7 +5,7 @@ from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
 from torchdim import dims
-from tpp.dims import *
+from tpp.utils import *
 
 
 plate_1 = dims(1)

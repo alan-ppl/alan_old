@@ -4,7 +4,6 @@ import opt_einsum as oe
 import torch.distributions as td
 import tpp
 import torchdim
-from tpp.utils import *
 from itertools import chain
 
 K_prefix = "K_"
