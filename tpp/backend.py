@@ -1,40 +1,28 @@
+#Write Gibbs sampler!!
 
 import torch as t
 import opt_einsum as oe
 import torch.distributions as td
 import tpp
-import torchdim
-from itertools import chain
 
 K_prefix = "K_"
 plate_prefix = "plate_"
 
-def hasdim(x, lst):
-  for element in lst:
-    if  x is element:
-      return True
-  return False
-
-
-def is_K(dim_to_check):
+def is_K(dim):
     """
     Check that dim is correctly marked as 'K_'
     """
-    # if dim_to_check is None:
-    #     return False
-    # K_dims = [v for k, v in dims.items() if k[:len(K_prefix)] == K_prefix]
-    # return dim_to_check in K_dims
-    return dim_to_check.K
+    if dim is None:
+        return False
+    return dim[:len(K_prefix)] == K_prefix
 
-def is_plate(dim_to_check):
+def is_plate(dim):
     """
     Check that dim is correctly marked as 'plate_'
     """
-    # if dim_to_check is None:
-    #     return False
-    # plate_dims = [v for k,v in dims.items() if k[:len(plate_prefix)] == plate_prefix]
-    # return dim_to_check in plate_dims
-    return dim_to_check.plate
+    if dim is None:
+        return False
+    return dim[:len(plate_prefix)] == plate_prefix
 
 def ordered_unique(ls):
     """
@@ -46,16 +34,15 @@ def ordered_unique(ls):
         list of unique elements, in the order they first appeared in ls
     """
     d = {l:None for l in ls}
-    return d.keys()
+    return list(d.keys())
 
 def partition_tensors(lps, dim_name):
     """
     Partitions a list of tensors into two sets, one containing a given dim_name,
     one that doesn't
     """
-
-    has_dim = [lp for lp in lps if hasdim(dim_name, lps)]
-    no_dim  = [lp for lp in lps if not hasdim(dim_name, lps)]
+    has_dim = [lp for lp in lps if dim_name     in lp.names]
+    no_dim  = [lp for lp in lps if dim_name not in lp.names]
     return has_dim, no_dim
 
 def args_with_dim_name(args, dim_name):
@@ -73,8 +60,7 @@ def unify_names(args):
     """
     Returns unique ordered list of names for tensors in args
     """
-    return ordered_unique(list(chain(*get_names(args))))
-
+    return ordered_unique([name for arg in args for name in arg.names])
 
 def align_tensors(args):
     """
@@ -96,6 +82,15 @@ def reduce_K(all_lps, K_name):
 
     lps_with_K = align_tensors(lps_with_K)
 
+    # max_lps = [lp.max(K_name, keepdim=True)[0] for lp in lps_with_K]
+    # norm_ps = [(lp - mlp).exp() for (lp, mlp) in zip(lps_with_K, max_lps)]
+    #
+    # result_p = norm_ps[0]
+    # for norm_p in norm_ps[1:]:
+    #     result_p = result_p * norm_p
+    # result_p = result_p.mean(K_name, keepdim=True)
+    #
+    # result_lp = (result_p.log() + sum(max_lps)).squeeze(K_name)
     K = all_lps[0].align_to(K_name,...).shape[0]
 
     result_lp = t.logsumexp((sum(lps_with_K)), K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K))
@@ -134,9 +129,7 @@ def oe_dim_order(lps, Ks_to_keep):
         dim_order
     """
     #create backward and forward mappings from all tensor names to opt_einsum symbols
-
     unified_names = unify_names(lps)
-
     name2sym = dict()
     sym2name = dict()
     for (i, name) in enumerate(unified_names):
@@ -216,16 +209,16 @@ def sum_lps(lps):
     #ordered list of plates
     plate_names = [n for n in unify_names(lps) if is_plate(n)]
     #add top-layer (no plate)
-    plate_names = [()] + plate_names
+    plate_names = [None] + plate_names
 
     #iterate from lowest plate
     marginals = []
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
         marginals = marginals + _m
-
     assert 1==len(lps)
     assert 1==lps[0].numel()
+
     return lps[0], marginals
 
 def sum_none_dims(lp):
@@ -237,7 +230,7 @@ def sum_none_dims(lp):
         lp = lp.sum(none_dims)
     return lp
 
-def sum_logpqs(logps, logqs, dims):
+def sum_logpqs(logps, logqs):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -249,33 +242,23 @@ def sum_logpqs(logps, logqs, dims):
 
     assert len(logqs) <= len(logps)
 
-    #check all named dimensions in logps are either positional, plates or "K"
+    # check all named dimensions in logps are either positional, plates or "K"
     for lp in logqs.values():
-        if hasattr(lp, 'dims'):
-            for n in lp.dims:
-                assert is_K(n) or is_plate(n)
-
-
+        for n in lp.names:
+            assert (n is None) or n=="K" or is_plate(n)
 
     # convert K
-    logqs = {n:lp.index(dims['K'], dims[K_prefix+n]) for (n, lp) in logqs.items()}
-    # print(logqs)
+    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
 
     # check all named dimensions in logps are either positional, plates or Ks
     for lp in logps.values():
-        if hasattr(lp, 'dims'):
-            for n in lp.dims:
-                assert is_K(n) or is_plate(n)
+        for n in lp.names:
+            assert (n is None) or is_K(n) or is_plate(n)
 
     # sum over all non-plate and non-K dimensions
     logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
     logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
 
-
-    print('log_ps')
-    print(logps)
-    print('log_qs')
-    print(logqs)
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
         #check that any rv in logqs is also in logps
@@ -284,22 +267,23 @@ def sum_logpqs(logps, logqs, dims):
         lp = logps[rv]
         lq = logqs[rv]
 
-        #check same plates appear in lp and lq
-        lp_plates = [n for n in lp.dims if is_plate(n)]
-        lq_plates = [n for n in lq.dims if is_plate(n)]
+        # check same plates appear in lp and lq
+        lp_plates = [n for n in lp.names if is_plate(n)]
+        lq_plates = [n for n in lq.names if is_plate(n)]
         assert set(lp_plates) == set(lq_plates)
 
-        #check there is a K_name corresponding to rv name in both tensors
-        assert dims[K_prefix+rv] in lp.dims
-        assert dims[K_prefix+rv] in lq.dims
+        # check there is a K_name corresponding to rv name in both tensors
+        assert K_prefix+rv in lp.names
+        assert K_prefix+rv in lq.names
 
 
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
+
     return sum_lps(all_lps)
 
-def vi(logps, logqs, dims):
-    elbo, _ = sum_logpqs(logps, logqs, dims)
+def vi(logps, logqs):
+    elbo, _ = sum_logpqs(logps, logqs)
     return elbo
 
 
@@ -368,6 +352,87 @@ def gibbs(marginals):
 
     return K_dict
 
+# def gibbs(marginals):
+#
+#     #names of random variables that we've sampled
+#     K_names = []
+#     #corresponding sampled indexes
+#     ks = []
+#
+#     K_dict = {}
+#     for (rv, log_margs) in marginals[::-1]:
+#
+#         #throw away log_margs without dimension of interest
+#         K_name = rv
+#         log_margs = [lm for lm in log_margs if (K_name in lm.names)]
+#         print(log_margs)
+#
+#
+#         #Sample K for each dimension and then use that K to pick
+#         # problem is that aligning the tensors adds a dimension to the shape
+#         # so that when i come to index in, im indexing in the wrong dimension
+#
+#         #index into log_margs with previously sampled ks
+#         #different indexing behaviour for tuples vs lists
+#         # print(rv)
+#         # print("indexes: ")
+#         # print(tuple(ks))
+#         # print(K_names)
+#
+#
+#         # log_margs = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
+#         # print([lm.names for lm in log_margs])
+#         # print([lm.shape for lm in log_margs])
+#         # print(K_dict)
+#         #print([lm for lm in log_margs])
+#         selected_lms = []
+#         if len(K_dict.keys()) > 0:
+#             for name in K_dict.keys():
+#                 # print(K_dict[name].dim())
+#                 if K_dict[name].dim() > 0:
+#                     for index in K_dict[name].tolist():
+#                         selected_lms.extend([lm.select(name, index) for lm in log_margs if name in lm.names])
+#                         # print([lm.select(name, index) for lm in log_margs if name in lm.names])
+#                 else:
+#                     selected_lms.extend([lm.select(name, K_dict[name]) for lm in log_margs if name in lm.names])
+#                     # print([lm.select(name, K_dict[name]) for lm in log_margs if name in lm.names])
+#         else:
+#             selected_lms = [lm.align_to(*K_names, '...')[tuple(ks)] for lm in log_margs]
+#
+#
+#         log_margs = selected_lms #+ no_shared_dims
+#
+#         #the only K left should be K_name
+#         #and plates should all be the same (and there should be more than one tensor)
+#         #therefore all dim_names should be the same,
+#         dmss = [set(lm.names) for lm in log_margs]
+#         dms0 = dmss[0]
+#
+#         for dms in dmss[1:]:
+#             assert dms0 == dms
+#
+#         #the only K left should be K_name
+#         remaining_K_names = [n for n in dms0 if is_K(n)]
+#         assert 1==len(remaining_K_names)
+#         assert K_name == remaining_K_names[0]
+#
+#         #align and combine tensors
+#         plate_names = [n for n in dms0 if is_plate(n)]
+#         align_names = plate_names + remaining_K_names
+#
+#         lp = sum([lm.align_to(*align_names) for lm in log_margs])
+#         print('final log prob shape')
+#         print(lp)
+#         print(lp.shape)
+#         #add K_name and sample to lists
+#         K_names.append(remaining_K_names[0])
+#         ks.append(td.Categorical(logits=lp.rename(None)).sample())
+#         print(ks[-1])
+#         K_dict[K_names[-1]] = ks[-1]
+#
+#
+#
+#     return K_dict
 
 
 
@@ -384,7 +449,6 @@ if __name__ == "__main__":
 
     lp, marginals = sum_lps(lps)
 
-
-    ks = gibbs(marginals)
-    print(lps)
-    print(ks)
+    # data = tpp.sample(P, "obs")
+    # print(data)
+    print(gibbs(marginals))
