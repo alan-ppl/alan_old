@@ -15,11 +15,7 @@ def P(tr):
     '''
     a = t.zeros(5,)
     tr['mu'] = tpp.MultivariateNormal(a, t.eye(5))
-    print('tr_mu')
-    print(tr['mu'])
     tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5), sample_dim=plate_1)
-    print('tr_obs')
-    print(tr['obs'])
 
 
 

@@ -253,6 +253,7 @@ def sum_logpqs(logps, logqs):
     # check all named dimensions in logps are either positional, plates or Ks
     for lp in logps.values():
         for n in lp.names:
+            print(n)
             assert (n is None) or is_K(n) or is_plate(n)
 
     # sum over all non-plate and non-K dimensions

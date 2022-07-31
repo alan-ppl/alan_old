@@ -65,15 +65,29 @@ def sum_plate(tensor):
 
 def make_named(tensor):
     names = get_names(tensor)
-    return dename(tensor).refine_names(*names)
+    if names is None:
+        return tensor
+    else:
+        return dename(tensor).refine_names(*names)
 
 def nameify(args, kwargs):
     dim_dict = get_dim_dict(list(args) + list(kwargs.values()))
     args, kwargs = tensormap(lambda x: make_named(x), args, kwargs)
-    def f(x):
-        names = get_names(x)
-        dims = tuple([dim_dict[name] if name is not None else None for name in names])
-        return x.rename(None)[dims]
+    def f(x, sample_dim=None, K_dim = None):
+        names = x.names
+        if sample_dim is not None:
+            dim_dict[repr(sample_dim)] = sample_dim
+        if K_dim is not None:
+            dim_dict[repr(K_dim)] = K_dim
+
+        if all([name is None for name in names]):
+            return x
+        else:
+            dims = [dim_dict[name] if name is not None else None for name in names]
+            while dims[-1] is None:
+                dims.pop()
+            dims = tuple(dims)
+            return x.rename(None)[dims]
 
     return args, kwargs, f
 
@@ -84,7 +98,7 @@ def get_dims(tensors):
 def get_names(tensor):
     dims = getattr(tensor, 'dims', None)
     if dims is None:
-        return [None] * len(tensor.shape)
+        return None
     else:
         return [repr(dim) for dim in dims]
 

@@ -14,12 +14,15 @@ class WrappedDist:
 
 
         if isinstance(sample_dim, torchdim.Dim):
+            self.sample_dim = sample_dim
             sample_shape = (sample_dim.size,)
             sample_dim = (sample_dim,)
         if isinstance(sample_dim, int):
             sample_dim = (sample_dim,)
         if sample_dim == () :
+            self.sample_dim = None
             sample_shape = ()
+
 
         self.sample_shape = sample_shape
 
@@ -28,9 +31,8 @@ class WrappedDist:
     def rsample(self, K=None):
         args = self.args
         kwargs = self.kwargs
-        K_size = K.size if K is not None else 1
+        K_size = K.size if K is not None else None
         args, kwargs, denamify = nameify(args, kwargs)
-
 
         # Sorted list of all unique names
         unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
@@ -59,11 +61,9 @@ class WrappedDist:
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
 
         unified_names = [repr(K)] + sorted(unified_names) if sampling_K else sorted(unified_names)
-        print(self.sample_names)
-        print(unified_names)
         return denamify(self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
-                .refine_names(*self.sample_names, *unified_names, ...))
+                .refine_names(*self.sample_names, *unified_names, ...), sample_dim = self.sample_dim, K_dim = K)
 
 
     def log_prob(self, x):
@@ -86,7 +86,7 @@ class WrappedDist:
 
         return denamify(self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])
-                .refine_names(*unified_names, ...))
+                .refine_names(*unified_names, ...), sample_dim = self.sample_dim, K_dim = K)
 
 # Some distributions do not have rsample, how to handle? (e.g. Bernoulli)
 dist_names = [
