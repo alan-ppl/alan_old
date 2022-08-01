@@ -1,7 +1,8 @@
 import torch as t
 import torch.distributions as td
 from .utils import *
-
+import torchdim
+from .cartesian_tensor import cartesiantensormap, tensormap, pad_nones, tensors, CartesianTensor
 
 class WrappedDist:
     """
@@ -60,18 +61,25 @@ class WrappedDist:
         args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
 
-        unified_names = [repr(K)] + sorted(unified_names) if sampling_K else sorted(unified_names)
-        return denamify(self.dist(*args, **kwargs)
+        unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
+        # return denamify(self.dist(*args, **kwargs)
+        #         .rsample(sample_shape=sample_shape)
+        #         .refine_names(*self.sample_names, *unified_names, ...), sample_dim = self.sample_dim, K_dim = K)
+        return (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
-                .refine_names(*self.sample_names, *unified_names, ...), sample_dim = self.sample_dim, K_dim = K)
+                .refine_names(*self.sample_names, *unified_names, ...))
 
 
     def log_prob(self, x):
-        assert isinstance(x, t.Tensor) or isinstance(x, CartesianTensor)
+        assert isinstance(x, t.Tensor) or isinstance(x, CartesianTensor) or isinstance(x, torchdim.Tensor)
         args = (*self.args, x)
         kwargs = self.kwargs
 
+
+        args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
         args, kwargs, denamify = nameify(args, kwargs)
+
+
         # Sorted list of all unique names
         unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
         unified_names.discard(None)
@@ -84,9 +92,9 @@ class WrappedDist:
         args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
 
-        return denamify(self.dist(*args[:-1], **kwargs)
+        return (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])
-                .refine_names(*unified_names, ...), sample_dim = self.sample_dim, K_dim = K)
+                .refine_names(*unified_names, ...))
 
 # Some distributions do not have rsample, how to handle? (e.g. Bernoulli)
 dist_names = [

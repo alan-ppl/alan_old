@@ -31,26 +31,11 @@ class Q(nn.Module):
         tr['mu'] = tpp.MultivariateNormal(self.m_mu, t.diag(self.log_s_mu.exp()))
 
 data = tpp.sample(P, "obs")
-# # data = {'obs': t.tensor([ 0.9004, -3.7564,  0.4881, -1.1412,  0.2087])}
-# K_obs = dims(1)
-# K_obs.size = 1
-# # data['obs'] = data['obs'].unsqueeze(0)[K_obs,:]
-# obs = t.tensor([[[ 0.5319,  0.4274, -0.7725, -1.1542, -0.7040]],
-#
-#         [[-0.1281, -0.7801, -0.5250, -0.8313,  1.6599]],
-#
-#         [[ 1.0722,  1.2969, -0.7785, -0.9243, -0.4684]],
-#
-#         [[ 1.0723, -0.1205,  0.1732, -2.0058,  0.7741]],
-#
-#         [[ 3.2124,  0.1402, -0.9065, -2.8523,  0.1510]]])
-# print(obs.reshape(1,5,5))
-# print(obs.shape)
-# data = {'obs': t.tensor([[[ 0.5319,  0.4274, -0.7725, -1.1542, -0.7040],
-#          [-0.1281, -0.7801, -0.5250, -0.8313,  1.6599],
-#          [ 1.0722,  1.2969, -0.7785, -0.9243, -0.4684],
-#          [ 1.0723, -0.1205,  0.1732, -2.0058,  0.7741],
-#          [ 3.2124,  0.1402, -0.9065, -2.8523,  0.1510]]])[plate_1, :]}
+data = {'obs': t.tensor(t.tensor([[[ 0.5851,  0.8783, -0.4380, -1.3839,  0.9538]],
+        [[ 0.3030,  0.8338, -2.2067, -1.8815,  3.3449]],
+        [[ 1.8357, -0.3146,  0.5771, -1.4885, -0.3881]],
+        [[-1.0334, -0.2395,  0.3544, -2.0973,  1.8586]],
+        [[ 0.5752, -0.9763, -1.0950, -0.2201,  0.4888]]])[plate_1, :]}
 
 print(data)
 model = tpp.Model(P, Q(), data)
@@ -72,4 +57,7 @@ for i in range(10000):
     if 0 == i%1000:
         print(elbo.item())
 
-print(model.importance_sample(K=5))
+print(model.importance_sample(dims=dims))
+print(model.importance_sample(dims=dims))
+print(model.importance_sample(dims=dims))
+print(model.importance_sample(dims=dims))

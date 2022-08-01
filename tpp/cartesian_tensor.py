@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-# from functorch import vmap
+from functorch import vmap
 
 
 torch._C._debug_only_display_vmap_fallback_warnings(True)

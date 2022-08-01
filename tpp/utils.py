@@ -1,7 +1,7 @@
 import torchdim
 from torchdim import dims
 import torch
-# from .cartesian_tensor import tensormap
+from .cartesian_tensor import tensormap, typemap
 
 def dename(tensors):
 
@@ -72,7 +72,7 @@ def make_named(tensor):
 
 def nameify(args, kwargs):
     dim_dict = get_dim_dict(list(args) + list(kwargs.values()))
-    args, kwargs = tensormap(lambda x: make_named(x), args, kwargs)
+    args, kwargs = torchdimtensormap(lambda x: make_named(x), args, kwargs)
     def f(x, sample_dim=None, K_dim = None):
         names = x.names
         if sample_dim is not None:
@@ -100,7 +100,8 @@ def get_names(tensor):
     if dims is None:
         return None
     else:
-        return [repr(dim) for dim in dims]
+        names = [repr(dim) for dim in dims]
+        return  names + [None]*(len(tensor.shape) - len(names) + 1)
 
 
 def get_dim_dict(tensors):
@@ -144,88 +145,22 @@ def tensordim_to_name(tensors):
             named_tensors.append(tensor.refine_names(*names))
     return named_tensors
 
-
-def typemap(f, typ, args, kwargs):
-    """
-    Apply a function to all args and kwargs of a given type
-    """
-    args = [(f(arg) if isinstance(arg, typ) else arg) for arg in args]
-    kwargs = {key: (f(val) if isinstance(val, typ) else val) for (key, val) in kwargs.items()}
-    return args, kwargs
-
-def tensormap(f, args, kwargs):
+def torchdimtensormap(f, args, kwargs):
     """
     Applys f to args and vals in kwargs if they are torch tensors
     """
-    return typemap(f, torch.Tensor, args, kwargs)
+    return typemap(f, torchdim.Tensor, args, kwargs)
 
-
-## Old Cartesian Tensor Stuff
-
-def expand(arg, shape):
-    """
-    Usual expand, but allows len(shape) != len(arg.shape), by expanding only the leading dimensions
-    """
-    return arg.expand(*shape, *arg.shape[-(len(arg.shape) - len(shape)):])
-
-
-def typemap(f, typ, args, kwargs):
-    """
-    Apply a function to all args and kwargs of a given type
-    """
-    args = [(f(arg) if isinstance(arg, typ) else arg) for arg in args]
-    kwargs = {key: (f(val) if isinstance(val, typ) else val) for (key, val) in kwargs.items()}
-    return args, kwargs
-
-
-def cartesiantensormap(f, args, kwargs):
-    """
-    Applys f to args and vals in kwargs if they are CartesianTensors
-    """
-    return typemap(f, CartesianTensor, args, kwargs)
-
-
-def tensormap(f, args, kwargs):
-    """
-    Applys f to args and vals in kwargs if they are torch tensors
-    """
-    return typemap(f, torch.Tensor, args, kwargs)
-
-
-def tensors(args, kwargs):
-    """
-    Extract list of all tensors from args, kwargs
-    """
-    return [arg for arg in [*args, *kwargs.values()] if isinstance(arg, torch.Tensor)]
-
-
-def cartesian_tensorfy_value(val, unified_names):
-    """
-    Sometimes, pytorch operations return (nested) tuples of tensors.
-    Go through tree, and convert all Tensors to CartesianTensors
-    """
-    if isinstance(val, torch.Tensor):
-        return CartesianTensor(val.refine_names(*unified_names, ...))
-    elif isinstance(val, tuple):
-        return tuple(cartesian_tensorfy_value(v, unified_names) for v in val)
-    else:
-        return val
-
-
-def pad_nones(arg, max_pos_dim):
-    """
-    Pad with as many positional dimensions as necessary after named dimensions
-    to reach max_pos_dim
-    """
-    names = arg.names
-    # current number of None's
-    pos_dim = sum(name is None for name in names)
-    # current number of named dimensions (excluding None's)
-    named_dims = len(names) - pos_dim
-
-    # strip names because unsqueeze can't cope with them
-    arg = arg.rename(None)
-    for _ in range(max_pos_dim-pos_dim):
-        arg = arg.unsqueeze(named_dims)
-
-    return arg.refine_names(*names, ...)
+# def typemap(f, typ, args, kwargs):
+#     """
+#     Apply a function to all args and kwargs of a given type
+#     """
+#     args = [(f(arg) if isinstance(arg, typ) else arg) for arg in args]
+#     kwargs = {key: (f(val) if isinstance(val, typ) else val) for (key, val) in kwargs.items()}
+#     return args, kwargs
+#
+# def tensormap(f, args, kwargs):
+#     """
+#     Applys f to args and vals in kwargs if they are torch tensors
+#     """
+#     return typemap(f, torch.Tensor, args, kwargs)
