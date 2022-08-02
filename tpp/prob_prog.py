@@ -26,7 +26,7 @@ class Trace:
 
     def log_prob(self):
         return {
-            k: (v._t if isinstance(v, CartesianTensor) else v) for (k, v) in self.logp.items()
+            k: v for (k, v) in self.logp.items()
         }
 
 
@@ -60,7 +60,7 @@ class TraceSampleLogQ(Trace):
         assert key not in self.data
         assert key not in self.sample
         sample = value.rsample(K=self.K)
-        self.sample[key] = CartesianTensor(sample)
+        self.sample[key] = sample
         self.logp[key] = value.log_prob(sample)
 
     def __repr__(self) -> str:
@@ -107,8 +107,8 @@ class TraceLogP(Trace):
         if key in self.sample:
             K_name = f"K_{key}"
             # sample = self.sample[key].index(self.dims['K'], self.dims[K_name])
-            sample = self.sample[key]._t.rename(K=f"K_{key}")
-            return CartesianTensor(sample)
+            sample = self.sample[key].rename(K=f"K_{key}")
+            return sample
         return self.data[key]
 
     def __setitem__(self, key, value):

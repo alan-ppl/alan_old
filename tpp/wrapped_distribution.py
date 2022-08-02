@@ -71,12 +71,12 @@ class WrappedDist:
 
 
     def log_prob(self, x):
-        assert isinstance(x, t.Tensor) or isinstance(x, CartesianTensor) or isinstance(x, torchdim.Tensor)
+        assert isinstance(x, t.Tensor) or isinstance(x, torchdim.Tensor)
         args = (*self.args, x)
         kwargs = self.kwargs
 
 
-        args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
+        # args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
         args, kwargs, denamify = nameify(args, kwargs)
 
 
