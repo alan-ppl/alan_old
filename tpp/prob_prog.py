@@ -1,9 +1,8 @@
 import torch as t
 import torch.distributions as td
 import torch.nn as nn
-from .cartesian_tensor import CartesianTensor
 from .wrapped_distribution import WrappedDist
-from .utils import *
+
 # from torchdim import dims
 
 __all__ = [
@@ -106,8 +105,8 @@ class TraceLogP(Trace):
         assert (key in self.data) or (key in self.sample)
         if key in self.sample:
             K_name = f"K_{key}"
-            # sample = self.sample[key].index(self.dims['K'], self.dims[K_name])
-            sample = self.sample[key].rename(K=f"K_{key}")
+            sample = self.sample[key].index(self.dims['K'], self.dims[key])
+            # sample = self.sample[key].rename(K=f"K_{key}")
             return sample
         return self.data[key]
 

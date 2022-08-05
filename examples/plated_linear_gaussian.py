@@ -1,19 +1,21 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.cartesian_tensor import CartesianTensor
+from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+from tpp.backend import vi
+import tqdm
+from torchdim import dims
+
 J = 2
 M = 3
 N = 4
+plate_1,plate_2,plate_3 = dims(3 , [J, M, N])
 def P(tr):
     tr['a'] = tpp.Normal(t.zeros(()), 1)
     tr['b'] = tpp.Normal(tr['a'], 1)
-    tr['c'] = tpp.Normal(tr['b'], 1, sample_shape=J, sample_names='plate_1')
-    tr['d'] = tpp.Normal(tr['c'], 1, sample_shape=M, sample_names='plate_2')
-    tr['obs'] = tpp.Normal(tr['d'], 1, sample_shape=N, sample_names='plate_3')
-
-
-
+    tr['c'] = tpp.Normal(tr['b'], 1, sample_dim=plate_1)
+    tr['d'] = tpp.Normal(tr['c'], 1, sample_dim=plate_2)
+    tr['obs'] = tpp.Normal(tr['d'], 1, sample_dim=plate_3)
 
 
 class Q(nn.Module):
@@ -24,16 +26,16 @@ class Q(nn.Module):
         self.w_b = nn.Parameter(t.zeros(()))
         self.b_b = nn.Parameter(t.zeros(()))
 
-        self.w_c = nn.Parameter(t.zeros((J,), names = ('plate_1',)))
-        self.b_c = nn.Parameter(t.zeros((J,), names=('plate_1',)))
+        self.w_c = nn.Parameter(t.zeros((J,)))
+        self.b_c = nn.Parameter(t.zeros((J,)))
 
-        self.w_d = nn.Parameter(t.zeros((M, J), names=('plate_2','plate_1')))
-        self.b_d = nn.Parameter(t.zeros((M, J), names=('plate_2', 'plate_1')))
+        self.w_d = nn.Parameter(t.zeros((M, J)))
+        self.b_d = nn.Parameter(t.zeros((M, J)))
 
         self.log_s_a = nn.Parameter(t.zeros(()))
         self.log_s_b = nn.Parameter(t.zeros(()))
-        self.log_s_c = nn.Parameter(t.zeros((J,), names=('plate_1',)))
-        self.log_s_d = nn.Parameter(t.zeros((M, J), names=('plate_2','plate_1')))
+        self.log_s_c = nn.Parameter(t.zeros((J,)))
+        self.log_s_d = nn.Parameter(t.zeros((M, J)))
 
 
     def forward(self, tr):
@@ -43,13 +45,14 @@ class Q(nn.Module):
         tr['b'] = tpp.Normal(mean_b, self.log_s_b.exp())
 
 
-        mean_c = self.w_c*tr['b'] + self.b_c
+        mean_c = self.w_c * tr['b'] + self.b_c
         tr['c'] = tpp.Normal(mean_c, self.log_s_c.exp())
 
-        c = tr['c']
-        mean_d = self.w_d * tr['c'] + self.b_d
 
+        mean_d = self.w_d * tr['c'] + self.b_d
         tr['d'] = tpp.Normal(mean_d, self.log_s_d.exp())
+
+
 
 
 data = tpp.sample(P)
@@ -59,13 +62,13 @@ bs = []
 cs = []
 ds = []
 obss = []
-for i in range(10000):
+for i in range(1000):
     sample = tpp.sample(P)
-    a.append(sample['a'].rename(None).flatten())
-    bs.append(sample['b'].rename(None).flatten())
-    cs.append(sample['c'].rename(None).flatten())
-    ds.append(sample['d'].align_to('plate_2', 'plate_1').rename(None).T.flatten())
-    obss.append(sample['obs'].rename(None).flatten())
+    a.append(tpp.dename(sample['a']).flatten())
+    bs.append(tpp.dename(sample['b']).flatten())
+    cs.append(tpp.dename(sample['c']).flatten())
+    ds.append(tpp.dename(sample['d']).flatten())
+    obss.append(tpp.dename(sample['obs']).flatten())
 
 
 
@@ -75,7 +78,7 @@ params_prior_cov = t.round(t.cov(t.cat((t.vstack(a),t.vstack(bs),t.vstack(cs), t
 cov_obs_prior = t.eye(J*M*N)
 
 post_cov_inv = (t.inverse(params_prior_cov) + A.T @ t.inverse(cov_obs_prior) @ A)
-post_mean = t.inverse(post_cov_inv) @ (A.T @ t.inverse(cov_obs_prior) @  data['obs'].rename(None).flatten())
+post_mean = t.inverse(post_cov_inv) @ (A.T @ t.inverse(cov_obs_prior) @  tpp.dename(data['obs']).flatten())
 
 
 
@@ -83,11 +86,12 @@ model = tpp.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K = 3
+K=5
+dims = tpp.make_dims(P, K, [plate_1,plate_2,plate_3])
 print("K={}".format(K))
 for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(K=K)
+    elbo = model.elbo(dims=dims)
     (-elbo).backward()
     opt.step()
 
@@ -97,7 +101,7 @@ for i in range(10000):
 
 post_cov_inv = (t.inverse(params_prior_cov ) + A.T @ t.inverse(cov_obs_prior) @ A)
 
-post_mean = t.inverse(post_cov_inv) @ (A.T @ t.inverse(cov_obs_prior) @  data['obs'].rename(None).flatten())
+post_mean = t.inverse(post_cov_inv) @ (A.T @ t.inverse(cov_obs_prior) @  tpp.dename(data['obs']).flatten())
 
 
 
@@ -108,10 +112,10 @@ ds = []
 for i in range(5000):
     sample = tpp.sample(model.Q)
     # print(sample)
-    a.append(sample['a'].rename(None).flatten())
-    bs.append(sample['b'].rename(None).flatten())
-    cs.append(sample['c'].rename(None).flatten())
-    ds.append(sample['d'].align_to('plate_2', 'plate_1').rename(None).T.flatten())
+    a.append(tpp.dename(sample['a']).flatten())
+    bs.append(tpp.dename(sample['b']).flatten())
+    cs.append(tpp.dename(sample['c']).flatten())
+    ds.append(tpp.dename(sample['d']).T.flatten())
 
 
 

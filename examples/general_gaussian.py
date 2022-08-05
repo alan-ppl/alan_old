@@ -4,8 +4,7 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
-from torch.distributions import transforms
-import torch.distributions as td
+from torchdim import dims
 
 '''
 Test posterior inference with a general gaussian
@@ -17,14 +16,16 @@ sigma = t.rand(5,5)
 sigma = t.mm(sigma, sigma.t())
 sigma.add_(t.eye(5)* 1e-5)
 a = t.randn(5,)
+
 N = 1
+plate_1 = dims(1 , [N])
 def P(tr):
   '''
   Bayesian Gaussian Model
   '''
 
   tr['mu'] = tpp.MultivariateNormal(a, sigma_0)
-  tr['obs'] = tpp.MultivariateNormal(tr['mu'], sigma, sample_shape=N, sample_names='plate_1')
+  tr['obs'] = tpp.MultivariateNormal(tr['mu'], sigma, sample_dim=plate_1)
 
 
 
@@ -47,9 +48,13 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-for i in range(25000):
+K=1
+dims = tpp.make_dims(P, K)
+print("K={}".format(K))
+
+for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(K=10)
+    elbo = model.elbo(dims=dims)
     (-elbo).backward()
     opt.step()
 
@@ -60,7 +65,8 @@ inferred_mean = model.Q.m_mu
 inferred_cov = t.mm(model.Q.s_mu, model.Q.s_mu.t())
 inferred_cov.add_(t.eye(5)* 1e-5)
 
-y_hat = data['obs'].rename(None).mean(axis=0).reshape(-1,1)
+
+y_hat = tpp.dename(data['obs']).mean(axis=0).reshape(-1,1)
 true_cov = t.inverse(N * t.inverse(sigma) + t.inverse(sigma_0))
 true_mean = (true_cov @ (N*t.inverse(sigma) @ y_hat + t.inverse(sigma_0)@a.reshape(-1,1))).reshape(1,-1)
 

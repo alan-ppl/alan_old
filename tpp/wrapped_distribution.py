@@ -1,8 +1,9 @@
 import torch as t
 import torch.distributions as td
-from .utils import *
 import torchdim
-from .cartesian_tensor import cartesiantensormap, tensormap, pad_nones, tensors, CartesianTensor
+from .tensor_utils import *
+
+
 
 class WrappedDist:
     """
@@ -62,12 +63,14 @@ class WrappedDist:
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
 
         unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
-        # return denamify(self.dist(*args, **kwargs)
-        #         .rsample(sample_shape=sample_shape)
-        #         .refine_names(*self.sample_names, *unified_names, ...), sample_dim = self.sample_dim, K_dim = K)
-        return (self.dist(*args, **kwargs)
+
+        samples = (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
+
+
+        
+        return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 
 
     def log_prob(self, x):
@@ -92,9 +95,10 @@ class WrappedDist:
         args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
 
-        return (self.dist(*args[:-1], **kwargs)
+        log_probs = (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])
                 .refine_names(*unified_names, ...))
+        return log_probs
 
 # Some distributions do not have rsample, how to handle? (e.g. Bernoulli)
 dist_names = [

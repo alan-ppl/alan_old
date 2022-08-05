@@ -4,6 +4,7 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
+from torchdim import dims
 
 
 
@@ -53,10 +54,12 @@ model = tpp.Model(P, Q(), data_y)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-print("K=5")
+K=5
+dims = tpp.make_dims(P, K)
+print("K={}".format(K))
 for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(K=5)
+    elbo = model.elbo(dims=dims)
     (-elbo).backward()
     opt.step()
 
@@ -64,13 +67,6 @@ for i in range(10000):
         print(elbo.item())
 
 
-# ws = []
-# for i in range(1000):
-#     sample = tpp.sample(model.Q)
-#     ws.append(sample['w'].rename(None).flatten())
-#
-# print(t.round(t.cov((t.vstack(ws)).T), decimals=3))
-# print(t.mean((t.vstack(ws)), dim=0))
 
 
 print("Approximate mu")
@@ -83,7 +79,7 @@ print(inferred_cov)
 
 
 V_n = sigma_y * t.inverse(sigma_y * t.inverse(sigma_w*t.eye(2)) + data_x @ data_x.t())
-w_n = V_n @ t.inverse(sigma_w*t.eye(2)) @ w_0.reshape(-1,1) + (1/sigma_y) * V_n @ data_x @ data_y['obs'].reshape(-1,1)
+w_n = V_n @ t.inverse(sigma_w*t.eye(2)) @ w_0.reshape(-1,1) + (1/sigma_y) * V_n @ data_x @ tpp.dename(data_y['obs']).reshape(-1,1)
 
 
 print("True mean weights")
