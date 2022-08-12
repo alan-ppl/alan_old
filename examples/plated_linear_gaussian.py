@@ -39,18 +39,26 @@ class Q(nn.Module):
 
 
     def forward(self, tr):
+        w_c = self.w_c[plate_1]
+        b_c = self.b_c[plate_1]
+        log_s_c = self.log_s_c[plate_1]
+
+        w_d = self.w_d[plate_2,plate_1]
+        b_d = self.b_d[plate_2,plate_1]
+        log_s_d = self.log_s_d[plate_2,plate_1]
+
         tr['a'] = tpp.Normal(self.m_a, self.log_s_a.exp())
 
         mean_b = self.w_b * tr['a'] + self.b_b
         tr['b'] = tpp.Normal(mean_b, self.log_s_b.exp())
 
 
-        mean_c = self.w_c * tr['b'] + self.b_c
-        tr['c'] = tpp.Normal(mean_c, self.log_s_c.exp())
+        mean_c = w_c * tr['b'] + b_c
 
+        tr['c'] = tpp.Normal(mean_c, log_s_c.exp())
 
-        mean_d = self.w_d * tr['c'] + self.b_d
-        tr['d'] = tpp.Normal(mean_d, self.log_s_d.exp())
+        mean_d = w_d * tr['c'] + b_d
+        tr['d'] = tpp.Normal(mean_d, log_s_d.exp())
 
 
 
@@ -86,7 +94,7 @@ model = tpp.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=5
+K=2
 dims = tpp.make_dims(P, K, [plate_1,plate_2,plate_3])
 print("K={}".format(K))
 for i in range(10000):
@@ -115,10 +123,13 @@ for i in range(5000):
     a.append(tpp.dename(sample['a']).flatten())
     bs.append(tpp.dename(sample['b']).flatten())
     cs.append(tpp.dename(sample['c']).flatten())
-    ds.append(tpp.dename(sample['d']).T.flatten())
+    ds.append(tpp.dename(sample['d']).flatten())
 
 
-
+# print(a)
+# print(bs)
+# print(cs)
+# print(ds)
 params_post_cov = t.round(t.cov(t.cat((t.vstack(a),t.vstack(bs),t.vstack(cs), t.vstack(ds)), dim=1).T), decimals=2)
 params_post_mean = t.mean(t.cat((t.vstack(a),t.vstack(bs),t.vstack(cs), t.vstack(ds)), dim=1).T, dim=1)
 

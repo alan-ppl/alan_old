@@ -20,7 +20,6 @@ data_x = t.tensor([[0.4,1],
 sigma_w = 0.5
 sigma_y = 0.1
 w_0 = t.randn(2,)
-
 def P(tr):
   '''
   Bayesian Gaussian Linear Model

@@ -69,7 +69,7 @@ class WrappedDist:
                 .refine_names(*self.sample_names, *unified_names, ...))
 
 
-        
+
         return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 
 

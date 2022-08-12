@@ -17,7 +17,7 @@ sigma = t.mm(sigma, sigma.t())
 sigma.add_(t.eye(5)* 1e-5)
 a = t.randn(5,)
 
-N = 1
+N = 10
 plate_1 = dims(1 , [N])
 def P(tr):
   '''
@@ -48,11 +48,11 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=1
+K=2
 dims = tpp.make_dims(P, K)
 print("K={}".format(K))
 
-for i in range(10000):
+for i in range(20000):
     opt.zero_grad()
     elbo = model.elbo(dims=dims)
     (-elbo).backward()

@@ -1,9 +1,11 @@
 import torch as t
 import torch.nn as nn
 import tpp
+from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
 from torchdim import dims
+from tpp.utils import *
 
 
 plate_1 = dims(1 , [5])
@@ -39,10 +41,13 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K = 3
-dims = tpp.make_dims(P, K, [plate_1])
-print("K={}".format(K))
-for i in range(15000):
+
+K, K_mu = dims(2, [20,20])
+make_K([K,K_mu])
+make_plate(plate_1)
+dims = {'K':K, 'K_mu':K_mu, 'plate_1':plate_1}
+print("K={}".format(K.size))
+for i in range(20000):
     opt.zero_grad()
     elbo = model.elbo(dims=dims)
     (-elbo).backward()
@@ -58,7 +63,7 @@ print("Approximate Covariance")
 print(model.Q.log_s_mu.exp())
 
 
-data_obs = tpp.dename(data['obs'])
+data_obs = dename(data['obs'])
 
 b_n = t.mm(t.inverse(t.eye(5) + 1/5 * t.eye(5)),data_obs.mean(axis=0).reshape(-1,1))
 A_n = t.inverse(t.eye(5) + 1/5 * t.eye(5)) * 1/5

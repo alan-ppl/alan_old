@@ -1,9 +1,11 @@
 import sys
 sys.path.append('..')
-
 import torch as t
 import torch.nn as nn
 import tpp
+from tpp.backend import vi
+
+from torchdim import dims
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import unittest
@@ -14,13 +16,14 @@ class tests(unittest.TestCase):
         '''
         Test posterior inference with a Gaussian with plated observations
         '''
+        plate_1 = dims(1 , [10])
         def P(tr):
           '''
           Bayesian Heirarchical Gaussian Model
           '''
           a = t.zeros(5,)
           tr['mu'] = tpp.MultivariateNormal(a, t.eye(5))
-          tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5), sample_shape=10, sample_names='plate_1')
+          tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5), sample_dim=plate_1)
 
 
 
@@ -45,8 +48,7 @@ class tests(unittest.TestCase):
         [ 0.5391,  0.4714,  0.5067,  1.2729,  0.9414],
         [ 1.4357,  0.0208,  0.7751,  1.5554,  0.8555],
         [ 0.1909, -0.3226,  0.5594,  1.0569, -1.6546],
-        [-0.1745, -1.9498,  1.5145,  2.7684, -0.8587]],
-       names=('plate_1', None))}
+        [-0.1745, -1.9498,  1.5145,  2.7684, -0.8587]])}
 
 
 
@@ -54,9 +56,12 @@ class tests(unittest.TestCase):
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-        for i in range(10000):
+        K = 5
+        dim = tpp.make_dims(P, K, [plate_1])
+
+        for i in range(15000):
             opt.zero_grad()
-            elbo = model.elbo(K=20)
+            elbo = model.elbo(dims=dim)
             (-elbo).backward()
             opt.step()
 
@@ -64,12 +69,11 @@ class tests(unittest.TestCase):
 
         inferred_cov = model.Q.log_s_mu.exp()
 
-        true_mean = t.mm(t.inverse(t.eye(5) + 1/10 * t.eye(5)),data['obs'].rename(None).mean(axis=0).reshape(-1,1))
+        true_mean = t.mm(t.inverse(t.eye(5) + 1/10 * t.eye(5)),data['obs'].mean(axis=0).reshape(-1,1))
         true_cov = t.inverse(t.eye(5) + (1/10 * t.eye(5))) * 1/10
 
-
-        assert((t.abs(true_mean - inferred_mean.reshape(-1,1))<0.05).all())
-        assert((t.abs(true_cov - t.diag(inferred_cov))<0.05).all())
+        assert((t.abs(true_mean - inferred_mean.reshape(-1,1))<0.1).all())
+        assert((t.abs(true_cov - t.diag(inferred_cov))<0.1).all())
 
     def test_simple_gaussian(self):
         '''
@@ -101,10 +105,12 @@ class tests(unittest.TestCase):
         model = tpp.Model(P, Q(), data)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
+        K = 5
+        dim = tpp.make_dims(P, K)
 
-        for i in range(10000):
+        for i in range(15000):
             opt.zero_grad()
-            elbo = model.elbo(K=20)
+            elbo = model.elbo(dims=dim)
             (-elbo).backward()
             opt.step()
 
@@ -118,8 +124,8 @@ class tests(unittest.TestCase):
 
 
 
-        assert((t.abs(true_mean - inferred_mean.reshape(-1,1))<0.05).all())
-        assert((t.abs(true_cov - t.diag(inferred_cov))<0.05).all())
+        assert((t.abs(true_mean - inferred_mean.reshape(-1,1))<0.1).all())
+        assert((t.abs(true_cov - t.diag(inferred_cov))<0.1).all())
 
     def test_gaussian(self):
         '''
@@ -132,13 +138,16 @@ class tests(unittest.TestCase):
         sigma = t.mm(sigma, sigma.t())
         sigma.add_(t.eye(5)* 1e-5)
         a = t.randn(5,)
+
+        N = 10
+        plate_1 = dims(1 , [N])
         def P(tr):
           '''
-          Bayesian Heirarchical Gaussian Model
+          Bayesian Gaussian Model
           '''
 
           tr['mu'] = tpp.MultivariateNormal(a, sigma_0)
-          tr['obs'] = tpp.MultivariateNormal(tr['mu'], sigma, sample_shape=10, sample_names='plate_1')
+          tr['obs'] = tpp.MultivariateNormal(tr['mu'], sigma, sample_dim=plate_1)
 
 
 
@@ -147,11 +156,12 @@ class tests(unittest.TestCase):
                 super().__init__()
                 self.m_mu = nn.Parameter(t.zeros(5,))
 
-                self.log_s_mu = nn.Parameter(t.randn(5,5))
+                self.s_mu = nn.Parameter(t.randn(5,5))
 
             def forward(self, tr):
-                sigma_nn = t.mm(self.log_s_mu, self.log_s_mu.t())
+                sigma_nn = t.mm(self.s_mu, self.s_mu.t())
                 sigma_nn.add_(t.eye(5) * 1e-5)
+
                 tr['mu'] = tpp.MultivariateNormal(self.m_mu, covariance_matrix=sigma_nn)
 
         data = tpp.sample(P, "obs")
@@ -160,24 +170,36 @@ class tests(unittest.TestCase):
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-        for i in range(30000):
+        K=2
+        dim = tpp.make_dims(P, K, [plate_1])
+
+        for i in range(20000):
             opt.zero_grad()
-            elbo = model.elbo(K=100)
+            elbo = model.elbo(dims=dim)
             (-elbo).backward()
             opt.step()
 
 
         inferred_mean = model.Q.m_mu
-        inferred_cov = t.mm(model.Q.log_s_mu, model.Q.log_s_mu.t())
+        inferred_cov = t.mm(model.Q.s_mu, model.Q.s_mu.t())
         inferred_cov.add_(t.eye(5)* 1e-5)
 
 
-        true_mean = t.mm(sigma_0,t.mm(t.inverse(sigma_0 + 1/10 * sigma),data['obs'].rename(None).mean(axis=0).reshape(-1,1))) + 1/10 * t.mm(sigma,t.mm(t.inverse(sigma_0 + 1/10*sigma),a.reshape(-1,1)))
-        true_cov = t.mm(t.mm(sigma_0,t.inverse(sigma_0 + 1/10*sigma)),sigma)
+        y_hat = tpp.dename(data['obs']).mean(axis=0).reshape(-1,1)
+        true_cov = t.inverse(N * t.inverse(sigma) + t.inverse(sigma_0))
+        true_mean = (true_cov @ (N*t.inverse(sigma) @ y_hat + t.inverse(sigma_0)@a.reshape(-1,1))).reshape(1,-1)
 
 
-        assert((t.abs(true_mean - inferred_mean.reshape(-1,1))<0.1).all())
-        assert(((inferred_cov-true_cov)<0).all())
+        print(true_cov)
+
+        print(inferred_cov)
+
+        print(true_mean)
+
+        print(inferred_mean)
+
+        assert(((t.abs(true_mean - inferred_mean))<0.5).all())
+        assert(((inferred_cov-true_cov)<0.5).all())
 
     def test_linear_gaussian(self):
         '''
@@ -228,26 +250,24 @@ class tests(unittest.TestCase):
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-        for i in range(5000):
+        K = 3
+        dim = tpp.make_dims(P, K)
+        for i in range(15000):
             opt.zero_grad()
-            elbo = model.elbo(K=10)
+            elbo = model.elbo(dims=dim)
             (-elbo).backward()
             opt.step()
-
-            if 0 == i%500:
-                print(elbo.item())
 
 
         inferred_cov = t.mm(model.Q.log_s_mu, model.Q.log_s_mu.t())
         inferred_cov.add_(t.eye(2)* 1e-5)
-
+        inferred_mean = model.Q.m_mu
 
         V_n = sigma_y * t.inverse(sigma_y * t.inverse(sigma_w*t.eye(2)) + t.mm(data_x,data_x.t()))
         w_n = t.mm(V_n, t.mm(t.inverse(sigma_w*t.eye(2)),a.reshape(-1,1))) + (1/sigma_y) * t.mm(V_n, t.mm(data_x, data_y['obs'].reshape(-1,1)))
 
-
-        assert((t.abs(w_n - inferred_mean.reshape(-1,1))<0.1).all())
-        assert(((inferred_cov-V_n)<0).all())
+        assert((t.abs(w_n - inferred_mean.reshape(-1,1))<0.2).all())
+        assert(((inferred_cov-V_n)<0.2).all())
 
 
 
