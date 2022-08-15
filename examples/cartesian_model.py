@@ -1,9 +1,12 @@
-from tpp.prob_prog import Trace, TraceLogP
 import torch as t
 import torch.nn as nn
 import tpp
+from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+from tpp.backend import vi
+import tqdm
+from torchdim import dims
 
-def P(tr): 
+def P(tr):
     scale = 0.1
     tr['a'] = tpp.Normal(t.zeros(3,), 1)
     tr['b'] = tpp.Normal(tr['a'] + 1, 1)
@@ -36,11 +39,13 @@ data = tpp.sample(P, "obs")
 model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-2)
-    
-print("K=10")
+
+K=10
+dim = tpp.make_dims(P, K, [plate_1,plate_2,plate_3])
+print("K={}".format(K))
 for i in range(1000):
     opt.zero_grad()
-    elbo = model.elbo(K=10)
+    elbo = model.elbo(dims=dim)
     (-elbo).backward()
     opt.step()
 
