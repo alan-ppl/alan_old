@@ -170,10 +170,10 @@ class tests(unittest.TestCase):
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-        K=2
+        K=1
         dim = tpp.make_dims(P, K, [plate_1])
 
-        for i in range(20000):
+        for i in range(15000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
             (-elbo).backward()
@@ -189,14 +189,6 @@ class tests(unittest.TestCase):
         true_cov = t.inverse(N * t.inverse(sigma) + t.inverse(sigma_0))
         true_mean = (true_cov @ (N*t.inverse(sigma) @ y_hat + t.inverse(sigma_0)@a.reshape(-1,1))).reshape(1,-1)
 
-
-        print(true_cov)
-
-        print(inferred_cov)
-
-        print(true_mean)
-
-        print(inferred_mean)
 
         assert(((t.abs(true_mean - inferred_mean))<0.5).all())
         assert(((inferred_cov-true_cov)<0.5).all())

@@ -2,72 +2,76 @@ import sys
 sys.path.append('..')
 
 import torch
+import tpp
 from tpp.wrapped_distribution import Normal, Gumbel, Laplace
 import unittest
 
+from torchdim import dims
 
 def get_asserter(target_shape, target_names):
     def inner(sample):
-        assert sample.shape == target_shape
-        assert sample.names == target_names
+
+        assert tpp.dename(sample).shape == target_shape
+
+        for i in range(len(target_names)):
+            assert tpp.tensor_utils.get_dims(sample)[i] is target_names[i]
     return inner
 
 
 class TestWrappedDist(unittest.TestCase):
     def test_sample(self):
         def test_loc_scale_dist(loc, scale, target_shape, target_names,
-                                sample_shape=(), sample_names=()):
+                                sample_dim=()):
             '''
             Use distributions from loc-scale family as test cases.
             '''
             for dist in [Normal, Gumbel, Laplace]:
                 assert_sample = get_asserter(target_shape, target_names)
-                assert_sample(dist(loc, scale, sample_shape=sample_shape,
-                                   sample_names=sample_names).rsample())
-                assert_sample(dist(loc, scale=scale, sample_shape=sample_shape,
-                                   sample_names=sample_names).rsample())
-                assert_sample(dist(loc=loc, scale=scale, sample_shape=sample_shape,
-                                   sample_names=sample_names).rsample())
+                for i in range(3):
+                    assert_sample(dist(loc, scale, sample_dim=sample_dim).rsample())
+
+        K_a, K_b, K_c, Plate_1 = dims(4 , [4,4,4,3])
 
         test_loc_scale_dist(
             loc=torch.randn(4, 3), scale=torch.ones(4, 3),
-            target_shape=(4, 3), target_names=(None, None)
+            target_shape=(4, 3), target_names=[]
         )
         test_loc_scale_dist(
-            loc=torch.randn(4, 3).refine_names('Ka', ...),
-            scale=torch.ones(4, 3).refine_names('Ka', ...),
-            target_shape=(4, 3), target_names=('Ka', None)
+            loc=torch.randn(4, 3)[K_a],
+            scale=torch.ones(4, 3)[K_a],
+            target_shape=(4, 3), target_names=[K_a]
         )
         test_loc_scale_dist(
-            loc=torch.randn(4, 3).refine_names('Ka', ...),
-            scale=torch.ones(4, 3).refine_names('Kb', ...),
-            target_shape=(4, 4, 3), target_names=('Ka', 'Kb', None)
+            loc=torch.randn(4, 3)[K_a],
+            scale=torch.ones(4, 3)[K_b],
+            target_shape=(4, 4, 3), target_names=[K_a, K_b]
         )
         test_loc_scale_dist(
-            loc=torch.randn(4, 3).refine_names('Ka', ...),
-            scale=torch.ones(4, 3).refine_names('Kb', ...),
-            sample_shape=(3,), sample_names=('Plate1'),
-            target_shape=(3, 4, 4, 3), target_names=('Plate1', 'Ka', 'Kb', None),
+            loc=torch.randn(4, 3)[K_a],
+            scale=torch.ones(4, 3)[K_b],
+            sample_dim=Plate_1,
+            target_shape=(3, 4, 4, 3), target_names=[Plate_1, K_a, K_b],
         )
 
     def test_log_prob(self):
-        sample = torch.randn(4, 4, 3).refine_names('Ka', 'Kb', ...)
+        K_a, K_b, K_c, Plate_1 = dims(4 , [4,4,4,3])
+        sample = torch.randn(4, 4, 3)[K_a,K_b]
         dist = Normal(
-            loc=torch.randn(4, 3).refine_names('Ka', ...),
-            scale=torch.ones(4, 3).refine_names('Ka', ...)
+            loc=torch.randn(4, 3)[K_a],
+            scale=torch.ones(4, 3)[K_b]
         )
         ll = dist.log_prob(sample)
         assert ll.shape == (4, 4, 3)
-        assert ll.names == ('Ka', 'Kb', None)
+        assert ll.names == ('K_a', 'K_b', None)
 
-        sample = torch.randn(4, 4, 3).refine_names('Kb', 'Kc', ...)
+        sample = torch.randn(4, 4, 3)[K_b, K_c]
         dist = Normal(
-            loc=torch.randn(4, 4, 3).refine_names('Ka', 'Kc', ...),
-            scale=torch.ones(4, 4, 3).refine_names('Ka', 'Kc', ...)
+            loc=torch.randn(4, 4, 3)[K_a, K_c],
+            scale=torch.ones(4, 4, 3)[K_a, K_c]
         )
         ll = dist.log_prob(sample)
         assert ll.shape == (4, 4, 4, 3)
-        assert ll.names == ('Ka', 'Kb', 'Kc', None)
+        assert ll.names == ('K_a', 'K_b', 'K_c', None)
 
 
 if __name__ == '__main__':

@@ -74,16 +74,13 @@ def pad_nones(arg, max_pos_dim):
 
     return arg.refine_names(*names, ...)
 
-def get_dims(tensors):
-    return [getattr(tensor, 'dims', None) for tensor in tensors if hasattr(tensor, 'dims')]
-
 def get_names(tensor):
     dims = getattr(tensor, 'dims', None)
     if dims is None:
         return None
     else:
         names = [repr(dim) for dim in dims]
-        return  names + [None]*(len(tensor.shape) - len(names) + 1)
+        return  names + [None]*(len(tensor.shape))
 
 def get_dim_dict(tensors):
     dims = get_dims(tensors)
@@ -110,6 +107,9 @@ def get_dim_dict(tensors):
 
 def get_dims(tensors):
     dims = []
+    if not (isinstance(tensors, tuple) or isinstance(tensors, list)):
+             tensors = [tensors]
+
     for tensor in tensors:
         if hasattr(tensor, 'dims'):
             for dim in getattr(tensor, 'dims', None):
@@ -117,7 +117,8 @@ def get_dims(tensors):
 
     return dims
 
-def nameify(args, kwargs):
+def nameify(args, kwargs = {}):
+    
     dim_dict = get_dim_dict(list(args) + list(kwargs.values()))
     args, kwargs = torchdimtensormap(lambda x: make_named(x), args, kwargs)
     def f(x, sample_dims=None, K_dim = None):
