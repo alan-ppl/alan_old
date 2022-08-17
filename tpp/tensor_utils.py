@@ -118,7 +118,7 @@ def get_dims(tensors):
     return dims
 
 def nameify(args, kwargs = {}):
-    
+
     dim_dict = get_dim_dict(list(args) + list(kwargs.values()))
     args, kwargs = torchdimtensormap(lambda x: make_named(x), args, kwargs)
     def f(x, sample_dims=None, K_dim = None):

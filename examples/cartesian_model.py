@@ -41,7 +41,7 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-2)
 
 K=10
-dim = tpp.make_dims(P, K, [plate_1,plate_2,plate_3])
+dim = tpp.make_dims(P, K)
 print("K={}".format(K))
 for i in range(1000):
     opt.zero_grad()

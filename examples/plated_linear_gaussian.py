@@ -26,32 +26,37 @@ class Q(nn.Module):
         self.w_b = nn.Parameter(t.zeros(()))
         self.b_b = nn.Parameter(t.zeros(()))
 
-        self.w_c = nn.Parameter(t.zeros((J,)))[plate_1]
-        self.b_c = nn.Parameter(t.zeros((J,)))[plate_1]
+        self.w_c = nn.Parameter(t.zeros((J,)))
+        self.b_c = nn.Parameter(t.zeros((J,)))
 
-        self.w_d = nn.Parameter(t.zeros((M, J)))[plate_2,plate_1]
-        self.b_d = nn.Parameter(t.zeros((M, J)))[plate_2,plate_1]
+        self.w_d = nn.Parameter(t.zeros((M, J)))
+        self.b_d = nn.Parameter(t.zeros((M, J)))
 
         self.log_s_a = nn.Parameter(t.zeros(()))
         self.log_s_b = nn.Parameter(t.zeros(()))
-        self.log_s_c = nn.Parameter(t.zeros((J,)))[plate_1]
-        self.log_s_d = nn.Parameter(t.zeros((M, J)))[plate_2,plate_1]
+        self.log_s_c = nn.Parameter(t.zeros((J,)))
+        self.log_s_d = nn.Parameter(t.zeros((M, J)))
 
 
     def forward(self, tr):
+        w_c = self.w_c[plate_1]
+        b_c = self.b_c[plate_1]
+        log_s_c = self.log_s_c[plate_1]
 
+        w_d = self.w_d[plate_2,plate_1]
+        b_d = self.b_d[plate_2, plate_1]
+        log_s_d = self.log_s_d[plate_2,plate_1]
 
         tr['a'] = tpp.Normal(self.m_a, self.log_s_a.exp())
-
         mean_b = self.w_b * tr['a'] + self.b_b
         tr['b'] = tpp.Normal(mean_b, self.log_s_b.exp())
 
-        mean_c = self.w_c * tr['b'] + self.b_c
+        mean_c = w_c * tr['b'] + b_c
 
-        tr['c'] = tpp.Normal(mean_c, self.log_s_c.exp())
+        tr['c'] = tpp.Normal(mean_c, log_s_c.exp())
 
-        mean_d = self.w_d * tr['c'] + self.b_d
-        tr['d'] = tpp.Normal(mean_d, self.log_s_d.exp())
+        mean_d = w_d * tr['c'] + b_d
+        tr['d'] = tpp.Normal(mean_d, log_s_d.exp())
 
 
 

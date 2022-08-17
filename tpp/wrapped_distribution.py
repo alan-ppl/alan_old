@@ -45,9 +45,9 @@ class WrappedDist:
         sampling_K = K_size is not None and not already_K
 
 
-        sample_shape = (K_size, *self.sample_shape) if sampling_K else self.sample_shape
-        # print(len(sample_shape))
-        # sample_shape = K if len(sample_shape)==1 and K is not None else sample_shape
+        # sample_shape = (*self.sample_shape, K_size) if sampling_K else self.sample_shape
+        sample_shape = self.sample_shape + (K_size,) if sampling_K else self.sample_shape
+
 
         #Checking the user hasn't mistakenely labelled two variables with the same plate name
         if len(list(unified_names)) > 0:
@@ -67,8 +67,6 @@ class WrappedDist:
         samples = (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
-
-
 
         return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 
