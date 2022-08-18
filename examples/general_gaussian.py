@@ -48,7 +48,7 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=2
+K=1
 dims = tpp.make_dims(P, K)
 print("K={}".format(K))
 
@@ -65,21 +65,20 @@ inferred_mean = model.Q.m_mu
 inferred_cov = t.mm(model.Q.s_mu, model.Q.s_mu.t())
 inferred_cov.add_(t.eye(5)* 1e-5)
 
+y_hat = tpp.dename(data['obs'].mean(plate_1)).reshape(-1,1)
 
-y_hat = tpp.dename(data['obs']).mean(axis=0).reshape(-1,1)
 true_cov = t.inverse(N * t.inverse(sigma) + t.inverse(sigma_0))
 true_mean = (true_cov @ (N*t.inverse(sigma) @ y_hat + t.inverse(sigma_0)@a.reshape(-1,1))).reshape(1,-1)
 
 
+print('True Covariance')
 print(true_cov)
 
+print('Inferred Covariance')
 print(inferred_cov)
 
+print('True Mean')
 print(true_mean)
 
+print('Inferred Mean')
 print(inferred_mean)
-
-
-
-assert(((t.abs(true_mean - inferred_mean))<0.3).all())
-assert(((inferred_cov-true_cov)<0.3).all())

@@ -49,19 +49,3 @@ for i in range(10000):
 
     if 0 == i%1000:
         print(elbo.item())
-
-
-# print("Approximate mu")
-# print(model.Q.m_mu)
-#
-# print("Approximate Covariance")
-# print(model.Q.log_s_mu.exp())
-#
-# b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),data['obs'].rename(None).reshape(-1,1))
-# A_n = t.inverse(t.eye(5) + t.eye(5))
-#
-# print("True mu")
-# print(b_n)
-#
-# print("True covariance")
-# print(t.diag(A_n))

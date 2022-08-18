@@ -39,7 +39,7 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=5
+K=1
 dims = tpp.make_dims(P, K)
 print("K={}".format(K))
 for i in range(10000):
@@ -58,7 +58,7 @@ print(model.Q.m_mu)
 print("Approximate Covariance")
 print(model.Q.log_s_mu.exp())
 
-b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),data['obs'].rename(None).reshape(-1,1))
+b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),tpp.dename(data['obs']).reshape(-1,1))
 A_n = t.inverse(t.eye(5) + t.eye(5))
 
 print("True mu")

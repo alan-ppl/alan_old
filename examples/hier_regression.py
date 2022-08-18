@@ -49,7 +49,7 @@ data_y = tpp.sample(P,"obs")
 
 model = tpp.Model(P, Q(), data_y)
 
-opt = t.optim.Adam(model.parameters(), lr=1E-2)
+opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=25
 dim = tpp.make_dims(P, K, [plate_1])
