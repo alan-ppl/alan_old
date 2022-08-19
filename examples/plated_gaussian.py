@@ -40,11 +40,11 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K = 3
-dims = tpp.make_dims(P, K, [plate_1])
+Ks = tpp.make_dims(P, K)
 print("K={}".format(K))
 for i in range(15000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dims)
+    elbo = model.elbo(dims=Ks)
     (-elbo).backward()
     opt.step()
 

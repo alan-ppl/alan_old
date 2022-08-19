@@ -1,6 +1,6 @@
 import torchdim
 from torchdim import dims
-import torch
+import torch.nn as nn
 from .prob_prog import TraceSample
 from .tensor_utils import dename, torchdimtensormap, nameify
 
@@ -29,46 +29,6 @@ def hasdim(x, lst):
   return False
 
 
-# def is_K(dim_to_check):
-#     """
-#     Check that dim is correctly marked as 'K_'
-#     """
-#     return getattr(dim_to_check, 'K', False)
-
-# def is_plate(dim_to_check):
-#     """
-#     Check that dim is correctly marked as 'plate_'
-#     """
-#     return getattr(dim_to_check, 'plate', False)
-
-# def has_K(tensor):
-#     if hasattr(tensor, 'dims'):
-#         dims = tensor.dims
-#         return any([is_K(dim) for dim in dims])
-#     else:
-#         return False
-#
-# def sum_K(tensor):
-#     if hasattr(tensor, 'dims'):
-#         dims = tensor.dims
-#         return sum([is_K(dim) for dim in dims])
-#     else:
-#         return 0
-
-# def has_plate(tensor):
-#     if hasattr(tensor, 'dims'):
-#         dims = tensor.dims
-#         return any([is_plate(dim) for dim in dims])
-#     else:
-#         return False
-#
-# def sum_plate(tensor):
-#     if hasattr(tensor, 'dims'):
-#         dims = tensor.dims
-#         return sum([is_plate(dim) for dim in dims])
-#     else:
-#         return 0
-
 
 def make_K(dims):
     if not (isinstance(dims, tuple) or isinstance(dims, list)):
@@ -81,13 +41,17 @@ def make_K(dims):
             setattr(dim, 'K', True)
             setattr(dim, 'plate', False)
 
-def make_plate(dims):
-    if not (isinstance(dims, tuple) or isinstance(dims, list)):
-        dims = [dims]
-    for dim in dims:
-        if hasattr(dim, 'K'):
-            if getattr(dim, 'K') == True:
-                raise ValueError("Dims can't be both plate and K!")
-        else:
-            setattr(dim, 'plate', True)
-            setattr(dim, 'K', False)
+class Q_module(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def reg_param(self, name, tensor, dims=None):
+        parameter_name = "_"+name
+        self.register_parameter(parameter_name, nn.Parameter(tensor)) #nn.Parameter?
+        def inner():
+            tensor = getattr(self, parameter_name)
+            if dims is None:
+                return tensor
+            else:
+                return tensor[dims]
+        setattr(self, name, inner())

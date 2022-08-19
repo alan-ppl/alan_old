@@ -20,11 +20,8 @@ class Q(nn.Module):
     def __init__(self):
         super().__init__()
         self.m_mu = nn.Parameter(t.zeros(5,))
-        #self.m_mu = nn.Parameter(t.tensor([[-0.2655, -0.5713, -0.1689,  0.4844, -1.0193]]))
-
 
         self.log_s_mu = nn.Parameter(t.zeros(5,))
-        #self.log_s_mu = nn.Parameter(t.tensor([[0.1667, 0.1667, 0.1667, 0.1667, -0.1667]]))
 
 
 
