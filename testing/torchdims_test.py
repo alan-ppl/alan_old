@@ -1,5 +1,5 @@
 import torch as t
-from torchdim import dims
+from functorch.dim import dims
 import tpp
 
 i, j, K = dims(3)

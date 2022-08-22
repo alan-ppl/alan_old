@@ -8,7 +8,7 @@ from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
 from torch.distributions import transforms
-from torchdim import dims
+from functorch.dim import dims
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 ### data

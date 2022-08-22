@@ -4,7 +4,7 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
-from torchdim import dims
+from functorch.dim import dims
 
 def P(tr):
   '''

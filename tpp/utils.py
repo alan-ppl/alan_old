@@ -1,17 +1,16 @@
-import torchdim
-from torchdim import dims
+from functorch.dim import dims, Dim
 import torch.nn as nn
 from .prob_prog import TraceSample
-from .tensor_utils import dename, torchdimtensormap, nameify
+from .tensor_utils import dename, dimtensormap, nameify
 
 def make_dims(P, K, plates=None):
     tr = TraceSample()
     P(tr)
     names = list(tr.sample.keys())
 
-    Ks = [torchdim.Dim(name='K', size=K)]
+    Ks = [Dim(name='K', size=K)]
     for name in names:
-        Ks.append(torchdim.Dim(name='K_{}'.format(name), size=K))
+        Ks.append(Dim(name='K_{}'.format(name), size=K))
 
 
     # make_K(Ks)

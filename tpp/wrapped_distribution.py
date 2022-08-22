@@ -1,8 +1,7 @@
 import torch as t
 import torch.distributions as td
-import torchdim
 from .tensor_utils import *
-
+from functorch.dim import Tensor as DimTensor
 
 
 class WrappedDist:
@@ -15,7 +14,7 @@ class WrappedDist:
         self.dist = dist
 
 
-        if isinstance(sample_dim, torchdim.Dim):
+        if isinstance(sample_dim, DimTensor):
             self.sample_dim = sample_dim
             sample_shape = (sample_dim.size,)
             sample_dim = (sample_dim,)
@@ -72,7 +71,7 @@ class WrappedDist:
 
 
     def log_prob(self, x):
-        assert isinstance(x, t.Tensor) or isinstance(x, torchdim.Tensor)
+        assert isinstance(x, t.Tensor) or isinstance(x, DimTensor)
         args = (*self.args, x)
         kwargs = self.kwargs
 

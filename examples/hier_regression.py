@@ -4,42 +4,52 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
-from torchdim import dims
+from functorch.dim import dims
 
 
 theta_size = 10
 
-N = 10
-n_i = 100
-plate_1, plate_2 = dims(2 , [N,n_i])
-x = t.randn(theta_size,N,n_i)[:,plate_1,plate_2]
-x = t.randn(N,n_i,theta_size)[plate_1,plate_2,:]
+M = 10
+N_i = 100
+plate_1, plate_2 = dims(2 , [M,N_i])
+x = t.randn(M,N_i)[plate_1,plate_2]
 
-j,k = dims(2)
 def P(tr):
   '''
   Heirarchical Model
   '''
 
-  tr['theta'] = tpp.Normal(t.zeros((theta_size,)), 1)
-  tr['z'] = tpp.Normal(tr['theta'], 1, sample_dim=plate_1)
-  tr['obs'] = tpp.Normal((x.t() @ tr['z']), 1)
+  tr['mu_z'] = tpp.Normal(t.zeros(()), 1)
+  tr['psi_z'] = tpp.Normal(t.zeros(()), 1)
+  tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
+  tr['psi_y'] = tpp.Normal(t.zeros(()), 1)
+  tr['obs'] = tpp.Normal((x.t() * tr['z']), tr['psi_y'].exp())
 
 
 class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
-        self.reg_param("theta_mu", t.zeros((theta_size,)))
-        self.reg_param("log_theta_s", t.zeros((theta_size,)))
+        self.reg_param("theta_mu", t.zeros((3,)))
+        self.reg_param("theta_s", t.randn((3,3)))
 
-        self.reg_param("z_w", t.zeros((N,theta_size)), [plate_1])
-        self.reg_param("z_b", t.zeros((N,theta_size)), [plate_1])
-        self.reg_param("log_z_s", t.zeros((N,theta_size)), [plate_1])
+        self.reg_param("z_w", t.zeros((M,)), [plate_1])
+        self.reg_param("z_b", t.zeros((M,)), [plate_1])
+        self.reg_param("log_z_w", t.randn((M,)), [plate_1])
+        self.reg_param("log_z_b", t.randn((M,)), [plate_1])
 
 
     def forward(self, tr):
-        tr['theta'] = tpp.Normal(self.theta_mu, self.log_theta_s.exp())
-        tr['z'] = tpp.Normal(self.z_w@tr['theta'] + self.z_b, self.log_z_s.exp())
+        theta_sigma = t.mm(self.theta_s,self.theta_s.t())
+        theta_sigma.add(0.001*t.eye(3))
+
+
+        tr['theta'] = tpp.MultivariateNormal(self.theta_mu, theta_sigma)
+        tr['mu_z'] = tr['theta'][0][0]
+        tr['psi_z'] = tr['theta'][0][1]
+        tr['psi_y'] = tr['theta'][0][2]
+        tr['z'] = tpp.Normal(mu_z*self.z_w + self.z_b, (self.log_z_w * psi_z + self.log_z_b).exp())
+
+
 
 
 
@@ -49,11 +59,11 @@ model = tpp.Model(P, Q(), data_y)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=10
+K=1
 dim = tpp.make_dims(P, K, [plate_1])
 print("K={}".format(K))
 
-for i in range(20000):
+for i in range(50000):
     opt.zero_grad()
     elbo = model.elbo(dims=dim)
     (-elbo).backward()
@@ -61,46 +71,3 @@ for i in range(20000):
 
     if 0 == i%1000:
         print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
-
-
-# thetas = []
-# zs = []
-# for i in range(1000):
-#     sample = tpp.sample(Q())
-#     thetas.append(tpp.dename(sample['theta']).flatten())
-#     zs.append(tpp.dename(sample['z']).flatten())
-#
-# approx_theta_mean = t.mean(t.vstack(thetas).T, dim=1)
-# approx_theta_cov = t.cov(t.vstack(thetas).T)
-#
-# approx_z_mean = t.mean(t.vstack(zs).T, dim=1)
-# approx_z_cov = t.cov(t.vstack(zs).T)
-
-
-#Theta posterior
-x_sum = sum([tpp.dename(x)[i].t() @ t.inverse(t.eye(n_i) + tpp.dename(x)[i] @ tpp.dename(x)[i].t()) @ tpp.dename(x)[i] for i in range(N)])
-y_sum = sum([tpp.dename(x)[i].t() @ t.inverse(t.eye(n_i) + tpp.dename(x)[i] @ tpp.dename(x)[i].t()) @ tpp.dename(data_y['obs'])[i] for i in range(N)])
-
-post_theta_cov = t.eye(theta_size) + x_sum
-post_theta_mean = t.inverse(post_theta_cov) @ y_sum
-
-print('Posterior theta mean')
-print(post_theta_mean)
-print('Approximate Posterior theta mean')
-print(model.Q.theta_mu)
-
-print('Posterior theta cov')
-print(t.round(t.inverse(post_theta_cov),decimals=2))
-print('Approximate Posterior theta cov')
-print(t.diag(model.Q.log_theta_s.exp()))
-
-
-# print('Posterior z mean')
-# print(t.round(post_z_mean, decimals=2).shape)
-# print('Approximate Posterior z mean')
-# print(t.round(approx_z_mean.reshape(10,-1), decimals=2).shape)
-#
-# print('Posterior z cov')
-# print(t.round(post_z_cov, decimals=2).shape)
-# print('Approximate Posterior z cov')
-# print(t.round(approx_z_cov, decimals=2).shape)

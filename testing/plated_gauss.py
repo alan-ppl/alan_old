@@ -3,7 +3,7 @@ import torch.nn as nn
 import tpp
 from tpp.backend import vi
 import tqdm
-from torchdim import dims
+from functorch.dim import dims
 
 '''
 Test posterior inference with a Gaussian with plated observations

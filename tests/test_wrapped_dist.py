@@ -6,7 +6,7 @@ import tpp
 from tpp.wrapped_distribution import Normal, Gumbel, Laplace
 import unittest
 
-from torchdim import dims
+from functorch.dim import dims
 
 def get_asserter(target_shape, target_names):
     def inner(sample):

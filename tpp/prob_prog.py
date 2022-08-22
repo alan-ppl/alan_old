@@ -3,7 +3,7 @@ import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
 
-# from torchdim import dims
+# from functorch.dim import dims
 
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'

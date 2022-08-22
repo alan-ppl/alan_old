@@ -1,13 +1,13 @@
 import torch
 import torch.nn.functional as F
-import torchdim
+from functorch.dim import Tensor as DimTensor
 
 def dename(tensors):
 
     assert isinstance(tensors, tuple)           or isinstance(tensors, list) \
-        or isinstance(tensors, torchdim.Tensor) or isinstance(tensors, torch.Tensor)
+        or isinstance(tensors, DimTensor) or isinstance(tensors, torch.Tensor)
 
-    if isinstance(tensors, torchdim.Tensor):
+    if isinstance(tensors, DimTensor):
         return tensors.order(*tensors.dims) if hasattr(tensors, 'dims') else tensors
     elif isinstance(tensors, torch.Tensor):
         return tensors
@@ -29,11 +29,11 @@ def typemap(f, typ, args, kwargs):
     kwargs = {key: (f(val) if isinstance(val, typ) else val) for (key, val) in kwargs.items()}
     return args, kwargs
 
-def torchdimtensormap(f, args, kwargs):
+def dimtensormap(f, args, kwargs):
     """
     Applys f to args and vals in kwargs if they are torch tensors
     """
-    return typemap(f, torchdim.Tensor, args, kwargs)
+    return typemap(f, DimTensor, args, kwargs)
 
 def make_named(tensor):
     names = get_names(tensor)
@@ -95,7 +95,7 @@ def tensordim_to_name(tensors):
     if not (isinstance(tensors, tuple) or isinstance(tensors, list)):
         tensors = [tensors]
     for tensor in tensors:
-        if isinstance(tensors, torchdim.Tensor):
+        if isinstance(tensors, DimTensor):
             names = get_names([tensor])
             denamed_tensor = dename([tensor])
             named_tensors.append(tensor.refine_names(*names))
@@ -120,7 +120,7 @@ def get_dims(tensors):
 def nameify(args, kwargs = {}):
 
     dim_dict = get_dim_dict(list(args) + list(kwargs.values()))
-    args, kwargs = torchdimtensormap(lambda x: make_named(x), args, kwargs)
+    args, kwargs = dimtensormap(lambda x: make_named(x), args, kwargs)
     def f(x, sample_dims=None, K_dim = None):
         names = x.names
         if sample_dims is not None:

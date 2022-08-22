@@ -5,7 +5,7 @@ from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
 import math
-from torchdim import dims
+from functorch.dim import dims
 
 N = 128
 plate_1 = dims(1 , [N])

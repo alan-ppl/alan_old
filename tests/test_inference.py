@@ -5,7 +5,7 @@ import torch.nn as nn
 import tpp
 from tpp.backend import vi
 
-from torchdim import dims
+from functorch.dim import dims
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import unittest
