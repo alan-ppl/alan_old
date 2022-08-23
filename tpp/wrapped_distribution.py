@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 from .tensor_utils import *
 from functorch.dim import Tensor as DimTensor
-
+from functorch.dim import Dim
 
 class WrappedDist:
     """
@@ -13,8 +13,7 @@ class WrappedDist:
         self.kwargs = kwargs
         self.dist = dist
 
-
-        if isinstance(sample_dim, DimTensor):
+        if isinstance(sample_dim, Dim):
             self.sample_dim = sample_dim
             sample_shape = (sample_dim.size,)
             sample_dim = (sample_dim,)

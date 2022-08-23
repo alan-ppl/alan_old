@@ -10,10 +10,11 @@ from functorch.dim import dims
 theta_size = 10
 
 M = 10
-N_i = 100
+N_i = 10
 plate_1, plate_2 = dims(2 , [M,N_i])
 x = t.randn(M,N_i)[plate_1,plate_2]
 
+print(plate_1)
 def P(tr):
   '''
   Heirarchical Model
@@ -29,9 +30,17 @@ def P(tr):
 class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
-        self.reg_param("theta_mu", t.zeros((3,)))
-        self.reg_param("theta_s", t.randn((3,3)))
+        #mu_z
+        self.reg_param("m_mu_z", t.zeros(()))
+        self.reg_param("log_theta_mu_z", t.zeros(()))
+        #psi_z
+        self.reg_param("m_psi_z", t.zeros(()))
+        self.reg_param("log_theta_psi_z", t.zeros(()))
+        #psi_y
+        self.reg_param("m_psi_y", t.zeros(()))
+        self.reg_param("log_theta_psi_y", t.zeros(()))
 
+        #z
         self.reg_param("z_w", t.zeros((M,)), [plate_1])
         self.reg_param("z_b", t.zeros((M,)), [plate_1])
         self.reg_param("log_z_w", t.randn((M,)), [plate_1])
@@ -39,15 +48,12 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
-        theta_sigma = t.mm(self.theta_s,self.theta_s.t())
-        theta_sigma.add(0.001*t.eye(3))
+        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
+        tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
+        tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp())
 
 
-        tr['theta'] = tpp.MultivariateNormal(self.theta_mu, theta_sigma)
-        tr['mu_z'] = tr['theta'][0][0]
-        tr['psi_z'] = tr['theta'][0][1]
-        tr['psi_y'] = tr['theta'][0][2]
-        tr['z'] = tpp.Normal(mu_z*self.z_w + self.z_b, (self.log_z_w * psi_z + self.log_z_b).exp())
+        tr['z'] = tpp.Normal(tr['mu_z']*self.z_w + self.z_b, (self.log_z_w * tr['psi_z'] + self.log_z_b).exp())
 
 
 
