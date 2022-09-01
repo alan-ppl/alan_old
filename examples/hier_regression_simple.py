@@ -6,10 +6,25 @@ from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 import matplotlib.pyplot as plt
+import numpy as np
+import torch.distributions as td
+import argparse
+
+parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
+
+parser.add_argument('N', type=int,
+                    help='Scale of experiment')
+parser.add_argument('K', type=int,
+                    help='Number of K samples')
+
+args = parser.parse_args()
+
+t.manual_seed(1)
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 theta_size = 10
 
-N = 10
+N = args.N
 n_i = 100
 plate_1, plate_2 = dims(2 , [N,n_i])
 x = t.randn(N,n_i,theta_size)[plate_1,plate_2,:]
@@ -29,7 +44,7 @@ class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param("theta_mu", t.zeros((theta_size,)))
-        self.reg_param("log_theta_s", t.zeros((theta_size,)))
+        self.reg_param("theta_s", t.randn((theta_size,theta_size)))
 
         self.reg_param("z_w", t.zeros((N,theta_size)), [plate_1])
         self.reg_param("z_b", t.zeros((N,theta_size)), [plate_1])
@@ -37,9 +52,10 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
+        sigma_theta = t.mm(self.theta_s, self.theta_s.t())
+        sigma_theta.add(t.eye(theta_size) * 0.001)
 
-
-        tr['theta'] = tpp.Normal(self.theta_mu, self.log_z_s.exp())
+        tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
         tr['z'] = tpp.Normal(tr['theta']@self.z_w + self.z_b, self.log_z_s.exp())
 
 
@@ -49,14 +65,15 @@ class Q(tpp.Q_module):
 data_y = tpp.sample(P,"obs")
 
 model = tpp.Model(P, Q(), data_y)
+model.to(device)
 
-opt = t.optim.Adam(model.parameters(), lr=1E-3)
+opt = t.optim.Adam(model.parameters(), lr=1E-3, betas=(0.5,0.5))
 
-K=5
+K=args.K
 dim = tpp.make_dims(P, K, [plate_1])
 print("K={}".format(K))
 
-iters = 20
+iters = 200000
 elbos = []
 for i in range(iters):
     opt.zero_grad()
@@ -107,9 +124,53 @@ post_theta_mean = t.inverse(post_theta_cov) @ y_sum
 # print('Approximate Posterior z cov')
 # print(t.round(approx_z_cov, decimals=2).shape)
 
+## True log prob
+diag = [t.eye(n_i) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
+
+bmatrix = [[[] for i in range(10)] for n in range (10)]
+for i in range(N):
+    for j in range(N):
+        if i == j:
+            bmatrix[i][i] = diag[i]
+        elif j > i:
+            bmatrix[i][j] = tpp.dename(x)[i] @ tpp.dename(x)[j].t()
+            bmatrix[j][i] = (tpp.dename(x)[i] @ tpp.dename(x)[j].t()).t()
+
+
+
+
+bmatrix = np.bmat(bmatrix)
+b_matrix = t.from_numpy(bmatrix)
+log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs']).flatten())
+
+print("Log prob: {}".format(log_prob))
 
 ### plotting elbos
+def numpy_ewma_vectorized(data, alpha):
+
+    alpha_rev = 1-alpha
+
+    scale = 1/alpha_rev
+    n = data.shape[0]
+
+    r = np.arange(n)
+    scale_arr = scale**r
+    offset = data[0]*alpha_rev**(r+1)
+    pw0 = alpha*alpha_rev**(n-1)
+
+    mult = data*pw0*scale_arr
+    cumsums = mult.cumsum()
+    out = offset + cumsums*scale_arr[::-1]
+    return out
+
+x = np.asarray(elbos)
+np.save('K{0}_N{1}.npy'.format(K, N),x)
+y = numpy_ewma_vectorized(x, 0.001)
+
 fig, ax = plt.subplots(figsize=(6, 6))
-ax.plot(range(iters),elbos, label="K=5")
+ax.plot(range(iters),y, label="K={}".format(K), linewidth=0.25)
+ax.plot(range(iters),[log_prob]*iters, label="Log Marg", color='black')
+plt.ylim([log_prob - 20, log_prob + 5])
+plt.xlim([0, iters])
 ax.legend()
-plt.savefig('K5.pdf')
+plt.savefig('K{0}_N{1}.pdf'.format(K, N))
