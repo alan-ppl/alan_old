@@ -26,7 +26,7 @@ theta_size = 10
 N = args.N
 n_i = 100
 plate_1, plate_2 = dims(2 , [N,n_i])
-x = t.randn(N,n_i,theta_size)[plate_1,plate_2,:]
+x = t.randn(N,n_i,theta_size)[plate_1,plate_2,:].to(device)
 
 j,k = dims(2)
 def P(tr):
@@ -52,7 +52,7 @@ class Q(tpp.Q_module):
 
     def forward(self, tr):
         sigma_theta = t.mm(self.theta_s, self.theta_s.t())
-        sigma_theta.add(t.eye(theta_size) * 0.001)
+        sigma_theta.add(t.eye(theta_size).to(device) * 0.001)
 
         tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
         tr['z'] = tpp.Normal(tr['theta']@self.z_w + self.z_b, self.log_z_s.exp())
