@@ -5,7 +5,6 @@ from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
-import matplotlib.pyplot as plt
 import numpy as np
 import torch.distributions as td
 import argparse
@@ -145,32 +144,5 @@ log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_pro
 
 print("Log prob: {}".format(log_prob))
 
-### plotting elbos
-def numpy_ewma_vectorized(data, alpha):
-
-    alpha_rev = 1-alpha
-
-    scale = 1/alpha_rev
-    n = data.shape[0]
-
-    r = np.arange(n)
-    scale_arr = scale**r
-    offset = data[0]*alpha_rev**(r+1)
-    pw0 = alpha*alpha_rev**(n-1)
-
-    mult = data*pw0*scale_arr
-    cumsums = mult.cumsum()
-    out = offset + cumsums*scale_arr[::-1]
-    return out
-
 x = np.asarray(elbos)
 np.save('K{0}_N{1}.npy'.format(K, N),x)
-y = numpy_ewma_vectorized(x, 0.001)
-
-fig, ax = plt.subplots(figsize=(6, 6))
-ax.plot(range(iters),y, label="K={}".format(K), linewidth=0.25)
-ax.plot(range(iters),[log_prob]*iters, label="Log Marg", color='black')
-plt.ylim([log_prob - 20, log_prob + 5])
-plt.xlim([0, iters])
-ax.legend()
-plt.savefig('K{0}_N{1}.pdf'.format(K, N))
