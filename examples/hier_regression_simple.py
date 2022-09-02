@@ -8,6 +8,7 @@ from functorch.dim import dims
 import numpy as np
 import torch.distributions as td
 import argparse
+import time
 
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
@@ -63,6 +64,30 @@ class Q(tpp.Q_module):
 
 data_y = tpp.sample(P,"obs")
 
+
+## True log prob
+##
+diag = [t.eye(n_i) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
+
+bmatrix = [[[] for i in range(10)] for n in range (10)]
+for i in range(N):
+    for j in range(N):
+        if i == j:
+            bmatrix[i][i] = diag[i]
+        elif j > i:
+            bmatrix[i][j] = tpp.dename(x)[i] @ tpp.dename(x)[j].t()
+            bmatrix[j][i] = (tpp.dename(x)[i] @ tpp.dename(x)[j].t()).t()
+
+
+
+
+bmatrix = np.bmat(bmatrix)
+b_matrix = t.from_numpy(bmatrix)
+log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs']).flatten())
+
+print("Log prob: {}".format(log_prob))
+
+
 model = tpp.Model(P, Q(), data_y)
 model.to(device)
 
@@ -71,7 +96,7 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3, betas=(0.5,0.5))
 K=args.K
 dim = tpp.make_dims(P, K, [plate_1])
 print("K={}".format(K))
-
+# start = time.time()
 iters = 200000
 elbos = []
 for i in range(iters):
@@ -83,16 +108,6 @@ for i in range(iters):
     if 0 == i%1000:
         print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
 
-# zs = []
-# for i in range(1000):
-#     sample = tpp.sample(Q())
-#     zs.append(tpp.dename(sample['z']).flatten())
-#
-# approx_theta_mean = t.mean(t.vstack(thetas).T, dim=1)
-# approx_theta_cov = t.cov(t.vstack(thetas).T)
-#
-# approx_z_mean = t.mean(t.vstack(zs).T, dim=1)
-# approx_z_cov = t.cov(t.vstack(zs).T)
 
 x = x.to('cpu')
 #Theta posterior
@@ -123,26 +138,7 @@ post_theta_mean = t.inverse(post_theta_cov) @ y_sum
 # print('Approximate Posterior z cov')
 # print(t.round(approx_z_cov, decimals=2).shape)
 
-## True log prob
-diag = [t.eye(n_i) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
-
-bmatrix = [[[] for i in range(10)] for n in range (10)]
-for i in range(N):
-    for j in range(N):
-        if i == j:
-            bmatrix[i][i] = diag[i]
-        elif j > i:
-            bmatrix[i][j] = tpp.dename(x)[i] @ tpp.dename(x)[j].t()
-            bmatrix[j][i] = (tpp.dename(x)[i] @ tpp.dename(x)[j].t()).t()
 
 
-
-
-bmatrix = np.bmat(bmatrix)
-b_matrix = t.from_numpy(bmatrix)
-log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs']).flatten())
-
-print("Log prob: {}".format(log_prob))
-
-x = np.asarray(elbos)
-np.save('K{0}_N{1}.npy'.format(K, N),x)
+elbos = np.asarray(elbos)
+np.save('K{0}_N{1}.npy'.format(K, N),elbos)
