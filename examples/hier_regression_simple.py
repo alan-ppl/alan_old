@@ -70,7 +70,7 @@ data_y = tpp.sample(P,"obs")
 ## True log prob
 ##
 if N == 10:
-    diag = [t.eye(n_i).to(device) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
+    diag = [t.eye(n_i) + 2 * tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[i].t() for i in range(N)]
 
     bmatrix = [[[] for i in range(10)] for n in range (10)]
     for i in range(N):
@@ -78,13 +78,13 @@ if N == 10:
             if i == j:
                 bmatrix[i][i] = diag[i]
             elif j > i:
-                bmatrix[i][j] = tpp.dename(x)[i] @ tpp.dename(x)[j].t()
-                bmatrix[j][i] = (tpp.dename(x)[i] @ tpp.dename(x)[j].t()).t()
+                bmatrix[i][j] = tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[j].t()
+                bmatrix[j][i] = (tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[j].t()).t()
 
 
 
 
-    bmatrix = np.bmat(bmatrix.cpu())
+    bmatrix = np.bmat(bmatrix)
     b_matrix = t.from_numpy(bmatrix)
     log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs'].cpu()).flatten())
 
