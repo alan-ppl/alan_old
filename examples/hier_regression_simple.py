@@ -84,9 +84,9 @@ if N == 10:
 
 
 
-    bmatrix = np.bmat(bmatrix)
+    bmatrix = np.bmat(bmatrix.cpu())
     b_matrix = t.from_numpy(bmatrix)
-    log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs']).flatten())
+    log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs'].cpu()).flatten())
 
     print("Log prob: {}".format(log_prob))
     np.save('log_prob.npy', np.array(log_prob))
