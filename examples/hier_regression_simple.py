@@ -10,6 +10,8 @@ import torch.distributions as td
 import argparse
 import time
 
+print('...', flush=True)
+
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -68,7 +70,7 @@ data_y = tpp.sample(P,"obs")
 ## True log prob
 ##
 if N == 10:
-    diag = [t.eye(n_i) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
+    diag = [t.eye(n_i).to(device) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
 
     bmatrix = [[[] for i in range(10)] for n in range (10)]
     for i in range(N):
