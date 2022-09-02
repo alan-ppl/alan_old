@@ -32,14 +32,21 @@ plate_1, plate_2 = dims(2 , [N,n_i])
 x = t.randn(N,n_i,theta_size)[plate_1,plate_2,:].to(device)
 
 j,k = dims(2)
+
+theta_mean = t.zeros((theta_size,)).to(device)
+theta_sigma = t.tensor(1).to(device)
+
+z_sigma = t.tensor(1).to(device)
+
+obs_sigma = t.tensor(1).to(device)
 def P(tr):
   '''
   Heirarchical Model
   '''
 
-  tr['theta'] = tpp.Normal(t.zeros((theta_size,)).to(device), t.tensor(1).to(device))
-  tr['z'] = tpp.Normal(tr['theta'], t.tensor(1).to(device), sample_dim=plate_1)
-  tr['obs'] = tpp.Normal((x.t() @ tr['z']), t.tensor(1).to(device))
+  tr['theta'] = tpp.Normal(theta_mean, theta_sigma)
+  tr['z'] = tpp.Normal(tr['theta'], z_sigma, sample_dim=plate_1)
+  tr['obs'] = tpp.Normal((x.t() @ tr['z']), obs_sigma)
 
 
 class Q(tpp.Q_module):
@@ -55,7 +62,7 @@ class Q(tpp.Q_module):
 
     def forward(self, tr):
         sigma_theta = t.mm(self.theta_s, self.theta_s.t())
-        sigma_theta.add(t.eye(theta_size).to(device) * 0.001)
+        sigma_theta.add_(t.eye(theta_size).to(device) * 0.001)
 
         tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
         tr['z'] = tpp.Normal(tr['theta']@self.z_w + self.z_b, self.log_z_s.exp())
