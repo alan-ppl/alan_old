@@ -34,9 +34,9 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr['theta'] = tpp.Normal(t.zeros((theta_size,)), 1, device=device)
-  tr['z'] = tpp.Normal(tr['theta'], 1, sample_dim=plate_1, device=device)
-  tr['obs'] = tpp.Normal((x.t() @ tr['z']), 1, device=device)
+  tr['theta'] = tpp.Normal(t.zeros((theta_size,)).to(device), t.tensor(1).to(device))
+  tr['z'] = tpp.Normal(tr['theta'], t.tensor(1).to(device), sample_dim=plate_1)
+  tr['obs'] = tpp.Normal((x.t() @ tr['z']), t.tensor(1).to(device))
 
 
 class Q(tpp.Q_module):
