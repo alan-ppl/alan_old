@@ -67,25 +67,27 @@ data_y = tpp.sample(P,"obs")
 
 ## True log prob
 ##
-diag = [t.eye(n_i) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
+if N == 10:
+    diag = [t.eye(n_i) + 2 * tpp.dename(x)[i] @ tpp.dename(x)[i].t() for i in range(N)]
 
-bmatrix = [[[] for i in range(10)] for n in range (10)]
-for i in range(N):
-    for j in range(N):
-        if i == j:
-            bmatrix[i][i] = diag[i]
-        elif j > i:
-            bmatrix[i][j] = tpp.dename(x)[i] @ tpp.dename(x)[j].t()
-            bmatrix[j][i] = (tpp.dename(x)[i] @ tpp.dename(x)[j].t()).t()
+    bmatrix = [[[] for i in range(10)] for n in range (10)]
+    for i in range(N):
+        for j in range(N):
+            if i == j:
+                bmatrix[i][i] = diag[i]
+            elif j > i:
+                bmatrix[i][j] = tpp.dename(x)[i] @ tpp.dename(x)[j].t()
+                bmatrix[j][i] = (tpp.dename(x)[i] @ tpp.dename(x)[j].t()).t()
 
 
 
 
-bmatrix = np.bmat(bmatrix)
-b_matrix = t.from_numpy(bmatrix)
-log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs']).flatten())
+    bmatrix = np.bmat(bmatrix)
+    b_matrix = t.from_numpy(bmatrix)
+    log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs']).flatten())
 
-print("Log prob: {}".format(log_prob))
+    print("Log prob: {}".format(log_prob))
+    np.save('log_prob.npy', np.array(log_prob))
 
 
 model = tpp.Model(P, Q(), data_y)
