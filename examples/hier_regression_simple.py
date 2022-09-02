@@ -34,20 +34,20 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr['theta'] = tpp.Normal(t.zeros((theta_size,)), 1)
-  tr['z'] = tpp.Normal(tr['theta'], 1, sample_dim=plate_1)
-  tr['obs'] = tpp.Normal((x.t() @ tr['z']), 1)
+  tr['theta'] = tpp.Normal(t.zeros((theta_size,)), 1, device=device)
+  tr['z'] = tpp.Normal(tr['theta'], 1, sample_dim=plate_1, device=device)
+  tr['obs'] = tpp.Normal((x.t() @ tr['z']), 1, device=device)
 
 
 class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
-        self.reg_param("theta_mu", t.zeros((theta_size,)))
-        self.reg_param("theta_s", t.randn((theta_size,theta_size)))
+        self.reg_param("theta_mu", t.zeros((theta_size,)).to(device))
+        self.reg_param("theta_s", t.randn((theta_size,theta_size)).to(device))
 
-        self.reg_param("z_w", t.zeros((N,theta_size)), [plate_1])
-        self.reg_param("z_b", t.zeros((N,theta_size)), [plate_1])
-        self.reg_param("log_z_s", t.randn((N,theta_size,)), [plate_1])
+        self.reg_param("z_w", t.zeros((N,theta_size)).to(device), [plate_1])
+        self.reg_param("z_b", t.zeros((N,theta_size)).to(device), [plate_1])
+        self.reg_param("log_z_s", t.randn((N,theta_size,)).to(device), [plate_1])
 
 
     def forward(self, tr):
@@ -94,7 +94,7 @@ for i in range(iters):
 # approx_z_mean = t.mean(t.vstack(zs).T, dim=1)
 # approx_z_cov = t.cov(t.vstack(zs).T)
 
-
+x = x.to('cpu')
 #Theta posterior
 x_sum = sum([tpp.dename(x)[i].t() @ t.inverse(t.eye(n_i) + tpp.dename(x)[i] @ tpp.dename(x)[i].t()) @ tpp.dename(x)[i] for i in range(N)])
 y_sum = sum([tpp.dename(x)[i].t() @ t.inverse(t.eye(n_i) + tpp.dename(x)[i] @ tpp.dename(x)[i].t()) @ tpp.dename(data_y['obs'])[i] for i in range(N)])
