@@ -64,7 +64,7 @@ class Q(tpp.Q_module):
         # sigma_theta = t.mm(self.theta_s, self.theta_s.t())
         # sigma_theta.add_(t.eye(theta_size).to(device) * 0.001)
 
-        tr['theta'] = tpp.Normal(self.theta_mu, self.theta_s.exp())
+        tr['theta'] = tpp.Normal(self.theta_mu, self.log_theta_s.exp())
         tr['z'] = tpp.Normal(self.z_mean, self.log_z_s.exp())
 
 
