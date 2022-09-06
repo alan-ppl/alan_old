@@ -6,7 +6,7 @@ from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 
-def P(nn.Module):
+class P(nn.Module):
     def __init__(self):
         super().__init__()
         self.P_m_mu = nn.Parameter(t.zeros(5,))
@@ -36,18 +36,16 @@ class Q(nn.Module):
 # data = tpp.sample(P, "obs")
 data = {'obs': t.tensor([ 0.9004, -3.7564,  0.4881, -1.1412,  0.2087])}
 
-print(data)
-model = tpp.Model(P, Q(), data)
-
-opt = t.optim.Adam(P.parameters(), lr=1E-3)
 
 
-for name, param in model.named_parameters():
-    if param.requires_grad:
-        print(name, param.data)
-# K=1
-# dims = tpp.make_dims(P, K)
-# print("K={}".format(K))
+
+
+model = tpp.Model(P, Q, data)
+
+K=1
+dims = tpp.make_dims(P, K)
+print("K={}".format(K))
+model.rws(dims=dims)
 # for i in range(10000):
 #     opt.zero_grad()
 #     elbo = model.elbo(dims=dims)

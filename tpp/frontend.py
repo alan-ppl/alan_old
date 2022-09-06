@@ -30,6 +30,16 @@ class Model(nn.Module):
         _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob())
         return gibbs(marginals)
 
+    def rws(self, dims):
+        #sample from approximate posterior
+        trq = TraceSampleLogQ(dims=dims, data=self.data)
+        self.Q(trq)
+        #compute logP
+        print(trq.sample)
+        trp = TraceLogP(trq.sample.detach(), self.data, dims=dims)
+        self.P(trp)
+        return None
+
 
 def sample(P, *names):
     """
