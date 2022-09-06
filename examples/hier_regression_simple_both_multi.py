@@ -53,19 +53,23 @@ class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param("theta_mu", t.zeros((theta_size,)).to(device))
-        self.reg_param("log_theta_s", t.randn((theta_size,)).to(device))
+        self.reg_param("theta_s", t.randn((theta_size,theta_size)).to(device))
 
-        self.reg_param("z_mean", t.zeros((N,theta_size)).to(device), [plate_1])
-        # self.reg_param("z_b", t.zeros((N,theta_size)).to(device), [plate_1])
-        self.reg_param("log_z_s", t.randn((N,theta_size,)).to(device), [plate_1])
+        self.reg_param("z_mu", t.zeros((N,theta_size)).to(device), [plate_1])
+        self.reg_param("y_s", t.randn((N,theta_size,theta_size)).to(device), [plate_1])
 
 
     def forward(self, tr):
-        # sigma_theta = t.mm(self.theta_s, self.theta_s.t())
-        # sigma_theta.add_(t.eye(theta_size).to(device) * 0.001)
+        sigma_theta = t.mm(self.theta_s, self.theta_s.t())
+        sigma_theta.add_(t.eye(theta_size).to(device) * 0.001)
 
-        tr['theta'] = tpp.Normal(self.theta_mu, self.theta_s.exp())
-        tr['z'] = tpp.Normal(self.z_mean, self.log_z_s.exp())
+        sigma_y = t.mm(self.y_s, self.y_s.t())
+        y_eye = t.eye(theta_size).to(device) * 0.001
+        y_eye = y_eye.repeat(N,1,1)[plate_1]
+        sigma_y.add_(y_eye)
+
+        tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
+        tr['z'] = tpp.MultivariateNormal(tr['theta']@self.z_w + self.z_b, sigma_y)
 
 
 
@@ -77,7 +81,7 @@ data_y = tpp.sample(P,"obs")
 ## True log prob
 ##
 if N == 10:
-    diag = [t.eye(n_i) + 2 * tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[i].t() for i in range(N)]
+    diag = [(t.eye(n_i) + 2 * tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[i].t()) for i in range(N)]
 
     bmatrix = [[[] for i in range(10)] for n in range (10)]
     for i in range(N):
