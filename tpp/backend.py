@@ -286,6 +286,10 @@ def vi(logps, logqs):
     elbo, _ = sum_logpqs(logps, logqs)
     return elbo
 
+def rws(logps, logqs):
+
+    ## Wake-phase Theta p update
+    return None
 
 
 ## TODO: figure out how to ensure samples are right shape

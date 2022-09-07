@@ -23,7 +23,7 @@ class tests(unittest.TestCase):
           '''
           a = t.zeros(5,)
           tr['mu'] = tpp.MultivariateNormal(a, t.eye(5))
-          tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5), sample_dim=plate_1)
+          tr['obs'] = tpp.Normal(tr['mu'], t.tensor(1), sample_dim=plate_1)
 
 
 
@@ -159,8 +159,8 @@ class tests(unittest.TestCase):
                 self.s_mu = nn.Parameter(t.randn(5,5))
 
             def forward(self, tr):
-                sigma_nn = t.mm(self.s_mu, self.s_mu.t())
-                sigma_nn.add_(t.eye(5) * 1e-5)
+                sigma_nn = self.s_mu @ self.s_mu.mT
+                sigma_nn = sigma_nn + t.eye(5) * 1e-5
 
                 tr['mu'] = tpp.MultivariateNormal(self.m_mu, covariance_matrix=sigma_nn)
 
@@ -203,7 +203,7 @@ class tests(unittest.TestCase):
                            [-0.68,1],
                            [-0.4,1],
                            [-0.3,1],
-                           [0.9,1]]).t()
+                           [0.9,1]]).mT
 
         data_y = {'obs': t.tensor([ 0.9004, -3.7564,  0.4881, -1.1412,  0.2087,0.478,-1.1])}
         sigma_w = 0.5
@@ -216,7 +216,7 @@ class tests(unittest.TestCase):
           '''
 
           tr['w'] = tpp.MultivariateNormal(a, sigma_w*t.eye(2))
-          tr['obs'] = tpp.Normal(t.mm(tr['w'], data_x), sigma_y)
+          tr['obs'] = tpp.Normal(tr['w'] @ data_x, sigma_y)
 
 
 

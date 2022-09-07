@@ -40,13 +40,21 @@ z_sigma = t.tensor(1).to(device)
 
 obs_sigma = t.tensor(1).to(device)
 def P(tr):
-  '''
-  Heirarchical Model
-  '''
+    '''
+    Heirarchical Model
+    '''
+    print('P')
+    print('theta')
+    tr['theta'] = tpp.Normal(theta_mean, theta_sigma)
+    print('z')
+    tr['z'] = tpp.Normal(tr['theta'], z_sigma, sample_dim=plate_1)
 
-  tr['theta'] = tpp.Normal(theta_mean, theta_sigma)
-  tr['z'] = tpp.Normal(tr['theta'], z_sigma, sample_dim=plate_1)
-  tr['obs'] = tpp.Normal((x.t() @ tr['z']), obs_sigma)
+    # print(tpp.dename(tr['z']).shape)
+    # # print(tr['z'])
+    # print('x@z')
+    # print(tpp.dename((x.t() @ tr['z'])).shape)
+    tr['obs'] = tpp.Normal((x.t() @ tr['z']), obs_sigma)
+
 
 
 class Q(tpp.Q_module):
@@ -63,16 +71,20 @@ class Q(tpp.Q_module):
     def forward(self, tr):
         # sigma_theta = t.mm(self.theta_s, self.theta_s.t())
         # sigma_theta.add_(t.eye(theta_size).to(device) * 0.001)
-
+        print('Q')
+        print('theta')
         tr['theta'] = tpp.Normal(self.theta_mu, self.log_theta_s.exp())
+        print('z')
         tr['z'] = tpp.Normal(self.z_mean, self.log_z_s.exp())
 
 
 
 
 
-data_y = tpp.sample(P,"obs")
 
+
+data_y = tpp.sample(P,"obs")
+# tpp.sample(Q())
 
 ## True log prob
 ##
@@ -108,7 +120,7 @@ K=args.K
 dim = tpp.make_dims(P, K, [plate_1])
 print("K={}".format(K))
 # start = time.time()
-iters = 200000
+iters = 1
 elbos = []
 for i in range(iters):
     opt.zero_grad()
