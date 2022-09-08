@@ -43,15 +43,9 @@ def P(tr):
   '''
   Heirarchical Model
   '''
-  # print('P')
-  # print('theta')
   tr['theta'] = tpp.MultivariateNormal(theta_mean, t.diag(theta_sigma))
-  # print('z')
   tr['z'] = tpp.MultivariateNormal(tr['theta'], t.diag(z_sigma), sample_dim=plate_1)
 
-  # print(tr['z'])
-  # print('x@z')
-  # print(tpp.dename((x.t() @ tr['z'].squeeze(0))).shape)
   tr['obs'] = tpp.Normal((x @ tr['z']), obs_sigma)
 
 
@@ -71,13 +65,9 @@ class Q(tpp.Q_module):
 
         sigma_z = self.z_s @ self.z_s.mT
         z_eye = t.eye(theta_size) * 0.001
-        #z_eye = z_eye.repeat(N,1,1)[plate_1]
         sigma_z = sigma_z + z_eye
 
-        # print('Q')
-        # print('theta')
         tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
-        # print('z')
         tr['z'] = tpp.MultivariateNormal(self.z_mu , sigma_z)
 
 
@@ -87,7 +77,7 @@ class Q(tpp.Q_module):
 
 
 data_y = tpp.sample(P,"obs")
-# tpp.sample(Q())
+
 ## True log prob
 ##
 if N == 10:
@@ -122,7 +112,7 @@ K=args.K
 dim = tpp.make_dims(P, K, [plate_1])
 print("K={}".format(K))
 # start = time.time()
-iters = 50000
+iters = 200000
 elbos = []
 for i in range(iters):
     opt.zero_grad()
@@ -168,4 +158,4 @@ post_theta_mean = t.inverse(post_theta_cov) @ y_sum
 
 
 elbos = np.asarray(elbos)
-np.save('K{0}_N{1}.npy'.format(K, N),elbos)
+np.save('Branch_K{0}_N{1}.npy'.format(K, N),elbos)

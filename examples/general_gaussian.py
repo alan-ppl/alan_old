@@ -10,11 +10,11 @@ from functorch.dim import dims
 Test posterior inference with a general gaussian
 '''
 sigma_0 = t.rand(5,5)
-sigma_0 = t.mm(sigma_0, sigma_0.t())
-sigma_0.add_(t.eye(5) * 1e-5)
+sigma_0 = sigma_0 @ sigma_0.mT
+sigma_0 = sigma_0 + t.eye(5) * 1e-5
 sigma = t.rand(5,5)
-sigma = t.mm(sigma, sigma.t())
-sigma.add_(t.eye(5)* 1e-5)
+sigma = sigma @ sigma.mT
+sigma = sigma + t.eye(5)* 1e-5
 a = t.randn(5,)
 
 N = 10
@@ -37,10 +37,10 @@ class Q(nn.Module):
         self.s_mu = nn.Parameter(t.randn(5,5))
 
     def forward(self, tr):
-        sigma_nn = t.mm(self.s_mu, self.s_mu.t())
-        sigma_nn.add_(t.eye(5) * 1e-5)
+        sigma_nn = self.s_mu @ self.s_mu.mT
+        sigma_nn = sigma_nn + t.eye(5) * 1e-5
 
-        tr['mu'] = tpp.MultivariateNormal(self.m_mu, covariance_matrix=sigma_nn)
+        tr['mu'] = tpp.MultivariateNormal(self.m_mu, sigma_nn)
 
 data = tpp.sample(P, "obs")
 
