@@ -5,7 +5,7 @@ from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 
-N = 5
+N = 10
 plate_1 = dims(1 , [N])
 def P(tr):
     '''
@@ -13,7 +13,8 @@ def P(tr):
     '''
     a = t.zeros(5,)
     tr['mu'] = tpp.MultivariateNormal(a, t.eye(5))
-    tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5), sample_dim=plate_1)
+    # tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5), sample_dim=plate_1)
+    tr['obs'] = tpp.Normal(tr['mu'], t.tensor(1), sample_dim=plate_1)
 
 
 
@@ -68,3 +69,6 @@ print(b_n)
 
 print("True covariance")
 print(t.diag(A_n))
+
+print((t.abs(b_n - model.Q.m_mu.reshape(-1,1))<0.1).all())
+print((t.abs(A_n - t.diag(model.Q.log_s_mu.exp()))<0.1).all())

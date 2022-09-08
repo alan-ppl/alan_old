@@ -64,7 +64,7 @@ class WrappedDist:
         # print(max_pos_dim)
         # for a in args:
         #     print(a.names)
-        #args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
+        #Wargs, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
         # for a in args:
         #     print(a.shape)
@@ -98,12 +98,7 @@ class WrappedDist:
         max_pos_dim = max(
             sum(name is None for name in arg.names) for arg in tensors(args, kwargs)
         )
-        # print('args')
-        # for a in args[:-1]:
-        #     print(a.shape)
-        # print('sample')
-        # for a in args[-1]:
-        #     print(a.shape)
+
         #args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
         # print('after pad nones')
