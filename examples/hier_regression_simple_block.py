@@ -108,7 +108,7 @@ model = tpp.Model(P, Q(), data_y)
 model.to(device)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3, betas=(0.5,0.5))
-
+scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=50000, gamma=0.1)
 K=args.K
 dim = tpp.make_dims(P, K, [plate_1])
 print("K={}".format(K))
@@ -119,12 +119,11 @@ for i in range(iters):
     opt.zero_grad()
     elbo = model.elbo(dims=dim)
     (-elbo).backward()
-    opt.step()
+    scheduler.step()
     elbos.append(elbo.item())
     if 0 == i%1000:
         print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
-    if 0 == i%50000:
-        opt.lr = opt.lr/10
+
 
 
 x = x.to('cpu')
