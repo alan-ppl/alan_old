@@ -61,10 +61,11 @@ class Q(tpp.Q_module):
 
     def forward(self, tr):
         sigma_theta = self.theta_s @ self.theta_s.mT
-        sigma_theta = sigma_theta + t.eye(theta_size) * 0.001
+        eye = t.eye(theta_size).to(device)
+        sigma_theta = sigma_theta + eye * 0.001
 
         sigma_z = self.z_s @ self.z_s.mT
-        z_eye = t.eye(theta_size) * 0.001
+        z_eye = eye * 0.001
         sigma_z = sigma_z + z_eye
 
         tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
@@ -158,4 +159,4 @@ post_theta_mean = t.inverse(post_theta_cov) @ y_sum
 
 
 elbos = np.asarray(elbos)
-np.save('Branch_K{0}_N{1}.npy'.format(K, N),elbos)
+np.save('Block_K{0}_N{1}.npy'.format(K, N),elbos)
