@@ -33,49 +33,37 @@ x = t.randn(N,n_i,theta_size)[plate_1,plate_2,:].to(device)
 
 j,k = dims(2)
 
-theta_mean = t.zeros((theta_size,)).to(device)
-theta_sigma = t.tensor(1).to(device)
+theta_mean = t.zeros(theta_size).to(device)
+theta_sigma = t.ones(theta_size).to(device)
 
-z_sigma = t.tensor(1).to(device)
+z_sigma = t.ones(theta_size).to(device)
 
 obs_sigma = t.tensor(1).to(device)
 def P(tr):
-    '''
-    Heirarchical Model
-    '''
-    print('P')
-    print('theta')
-    tr['theta'] = tpp.Normal(theta_mean, theta_sigma)
-    print('z')
-    tr['z'] = tpp.Normal(tr['theta'], z_sigma, sample_dim=plate_1)
+  '''
+  Heirarchical Model
+  '''
+  tr['theta'] = tpp.Normal(theta_mean, theta_sigma)
+  tr['z'] = tpp.Normal(tr['theta'], z_sigma, sample_dim=plate_1)
 
-    # print(tpp.dename(tr['z']).shape)
-    # # print(tr['z'])
-    # print('x@z')
-    # print(tpp.dename((x.t() @ tr['z'])).shape)
-    tr['obs'] = tpp.Normal((x.t() @ tr['z']), obs_sigma)
-
+  tr['obs'] = tpp.Normal((x @ tr['z']), obs_sigma)
 
 
 class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
-        self.reg_param("theta_mu", t.zeros((theta_size,)).to(device))
-        self.reg_param("log_theta_s", t.randn((theta_size,)).to(device))
+        self.reg_param("theta_mu", t.zeros((theta_size)))
+        self.reg_param("log_theta_s", t.randn((theta_size,)))
 
-        self.reg_param("z_mean", t.zeros((N,theta_size)).to(device), [plate_1])
-        # self.reg_param("z_b", t.zeros((N,theta_size)).to(device), [plate_1])
-        self.reg_param("log_z_s", t.randn((N,theta_size,)).to(device), [plate_1])
+        self.reg_param("z_mu", t.zeros((N,theta_size)), [plate_1])
+        self.reg_param("log_z_s", t.randn((N,theta_size,)), [plate_1])
 
 
     def forward(self, tr):
-        # sigma_theta = t.mm(self.theta_s, self.theta_s.t())
-        # sigma_theta.add_(t.eye(theta_size).to(device) * 0.001)
-        print('Q')
-        print('theta')
+
+
         tr['theta'] = tpp.Normal(self.theta_mu, self.log_theta_s.exp())
-        print('z')
-        tr['z'] = tpp.Normal(self.z_mean, self.log_z_s.exp())
+        tr['z'] = tpp.Normal(self.z_mu , self.log_z_s.exp())
 
 
 
@@ -84,12 +72,11 @@ class Q(tpp.Q_module):
 
 
 data_y = tpp.sample(P,"obs")
-# tpp.sample(Q())
 
 ## True log prob
 ##
 if N == 10:
-    diag = [t.eye(n_i) + 2 * tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[i].t() for i in range(N)]
+    diag = [(t.eye(n_i) + 2 * tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[i].t()) for i in range(N)]
 
     bmatrix = [[[] for i in range(10)] for n in range (10)]
     for i in range(N):
@@ -114,22 +101,24 @@ if N == 10:
 model = tpp.Model(P, Q(), data_y)
 model.to(device)
 
-opt = t.optim.Adam(model.parameters(), lr=1E-3, betas=(0.5,0.5))
-
+opt = t.optim.Adam(model.parameters(), lr=1E-3)
+scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=50000, gamma=0.1)
 K=args.K
 dim = tpp.make_dims(P, K, [plate_1])
 print("K={}".format(K))
 # start = time.time()
-iters = 1
+iters = 200000
 elbos = []
 for i in range(iters):
     opt.zero_grad()
     elbo = model.elbo(dims=dim)
     (-elbo).backward()
     opt.step()
+    scheduler.step()
     elbos.append(elbo.item())
     if 0 == i%1000:
         print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
+
 
 
 x = x.to('cpu')
@@ -164,4 +153,4 @@ post_theta_mean = t.inverse(post_theta_cov) @ y_sum
 
 
 elbos = np.asarray(elbos)
-np.save('K{0}_N{1}.npy'.format(K, N),elbos)
+np.save('Diagonal_K{0}_N{1}.npy'.format(K, N),elbos)
