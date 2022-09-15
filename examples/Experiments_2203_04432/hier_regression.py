@@ -7,6 +7,8 @@ import tqdm
 from functorch.dim import dims
 import argparse
 import json
+import numpy as np
+import itertools
 
 print('...', flush=True)
 
@@ -24,11 +26,13 @@ Ks = [1,5,10,15]
 Ms = [10,30]
 Ns = [10,50,100]
 
-for K,M,N in zip(Ks,Ms,Ns):
+
+
+for K,M,N in itertools.product(Ks,Ms,Ns):
     print(K,M,N)
-    results_dict[N] = {}
-    results_dict[N][M] = {}
-    results_dict[N][M][K] = {}
+    results_dict[N] = results_dict.get(N, {})
+    results_dict[N][M] = results_dict[N].get(M, {})
+    results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
     for i in range(5):
         t.manual_seed(i)
@@ -99,7 +103,7 @@ for K,M,N in zip(Ks,Ms,Ns):
 
         dim = tpp.make_dims(P, K, [plate_1])
 
-        for i in range(50000):
+        for i in range(5):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
             (-elbo).backward()
@@ -109,7 +113,7 @@ for K,M,N in zip(Ks,Ms,Ns):
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
 
         elbos.append(elbo.item())
-    results_dict[K] = {'lower_bound':mean(elbos),'std':np.std(elbos)}
+    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos)}
 
 file = 'results.json'
 with open(file, 'w') as f:
