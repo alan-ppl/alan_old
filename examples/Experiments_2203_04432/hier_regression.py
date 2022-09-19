@@ -23,8 +23,8 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 results_dict = {}
 
 Ks = [1,5,10,15]
-Ms = [10,30]
-Ns = [10,50,100]
+Ns = [10,30]
+Ms = [10,50,100]
 
 
 
@@ -103,7 +103,7 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
 
         dim = tpp.make_dims(P, K, [plate_1])
 
-        for i in range(5):
+        for i in range(50000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
             (-elbo).backward()
