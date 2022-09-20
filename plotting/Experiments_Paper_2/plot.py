@@ -4,8 +4,8 @@ import json
 from tueplots import axes, bundles
 
 Ks = ['1','5','10','15']
-Ns = ['10','30']
-Ms = ['10','50','100']
+Ns = ['10']#,'30']
+Ms = ['10']#,'50','100']
 with open('results.json') as f:
     results = json.load(f)
 
@@ -18,7 +18,8 @@ for N in Ns:
 
             elbos = [results[N][M][k]['lower_bound'] for k in Ks]
             stds = [results[N][M][k]['std'] for k in Ks]
-
+            print(elbos)
+            print(stds)
             # lower_error = [elbos[i] - stds[i] for i in range(len(elbos))]
             # upper_error = [elbos[i] + stds[i] for i in range(len(elbos))]
 
