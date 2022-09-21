@@ -51,9 +51,9 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
           Heirarchical Model
           '''
 
-          tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
-          tr['psi_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
-          tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
+          tr['mu_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device))
+          tr['psi_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device))
+          tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z,)).to(device), tr['psi_z'].exp() * t.eye(d_z).to(device), sample_dim=plate_1)
           tr['psi_y'] = tpp.Normal(t.zeros((M,))[plate_1].to(device), t.ones((M,))[plate_1].to(device))
           # print(tpp.dename(tr['z']).shape)
           tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())

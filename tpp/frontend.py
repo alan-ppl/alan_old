@@ -18,12 +18,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
-        # print('P')
-        # print(trp.sample['z'])
-        # print(trp.log_prob()['z'])
-        # print('Q')
-        # print(trq.sample['z'])
-        # print(trq.log_prob()['z'])
+
         return vi(trp.log_prob(), trq.log_prob())
 
     def importance_sample(self, dims):
