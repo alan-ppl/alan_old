@@ -31,11 +31,11 @@ class Q(nn.Module):
         tr['mu'] = tpp.MultivariateNormal(self.m_mu, t.diag(self.log_s_mu.exp()))
 
 data = tpp.sample(P, "obs")
-data = {'obs': t.tensor(t.tensor([[[ 0.5851,  0.8783, -0.4380, -1.3839,  0.9538]],
-        [[ 0.3030,  0.8338, -2.2067, -1.8815,  3.3449]],
-        [[ 1.8357, -0.3146,  0.5771, -1.4885, -0.3881]],
-        [[-1.0334, -0.2395,  0.3544, -2.0973,  1.8586]],
-        [[ 0.5752, -0.9763, -1.0950, -0.2201,  0.4888]]])[plate_1, :]}
+# data = {'obs': t.tensor(t.tensor([[[ 0.5851,  0.8783, -0.4380, -1.3839,  0.9538]],
+#         [[ 0.3030,  0.8338, -2.2067, -1.8815,  3.3449]],
+#         [[ 1.8357, -0.3146,  0.5771, -1.4885, -0.3881]],
+#         [[-1.0334, -0.2395,  0.3544, -2.0973,  1.8586]],
+#         [[ 0.5752, -0.9763, -1.0950, -0.2201,  0.4888]]])[plate_1, :]}
 
 print(data)
 model = tpp.Model(P, Q(), data)
@@ -43,21 +43,21 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-K, K_mu = dims(2, [20,20])
-make_K([K,K_mu])
-make_plate(plate_1)
-dims = {'K':K, 'K_mu':K_mu, 'plate_1':plate_1}
-print("K={}".format(K.size))
+K = 20
+
+dim = tpp.make_dims(P, K)
+
+print("K={}".format(K))
 for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dims)
+    elbo = model.elbo(dims=dim)
     (-elbo).backward()
     opt.step()
 
     if 0 == i%1000:
         print(elbo.item())
 
-print(model.importance_sample(dims=dims))
-print(model.importance_sample(dims=dims))
-print(model.importance_sample(dims=dims))
-print(model.importance_sample(dims=dims))
+print(model.importance_sample(dims=dim))
+print(model.importance_sample(dims=dim))
+print(model.importance_sample(dims=dim))
+print(model.importance_sample(dims=dim))

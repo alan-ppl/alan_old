@@ -282,9 +282,69 @@ def sum_logpqs(logps, logqs):
 
     return sum_lps(all_lps)
 
+def sum_logpqs_local_iw(logps, logqs):
+    """
+    Arguments:
+        logps: dict{rv_name -> log-probability tensor}
+        logqs: dict{rv_name -> log-probability tensor}
+    Returns:
+        elbo, used for VI
+        marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
+    """
+
+    assert len(logqs) <= len(logps)
+
+    # check all named dimensions in logps are either positional, plates or "K"
+    for lp in logqs.values():
+        for n in lp.names:
+            assert (n is None) or n=="K" or is_plate(n)
+
+    # convert K
+    print(logqs)
+    print(logps)
+    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
+
+    # check all named dimensions in logps are either positional, plates or Ks
+    for lp in logps.values():
+        for n in lp.names:
+            assert (n is None) or is_K(n) or is_plate(n)
+
+    # sum over all non-plate and non-K dimensions
+    logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
+    logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
+
+    # sanity checking for latents (only latents appear in logqs)
+    for rv in logqs:
+        #check that any rv in logqs is also in logps
+        assert rv in logps
+
+        lp = logps[rv]
+        lq = logqs[rv]
+
+        # check same plates appear in lp and lq
+        lp_plates = [n for n in lp.names if is_plate(n)]
+        lq_plates = [n for n in lq.names if is_plate(n)]
+        assert set(lp_plates) == set(lq_plates)
+
+        # check there is a K_name corresponding to rv name in both tensors
+        assert K_prefix+rv in lp.names
+        assert K_prefix+rv in lq.names
+
+
+    #combine all lps, negating logqs
+    all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
+
+    return sum_lps(all_lps)
+
 def vi(logps, logqs):
     elbo, _ = sum_logpqs(logps, logqs)
     return elbo
+
+
+def local_iw(logps, logqs):
+    elbo, _ = sum_logpqs_local_iw(logps, logqs)
+    return elbo
+
 
 def rws(logps, logqs):
 
