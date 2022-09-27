@@ -18,7 +18,7 @@ def P(tr):
     tr['obs'] = tpp.Normal(tr['d'], 1, sample_dim=plate_3)
 
 
-class Q(nn.Module):
+class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param("m_a", t.zeros(()))
@@ -28,13 +28,13 @@ class Q(nn.Module):
         self.reg_param("w_c", t.zeros((J,)), [plate_1])
         self.reg_param("b_c", t.zeros((J,)), [plate_1])
 
-        self.reg_param("b_c", t.zeros((M, J)), [plate_2,plate_1])
-        self.reg_param("b_c", t.zeros((M, J)), [plate_2,plate_1])
+        self.reg_param("w_d", t.zeros((M, J)), [plate_2,plate_1])
+        self.reg_param("b_d", t.zeros((M, J)), [plate_2,plate_1])
 
         self.reg_param("log_s_a", t.zeros(()))
         self.reg_param("log_s_b", t.zeros(()))
-        self.reg_param("log_s_a", t.zeros((J,)), [plate_1])
-        self.reg_param("log_s_a", t.zeros((M,J)), [plate_2,plate_1])
+        self.reg_param("log_s_c", t.zeros((J,)), [plate_1])
+        self.reg_param("log_s_d", t.zeros((M,J)), [plate_2,plate_1])
 
 
     def forward(self, tr):
@@ -115,7 +115,7 @@ for i in range(5000):
     ds.append(tpp.dename(sample['d']).flatten())
 
 
-params_post_cov = t.round(t.cov(t.cat((t.vstack(a),t.vstack(bs),t.vstack(cs), t.vstack(ds)), dim=1).T), decimals=2)
+params_post_cov = t.round(t.cov(t.cat((t.vstack(a),t.vstack(bs),t.vstack(cs), t.vstack(ds)), dim=1).T), decimals=4)
 params_post_mean = t.mean(t.cat((t.vstack(a),t.vstack(bs),t.vstack(cs), t.vstack(ds)), dim=1).T, dim=1)
 
 

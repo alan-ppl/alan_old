@@ -41,8 +41,8 @@ class Q(nn.Module):
 
 
     def forward(self, tr):
-        sigma_nn = self.s_mu @ self.s_mu.t()
-        sigma_nn.add_(t.eye(2) * 1e-5)
+        sigma_nn = self.s_mu @ self.s_mu.mT
+        sigma_nn = sigma_nn + t.eye(2) * 1e-5
         tr['w'] = tpp.MultivariateNormal(self.m_mu, sigma_nn)
 
 

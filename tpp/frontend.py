@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .backend import vi, gibbs, sum_lps, sum_logpqs
+from .backend import vi, local_iw, gibbs, sum_lps, sum_logpqs
 # from .cartesian_tensor import CartesianTensor
 from .utils import *
 
@@ -18,6 +18,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
+
         return vi(trp.log_prob(), trq.log_prob())
 
     def importance_sample(self, dims):
@@ -25,10 +26,31 @@ class Model(nn.Module):
         trq = TraceSampleLogQ(dims=dims, data=self.data)
         self.Q(trq)
         #compute logP
-        trp = TraceLogP(trq.sample, self.data)
+        trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
         _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob())
         return gibbs(marginals)
+
+    def rws(self, dims):
+        #sample from approximate posterior
+        trq = TraceSampleLogQ(dims=dims, data=self.data)
+        self.Q(trq)
+        #compute logP
+        trq.sample = {k:v.detach() for k,v in trq.sample.items()}
+        trp = TraceLogP(trq.sample, self.data, dims=dims)
+        self.P(trp)
+        return None
+
+    def liw(self, dims):
+        #sample from approximate posterior
+        trq = TraceSampleLogQ(dims=dims, data=self.data)
+        self.Q(trq)
+        #compute logP
+        trq.sample = {k:v.detach() for k,v in trq.sample.items()}
+        trp = TraceLogP(trq.sample, self.data, dims=dims)
+        self.P(trp)
+
+        return local_iw(trp.log_prob(), trq.log_prob())
 
 
 def sample(P, *names):

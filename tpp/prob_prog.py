@@ -2,8 +2,7 @@ import torch as t
 import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
-
-# from functorch.dim import dims
+from .tensor_utils import dename
 
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
@@ -60,7 +59,9 @@ class TraceSampleLogQ(Trace):
         assert key not in self.sample
         sample = value.rsample(K=self.K)
         self.sample[key] = sample
+
         self.logp[key] = value.log_prob(sample)
+
 
     def __repr__(self) -> str:
         trace_repr = ''
@@ -106,7 +107,7 @@ class TraceLogP(Trace):
         if key in self.sample:
             K_name = f"K_{key}"
             sample = self.sample[key].index(self.dims['K'], self.dims[key])
-            # sample = self.sample[key].rename(K=f"K_{key}")
+
             return sample
         return self.data[key]
 
@@ -114,4 +115,5 @@ class TraceLogP(Trace):
         assert isinstance(value, WrappedDist)
         assert (key in self.data) or (key in self.sample)
         sample = self[key]
+
         self.logp[key] = value.log_prob(sample)
