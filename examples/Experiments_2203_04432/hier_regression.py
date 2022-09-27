@@ -12,11 +12,6 @@ import itertools
 
 print('...', flush=True)
 
-parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
-
-
-
-args = parser.parse_args()
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -51,30 +46,33 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
           Heirarchical Model
           '''
 
-          tr['mu_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device))
-          tr['psi_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device))
-          tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z,)).to(device), tr['psi_z'].exp() * t.ones((d_z,)).to(device), sample_dim=plate_1)
-          tr['psi_y'] = tpp.Normal(t.zeros((M,))[plate_1].to(device), t.ones((M,))[plate_1].to(device))
-          # print(tpp.dename(tr['z']).shape)
+          tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_dim= plate_1)
+
+          tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp() * t.ones((d_z)).to(device), sample_dim=plate_1)
+
+
           tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
+
 
 
         class Q(tpp.Q_module):
             def __init__(self):
                 super().__init__()
                 #mu_z
-                self.reg_param("m_mu_z", t.zeros((d_z,)))
+                self.reg_param("m_mu_z", t.zeros(()))
                 self.reg_param("log_theta_mu_z", t.zeros(()))
                 #psi_z
-                self.reg_param("m_psi_z", t.zeros((d_z,)))
+                self.reg_param("m_psi_z", t.zeros(()))
                 self.reg_param("log_theta_psi_z", t.zeros(()))
                 #psi_y
-                self.reg_param("m_psi_y", t.zeros((M,)), [plate_1])
-                self.reg_param("log_theta_psi_y", t.zeros((M,)), [plate_1])
+                self.reg_param("m_psi_y", t.zeros((M)), [plate_1])
+                self.reg_param("log_theta_psi_y", t.zeros((M)), [plate_1])
 
                 #z
                 self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
-                self.reg_param("log_sigma", t.randn((M,d_z)), [plate_1])
+                self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
 
 
             def forward(self, tr):
@@ -86,6 +84,7 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
                 # eye = t.eye(d_z).to(device)
                 # z_eye = eye * 0.001
                 # sigma_z = sigma_z + z_eye
+                #print(self.mu * t.ones((M,)).to(device)[plate_1])
 
                 tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 
