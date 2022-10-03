@@ -48,6 +48,9 @@ for i in range(15000):
     (-elbo).backward()
     opt.step()
 
+    if 0 == i%1000:
+        print(elbo.item())
+        
 inferred_mean = model.Q.m_mu
 
 inferred_cov = model.Q.log_s_mu.exp()

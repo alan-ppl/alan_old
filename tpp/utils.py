@@ -3,15 +3,19 @@ import torch.nn as nn
 from .prob_prog import TraceSample
 from .tensor_utils import dename, dimtensormap, nameify
 
-def make_dims(P, K, plates=None):
+def make_dims(P, K, plates=None, exclude = []):
     tr = TraceSample()
     P(tr)
     names = list(tr.sample.keys())
 
     Ks = [Dim(name='K', size=K)]
     for name in names:
-        Ks.append(Dim(name='K_{}'.format(name), size=K))
-
+        if name not in exclude:
+            Ks.append(Dim(name='K_{}'.format(name), size=K))
+        else:
+            Ks.append(Dim(name='K_{}'.format(name), size=1))
+    # for name in names:
+    #         Ks.append(Dim(name='K_{}'.format(name), size=K))
 
     # make_K(Ks)
     # if plates is not None:

@@ -249,8 +249,14 @@ def combine_lps(logps, logqs):
             assert (n is None) or n=="K" or is_plate(n)
 
     # convert K
-    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
+    for (n, lp) in logqs.items():
+        if lp.names[0] == None:
+            logqs[n] = lp.refine_names(K_prefix+n)
+        else:
+            logqs[n] = lp.rename(K=K_prefix+n)
+    # logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
 
+    # print(logps)
     # check all named dimensions in logps are either positional, plates or Ks
     for lp in logps.values():
         for n in lp.names:
@@ -304,8 +310,6 @@ def vi(logps, logqs):
 def reweighted_wake_sleep(logps, logqs):
 
     # ## Wake-phase Theta p update
-    # # print(logps)
-    # print(logqs)
     wake_theta_loss, marginals = sum_logpqs(logps, logqs)
 
     ## Wake-phase phi q update

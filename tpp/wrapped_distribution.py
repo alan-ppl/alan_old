@@ -8,7 +8,7 @@ class WrappedDist:
     """
     A wrapper of torch.distributions that supports named tensor.
     """
-    def __init__(self, dist, *args, sample_dim=(), **kwargs):
+    def __init__(self, dist, *args, sample_dim=(), sample_K=True, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.dist = dist
@@ -23,7 +23,7 @@ class WrappedDist:
             self.sample_dim = None
             sample_shape = ()
 
-
+        self.sample_K = sample_K
         self.sample_shape = sample_shape
 
         self.sample_names = tuple([repr(dim) for dim in sample_dim])
@@ -44,8 +44,13 @@ class WrappedDist:
         # for a in args:
         #     print(a.shape)
         already_K = 'K' in unified_names
-        sampling_K = K_size is not None and not already_K
 
+        sampling_K = K_size is not None and not already_K and self.sample_K
+
+        # if not self.sample_K:
+        #     sample_shape = self.sample_shape + (1,)
+        #     print('sample shape')
+        #     print(sample_shape)
 
         # sample_shape = (*self.sample_shape, K_size) if sampling_K else self.sample_shape
         sample_shape = self.sample_shape + (K_size,) if sampling_K else self.sample_shape
@@ -69,13 +74,10 @@ class WrappedDist:
         # for a in args:
         #     print(a.shape)
         unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
-        # print('sample_shape')
-        # print(sample_shape)
-        # print(self.sample_names)
+
         samples = (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
-
 
         return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 

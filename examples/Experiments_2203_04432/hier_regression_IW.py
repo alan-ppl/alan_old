@@ -17,7 +17,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [5,10,15]
 Ns = [10,30]
 Ms = [10,50,100]
 
@@ -30,8 +30,6 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
     for i in range(5):
-
-
         t.manual_seed(0)
         plate_1, plate_2 = dims(2 , [M,N])
         if N == 30:
@@ -41,18 +39,19 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
         x = t.randn(M,N,d_z)[plate_1,plate_2].to(device)
 
         t.manual_seed(i)
+
+
         def P(tr):
           '''
           Heirarchical Model
           '''
 
-          tr['mu_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device))
-          tr['psi_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device))
-          tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['mu_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device), sample_K=False)
+          tr['psi_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device), sample_K=False)
+          tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
 
           tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp() * t.ones((d_z)).to(device), sample_dim=plate_1)
 
-          print()
           tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
 
 
@@ -76,9 +75,9 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
 
 
             def forward(self, tr):
-                tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
-                tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
-                tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp())
+                tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp(), sample_K=False)
+                tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
+                tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
 
                 # sigma_z = self.sigma @ self.sigma.mT
                 # eye = t.eye(d_z).to(device)
@@ -100,7 +99,7 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-        dim = tpp.make_dims(P, K, [plate_1])
+        dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z', 'psi_y'])
 
         for i in range(50000):
             opt.zero_grad()

@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
-from .tensor_utils import dename
+from .tensor_utils import dename, get_dims
 
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
@@ -63,6 +63,8 @@ class TraceSampleLogQ(Trace):
         else:
             sample = value.sample(K=self.K)
         self.sample[key] = sample
+        # print(key)
+        # print(sample)
 
         self.logp[key] = value.log_prob(sample)
 
@@ -114,7 +116,10 @@ class TraceLogP(Trace):
         assert (key in self.data) or (key in self.sample)
         if key in self.sample:
             K_name = f"K_{key}"
-            sample = self.sample[key].index(self.dims['K'], self.dims[key])
+            if self.dims['K'] in get_dims(self.sample[key]):
+                sample = self.sample[key].index(self.dims['K'], self.dims[key])
+            else:
+                sample = self.sample[key][self.dims[key]]
 
             return sample
         return self.data[key]
