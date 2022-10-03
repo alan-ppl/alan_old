@@ -2,7 +2,8 @@ import torch as t
 import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
-from .tensor_utils import dename, get_dims
+from .tensor_utils import dename, hasdim, get_dims
+
 
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
@@ -45,6 +46,7 @@ class TraceSampleLogQ(Trace):
         self.logp = {}
         self.K = dims['K']
         self.reparam = reparam
+        self.dims = dims
 
     def __getitem__(self, key):
         if key in self.sample:
@@ -62,6 +64,10 @@ class TraceSampleLogQ(Trace):
             sample = value.rsample(K=self.K)
         else:
             sample = value.sample(K=self.K)
+
+        if not hasdim(self.dims['K'], get_dims(sample)):
+            sample = sample.unsqueeze(0)[self.dims[key]]
+
         self.sample[key] = sample
         # print(key)
         # print(sample)
@@ -116,10 +122,10 @@ class TraceLogP(Trace):
         assert (key in self.data) or (key in self.sample)
         if key in self.sample:
             K_name = f"K_{key}"
-            if self.dims['K'] in get_dims(self.sample[key]):
+            if hasdim(self.dims['K'], get_dims(self.sample[key])):
                 sample = self.sample[key].index(self.dims['K'], self.dims[key])
             else:
-                sample = self.sample[key][self.dims[key]]
+                sample = self.sample[key].unsqueeze(0)[self.dims[key]]
 
             return sample
         return self.data[key]

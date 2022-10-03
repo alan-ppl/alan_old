@@ -2,6 +2,12 @@ import torch
 import torch.nn.functional as F
 from functorch.dim import Tensor as DimTensor
 
+def hasdim(x, lst):
+  for element in lst:
+    if  x is element:
+      return True
+  return False
+  
 def dename(tensors):
 
     assert isinstance(tensors, tuple)           or isinstance(tensors, list) \

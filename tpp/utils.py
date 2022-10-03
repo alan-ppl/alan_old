@@ -25,12 +25,6 @@ def make_dims(P, K, plates=None, exclude = []):
     return dims
 
 
-def hasdim(x, lst):
-  for element in lst:
-    if  x is element:
-      return True
-  return False
-
 
 
 def make_K(dims):

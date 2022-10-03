@@ -46,8 +46,8 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
           Heirarchical Model
           '''
 
-          tr['mu_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device), sample_K=False)
-          tr['psi_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device), sample_K=False)
+          tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
+          tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
           tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_dim=plate_1, sample_K=False)
 
           tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
@@ -60,11 +60,11 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
             def __init__(self):
                 super().__init__()
                 #mu_z
-                self.reg_param("m_mu_z", t.zeros((1,)))
-                self.reg_param("log_theta_mu_z", t.zeros((1,)))
+                self.reg_param("m_mu_z", t.zeros(()))
+                self.reg_param("log_theta_mu_z", t.zeros(()))
                 #psi_z
-                self.reg_param("m_psi_z", t.zeros((1,)))
-                self.reg_param("log_theta_psi_z", t.zeros((1,)))
+                self.reg_param("m_psi_z", t.zeros(()))
+                self.reg_param("log_theta_psi_z", t.zeros(()))
                 #psi_y
                 self.reg_param("m_psi_y", t.zeros((M,)), [plate_1])
                 self.reg_param("log_theta_psi_y", t.zeros((M,)), [plate_1])

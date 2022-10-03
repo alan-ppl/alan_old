@@ -47,15 +47,15 @@ class WrappedDist:
 
         sampling_K = K_size is not None and not already_K and self.sample_K
 
-        # if not self.sample_K:
-        #     sample_shape = self.sample_shape + (1,)
-        #     print('sample shape')
-        #     print(sample_shape)
+
 
         # sample_shape = (*self.sample_shape, K_size) if sampling_K else self.sample_shape
         sample_shape = self.sample_shape + (K_size,) if sampling_K else self.sample_shape
 
-
+        # if not self.sample_K:
+        #     sample_shape = sample_shape + (1,)
+        #     print('sample shape')
+        #     print(sample_shape)
         #Checking the user hasn't mistakenely labelled two variables with the same plate name
         if len(list(unified_names)) > 0:
             assert list(unified_names) != list(self.sample_names), "Don't label two variables with the same plate, it is unneccesary!"
@@ -75,13 +75,16 @@ class WrappedDist:
         #     print(a.shape)
         unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
 
+        # if not self.sample_K:
+        #     unified_names = [name] + sorted(unified_names)
+
         samples = (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
 
         return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 
-    def sample(self, K=None):
+    def sample(self, name, K=None):
         args = self.args
         kwargs = self.kwargs
         K_size = K.size if K is not None else None
