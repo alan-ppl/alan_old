@@ -113,6 +113,6 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
         elbos.append(elbo.item())
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos)}
 
-file = 'results.json'
+file = 'results_local_IW.json'
 with open(file, 'w') as f:
     json.dump(results_dict, f)
