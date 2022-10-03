@@ -93,6 +93,7 @@ def reduce_K(all_lps, K_name):
     # result_lp = (result_p.log() + sum(max_lps)).squeeze(K_name)
     K = all_lps[0].align_to(K_name,...).shape[0]
 
+
     result_lp = t.logsumexp((sum(lps_with_K)), K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K))
 
     other_lps.append(result_lp)
@@ -216,6 +217,7 @@ def sum_lps(lps):
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
         marginals = marginals + _m
+
     assert 1==len(lps)
     assert 1==lps[0].numel()
 
@@ -230,6 +232,57 @@ def sum_none_dims(lp):
         lp = lp.sum(none_dims)
     return lp
 
+def combine_lps(logps, logqs):
+    """
+    Arguments:
+        logps: dict{rv_name -> log-probability tensor}
+        logqs: dict{rv_name -> log-probability tensor}
+    Returns:
+        all_lps: logps - logqs
+    """
+
+    assert len(logqs) <= len(logps)
+
+    # check all named dimensions in logps are either positional, plates or "K"
+    for lp in logqs.values():
+        for n in lp.names:
+            assert (n is None) or n=="K" or is_plate(n)
+
+    # convert K
+    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
+
+    # check all named dimensions in logps are either positional, plates or Ks
+    for lp in logps.values():
+        for n in lp.names:
+            assert (n is None) or is_K(n) or is_plate(n)
+
+    # sum over all non-plate and non-K dimensions
+    logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
+    logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
+
+    # sanity checking for latents (only latents appear in logqs)
+    for rv in logqs:
+        #check that any rv in logqs is also in logps
+        assert rv in logps
+
+        lp = logps[rv]
+        lq = logqs[rv]
+
+        # check same plates appear in lp and lq
+        lp_plates = [n for n in lp.names if is_plate(n)]
+        lq_plates = [n for n in lq.names if is_plate(n)]
+        assert set(lp_plates) == set(lq_plates)
+
+        # check there is a K_name corresponding to rv name in both tensors
+        assert K_prefix+rv in lp.names
+        assert K_prefix+rv in lq.names
+
+
+    #combine all lps, negating logqs
+    all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
+
+    return all_lps
+
 def sum_logpqs(logps, logqs):
     """
     Arguments:
@@ -240,116 +293,28 @@ def sum_logpqs(logps, logqs):
         marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
     """
 
-    assert len(logqs) <= len(logps)
-
-    # check all named dimensions in logps are either positional, plates or "K"
-    for lp in logqs.values():
-        for n in lp.names:
-            assert (n is None) or n=="K" or is_plate(n)
-
-    # convert K
-    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
-
-    # check all named dimensions in logps are either positional, plates or Ks
-    for lp in logps.values():
-        for n in lp.names:
-            assert (n is None) or is_K(n) or is_plate(n)
-
-    # sum over all non-plate and non-K dimensions
-    logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
-    logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
-
-    # sanity checking for latents (only latents appear in logqs)
-    for rv in logqs:
-        #check that any rv in logqs is also in logps
-        assert rv in logps
-
-        lp = logps[rv]
-        lq = logqs[rv]
-
-        # check same plates appear in lp and lq
-        lp_plates = [n for n in lp.names if is_plate(n)]
-        lq_plates = [n for n in lq.names if is_plate(n)]
-        assert set(lp_plates) == set(lq_plates)
-
-        # check there is a K_name corresponding to rv name in both tensors
-        assert K_prefix+rv in lp.names
-        assert K_prefix+rv in lq.names
-
-
-    #combine all lps, negating logqs
-    all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-
+    all_lps = combine_lps(logps, logqs)
     return sum_lps(all_lps)
 
-def sum_logpqs_local_iw(logps, logqs):
-    """
-    Arguments:
-        logps: dict{rv_name -> log-probability tensor}
-        logqs: dict{rv_name -> log-probability tensor}
-    Returns:
-        elbo, used for VI
-        marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
-    """
-
-    assert len(logqs) <= len(logps)
-
-    # check all named dimensions in logps are either positional, plates or "K"
-    for lp in logqs.values():
-        for n in lp.names:
-            assert (n is None) or n=="K" or is_plate(n)
-
-    # convert K
-    print(logqs)
-    print(logps)
-    logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
-
-    # check all named dimensions in logps are either positional, plates or Ks
-    for lp in logps.values():
-        for n in lp.names:
-            assert (n is None) or is_K(n) or is_plate(n)
-
-    # sum over all non-plate and non-K dimensions
-    logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
-    logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
-
-    # sanity checking for latents (only latents appear in logqs)
-    for rv in logqs:
-        #check that any rv in logqs is also in logps
-        assert rv in logps
-
-        lp = logps[rv]
-        lq = logqs[rv]
-
-        # check same plates appear in lp and lq
-        lp_plates = [n for n in lp.names if is_plate(n)]
-        lq_plates = [n for n in lq.names if is_plate(n)]
-        assert set(lp_plates) == set(lq_plates)
-
-        # check there is a K_name corresponding to rv name in both tensors
-        assert K_prefix+rv in lp.names
-        assert K_prefix+rv in lq.names
-
-
-    #combine all lps, negating logqs
-    all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-
-    return sum_lps(all_lps)
 
 def vi(logps, logqs):
     elbo, _ = sum_logpqs(logps, logqs)
     return elbo
 
+def reweighted_wake_sleep(logps, logqs):
 
-def local_iw(logps, logqs):
-    elbo, _ = sum_logpqs_local_iw(logps, logqs)
-    return elbo
+    # ## Wake-phase Theta p update
+    # # print(logps)
+    # print(logqs)
+    wake_theta_loss, marginals = sum_logpqs(logps, logqs)
 
+    ## Wake-phase phi q update
+    logps = {n:lp.detach() for (n,lp) in logps.items()}
+    wake_phi_loss, marginals = sum_logpqs(logps, logqs)
 
-def rws(logps, logqs):
+    ## Sleep-phase phi q update
 
-    ## Wake-phase Theta p update
-    return None
+    return wake_theta_loss, wake_phi_loss
 
 
 ## TODO: figure out how to ensure samples are right shape

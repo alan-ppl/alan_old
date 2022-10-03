@@ -75,9 +75,59 @@ class WrappedDist:
         samples = (self.dist(*args, **kwargs)
                 .rsample(sample_shape=sample_shape)
                 .refine_names(*self.sample_names, *unified_names, ...))
-        # print('samples')
-        # print(samples.shape)
-        # print(samples.names)
+
+
+        return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
+
+    def sample(self, K=None):
+        args = self.args
+        kwargs = self.kwargs
+        K_size = K.size if K is not None else None
+        args, kwargs, denamify = nameify(args, kwargs)
+        # print('sample_shape')
+        # print(self.sample_shape)
+        # print(self.sample_names)
+        # Sorted list of all unique names
+        unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
+        unified_names.discard(None)
+        unified_names = sorted(unified_names)
+        # print(unified_names)
+        # for a in args:
+        #     print(a.shape)
+        already_K = 'K' in unified_names
+        sampling_K = K_size is not None and not already_K
+
+
+        # sample_shape = (*self.sample_shape, K_size) if sampling_K else self.sample_shape
+        sample_shape = self.sample_shape + (K_size,) if sampling_K else self.sample_shape
+
+
+        #Checking the user hasn't mistakenely labelled two variables with the same plate name
+        if len(list(unified_names)) > 0:
+            assert list(unified_names) != list(self.sample_names), "Don't label two variables with the same plate, it is unneccesary!"
+
+
+        # # Align tensors onto that sorted list
+        args, kwargs = tensormap(lambda x: x.align_to(*unified_names, ...), args, kwargs)
+        max_pos_dim = max(
+            sum(name is None for name in arg.names) for arg in tensors(args, kwargs)
+        )
+        # print(max_pos_dim)
+        # for a in args:
+        #     print(a.names)
+        #Wargs, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
+        args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
+        # for a in args:
+        #     print(a.shape)
+        unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
+        # print('sample_shape')
+        # print(sample_shape)
+        # print(self.sample_names)
+        samples = (self.dist(*args, **kwargs)
+                .sample(sample_shape=sample_shape)
+                .refine_names(*self.sample_names, *unified_names, ...))
+
+        samples = samples.detach()
         return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 
 
@@ -107,11 +157,8 @@ class WrappedDist:
         log_probs = (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])
                 .refine_names(*unified_names, ...))
-        # print('log probs')
-        # print(log_probs.shape)
-        # print(log_probs.names)
-        # print(log_probs)
-        # print(log_probs.sum(-1))
+
+
         return log_probs
 
 # Some distributions do not have rsample, how to handle? (e.g. Bernoulli)

@@ -52,6 +52,7 @@ for i in range(15000):
     if 0 == i%1000:
         print(elbo.item())
 
+
 print("Approximate mu")
 print(model.Q.m_mu)
 
