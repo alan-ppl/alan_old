@@ -48,9 +48,9 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
 
           tr['mu_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device), sample_K=False)
           tr['psi_z'] = tpp.Normal(t.zeros((1,)).to(device), t.ones((1,)).to(device), sample_K=False)
-          tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
+          tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_dim=plate_1, sample_K=False)
 
-          tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp() * t.ones((d_z)).to(device), sample_dim=plate_1)
+          tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
 
           tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
 
@@ -66,8 +66,8 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
                 self.reg_param("m_psi_z", t.zeros((1,)))
                 self.reg_param("log_theta_psi_z", t.zeros((1,)))
                 #psi_y
-                self.reg_param("m_psi_y", t.zeros((1,)))
-                self.reg_param("log_theta_psi_y", t.zeros((1,)))
+                self.reg_param("m_psi_y", t.zeros((M,)), [plate_1])
+                self.reg_param("log_theta_psi_y", t.zeros((M,)), [plate_1])
 
                 #z
                 self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
