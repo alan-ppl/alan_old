@@ -52,7 +52,6 @@ for K,M,N in itertools.product(Ks,Ms,Ns):
 
           tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp() * t.ones((d_z)).to(device), sample_dim=plate_1)
 
-          print()
           tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
 
 
