@@ -65,6 +65,7 @@ class TraceSampleLogQ(Trace):
         else:
             sample = value.sample(K=self.K)
 
+        ## Assert no K being sampled, check value.sample_K
         if not hasdim(self.dims['K'], get_dims(sample)):
             sample = sample.unsqueeze(0)[self.dims[key]]
 

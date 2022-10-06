@@ -84,7 +84,7 @@ class WrappedDist:
 
         return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 
-    def sample(self, name, K=None):
+    def sample(self, K=None):
         args = self.args
         kwargs = self.kwargs
         K_size = K.size if K is not None else None

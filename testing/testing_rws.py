@@ -21,22 +21,23 @@ a = t.zeros(5,)
 class P(nn.Module):
     def __init__(self):
         super().__init__()
-        self.prob = nn.Parameter(t.zeros(5))
+        self.prob = nn.Parameter(t.tensor([0.1,0.8,0.05,0.05,0.05]))
+        # self.prob = t.tensor([0.1,0.8,0.05,0.05,0.05])
+        print(t.softmax(self.prob, 0))
 
     def forward(self, tr):
-        tr['mu'] = tpp.Categorical(t.sigmoid(self.prob))
+        tr['mu'] = tpp.Categorical(t.softmax(self.prob,0))
         tr['obs'] = tpp.MultivariateNormal(t.ones(5,)*tr['mu'], t.diag(t.ones(5,)), sample_dim=plate_1)
 
 class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
-        self.reg_param('prob', t.zeros(5))
+        self.reg_param('prob', t.randn(5))
 
 
 
     def forward(self, tr):
-
-        tr['mu'] = tpp.Categorical(t.sigmoid(self.prob))
+        tr['mu'] = tpp.Categorical(t.softmax(self.prob, 0))
 
 data = tpp.sample(P(), 'obs')
 print(data)
@@ -74,5 +75,5 @@ for i in range(15000):
 
         # print(elbo.item())
 
-print(t.sigmoid(model.P.prob))
-print(t.sigmoid(model.Q.prob))
+print(t.softmax(model.P.prob, 0))
+print(t.softmax(model.Q.prob, 0))
