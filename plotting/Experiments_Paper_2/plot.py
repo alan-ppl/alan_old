@@ -23,11 +23,11 @@ for N in Ns:
         elbos = [results[N][M][k]['lower_bound'] for k in Ks]
         stds = [results[N][M][k]['std'] for k in Ks]
 
-        elbos_IW = [results_local_IW[N][M][k]['lower_bound'] for k in Ks[1:]]
-        stds_IW = [results_local_IW[N][M][k]['std'] for k in Ks[1:]]
+        elbos_IW = [results_local_IW[N][M][k]['lower_bound'] for k in Ks]
+        stds_IW = [results_local_IW[N][M][k]['std'] for k in Ks]
 
 
-        ax.errorbar(Ks,[elbos[0]] + elbos_IW, yerr=[stds[0]] + stds_IW, linewidth=0.75, fmt='-o', c='red', label='LIW')
+        ax.errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.75, fmt='-o', c='red', label='LIW')
         ax.errorbar(Ks,elbos, yerr=stds, linewidth=0.75, fmt='-o', c='blue', label='TPP')
         plt.title('Groups: {0}, Observations per group: {1}, with one standard deviation'.format(M, N))
         ax.set_ylabel('Final Lower Bound')
