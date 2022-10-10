@@ -20,8 +20,6 @@ for N in Ns:
     for M in Ms:
         fig, ax = plt.subplots(figsize=(6, 6))
 
-        print(N)
-        print(M)
         elbos = [results[N][M][k]['lower_bound'] for k in Ks]
         stds = [results[N][M][k]['std'] for k in Ks]
 
