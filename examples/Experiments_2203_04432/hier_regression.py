@@ -24,7 +24,7 @@ args = parser.parse_args()
 print('...', flush=True)
 
 
-device = "cpu"
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
@@ -121,6 +121,6 @@ for K in Ks:
         elbos.append(elbo.item())
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
 
-file = 'results_N{0}_M{1}.json'.format(N,M)
+file = 'results/results_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)
