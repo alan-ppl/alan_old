@@ -316,7 +316,7 @@ def vi(logps, logqs):
 def reweighted_wake_sleep(logps, logqs):
 
     # ## Wake-phase Theta p update
-    wake_theta_loss, marginals = sum_logpqs(logps, logqs)
+    wake_theta_loss, marginals = sum_logpqs(logps, {n:lq.detach() for (n,lq) in logqs.items()})
     # print(wake_theta_loss)
     ## Wake-phase phi q update
     logps = {n:lp.detach() for (n,lp) in logps.items()}

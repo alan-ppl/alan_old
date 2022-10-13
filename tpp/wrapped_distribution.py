@@ -184,6 +184,7 @@ dist_names = [
     "HalfNormal",
     "Laplace",
     "LogNormal",
+    "Multinomial",
     "MultivariateNormal",
     "NegativeBinomial",
     "Normal",

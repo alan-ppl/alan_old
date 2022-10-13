@@ -26,10 +26,11 @@ class Q(nn.Module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Normal(self.m_mu, self.log_s_mu.exp())
+        tr['mu'] = tpp.MultivariateNormal(self.m_mu, t.diag(self.log_s_mu.exp()))
 
-# data = tpp.sample(P, "obs")
-data = {'obs': t.tensor([ 0.9004, -3.7564,  0.4881, -1.1412,  0.2087])}
+
+data = tpp.sample(P, "obs")
+
 
 
 
