@@ -16,8 +16,8 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 #     return m
 
 x = get_features()
-M=100
-N=200
+M=10
+N=30
 plate_1, plate_2 = dims(2 , [M,N])
 
 x = get_features()[:M,:N][plate_1,plate_2]
@@ -29,7 +29,7 @@ def P(tr):
 
   tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
   tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_dim=plate_1)
+  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
 
   tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
 
@@ -47,8 +47,8 @@ class Q(tpp.Q_module):
         self.reg_param("m_psi_z", t.zeros(()))
         self.reg_param("log_theta_psi_z", t.zeros(()))
         #psi_y
-        self.reg_param("m_psi_y", t.zeros((M,)), [plate_1])
-        self.reg_param("log_theta_psi_y", t.zeros((M,)), [plate_1])
+        self.reg_param("m_psi_y", t.zeros(()))
+        self.reg_param("log_theta_psi_y", t.zeros(()))
 
         #z
         self.reg_param("mu", t.zeros((M,d_z)), [plate_1])

@@ -29,7 +29,7 @@ def P(tr):
 
     tr['mu_z'] = tpp.Normal(t.zeros((2,1)).to(device), t.ones((2,1)).to(device))
     tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-    tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_dim=plate_1)
+    tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
     tr['phi'] = tpp.Multinomial(1,t.tensor([0.1,0.9]))
     # print(tr['phi'])
     # print(tr['mu_z'])
@@ -48,8 +48,8 @@ class Q(tpp.Q_module):
         self.reg_param("m_psi_z", t.zeros(()))
         self.reg_param("log_theta_psi_z", t.zeros(()))
         #psi_y
-        self.reg_param("m_psi_y", t.zeros((M,)), [plate_1])
-        self.reg_param("log_theta_psi_y", t.zeros((M,)), [plate_1])
+        self.reg_param("m_psi_y", t.zeros(()))
+        self.reg_param("log_theta_psi_y", t.zeros(()))
         #phi
         self.reg_param('prob', t.randn(2))
         #z
@@ -87,5 +87,4 @@ for i in range(50000):
     opt.step()
 
     if 0 == i%1000:
-        print(phi_loss.item())
-        # print(theta_loss.item())
+        print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))

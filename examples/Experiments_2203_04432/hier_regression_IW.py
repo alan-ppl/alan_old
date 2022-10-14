@@ -49,7 +49,7 @@ def P(tr):
   tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
   tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_dim=plate_1, sample_K=False)
 
-  tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
+  tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp())
 
   tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
 
@@ -65,8 +65,8 @@ class Q(tpp.Q_module):
         self.reg_param("m_psi_z", t.zeros(()))
         self.reg_param("log_theta_psi_z", t.zeros(()))
         #psi_y
-        self.reg_param("m_psi_y", t.zeros((M,)), [plate_1])
-        self.reg_param("log_theta_psi_y", t.zeros((M,)), [plate_1])
+        self.reg_param("m_psi_y", t.zeros(()))
+        self.reg_param("log_theta_psi_y", t.zeros(()))
 
         #z
         self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
