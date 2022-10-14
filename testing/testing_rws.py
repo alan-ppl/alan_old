@@ -11,46 +11,44 @@ Test posterior inference with a Gaussian with plated observations
 N = 10
 plate_1 = dims(1 , [N])
 a = t.zeros(5,)
-# def P(tr):
-#   '''
-#   Bayesian Heirarchical Gaussian Model
-#   '''
-#   tr['mu'] = tpp.Bernoulli(t.tensor(0.3))
-#   tr['obs'] = tpp.MultivariateNormal(t.ones(5,)*tr['mu'], t.diag(t.ones(5,)), sample_dim=plate_1)
 
+gen_probs = t.tensor([0.1,0.1,0.7,0.05,0.05])
 class P(nn.Module):
     def __init__(self):
         super().__init__()
-        self.prob = nn.Parameter(t.tensor([0.1,0.8,0.05,0.05,0.05]))
-        # self.prob = t.tensor([0.1,0.8,0.05,0.05,0.05])
-        print(t.softmax(self.prob, 0))
+        self.prob_mu = nn.Parameter(t.tensor([0.1,0.8,0.05,0.05,0.05]))
+        self.prob_sigma = nn.Parameter(t.tensor([0.1,0.8,0.05,0.05,0.05]))
+        #self.prob = gen_probs
+
 
     def forward(self, tr):
-        tr['mu'] = tpp.Categorical(logits = self.prob)
-        tr['obs'] = tpp.MultivariateNormal(t.ones(5,)*tr['mu'], t.diag(t.ones(5,)), sample_dim=plate_1)
+        tr['mu'] = tpp.Categorical(logits = self.prob_mu, sample_K=False)
+        tr['sigma'] = tpp.Categorical(logits = self.prob_sigma, sample_K=False)
+        tr['obs'] = tpp.Normal(t.ones(5,)*tr['mu'], t.ones(5,)*tr['sigma'].exp(), sample_dim=plate_1)
 
 class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
-        self.reg_param('prob', t.randn(5))
-
+        self.reg_param('prob_sigma', t.randn(5))
+        self.reg_param('prob_mu', t.randn(5))
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Categorical(logits = self.prob)
+        tr['mu'] = tpp.Categorical(logits = self.prob_mu, sample_K=False)
+        tr['sigma'] = tpp.Categorical(logits = self.prob_sigma, sample_K=False)
 
-data = tpp.sample(P(), 'obs')
+#data = tpp.sample(P(), 'obs')
 
-data ={'obs': t.tensor([[1.9503, 3.1042, 0.5958, 3.1034, 3.2131],
-        [3.5996, 0.4358, 3.2042, 2.0266, 1.2166],
-        [1.6207, 2.5711, 3.7055, 2.4605, 2.1354],
-        [1.6843, 1.5303, 2.7101, 2.2667, 1.5363],
-        [0.1846, 0.8784, 1.6729, 1.6051, 0.6131],
-        [2.8810, 1.4781, 2.7638, 1.0168, 1.7689],
-        [0.4804, 1.6845, 1.9839, 1.0556, 0.8191],
-        [2.2323, 1.0172, 1.6986, 2.1626, 2.0412],
-        [2.6557, 2.9926, 0.6813, 1.4802, 1.2957],
-        [2.0657, 1.6080, 0.6045, 1.0571, 3.1758]])[plate_1]}
+data ={'obs': t.tensor([[ 1.6145,  0.0647,  0.5294,  1.7702,  3.6971],
+        [ 2.3284,  2.7149,  2.2479,  1.5902,  2.5105],
+        [ 2.2991,  0.5888,  2.3346,  2.6348,  3.4941],
+        [ 3.0723,  2.9116,  2.8320,  2.7947,  2.0869],
+        [ 3.0348,  1.3412,  3.3689,  5.1772,  0.8872],
+        [ 1.0979,  2.1693,  1.1301,  1.8357,  1.6108],
+        [ 2.4647, -0.0914,  1.6831,  3.1719,  3.4021],
+        [ 1.5611,  2.6564,  2.5020,  1.8012,  3.4010],
+        [ 0.9619,  2.5353,  3.1481,  3.0188,  3.0644],
+        [ 2.2749,  1.3944,  2.9946,  2.8589,  0.6718]])[plate_1]}
 
 
 
@@ -60,9 +58,9 @@ model = tpp.Model(P(), Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K = 5
-dim = tpp.make_dims(P(), K)
+dim = tpp.make_dims(P(), K, exclude=['mu', 'sigma'])
 
-for i in range(15000):
+for i in range(5):
     opt.zero_grad()
     theta_loss, phi_loss = model.rws(dims=dim)
     (theta_loss + phi_loss).backward()
@@ -75,5 +73,9 @@ for i in range(15000):
 
         # print(elbo.item())
 
-print(t.softmax(model.P.prob, 0))
-print(t.softmax(model.Q.prob, 0))
+print(t.softmax(model.P.prob_sigma, 0))
+print(t.softmax(model.P.prob_mu, 0))
+print(gen_probs)
+print(t.softmax(model.Q.prob_sigma, 0))
+print(t.softmax(model.Q.prob_mu, 0))
+print()

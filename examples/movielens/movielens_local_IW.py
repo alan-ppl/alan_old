@@ -102,7 +102,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-        dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z', 'psi_y'])
+        dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
 
         for i in range(50000):
             opt.zero_grad()

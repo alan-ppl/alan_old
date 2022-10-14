@@ -100,7 +100,7 @@ class WrappedDist:
         # for a in args:
         #     print(a.shape)
         already_K = 'K' in unified_names
-        sampling_K = K_size is not None and not already_K
+        sampling_K = K_size is not None and not already_K and self.sample_K
 
 
         # sample_shape = (*self.sample_shape, K_size) if sampling_K else self.sample_shape
