@@ -26,7 +26,7 @@ class P(nn.Module):
         print(t.softmax(self.prob, 0))
 
     def forward(self, tr):
-        tr['mu'] = tpp.Categorical(t.softmax(self.prob,0))
+        tr['mu'] = tpp.Categorical(logits = self.prob)
         tr['obs'] = tpp.MultivariateNormal(t.ones(5,)*tr['mu'], t.diag(t.ones(5,)), sample_dim=plate_1)
 
 class Q(tpp.Q_module):
@@ -37,7 +37,7 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Categorical(t.softmax(self.prob, 0))
+        tr['mu'] = tpp.Categorical(logits = self.prob)
 
 data = tpp.sample(P(), 'obs')
 

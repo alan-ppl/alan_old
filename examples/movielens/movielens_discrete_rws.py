@@ -44,16 +44,17 @@ plate_1, plate_2 = dims(2 , [M,N])
 x = get_features()[np.ix_(users ,films)][plate_1,plate_2]
 d_z = 18
 def P(tr):
-  '''
-  Heirarchical Model
-  '''
+    '''
+    Heirarchical Model
+    '''
 
-  tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
-  tr['psi_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
-
-  tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
-
-  tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x)
+    tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
+    tr['psi_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
+    tr['phi'] = tpp.Multinomial(1,t.tensor([0.1,0.9]))
+    # print(tr['phi'])
+    # print(tr['mu_z'])
+    tr['z'] = tpp.Normal((tr['phi'] @ tr['mu_z']), tr['phi'] @ tr['psi_z'].exp(), sample_dim=plate_1)
+    tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x)
 
 
 
@@ -61,12 +62,13 @@ class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
         #mu_z
-        self.reg_param("m_mu_z", t.zeros((d_z,)))
-        self.reg_param("log_theta_mu_z", t.zeros((d_z,)))
+        self.reg_param("m_mu_z", t.zeros((2,d_z)))
+        self.reg_param("log_theta_mu_z", t.zeros((2,d_z)))
         #psi_z
-        self.reg_param("m_psi_z", t.zeros((d_z,)))
-        self.reg_param("log_theta_psi_z", t.zeros((d_z,)))
-
+        self.reg_param("m_psi_z", t.zeros((2,d_z)))
+        self.reg_param("log_theta_psi_z", t.zeros((2,d_z)))
+        #phi
+        self.reg_param('prob', t.randn(2))
         #z
         self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
         self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
@@ -75,7 +77,8 @@ class Q(tpp.Q_module):
     def forward(self, tr):
         tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
         tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
-
+        tr['phi'] = tpp.Multinomial(1,logits = self.prob)
+        # print(tr['phi'].shape)
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 
 
@@ -115,6 +118,6 @@ for K in Ks:
         elbos.append(phi_loss.item())
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
 
-file = 'results/movielens_results_rws_N{0}_M{1}.json'.format(N,M)
+file = 'results/movielens_results_discrete_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

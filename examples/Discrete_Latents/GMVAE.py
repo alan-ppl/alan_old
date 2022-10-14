@@ -55,7 +55,7 @@ class P(nn.Module):
     def forward(self, tr):
         # print('P')
         # print(t.softmax(self.prob,0))
-        tr['y'] = tpp.Categorical(t.softmax(self.prob,0))
+        tr['y'] = tpp.Categorical(logits = self.prob)
         tr['z'] = tpp.Normal(t.ones(10,), t.ones(10,))
         obs_logits = self.z_obs(tr['z']) + self.y_obs(tr['y'].unsqueeze(0).type(t.FloatTensor))
         tr['obs'] = tpp.ContinuousBernoulli(logits=obs_logits)
@@ -73,9 +73,7 @@ class Q(nn.Module):
 
 
     def forward(self, tr, data):
-        print('Q')
-        print(self.log_s_z.exp())
-        tr['y'] = tpp.Categorical(t.softmax(self.prob,0))
+        tr['y'] = tpp.Categorical(logits = self.prob)
         tr['z'] = tpp.Normal(self.m_z, self.log_s_z.exp())
 
 

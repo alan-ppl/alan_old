@@ -4,6 +4,7 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
+from movielens_utils import get_ratings, get_features
 from functorch.dim import dims
 import argparse
 import json
@@ -31,27 +32,29 @@ Ks = [1,5,10,15]
 # Ns = [10,30]
 # Ms = [10,50,100]
 
+np.random.seed(0)
+
 M = args.M
 N = args.N
 
+x = get_features()
+users = np.random.choice(x.shape[0], M, replace=False)
+films = np.random.choice(x.shape[1], N, replace=False)
 plate_1, plate_2 = dims(2 , [M,N])
-if N == 30:
-    d_z = 20
-else:
-    d_z = 5
-x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+
+x = get_features()[np.ix_(users ,films)][plate_1,plate_2]
+d_z = 18
 def P(tr):
   '''
   Heirarchical Model
   '''
 
-  tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
-  tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
-  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
+  tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device), sample_K=False)
+  tr['psi_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device), sample_K=False)
 
-  tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp())
+  tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
 
-  tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
+  tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x)
 
 
 
@@ -59,14 +62,11 @@ class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
         #mu_z
-        self.reg_param("m_mu_z", t.zeros(()))
-        self.reg_param("log_theta_mu_z", t.zeros(()))
+        self.reg_param("m_mu_z", t.zeros((d_z,)))
+        self.reg_param("log_theta_mu_z", t.zeros((d_z,)))
         #psi_z
-        self.reg_param("m_psi_z", t.zeros(()))
-        self.reg_param("log_theta_psi_z", t.zeros(()))
-        #psi_y
-        self.reg_param("m_psi_y", t.zeros(()))
-        self.reg_param("log_theta_psi_y", t.zeros(()))
+        self.reg_param("m_psi_z", t.zeros((d_z,)))
+        self.reg_param("log_theta_psi_z", t.zeros((d_z,)))
 
         #z
         self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
@@ -76,13 +76,6 @@ class Q(tpp.Q_module):
     def forward(self, tr):
         tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp(), sample_K=False)
         tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
-        tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
-
-        # sigma_z = self.sigma @ self.sigma.mT
-        # eye = t.eye(d_z).to(device)
-        # z_eye = eye * 0.001
-        # sigma_z = sigma_z + z_eye
-        #print(self.mu * t.ones((M,)).to(device)[plate_1])
 
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 
@@ -90,7 +83,7 @@ class Q(tpp.Q_module):
 
 
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
+data_y = {'obs':get_ratings()[np.ix_(users ,films)][plate_1,plate_2]}
 
 for K in Ks:
     print(K,M,N)
@@ -123,6 +116,6 @@ for K in Ks:
         elbos.append(elbo.item())
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
 
-file = 'results/results_local_IW_N{0}_M{1}.json'.format(N,M)
+file = 'results/movielens_results_local_IW_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)
