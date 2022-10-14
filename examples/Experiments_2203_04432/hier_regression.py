@@ -10,8 +10,7 @@ import json
 import numpy as np
 import itertools
 
-
-
+t.manual_seed(0)
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -80,11 +79,6 @@ class Q(tpp.Q_module):
         tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
         tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp())
 
-        # sigma_z = self.sigma @ self.sigma.mT
-        # eye = t.eye(d_z).to(device)
-        # z_eye = eye * 0.001
-        # sigma_z = sigma_z + z_eye
-        #print(self.mu * t.ones((M,)).to(device)[plate_1])
 
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 

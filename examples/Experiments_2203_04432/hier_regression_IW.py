@@ -9,7 +9,7 @@ import argparse
 import json
 import numpy as np
 import itertools
-
+t.manual_seed(0)
 
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
@@ -49,7 +49,7 @@ def P(tr):
   tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
   tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
 
-  tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp())
+  tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
 
   tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
 
@@ -85,8 +85,6 @@ class Q(tpp.Q_module):
         #print(self.mu * t.ones((M,)).to(device)[plate_1])
 
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
-
-
 
 
 

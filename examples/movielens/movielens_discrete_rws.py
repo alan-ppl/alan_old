@@ -11,6 +11,7 @@ import json
 import numpy as np
 import itertools
 
+t.manual_seed(0)
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
