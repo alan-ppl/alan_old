@@ -4,7 +4,6 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
-from movielens_utils import get_ratings, get_features
 from functorch.dim import dims
 import argparse
 import json
@@ -29,20 +28,17 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 results_dict = {}
 
 Ks = [1, 5,10,15]
-# Ns = [10,30]
-# Ms = [10,50,100]
+
 
 np.random.seed(0)
 
 M = args.M
 N = args.N
 
-x = get_features()
-users = np.random.choice(x.shape[0], M, replace=False)
-films = np.random.choice(x.shape[1], N, replace=False)
+
 plate_1, plate_2 = dims(2 , [M,N])
 
-x = get_features()[np.ix_(users ,films)][plate_1,plate_2]
+x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to_device()
 d_z = 18
 def P(tr):
     '''
@@ -80,7 +76,7 @@ class Q(tpp.Q_module):
 
 
 
-data_y = {'obs':get_ratings()[np.ix_(users ,films)][plate_1,plate_2]}
+data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
 
 for K in Ks:
     print(K,M,N)
