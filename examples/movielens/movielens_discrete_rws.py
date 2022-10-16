@@ -38,7 +38,7 @@ N = args.N
 
 plate_1, plate_2 = dims(2 , [M,N])
 
-x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to_device()
+x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
 d_z = 18
 def P(tr):
     '''
