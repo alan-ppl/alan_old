@@ -109,7 +109,7 @@ for K in Ks:
             if 0 == i%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
 
-        elbos.append(phi_loss.item())
+        elbos.append(elbo.item())
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
 
 file = 'results/movielens_results_tpp_N{0}_M{1}.json'.format(N,M)
