@@ -9,8 +9,8 @@ import argparse
 import json
 import numpy as np
 import itertools
-
 t.manual_seed(0)
+
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -40,15 +40,14 @@ if N == 30:
 else:
     d_z = 5
 x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
-
 def P(tr):
   '''
   Heirarchical Model
   '''
 
-  tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+  tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
+  tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
+  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
 
   tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
 
@@ -75,12 +74,19 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
-        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
-        tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
-        tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp())
+        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp(), sample_K=False)
+        tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
+        tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
 
+        # sigma_z = self.sigma @ self.sigma.mT
+        # eye = t.eye(d_z).to(device)
+        # z_eye = eye * 0.001
+        # sigma_z = sigma_z + z_eye
+        #print(self.mu * t.ones((M,)).to(device)[plate_1])
 
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
+
+
 
 data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
 
@@ -101,7 +107,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=25000, gamma=0.1)
 
-        dim = tpp.make_dims(P, K, [plate_1])
+        dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z', 'psi_y'])
 
         for i in range(50000):
             opt.zero_grad()
@@ -116,6 +122,7 @@ for K in Ks:
         elbos.append(elbo.item())
 
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'lrs':lrs}
-file = 'results/results_N{0}_M{1}.json'.format(N,M)
+
+file = 'results/results_local_IW_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

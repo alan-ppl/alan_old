@@ -46,36 +46,36 @@ for N in Ns:
 
 
 
-        class Q(tpp.Q_module):
-            def __init__(self):
-                super().__init__()
-                #mu_z
-                self.reg_param("m_mu_z", t.zeros(()))
-                self.reg_param("log_theta_mu_z", t.zeros(()))
-                #psi_z
-                self.reg_param("m_psi_z", t.zeros(()))
-                self.reg_param("log_theta_psi_z", t.zeros(()))
-                #psi_y
-                self.reg_param("m_psi_y", t.zeros(()))
-                self.reg_param("log_theta_psi_y", t.zeros(()))
+        # class Q(tpp.Q_module):
+        #     def __init__(self):
+        #         super().__init__()
+        #         #mu_z
+        #         self.reg_param("m_mu_z", t.zeros(()))
+        #         self.reg_param("log_theta_mu_z", t.zeros(()))
+        #         #psi_z
+        #         self.reg_param("m_psi_z", t.zeros(()))
+        #         self.reg_param("log_theta_psi_z", t.zeros(()))
+        #         #psi_y
+        #         self.reg_param("m_psi_y", t.zeros(()))
+        #         self.reg_param("log_theta_psi_y", t.zeros(()))
+        #
+        #         #z
+        #         self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
+        #         self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
+        #
+        #
+        #     def forward(self, tr):
+        #         tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp(), sample_K=False)
+        #         tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
+        #         tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
+        #
+        #         # sigma_z = self.sigma @ self.sigma.mT
+        #         # eye = t.eye(d_z).to(device)
+        #         # z_eye = eye * 0.001
+        #         # sigma_z = sigma_z + z_eye
+        #         #print(self.mu * t.ones((M,)).to(device)[plate_1])
 
-                #z
-                self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
-                self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
-
-
-            def forward(self, tr):
-                tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp(), sample_K=False)
-                tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
-                tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
-
-                # sigma_z = self.sigma @ self.sigma.mT
-                # eye = t.eye(d_z).to(device)
-                # z_eye = eye * 0.001
-                # sigma_z = sigma_z + z_eye
-                #print(self.mu * t.ones((M,)).to(device)[plate_1])
-
-                tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
+                # tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 
         data_y = tpp.sample(P,"obs")
 
