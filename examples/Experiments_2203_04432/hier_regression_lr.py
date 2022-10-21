@@ -116,6 +116,6 @@ for K in Ks:
 
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'lrs':lrs}
 
-file = 'results/results_N{0}_M{1}.json'.format(N,M)
+file = 'results/results_lr_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)
