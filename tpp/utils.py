@@ -3,7 +3,7 @@ import torch.nn as nn
 from .prob_prog import TraceSample
 from .tensor_utils import dename, dimtensormap, nameify
 
-def make_dims(P, K, plates=None, exclude = []):
+def make_dims(P, K, plates=None, exclude = [], groups=None):
     tr = TraceSample()
     P(tr)
     names = list(tr.sample.keys())
@@ -14,12 +14,7 @@ def make_dims(P, K, plates=None, exclude = []):
             Ks.append(Dim(name='K_{}'.format(name), size=K))
         else:
             Ks.append(Dim(name='K_{}'.format(name), size=1))
-    # for name in names:
-    #         Ks.append(Dim(name='K_{}'.format(name), size=K))
 
-    # make_K(Ks)
-    # if plates is not None:
-    #     make_plate(plates)
     names = ['K'] + names
     dims = {names[i]:Ks[i] for i in range(len(names))}
     return dims
@@ -27,16 +22,16 @@ def make_dims(P, K, plates=None, exclude = []):
 
 
 
-def make_K(dims):
-    if not (isinstance(dims, tuple) or isinstance(dims, list)):
-        dims = [dims]
-    for dim in dims:
-        if hasattr(dim, 'plate'):
-            if getattr(dim, 'plate') == True:
-                raise ValueError("Dims can't be both plate and K!")
-        else:
-            setattr(dim, 'K', True)
-            setattr(dim, 'plate', False)
+# def make_K(dims):
+#     if not (isinstance(dims, tuple) or isinstance(dims, list)):
+#         dims = [dims]
+#     for dim in dims:
+#         if hasattr(dim, 'plate'):
+#             if getattr(dim, 'plate') == True:
+#                 raise ValueError("Dims can't be both plate and K!")
+#         else:
+#             setattr(dim, 'K', True)
+#             setattr(dim, 'plate', False)
 
 class Q_module(nn.Module):
     def __init__(self):

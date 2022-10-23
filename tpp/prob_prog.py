@@ -123,11 +123,12 @@ class TraceLogP(Trace):
         assert (key in self.data) or (key in self.sample)
         if key in self.sample:
             K_name = f"K_{key}"
+            print(self.sample[key])
             if hasdim(self.dims['K'], get_dims(self.sample[key])):
                 sample = self.sample[key].index(self.dims['K'], self.dims[key])
             else:
                 sample = self.sample[key].unsqueeze(0)[self.dims[key]]
-
+            print(sample)
             return sample
         return self.data[key]
 

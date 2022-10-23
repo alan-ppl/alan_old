@@ -46,6 +46,7 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K = 5
 dim = tpp.make_dims(P, K, [plate_1], exclude=['mu'])
+
 for i in range(1):
     opt.zero_grad()
     elbo = model.elbo(dims=dim)
