@@ -116,7 +116,7 @@ for K in Ks:
 
             if 0 == i%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
-            lr.append(opt.param_groups[0]['lr'])
+                lr.append(opt.param_groups[0]['lr'])
         lrs.append(lr)
         elbos.append(elbo.item())
 
