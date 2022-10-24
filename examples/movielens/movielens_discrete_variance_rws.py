@@ -4,7 +4,7 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
-from functorch.dim import dims
+from functorch.dim import dims, Dim
 import argparse
 import json
 import numpy as np

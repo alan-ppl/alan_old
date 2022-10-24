@@ -19,7 +19,7 @@ class Model(nn.Module):
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
 
-        return vi(trp.log_prob(), trq.log_prob())
+        return vi(trp.log_prob(), trq.log_prob(), dims)
 
     def importance_sample(self, dims):
         #sample from approximate posterior
@@ -40,7 +40,7 @@ class Model(nn.Module):
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
 
-        return reweighted_wake_sleep(trp.log_prob(), trq.log_prob())
+        return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), dims)
 
     # def liw(self, dims):
     #     #sample from approximate posterior

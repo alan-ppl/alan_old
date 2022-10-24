@@ -232,7 +232,7 @@ def sum_none_dims(lp):
         lp = lp.sum(none_dims)
     return lp
 
-def combine_lps(logps, logqs):
+def combine_lps(logps, logqs, dims):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -256,9 +256,9 @@ def combine_lps(logps, logqs):
 
     for (n, lp) in logqs.items():
         if lp.names[0] == None:
-            logqs[n] = lp.refine_names(K_prefix+n)
+            logqs[n] = lp.refine_names(repr(dims[n]))
         elif 'K' in lp.names:
-            logqs[n] = lp.rename(K=K_prefix+n)
+            logqs[n] = lp.rename(K=repr(dims[n]))
     # logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
 
     # print(logps)
@@ -286,16 +286,18 @@ def combine_lps(logps, logqs):
 
         # check there is a K_name corresponding to rv name in both tensors
         # print(rv)
-        assert K_prefix+rv in lp.names
-        assert K_prefix+rv in lq.names
+        assert repr(dims[rv]) in lp.names
+        assert repr(dims[rv]) in lq.names
 
 
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-
+    # print(all_lps)
+    # for lp in all_lps:
+    #     print(lp.shape)
     return all_lps
 
-def sum_logpqs(logps, logqs):
+def sum_logpqs(logps, logqs, dims):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -305,22 +307,22 @@ def sum_logpqs(logps, logqs):
         marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
     """
 
-    all_lps = combine_lps(logps, logqs)
+    all_lps = combine_lps(logps, logqs, dims)
     return sum_lps(all_lps)
 
 
-def vi(logps, logqs):
-    elbo, _ = sum_logpqs(logps, logqs)
+def vi(logps, logqs, dims):
+    elbo, _ = sum_logpqs(logps, logqs, dims)
     return elbo
 
-def reweighted_wake_sleep(logps, logqs):
+def reweighted_wake_sleep(logps, logqs, dims):
 
     # ## Wake-phase Theta p update
-    wake_theta_loss, marginals = sum_logpqs(logps, {n:lq.detach() for (n,lq) in logqs.items()})
+    wake_theta_loss, marginals = sum_logpqs(logps, {n:lq.detach() for (n,lq) in logqs.items()}, dims)
     # print(wake_theta_loss)
     ## Wake-phase phi q update
     logps = {n:lp.detach() for (n,lp) in logps.items()}
-    wake_phi_loss, marginals = sum_logpqs(logps, logqs)
+    wake_phi_loss, marginals = sum_logpqs(logps, logqs, dims)
     # print(wake_phi_loss)
     ## Sleep-phase phi q update
 

@@ -4,7 +4,7 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
-from functorch.dim import dims
+from functorch.dim import dims, Dim
 import argparse
 import json
 import numpy as np
@@ -84,7 +84,10 @@ for K in Ks:
     results_dict[N][M] = results_dict[N].get(M, {})
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
-
+    # dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
+    K_group1 = Dim(name='K_group1', size=K)
+    K = Dim(name='K', size=K)
+    dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
     for i in range(5):
 
         t.manual_seed(i)
@@ -95,8 +98,10 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-4)
 
 
-        dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
-
+        # dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
+        # K_group1 = Dim(name='K_group1', size=K)
+        # K = Dim(name='K', size=K)
+        # dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
         for i in range(50000):
             opt.zero_grad()
             theta_loss, phi_loss = model.rws(dims=dim)
