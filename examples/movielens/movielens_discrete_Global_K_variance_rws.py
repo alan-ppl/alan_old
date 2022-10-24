@@ -45,8 +45,8 @@ def P(tr):
     Heirarchical Model
     '''
 
-    tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device), sample_K=False)
-    tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]), sample_K=False)
+    tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
+    tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device))
     tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
     tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x)
 
@@ -67,8 +67,8 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
-        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp(), sample_K=False)
-        tr['psi_z'] = tpp.Categorical(logits=self.psi_z_logits, sample_K=False)
+        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
+        tr['psi_z'] = tpp.Categorical(logits=self.psi_z_logits)
 
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 
