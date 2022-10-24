@@ -96,7 +96,7 @@ class Q(tpp.Q_module):
 
 
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
-print(t.load('data_y_{0}_{1}.pt'.format(N, M)).shape)
+
 data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_muz2, plate_muz3, plate_muz4, plate_obs, plate_z].to(device)}
 
 for K in Ks:
@@ -123,6 +123,7 @@ for K in Ks:
             elbo = model.elbo(dims=dim)
             (-elbo).backward()
             opt.step()
+            scheduler.step()
 
             if 0 == i%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
