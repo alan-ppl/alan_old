@@ -45,9 +45,9 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
-  tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
-  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device), sample_K=False)
+  tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+  tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
 
   tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
 
