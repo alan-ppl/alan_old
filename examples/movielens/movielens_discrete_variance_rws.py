@@ -27,7 +27,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [5,10,15]
 
 
 np.random.seed(0)
@@ -39,7 +39,7 @@ N = args.N
 plate_1, plate_2 = dims(2 , [M,N])
 
 x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
-d_z = 18
+d_z = 5
 def P(tr):
     '''
     Heirarchical Model

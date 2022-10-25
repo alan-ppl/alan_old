@@ -142,6 +142,7 @@ class WrappedDist:
         kwargs = self.kwargs
 
         # args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
+
         args, kwargs, denamify = nameify(args, kwargs)
 
         # Sorted list of all unique names
@@ -154,15 +155,14 @@ class WrappedDist:
             sum(name is None for name in arg.names) for arg in tensors(args, kwargs)
         )
 
-        #args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
+        args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
-        # print('after pad nones')
-        # for a in args[:-1]:
-        #     print(a.shape)
+
+
+
         log_probs = (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])
                 .refine_names(*unified_names, ...))
-
 
         return log_probs
 

@@ -27,7 +27,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1, 5,10,15]
+Ks = [5,10,15]
 
 
 np.random.seed(0)
@@ -71,7 +71,6 @@ class Q(tpp.Q_module):
         tr['psi_z'] = tpp.Categorical(logits=self.psi_z_logits)
 
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
-
 
 
 
