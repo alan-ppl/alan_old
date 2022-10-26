@@ -77,15 +77,15 @@ class Q(tpp.Q_module):
 
 data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
 
-for K in Ks:
-    print(K,M,N)
+for K_size in Ks:
+    print(K_size,M,N)
     results_dict[N] = results_dict.get(N, {})
     results_dict[N][M] = results_dict[N].get(M, {})
-    results_dict[N][M][K] = results_dict[N][M].get(K, {})
+    results_dict[N][M][K_size] = results_dict[N][M].get(K, {})
     elbos = []
     # dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
-    K_group1 = Dim(name='K_group1', size=K)
-    K = Dim(name='K', size=K)
+    K_group1 = Dim(name='K_group1', size=K_size)
+    K = Dim(name='K', size=K_size)
     dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
     for i in range(5):
 
@@ -111,7 +111,7 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))
 
         elbos.append(phi_loss.item())
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
+    results_dict[N][M][K_size] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
 
 file = 'results/movielens_results_global_K_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
