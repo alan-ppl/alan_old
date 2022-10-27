@@ -49,44 +49,6 @@ for N in Ns:
 
 
 
-        class Q(tpp.Q_module):
-            def __init__(self):
-                super().__init__()
-                #mu_z1
-                self.reg_param("m_mu_z1", t.zeros(()))
-                self.reg_param("log_theta_mu_z1", t.zeros(()))
-                #mu_z2
-                self.reg_param("m_mu_z2", t.zeros((2,)), [plate_muz2])
-                self.reg_param("log_theta_mu_z2", t.zeros((2,)), [plate_muz2])
-                #mu_z3
-                self.reg_param("m_mu_z3", t.zeros((2,2)), [plate_muz2, plate_muz3])
-                self.reg_param("log_theta_mu_z3", t.zeros((2,2)), [plate_muz2, plate_muz3])
-                #mu_z4
-                self.reg_param("m_mu_z4", t.zeros((2,2,2)), [plate_muz2, plate_muz3, plate_muz4])
-                self.reg_param("log_theta_mu_z4", t.zeros((2,2,2)), [plate_muz2, plate_muz3, plate_muz4])
-                #psi_z
-                self.reg_param("m_psi_z", t.zeros(()))
-                self.reg_param("log_theta_psi_z", t.zeros(()))
-                #psi_y
-                self.reg_param("m_psi_y", t.zeros(()))
-                self.reg_param("log_theta_psi_y", t.zeros(()))
-
-                #z
-                self.reg_param("mu", t.zeros((2, 2, 2, M, d_z)), [plate_muz2, plate_muz3, plate_muz4, plate_1])
-                self.reg_param("log_sigma", t.zeros((2, 2, 2, M, d_z)), [plate_muz2, plate_muz3, plate_muz4, plate_1])
-
-
-            def forward(self, tr):
-                tr['mu_z1'] = tpp.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp())
-                tr['mu_z2'] = tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp())
-                tr['mu_z3'] = tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp())
-                tr['mu_z4'] = tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp())
-                tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
-                tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp())
-
-
-                tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
-
         data_y = tpp.sample(P,"obs")
 
         print(data_y['obs'].dims)

@@ -114,7 +114,7 @@ for K in Ks:
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
-        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
+        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=25000, gamma=0.1)
 
         dim = tpp.make_dims(P, K, exclude=['mu_z1', 'mu_z2', 'mu_z3', 'mu_z4', 'psi_z', 'psi_y'])
 

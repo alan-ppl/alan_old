@@ -81,7 +81,7 @@ for K_size in Ks:
     print(K_size,M,N)
     results_dict[N] = results_dict.get(N, {})
     results_dict[N][M] = results_dict[N].get(M, {})
-    results_dict[N][M][K_size] = results_dict[N][M].get(K, {})
+    results_dict[N][M][K_size] = results_dict[N][M].get(K_size, {})
     elbos = []
     # dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
     K_group1 = Dim(name='K_group1', size=K_size)
