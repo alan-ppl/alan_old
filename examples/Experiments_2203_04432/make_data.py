@@ -46,7 +46,11 @@ for N in Ns:
 
 
         data_y = tpp.sample(P,"obs")
-
+        test_y
 
         t.save(data_y['obs'].order(*data_y['obs'].dims), 'data_y_{0}_{1}.pt'.format(N, M))
         t.save(x.order(*x.dims), 'weights_{0}_{1}.pt'.format(N,M))
+
+
+        test_data_y = tpp.sample(P,"obs")
+        t.save(data_y['obs'].order(*data_y['obs'].dims), 'test_data_y_{0}_{1}.pt'.format(N, M))

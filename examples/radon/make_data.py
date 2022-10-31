@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+import torch as t
 
 
 M = 2
@@ -81,7 +81,7 @@ df_st = df_st[df_st]
 random_states = np.random.choice(states, M, replace=False)
 df = df.loc[df['stfips'].isin(random_states)]
 
-print(df)
+
 
 new_counties = []
 for m in df['stfips'].unique():
@@ -92,7 +92,7 @@ for m in df['stfips'].unique():
     new_counties.extend(np.random.choice(df.loc[df['stfips'] == m].loc[df['cntyfips'].isin(counties)]['cntyfips'].unique(), J, replace=False))
 
 df = df.loc[df['cntyfips'].isin(new_counties)]
-print(df)
+
 
 new_zips = []
 for j in df['cntyfips'].unique():
@@ -103,7 +103,7 @@ for j in df['cntyfips'].unique():
     new_zips.extend(np.random.choice(df.loc[df['cntyfips'] == j].loc[df['zip'].isin(zips)]['zip'].unique(), I, replace=False))
 
 df = df.loc[df['zip'].isin(new_zips)]
-print(df)
+
 
 new_readings = []
 for n in df['zip'].unique():
@@ -112,7 +112,15 @@ for n in df['zip'].unique():
 # readings = np.random.choice(df['reading'].unique(), N, replace=False)
 df = df.loc[df['reading'].isin(new_readings)]
 df['reading'] = df['r']
-df.drop(columns='r')
+df.drop(columns='r', inplace=True)
 print(df)
-print(df.shape)
-print(2*2*2*4)
+basement = df['basement'].to_numpy()
+radon = df['log_radon'].to_numpy()
+county_uranium = df['log_u'].unique().reshape(M,J)
+basement = basement.reshape(M, J, I, N)
+radon = radon.reshape(M, J, I, N)
+
+print(county_uranium)
+t.save(t.from_numpy(county_uranium), 'county_uranium.pt')
+t.save(t.from_numpy(basement), 'basement.pt')
+t.save(t.from_numpy(radon), 'radon.pt')

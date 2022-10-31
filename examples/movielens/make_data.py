@@ -32,8 +32,8 @@ for N in Ns:
         users = np.random.choice(x.shape[0], M, replace=False)
         films = np.random.choice(x.shape[1], N, replace=False)
 
-        weights = x[np.ix_(users ,films)]
-        data = get_ratings()[np.ix_(users ,films)]
+        train_weights = x[np.ix_(users ,films)]
+        train_data = get_ratings()[np.ix_(users ,films)]
 
         t.save(data, 'data_y_{0}_{1}.pt'.format(N, M))
         t.save(weights, 'weights_{0}_{1}.pt'.format(N,M))
