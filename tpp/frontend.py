@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .backend import vi, reweighted_wake_sleep, gibbs, sum_lps, sum_logpqs
+from .backend import vi, reweighted_wake_sleep, gibbs, sum_lps, sum_logpqs, sum_none_dims
 # from .cartesian_tensor import CartesianTensor
 from .utils import *
 
@@ -18,6 +18,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
+
 
         return vi(trp.log_prob(), trq.log_prob(), dims)
 
@@ -41,6 +42,15 @@ class Model(nn.Module):
         self.P(trp)
 
         return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), dims)
+
+    def test_log_like(self, dims, test_data):
+        trq = TraceSampleLogQ(dims=dims, data=test_data)
+        self.Q(trq)
+        #compute logP
+        trp = TraceLogP(trq.sample, test_data, dims=dims)
+        self.P(trp)
+        logps = {rv: sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}
+        return sum_lps(list(logps.values()))[0].item()
 
     # def liw(self, dims):
     #     #sample from approximate posterior

@@ -27,7 +27,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [1, 5,10,15]
 # Ns = [10,30]
 # Ms = [10,50,100]
 
@@ -98,14 +98,14 @@ class Q(tpp.Q_module):
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 
 data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_muz2, plate_muz3, plate_muz4, plate_obs, plate_z].to(device)}
-
+test_data_y = {'obs':t.load('test_data_y_{0}_{1}.pt'.format(N, M))[plate_muz2, plate_muz3, plate_muz4, plate_obs, plate_z].to(device)}
 for K in Ks:
     print(K,M,N)
     results_dict[N] = results_dict.get(N, {})
     results_dict[N][M] = results_dict[N].get(M, {})
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
-
+    test_log_likelihoods = []
     for i in range(5):
 
         t.manual_seed(i)
@@ -114,9 +114,7 @@ for K in Ks:
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
-        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=25000, gamma=0.1)
-
-
+        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
         dim = tpp.make_dims(P, K)
 
@@ -131,7 +129,9 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
 
         elbos.append(elbo.item())
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
+        test_dims = tpp.make_dims(P, 1)
+        test_log_likelihoods.append(model.test_log_like(dims=test_dims, test_data=test_data_y))
+    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'test_log_likelihood_mean':np.mean(test_log_likelihoods), 'test_log_likelihood_std':np.std(test_log_likelihoods)}
 
 file = 'results/results_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
