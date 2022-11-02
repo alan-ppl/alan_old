@@ -4,8 +4,8 @@ import torch as t
 
 
 M = 2
-J = 2
-I = 2
+J = 4
+I = 4
 N = 4
 
 df_srrs2 = pd.read_csv('srrs2.dat')

@@ -14,6 +14,7 @@ class Model(nn.Module):
     def elbo(self, dims):
         #sample from approximate posterior
         trq = TraceSampleLogQ(dims=dims, data=self.data)
+
         self.Q(trq)
         #compute logP
         trp = TraceLogP(trq.sample, self.data, dims=dims)
