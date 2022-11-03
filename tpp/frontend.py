@@ -50,8 +50,8 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq.sample, test_data, dims=dims)
         self.P(trp)
-        
-        return vi(trp.log_prob(), trq.log_prob(), dims)
+
+        return vi(trp.log_prob(), trq.log_prob(), dims).cpu().item()
 
     # def liw(self, dims):
     #     #sample from approximate posterior
