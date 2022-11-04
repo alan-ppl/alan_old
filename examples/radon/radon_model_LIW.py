@@ -155,6 +155,6 @@ for K in Ks:
         elbos.append(elbo.item())
     results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
 
-file = 'results/results.json'
+file = 'results/results_LIW.json'
 with open(file, 'w') as f:
     json.dump(results_dict, f)
