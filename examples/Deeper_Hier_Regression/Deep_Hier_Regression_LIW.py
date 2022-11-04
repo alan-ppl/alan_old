@@ -129,8 +129,7 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
 
         elbos.append(elbo.item())
-        test_dims = tpp.make_dims(P, 1, exclude=['mu_z1', 'mu_z2', 'mu_z3', 'mu_z4', 'psi_z', 'psi_y'])
-        test_log_likelihoods.append(model.test_log_like(dims=test_dims, test_data=test_data_y))
+        test_log_likelihoods.append(model.test_log_like(dims=dim, test_data=test_data_y))
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'test_log_likelihood_mean':np.mean(test_log_likelihoods), 'test_log_likelihood_std':np.std(test_log_likelihoods)}
 
 file = 'results/results_LIW_N{0}_M{1}.json'.format(N,M)
