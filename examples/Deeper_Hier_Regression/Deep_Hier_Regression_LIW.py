@@ -88,9 +88,9 @@ class Q(tpp.Q_module):
 
     def forward(self, tr):
         tr['mu_z1'] = tpp.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp(), sample_K=False)
-        tr['mu_z2'] = tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp(), sample_K=False)
-        tr['mu_z3'] = tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp(), sample_K=False)
-        tr['mu_z4'] = tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp(), sample_K=False)
+        tr['mu_z2'] = tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp())
+        tr['mu_z3'] = tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp())
+        tr['mu_z4'] = tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp())
         tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
         tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
 
@@ -116,7 +116,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
-        dim = tpp.make_dims(P, K, exclude=['mu_z1', 'mu_z2', 'mu_z3', 'mu_z4', 'psi_z', 'psi_y'])
+        dim = tpp.make_dims(P, K, exclude=['mu_z1', 'psi_z', 'psi_y'])
 
         for i in range(50000):
             opt.zero_grad()
