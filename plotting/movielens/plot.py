@@ -45,7 +45,7 @@ with plt.rc_context(bundles.icml2022()):
             stds_tpp = [results_tpp[N][M][k]['std']/np.sqrt(5) for k in Ks]
 
             ax[i,j].errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
-            ax[i,j].errorbar(Ks,elbos_rws, yerr=stds_rws, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='RWS')
+            # ax[i,j].errorbar(Ks,elbos_rws, yerr=stds_rws, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='RWS')
             ax[i,j].errorbar(Ks,elbos_tpp, yerr=stds_tpp, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TPP')
             #
             # ax.set_ylabel('Final Lower Bound')

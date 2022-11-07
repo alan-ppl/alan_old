@@ -9,8 +9,15 @@ import argparse
 import json
 import numpy as np
 import itertools
+import random
 
-t.manual_seed(0)
+def seed_torch(seed=1029):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+
+seed_torch(0)
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -108,7 +115,7 @@ for K in Ks:
     test_log_likelihoods = []
     for i in range(5):
 
-        t.manual_seed(i)
+        seed_torch(i)
 
         model = tpp.Model(P, Q(), data_y)
         model.to(device)
@@ -118,7 +125,7 @@ for K in Ks:
 
         dim = tpp.make_dims(P, K, exclude=['mu_z1', 'psi_z', 'psi_y'])
 
-        for i in range(50000):
+        for i in range(75000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
             (-elbo).backward()
@@ -129,8 +136,8 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
 
         elbos.append(elbo.item())
-        test_log_likelihoods.append(model.test_log_like(dims=dim, test_data=test_data_y))
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'test_log_likelihood_mean':np.mean(test_log_likelihoods), 'test_log_likelihood_std':np.std(test_log_likelihoods)}
+        # test_log_likelihoods.append(model.test_log_like(dims=dim, test_data=test_data_y))
+    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
 
 file = 'results/results_LIW_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
