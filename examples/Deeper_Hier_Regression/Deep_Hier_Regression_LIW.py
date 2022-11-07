@@ -14,8 +14,8 @@ import random
 def seed_torch(seed=1029):
     random.seed(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    t.manual_seed(seed)
+    t.cuda.manual_seed(seed)
 
 seed_torch(0)
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')

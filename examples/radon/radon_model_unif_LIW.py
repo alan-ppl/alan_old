@@ -11,9 +11,15 @@ import numpy as np
 import itertools
 from torch.distributions.constraint_registry import transform_to
 from torch.distributions.constraints import half_open_interval
+import random
 
+def seed_torch(seed=1029):
+    random.seed(seed)
+    np.random.seed(seed)
+    t.manual_seed(seed)
+    t.cuda.manual_seed(seed)
 
-t.manual_seed(0)
+seed_torch(0)
 # parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 #
 # parser.add_argument('N', type=int,
@@ -26,7 +32,7 @@ t.manual_seed(0)
 print('...', flush=True)
 
 M = 2
-J = 4
+J = 2
 I = 4
 N = 4
 
@@ -149,7 +155,7 @@ for K in Ks:
 
     for i in range(5):
 
-        t.manual_seed(i)
+        seed_torch(i)
 
         model = tpp.Model(P, Q(), data_y)
         model.to(device)
