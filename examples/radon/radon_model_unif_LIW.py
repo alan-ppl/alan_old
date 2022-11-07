@@ -161,7 +161,7 @@ for K in Ks:
 
         dim = tpp.make_dims(P, K, exclude=['sigma_beta', 'mu_beta', 'gamma', 'sigma_alpha', 'sigma_omega', 'sigma_obs', 'beta_int'])
 
-        for i in range(50000):
+        for i in range(100000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
             (-elbo).backward()

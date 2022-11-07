@@ -39,7 +39,7 @@ with plt.rc_context(bundles.icml2022()):
     # ax[i,j].label_outer()
     count =+ 1
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
-    ax.set_title('2 States, 4 Counties, 4 Zipcodes, 4 Readings')
+    ax.set_title('2 States, 2 Counties, 4 Zipcodes, 4 Readings')
 
     ax.set_ylabel('Final Lower Bound')
 

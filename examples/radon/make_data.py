@@ -4,7 +4,7 @@ import torch as t
 
 
 M = 2
-J = 4
+J = 2
 I = 4
 N = 4
 
