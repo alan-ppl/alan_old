@@ -30,7 +30,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
-        _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob())
+        _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob(), dims)
         return gibbs(marginals)
 
     def rws(self, dims):
@@ -44,14 +44,18 @@ class Model(nn.Module):
 
         return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), dims)
 
-    def test_log_like(self, dims, test_data):
-        trq = TraceSampleLogQ(dims=dims, data=test_data)
-        self.Q(trq)
-        #compute logP
-        trp = TraceLogP(trq.sample, test_data, dims=dims)
-        self.P(trp)
-
-        return vi(trp.log_prob(), trq.log_prob(), dims).cpu().item()
+    def pred_likelihood(self, dims, test_data, num_samples, reweighting=False):
+        pred_lik = 0
+        #gotta be able to parallelise this
+        for i in range(num_samples):
+            trq = TraceSampleLogQ(dims=dims, data=test_data)
+            self.Q(trq)
+            #compute logP
+            trp = TraceLogP(trq.sample, test_data, dims=dims)
+            self.P(trp)
+            logps = {rv: sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}
+            pred_lik += sum_lps(list(logps))
+        return pred_lik / num_samples
 
     # def liw(self, dims):
     #     #sample from approximate posterior

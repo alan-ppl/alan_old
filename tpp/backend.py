@@ -1,5 +1,3 @@
-#Write Gibbs sampler!!
-
 import torch as t
 import opt_einsum as oe
 import torch.distributions as td

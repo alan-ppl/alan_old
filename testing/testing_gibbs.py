@@ -14,8 +14,8 @@ def P(tr):
     Bayesian Gaussian Model
     '''
     a = t.zeros(5,)
-    tr['mu'] = tpp.MultivariateNormal(a, t.eye(5))
-    tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5), sample_dim=plate_1)
+    tr['mu'] = tpp.Normal(a, t.ones(5,))
+    tr['obs'] = tpp.Normal(tr['mu'], t.ones(5,), sample_dim=plate_1)
 
 
 
@@ -23,12 +23,12 @@ class Q(nn.Module):
     def __init__(self):
         super().__init__()
         self.m_mu = nn.Parameter(t.zeros(5,))
-
         self.log_s_mu = nn.Parameter(t.zeros(5,))
 
 
+
     def forward(self, tr):
-        tr['mu'] = tpp.MultivariateNormal(self.m_mu, t.diag(self.log_s_mu.exp()))
+        tr['mu'] = tpp.Normal(self.m_mu, self.log_s_mu.exp())
 
 data = tpp.sample(P, "obs")
 # data = {'obs': t.tensor(t.tensor([[[ 0.5851,  0.8783, -0.4380, -1.3839,  0.9538]],
