@@ -4,7 +4,7 @@ import json
 from tueplots import axes, bundles
 
 Ks = ['1','5','10','15']
-Ns = ['200','30']
+Ns = ['30','200']
 Ms = ['10','50','100']
 # with open('results.json') as f:
 #     results = json.load(f)

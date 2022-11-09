@@ -65,7 +65,7 @@ def P(tr):
 
   #zipcode level
   tr['sigma_omega'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
-  tr['omega'] = tpp.Normal(tr['sigma_alpha'], tr['sigma_omega'], sample_dim=plate_zipcode)
+  tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'], sample_dim=plate_zipcode)
 
   #reading level
   tr['sigma_obs'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
