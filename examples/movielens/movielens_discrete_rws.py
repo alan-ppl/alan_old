@@ -38,9 +38,9 @@ N = args.N
 
 plate_1, plate_2 = dims(2 , [M,N])
 
-x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+x_train = t.load('data/weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
 d_z = 18
-def P(tr):
+def P_train(tr):
     '''
     Heirarchical Model
     '''
@@ -51,9 +51,22 @@ def P(tr):
     # print(tr['phi'])
     # print(tr['mu_z'])
     tr['z'] = tpp.Normal((tr['phi'] @ tr['mu_z']), tr['phi'] @ tr['psi_z'].exp(), sample_dim=plate_1)
-    tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x)
+    tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x_train)
 
+x_test = t.load('data/test_weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+d_z = 18
+def P_test(tr):
+    '''
+    Heirarchical Model
+    '''
 
+    tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
+    tr['psi_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
+    tr['phi'] = tpp.Multinomial(1,t.tensor([0.1,0.9]))
+    # print(tr['phi'])
+    # print(tr['mu_z'])
+    tr['z'] = tpp.Normal((tr['phi'] @ tr['mu_z']), tr['phi'] @ tr['psi_z'].exp(), sample_dim=plate_1)
+    tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x_test)
 
 class Q(tpp.Q_module):
     def __init__(self):
@@ -82,26 +95,26 @@ class Q(tpp.Q_module):
 
 
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
-
+data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
+test_data_y = {'obs':t.load('data/test_data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
 for K in Ks:
     print(K,M,N)
     results_dict[N] = results_dict.get(N, {})
     results_dict[N][M] = results_dict[N].get(M, {})
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
-
+    pred_liks = []
     for i in range(5):
 
         t.manual_seed(i)
 
-        model = tpp.Model(P, Q(), data_y)
+        model = tpp.Model(P_train, Q(), data_y)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-        dim = tpp.make_dims(P, K, [plate_1])
+        dim = tpp.make_dims(P_train, K, [plate_1])
 
         for i in range(50000):
             opt.zero_grad()
@@ -113,7 +126,12 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))
 
         elbos.append(phi_loss.item())
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
+
+        test_model = tpp.Model(P_test, model.Q, test_data_y)
+        dim = tpp.make_dims(P_test, 1)
+        pred_likelihood = test_model.pred_likelihood(dims=dim, test_data=test_data_y, num_samples=1000, reparam=False).sum()
+        pred_liks.append(pred_likelihood.item())
+    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks}
 
 file = 'results/movielens_results_discrete_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:

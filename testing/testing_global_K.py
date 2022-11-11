@@ -52,7 +52,7 @@ class Q(nn.Module):
         tr['gamma'] = tpp.Normal(self.m_gamma, self.log_s_gamma.exp())
 
 data = tpp.sample(P, 'obs')
-#
+test_data = tpp.sample(P, 'obs')
 # print(tpp.sample(P))
 
 
@@ -66,7 +66,7 @@ K_group1 = Dim(name='K_group1', size=K)
 K_group2 = Dim(name='K_group2', size=K)
 K = Dim(name='K', size=K)
 dim = {'K':K, 'mu':K_group2, 'phi':K_group2, 'psi': K_group1, 'gamma':K_group1}
-for i in range(20000):
+for i in range(1000):
     opt.zero_grad()
     elbo = model.elbo(dims=dim)
     (-elbo).backward()
@@ -74,3 +74,11 @@ for i in range(20000):
 
     if 0 == i%1000:
         print(elbo.item())
+
+dim = tpp.make_dims(P, 1)
+
+print('Test Data')
+print(tpp.dename(test_data['obs']).shape)
+pred_lik = model.pred_likelihood(dims=dim, test_data=test_data, num_samples=1)
+print(tpp.dename(pred_lik).shape)
+print(pred_lik)

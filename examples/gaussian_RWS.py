@@ -5,14 +5,15 @@ from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
+import numpy as np
 
 def P(tr):
   '''
   Bayesian Gaussian Model
   '''
   a = t.zeros(5,)
-  tr['mu'] = tpp.MultivariateNormal(a, t.eye(5))
-  tr['obs'] = tpp.MultivariateNormal(tr['mu'], t.eye(5))
+  tr['mu'] = tpp.Normal(a, t.ones(5,))
+  tr['obs'] = tpp.Normal(tr['mu'], t.ones(5,))
 
 
 
@@ -26,11 +27,11 @@ class Q(nn.Module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.MultivariateNormal(self.m_mu, t.diag(self.log_s_mu.exp()))
+        tr['mu'] = tpp.Normal(self.m_mu, self.log_s_mu.exp())
 
 
 data = tpp.sample(P, "obs")
-
+test_data = tpp.sample(P, "obs")
 
 
 
@@ -44,7 +45,7 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 K=5
 dim = tpp.make_dims(P, K)
 print("K={}".format(K))
-for i in range(25000):
+for i in range(5000):
     opt.zero_grad()
     theta_loss, phi_loss = model.rws(dims=dim)
     (theta_loss + phi_loss).backward()
@@ -59,7 +60,7 @@ print("Approximate mu")
 print(model.Q.m_mu)
 
 print("Approximate Covariance")
-print(model.Q.log_s_mu.exp())
+print(model.Q.log_s_mu.exp()**2)
 
 b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),tpp.dename(data['obs']).reshape(-1,1))
 A_n = t.inverse(t.eye(5) + t.eye(5))

@@ -29,11 +29,16 @@ Ms = [10,50,100]
 for N in Ns:
     for M in Ms:
         x = get_features()
-        users = np.random.choice(x.shape[0], M, replace=False)
-        films = np.random.choice(x.shape[1], N, replace=False)
+        users = np.random.choice(x.shape[0], 2*M, replace=False)
+        films = np.random.choice(x.shape[1], 2*N, replace=False)
 
-        train_weights = x[np.ix_(users ,films)]
-        train_data = get_ratings()[np.ix_(users ,films)]
+        train_weights = x[np.ix_(users[:M] ,films[:N])]
+        test_weights = x[np.ix_(users[:M] ,films[:N])]
+        train_data = get_ratings()[np.ix_(users[:M] ,films[:N])]
+        test_data = get_ratings()[np.ix_(users[:M] ,films[:N])]
 
-        t.save(data, 'data_y_{0}_{1}.pt'.format(N, M))
-        t.save(weights, 'weights_{0}_{1}.pt'.format(N,M))
+        t.save(train_data, 'data/data_y_{0}_{1}.pt'.format(N, M))
+        t.save(train_weights, 'data/weights_{0}_{1}.pt'.format(N,M))
+
+        t.save(test_data, 'data/test_data_y_{0}_{1}.pt'.format(N, M))
+        t.save(test_weights, 'data/test_weights_{0}_{1}.pt'.format(N,M))

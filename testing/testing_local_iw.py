@@ -36,7 +36,7 @@ class Q(nn.Module):
         tr['phi'] = tpp.Normal(self.m_phi, self.log_s_phi.exp())
 
 data = tpp.sample(P, 'obs')
-
+test_data = tpp.sample(P, 'obs')
 # print(tpp.sample(P))
 
 
@@ -47,7 +47,7 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 K = 5
 dim = tpp.make_dims(P, K, [plate_1], exclude=['mu'])
 
-for i in range(1):
+for i in range(10000):
     opt.zero_grad()
     elbo = model.elbo(dims=dim)
     (-elbo).backward()
@@ -55,3 +55,10 @@ for i in range(1):
 
     if 0 == i%1000:
         print(elbo.item())
+
+dim = tpp.make_dims(P, 1)
+print('Test Data')
+print(tpp.dename(test_data['obs']).shape)
+pred_lik = model.pred_likelihood(dims=dim, test_data=test_data, num_samples=1000)
+print(tpp.dename(pred_lik).shape)
+print(pred_lik)

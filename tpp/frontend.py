@@ -3,6 +3,7 @@ from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
 from .backend import vi, reweighted_wake_sleep, gibbs, sum_lps, sum_logpqs, sum_none_dims
 # from .cartesian_tensor import CartesianTensor
 from .utils import *
+from .tensor_utils import dename
 
 class Model(nn.Module):
     def __init__(self, P, Q, data=None):
@@ -44,17 +45,22 @@ class Model(nn.Module):
 
         return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), dims)
 
-    def pred_likelihood(self, dims, test_data, num_samples, reweighting=False):
+    def pred_likelihood(self, dims, test_data, num_samples, reweighting=False, reparam=True):
         pred_lik = 0
         #gotta be able to parallelise this
         for i in range(num_samples):
-            trq = TraceSampleLogQ(dims=dims, data=test_data)
+            trq = TraceSampleLogQ(dims=dims, data=test_data, reparam=reparam)
             self.Q(trq)
+            # print(trq.sample)
             #compute logP
             trp = TraceLogP(trq.sample, test_data, dims=dims)
             self.P(trp)
-            logps = {rv: sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}
-            pred_lik += sum_lps(list(logps))
+            # print(trp.log_prob())
+            logps = {rv: lp for (rv, lp) in trp.log_prob().items()}
+            # print(list(logps.values()))
+            pred_lik += logps['obs'].sum().exp()
+        shape = dename(test_data['obs']).shape
+        # pred_lik = pred_lik.rename(None).reshape(shape, -1)
         return pred_lik / num_samples
 
     # def liw(self, dims):
