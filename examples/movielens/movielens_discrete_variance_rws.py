@@ -39,29 +39,24 @@ N = args.N
 plate_1, plate_2 = dims(2 , [M,N])
 
 x_train = t.load('data/weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
-d_z = 18
-def P_train(tr):
-    '''
-    Heirarchical Model
-    '''
-
-    tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
-    tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device))
-    tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
-    tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x_train)
-
 x_test = t.load('data/test_weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
 d_z = 18
-def P_test(tr):
-    '''
-    Heirarchical Model
-    '''
+class P(nn.Module):
+    def __init__(self, x):
+        super().__init__()
+        self.x = x
+    def forward(self, tr):
+        '''
+        Heirarchical Model
+        '''
 
-    tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
-
-    tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device))
-    tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
-    tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x_test)
+        tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
+        tr['psi_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
+        tr['phi'] = tpp.Multinomial(1,t.tensor([0.1,0.9]))
+        # print(tr['phi'])
+        # print(tr['mu_z'])
+        tr['z'] = tpp.Normal((tr['phi'] @ tr['mu_z']), tr['phi'] @ tr['psi_z'].exp(), sample_dim=plate_1)
+        tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ self.x)
 
 class Q(tpp.Q_module):
     def __init__(self):
@@ -100,13 +95,13 @@ for K in Ks:
 
         t.manual_seed(i)
 
-        model = tpp.Model(P_train, Q(), data_y)
+        model = tpp.Model(P(x_train), Q(), data_y)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-4)
 
 
-        dim = tpp.make_dims(P_train, K, [plate_1])
+        dim = tpp.make_dims(P(x_train), K, [plate_1])
 
         for i in range(50000):
             opt.zero_grad()
@@ -117,8 +112,8 @@ for K in Ks:
             if 0 == i%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))
 
-        test_model = tpp.Model(P_test, model.Q, test_data_y)
-        dim = tpp.make_dims(P_test, 1)
+        test_model = tpp.Model(P(x_test), model.Q, test_data_y)
+        dim = tpp.make_dims(P(x_test), 1)
         pred_likelihood = test_model.pred_likelihood(dims=dim, test_data=test_data_y, num_samples=1000, reparam=False).sum()
         pred_liks.append(pred_likelihood.item())
         print(pred_liks)
