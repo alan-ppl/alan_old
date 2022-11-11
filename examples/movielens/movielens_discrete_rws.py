@@ -52,7 +52,7 @@ class P(nn.Module):
 
         tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
         tr['psi_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
-        tr['phi'] = tpp.Multinomial(1,t.tensor([0.1,0.9]))
+        tr['phi'] = tpp.Multinomial(1,t.tensor([0.1,0.9]).to(device))
         # print(tr['phi'])
         # print(tr['mu_z'])
         tr['z'] = tpp.Normal((tr['phi'] @ tr['mu_z']), tr['phi'] @ tr['psi_z'].exp(), sample_dim=plate_1)

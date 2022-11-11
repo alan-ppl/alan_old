@@ -51,10 +51,8 @@ class P(nn.Module):
         '''
 
         tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
-        tr['psi_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
-        tr['phi'] = tpp.Multinomial(1,t.tensor([0.1,0.9]))
-        # print(tr['phi'])
-        # print(tr['mu_z'])
+        tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device))
+
         tr['z'] = tpp.Normal((tr['phi'] @ tr['mu_z']), tr['phi'] @ tr['psi_z'].exp(), sample_dim=plate_1)
         tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ self.x)
 
