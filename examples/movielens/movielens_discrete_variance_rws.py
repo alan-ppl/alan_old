@@ -69,13 +69,11 @@ class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
         #mu_z
-        self.reg_param("m_mu_z", t.zeros((2,d_z)))
-        self.reg_param("log_theta_mu_z", t.zeros((2,d_z)))
+        self.reg_param("m_mu_z", t.zeros((d_z,)))
+        self.reg_param("log_theta_mu_z", t.zeros((d_z,)))
         #psi_z
-        self.reg_param("m_psi_z", t.zeros((2,d_z)))
-        self.reg_param("log_theta_psi_z", t.zeros((2,d_z)))
-        #phi
-        self.reg_param('prob', t.randn(2))
+        self.reg_param('psi_z_logits', t.randn(5))
+
         #z
         self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
         self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
@@ -83,9 +81,8 @@ class Q(tpp.Q_module):
 
     def forward(self, tr):
         tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
-        tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
-        tr['phi'] = tpp.Multinomial(1,logits = self.prob)
-        # print(tr['phi'].shape)
+        tr['psi_z'] = tpp.Categorical(logits=self.psi_z_logits)
+
         tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
 
 
