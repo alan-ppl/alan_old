@@ -118,7 +118,7 @@ for K_size in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))
 
         test_model = tpp.Model(P(x_test), model.Q, test_data_y)
-        dim = tpp.make_dims(P(x_test), 1)
+        dim = tpp.make_dims(model.P, 1)
         pred_likelihood = test_model.pred_likelihood(dims=dim, test_data=test_data_y, num_samples=1000, reparam=False).sum()
         pred_liks.append(pred_likelihood.item())
     results_dict[N][M][K_size] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks}

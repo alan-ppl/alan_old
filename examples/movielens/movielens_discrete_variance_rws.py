@@ -101,7 +101,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-4)
 
 
-        dim = tpp.make_dims(P(x_train), K, [plate_1])
+        dim = tpp.make_dims(model.P, K, [plate_1])
 
         for i in range(50000):
             opt.zero_grad()
@@ -113,7 +113,7 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))
 
         test_model = tpp.Model(P(x_test), model.Q, test_data_y)
-        dim = tpp.make_dims(P(x_test), 1)
+        dim = tpp.make_dims(model.P, 1)
         pred_likelihood = test_model.pred_likelihood(dims=dim, test_data=test_data_y, num_samples=1000, reparam=False).sum()
         pred_liks.append(pred_likelihood.item())
         print(pred_liks)
