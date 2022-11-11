@@ -53,7 +53,7 @@ class P(nn.Module):
         tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
         tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device))
 
-        tr['z'] = tpp.Normal((tr['phi'] @ tr['mu_z']), tr['phi'] @ tr['psi_z'].exp(), sample_dim=plate_1)
+        tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
         tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ self.x)
 
 class Q(tpp.Q_module):
