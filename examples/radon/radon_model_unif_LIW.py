@@ -45,7 +45,7 @@ Ks = [1,5,10,15]
 # Ms = [10,50,100]
 
 plate_state, plate_county, plate_zipcode, plate_reading = dims(4 , [M,J,I,N])
-basement = t.load('basement.pt').to(device)[plate_state, plate_county, plate_zipcode]
+basement = t.load('basement.pt').to(device)[plate_state, plate_county, plate_zipcode, plate_reading]
 county_uranium = t.load('county_uranium.pt').to(device)[plate_state, plate_county]
 def P(tr):
   '''
@@ -70,7 +70,7 @@ def P(tr):
   #reading level
   tr['sigma_obs'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
   tr['beta_int'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['obs'] = tpp.Normal(tr['omega'] + tr['beta_int']*basement, tr['sigma_obs'], sample_dim=plate_reading)
+  tr['obs'] = tpp.Normal(tr['omega'] + tr['beta_int']*basement, tr['sigma_obs'])
 
 
 
