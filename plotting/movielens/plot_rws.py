@@ -34,7 +34,7 @@ with plt.rc_context(bundles.icml2022()):
             stds_rws = [results_rws[N][M][k]['pred_std']/np.sqrt(5) for k in Ks]
 
 
-            elbos_rws_global_k = [results_rws_global_k[N][M][k]['pred_bound'] for k in Ks]
+            elbos_rws_global_k = [results_rws_global_k[N][M][k]['pred_mean'] for k in Ks]
             stds_rws_global_k = [results_rws_global_k[N][M][k]['pred_std']/np.sqrt(5) for k in Ks]
 
 
