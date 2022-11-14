@@ -101,7 +101,7 @@ for K in Ks:
 
         dim = tpp.make_dims(model.P, K, [plate_1])
 
-        for i in range(1000):
+        for i in range(50000):
             opt.zero_grad()
             theta_loss, phi_loss = model.rws(dims=dim)
             (theta_loss + phi_loss).backward()
