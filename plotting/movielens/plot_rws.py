@@ -38,10 +38,11 @@ with plt.rc_context(bundles.icml2022()):
             stds_rws_global_k = [results_rws_global_k[N][M][k]['pred_std']/np.sqrt(5) for k in Ks]
 
 
-
+            print(elbos_rws)
+            print(elbos_rws_global_k)
             ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Global K RWS')
             ax[i,j].errorbar(Ks,elbos_rws, yerr=stds_rws, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TPP RWS')
-            #
+            ax[i,j].set_yscale('log')
             # ax.set_ylabel('Final Lower Bound')
             # ax.set_xlabel('K')
             # ax[i,j].label_outer()

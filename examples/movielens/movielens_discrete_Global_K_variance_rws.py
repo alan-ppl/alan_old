@@ -93,7 +93,7 @@ for K_size in Ks:
     K = Dim(name='K', size=K_size)
     dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
     for i in range(5):
-
+        dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
         t.manual_seed(i)
 
         model = tpp.Model(P(x_train), Q(), data_y)
@@ -117,6 +117,7 @@ for K_size in Ks:
 
         test_model = tpp.Model(P(x_test), model.Q, test_data_y)
         dim = tpp.make_dims(model.P, 1)
+        dim = {'K':Dim(name='K', size=1), 'mu_z':Dim(name='K_group1', size=1), 'z':Dim(name='K_group1', size=1), 'psi_z': Dim(name='K_group1', size=1)}
         pred_likelihood = test_model.pred_likelihood(dims=dim, test_data=test_data_y, num_samples=1000, reparam=False).sum()
         pred_liks.append(pred_likelihood.item())
     results_dict[N][M][K_size] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks}

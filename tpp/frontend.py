@@ -58,8 +58,10 @@ class Model(nn.Module):
             # print(trp.log_prob())
             logps = {rv: sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}
             # print(list(logps.values()))
-            # print(logps['obs'].sum().exp())
-            pred_lik += logps['obs'].sum().exp()
+            print(logps['obs'])
+            print(dename(logps['obs']).shape)
+            print(logps['obs'].sum())
+            pred_lik += logps['obs'].sum()
         shape = dename(test_data['obs']).shape
         # pred_lik = pred_lik.rename(None).reshape(shape, -1)
         return pred_lik / num_samples
