@@ -10,10 +10,13 @@ def make_dims(P, K, plates=None, exclude = [], groups=None):
 
     Ks = [Dim(name='K', size=K)]
     for name in names:
-        if name not in exclude:
-            Ks.append(Dim(name='K_local'.format(name), size=K))
+        if len(exclude) != 0:
+            if name not in exclude:
+                Ks.append(Dim(name='K_local', size=K))
+            else:
+                Ks.append(Dim(name='K_global', size=1))
         else:
-            Ks.append(Dim(name='K_global'.format(name), size=1))
+            Ks.append(Dim(name='K_{}'.format(name), size=K))
 
     names = ['K'] + names
     dims = {names[i]:Ks[i] for i in range(len(names))}
