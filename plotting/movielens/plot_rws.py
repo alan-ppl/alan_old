@@ -4,7 +4,7 @@ import json
 from tueplots import axes, bundles
 
 Ks = ['5','10','15']
-Ns = ['200','30']
+Ns = ['30','200']
 Ms = ['10','50','100']
 # with open('results.json') as f:
 #     results = json.load(f)
@@ -37,12 +37,12 @@ with plt.rc_context(bundles.icml2022()):
             elbos_rws_global_k = [results_rws_global_k[N][M][k]['pred_mean'] for k in Ks]
             stds_rws_global_k = [results_rws_global_k[N][M][k]['pred_std']/np.sqrt(5) for k in Ks]
 
-
-            print(elbos_rws)
-            print(elbos_rws_global_k)
+            #
+            # print(elbos_rws)
+            # print(elbos_rws_global_k)
             ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Global K RWS')
             ax[i,j].errorbar(Ks,elbos_rws, yerr=stds_rws, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TPP RWS')
-            ax[i,j].set_yscale('log')
+
             # ax.set_ylabel('Final Lower Bound')
             # ax.set_xlabel('K')
             # ax[i,j].label_outer()
@@ -52,8 +52,8 @@ with plt.rc_context(bundles.icml2022()):
     ax[0,1].set_title('Groups = 50')
     ax[0,2].set_title('Groups = 100')
 
-    ax[0,0].set_ylabel('Obs per group = 30 \n Final Lower Bound')
-    ax[1,0].set_ylabel('Obs per group = 200 \n Final Lower Bound')
+    ax[0,0].set_ylabel('Obs per group = 30 \n Predictive Log Likelihood')
+    ax[1,0].set_ylabel('Obs per group = 200 \n Predictive Log Likelihood')
 
     ax[1,0].sharex(ax[0,0])
     ax[1,0].set_xlabel('K')
