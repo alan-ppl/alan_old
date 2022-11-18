@@ -221,14 +221,7 @@ def sum_lps(lps):
 
     return lps[0], marginals
 
-def sum_none_dims(lp):
-    """
-    Sum over None dims in lp
-    """
-    none_dims = [i for i in range(len(lp.names)) if lp.names[i] is None]
-    if 0 != len(none_dims):
-        lp = lp.sum(none_dims)
-    return lp
+
 
 def combine_lps(logps, logqs, dims):
     """
@@ -266,8 +259,8 @@ def combine_lps(logps, logqs, dims):
             assert (n is None) or is_K(n) or is_plate(n)
 
     # sum over all non-plate and non-K dimensions
-    logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
-    logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
+    # logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
+    # logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
 
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
@@ -283,7 +276,8 @@ def combine_lps(logps, logqs, dims):
         assert set(lp_plates) == set(lq_plates)
 
         # check there is a K_name corresponding to rv name in both tensors
-        # print(rv)
+        # Unless it is LIW in which case it will be scalar
+        # print(len(lp.shape))
         assert repr(dims[rv]) in lp.names
         assert repr(dims[rv]) in lq.names
 
@@ -304,9 +298,28 @@ def sum_logpqs(logps, logqs, dims):
         elbo, used for VI
         marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
     """
+    # catch scalar (LIW) logps and logqs and don't pass them to sum_lps
+    scalar_lps = []
+    scalar_lqs = []
+    Kdim_lps = {}
+    Kdim_lqs = {}
+    for rv in logps:
+        lp = logps[rv]
+        if len(lp.shape) == 0:
+            scalar_lps.append(lp)
+        else:
+            Kdim_lps[rv] = lp
 
-    all_lps = combine_lps(logps, logqs, dims)
-    return sum_lps(all_lps)
+    for rv in logqs:
+        lq = logqs[rv]
+        if len(lq.shape) == 0:
+            scalar_lqs.append(lq)
+        else:
+            Kdim_lqs[rv] = lq
+
+    all_lps = combine_lps(Kdim_lps, Kdim_lqs, dims)
+    all_sum, marginals = sum_lps(all_lps)
+    return all_sum + sum(scalar_lps) - sum(scalar_lqs), marginals + scalar_lps + scalar_lqs
 
 
 def vi(logps, logqs, dims):

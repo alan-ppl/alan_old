@@ -8,7 +8,7 @@ class WrappedDist:
     """
     A wrapper of torch.distributions that supports named tensor.
     """
-    def __init__(self, dist, *args, sample_dim=(), sample_K=True, **kwargs):
+    def __init__(self, dist, *args, sample_dim=(), sample_K=True, group=None, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.dist = dist
@@ -23,6 +23,7 @@ class WrappedDist:
             self.sample_dim = None
             sample_shape = ()
 
+        self.group = group
         self.sample_K = sample_K
         self.sample_shape = sample_shape
 

@@ -45,10 +45,10 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device), sample_K=False)
-  tr['psi_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device), sample_K=False)
+  tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
+  tr['psi_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
 
-  tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
+  tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1, group='local')
 
   tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x)
 
@@ -98,7 +98,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-        dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
+        dim = tpp.make_dims(P, K)
 
         for i in range(50000):
             opt.zero_grad()

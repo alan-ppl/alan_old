@@ -107,7 +107,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
-        dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z', 'psi_y'])
+        dim = tpp.make_dims(P, K)
 
         for i in range(50000):
             opt.zero_grad()

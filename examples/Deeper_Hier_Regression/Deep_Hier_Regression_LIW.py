@@ -54,9 +54,9 @@ def P(tr):
   '''
 
   tr['mu_z1'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['mu_z2'] = tpp.Normal(tr['mu_z1'], t.ones(()).to(device), sample_dim=plate_muz2)
-  tr['mu_z3'] = tpp.Normal(tr['mu_z2'], t.ones(()).to(device), sample_dim=plate_muz3)
-  tr['mu_z4'] = tpp.Normal(tr['mu_z3'], t.ones(()).to(device), sample_dim=plate_muz4)
+  tr['mu_z2'] = tpp.Normal(tr['mu_z1'], t.ones(()).to(device), sample_dim=plate_muz2, group = 'local')
+  tr['mu_z3'] = tpp.Normal(tr['mu_z2'], t.ones(()).to(device), sample_dim=plate_muz3, group = 'local')
+  tr['mu_z4'] = tpp.Normal(tr['mu_z3'], t.ones(()).to(device), sample_dim=plate_muz4, group = 'local')
   tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
   tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
 
@@ -123,7 +123,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
-        dim = tpp.make_dims(P, K, exclude=['mu_z1', 'psi_z', 'psi_y'])
+        dim = tpp.make_dims(P, K)
 
         for i in range(75000):
             opt.zero_grad()

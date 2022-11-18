@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
-from .tensor_utils import dename, hasdim, get_dims
+from .tensor_utils import dename, hasdim, get_dims, sum_none_dims
 
 
 __all__ = [
@@ -65,15 +65,15 @@ class TraceSampleLogQ(Trace):
         else:
             sample = value.sample(K=self.K)
 
-        ## Assert no K being sampled, check value.sample_K
-        if not hasdim(self.dims['K'], get_dims(sample)):
-            sample = sample.unsqueeze(0)[self.dims[key]]
+        # ## Assert no K being sampled, check value.sample_K
+        # if not hasdim(self.dims['K'], get_dims(sample)):
+        #     sample = sample.unsqueeze(0)[self.dims[key]]
 
         self.sample[key] = sample
         # print(key)
         # print(sample)
 
-        self.logp[key] = value.log_prob(sample)
+        self.logp[key] = sum_none_dims(value.log_prob(sample))
 
 
     def __repr__(self) -> str:
@@ -92,6 +92,7 @@ class TraceSample(Trace):
     def __init__(self):
         super().__init__()
         self.sample = {}
+        self.groups = {}
 
     def __getitem__(self, key):
         return self.sample[key]
@@ -101,8 +102,10 @@ class TraceSample(Trace):
         assert key not in self.sample
         try:
             self.sample[key] = value.rsample()
+            self.groups[key] = value.group
         except NotImplementedError:
             self.sample[key] = value.sample()
+            self.groups[key] = value.group
 
 
 
@@ -126,7 +129,7 @@ class TraceLogP(Trace):
             if hasdim(self.dims['K'], get_dims(self.sample[key])):
                 sample = self.sample[key].index(self.dims['K'], self.dims[key])
             else:
-                sample = self.sample[key].unsqueeze(0)[self.dims[key]]
+                sample = self.sample[key]#.unsqueeze(0)[self.dims[key]]
             return sample
         return self.data[key]
 
@@ -135,4 +138,4 @@ class TraceLogP(Trace):
         assert (key in self.data) or (key in self.sample)
         sample = self[key]
 
-        self.logp[key] = value.log_prob(sample)
+        self.logp[key] = sum_none_dims(value.log_prob(sample))

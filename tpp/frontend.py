@@ -1,9 +1,9 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .backend import vi, reweighted_wake_sleep, gibbs, sum_lps, sum_logpqs, sum_none_dims
+from .backend import vi, reweighted_wake_sleep, gibbs, sum_lps, sum_logpqs
 # from .cartesian_tensor import CartesianTensor
 from .utils import *
-from .tensor_utils import dename
+from .tensor_utils import dename, sum_none_dims
 
 class Model(nn.Module):
     def __init__(self, P, Q, data=None):
@@ -20,7 +20,6 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq.sample, self.data, dims=dims)
         self.P(trp)
-
 
         return vi(trp.log_prob(), trq.log_prob(), dims)
 

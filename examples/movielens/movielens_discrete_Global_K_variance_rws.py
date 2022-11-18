@@ -50,10 +50,10 @@ class P(nn.Module):
         Heirarchical Model
         '''
 
-        tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
-        tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device))
+        tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device), group='group_1')
+        tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device), group='group_1')
 
-        tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
+        tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1, group='group_1')
         tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ self.x)
 
 class Q(tpp.Q_module):
@@ -89,11 +89,9 @@ for K_size in Ks:
     results_dict[N][M][K_size] = results_dict[N][M].get(K_size, {})
     elbos = []
     pred_liks = []
-    K_group1 = Dim(name='K_group1', size=K_size)
-    K = Dim(name='K', size=K_size)
-    dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
     for i in range(5):
-        dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
+        dim = tpp.make_dims(P(x_train), K_size)
+        print(dim)
         t.manual_seed(i)
 
         model = tpp.Model(P(x_train), Q(), data_y)

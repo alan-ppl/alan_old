@@ -3,23 +3,21 @@ import torch.nn as nn
 from .prob_prog import TraceSample
 from .tensor_utils import dename, dimtensormap, nameify
 
-def make_dims(P, K, plates=None, exclude = [], groups=None):
+def make_dims(P, K):
     tr = TraceSample()
     P(tr)
-    names = list(tr.sample.keys())
+    # names = list(tr.sample.keys())
+    # print(tr.values())
+    # Ks = [Dim(name='K', size=K)]
+    # for name in names:
+    #      Ks.append(Dim(name='K_{}'.format(name), size=K))
+    groups = {}
+    for v in set(tr.groups.values()):
+        groups[v] = Dim(name='K_{}'.format(v), size=K)
+    dims = {'K':Dim(name='K', size=K)}
+    for k,v in tr.groups.items():
+        dims[k] = groups[v] if tr.groups[k] is not None else Dim(name='K_{}'.format(k), size=K)
 
-    Ks = [Dim(name='K', size=K)]
-    for name in names:
-        if len(exclude) != 0:
-            if name not in exclude:
-                Ks.append(Dim(name='K_local', size=K))
-            else:
-                Ks.append(Dim(name='K_global', size=1))
-        else:
-            Ks.append(Dim(name='K_{}'.format(name), size=K))
-
-    names = ['K'] + names
-    dims = {names[i]:Ks[i] for i in range(len(names))}
     return dims
 
 

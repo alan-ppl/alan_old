@@ -16,16 +16,16 @@ def P(tr):
   tr['mu'] = tpp.Normal(t.zeros(1,), t.ones(1,))
   # print('mu P')
   # print(tr['mu'])
-  tr['phi'] = tpp.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1)
+  tr['phi'] = tpp.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1, group='group1')
   # print('phi P')
   # print(tr['phi'])
-  tr['psi'] = tpp.Normal(t.zeros(1,), t.ones(1,))
+  tr['psi'] = tpp.Normal(t.zeros(1,), t.ones(1,), group='group1')
   # print('psi P')
   # print(tr['psi'])
-  tr['gamma'] = tpp.Normal(tr['psi'], t.ones(1,), sample_dim=plate_1)
+  tr['gamma'] = tpp.Normal(tr['psi'], t.ones(1,), sample_dim=plate_1, group='group2')
   # print('gamma P')
   # print(tr['gamma'])
-  tr['obs'] = tpp.Normal(tr['phi'] + tr['gamma'], t.ones(5,), sample_dim=plate_2)
+  tr['obs'] = tpp.Normal(tr['phi'] + tr['gamma'], t.ones(5,), sample_dim=plate_2, group='group2')
 
 
 
@@ -62,10 +62,7 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K = 5
 dim = tpp.make_dims(P, K)
-K_group1 = Dim(name='K_group1', size=K)
-K_group2 = Dim(name='K_group2', size=K)
-K = Dim(name='K', size=K)
-dim = {'K':K, 'mu':K_group2, 'phi':K_group2, 'psi': K_group1, 'gamma':K_group1}
+
 for i in range(1000):
     opt.zero_grad()
     elbo = model.elbo(dims=dim)

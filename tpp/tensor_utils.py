@@ -7,7 +7,7 @@ def hasdim(x, lst):
     if  x is element:
       return True
   return False
-  
+
 def dename(tensors):
 
     assert isinstance(tensors, tuple)           or isinstance(tensors, list) \
@@ -122,6 +122,15 @@ def get_dims(tensors):
                 dims.append(dim)
 
     return dims
+    
+def sum_none_dims(lp):
+    """
+    Sum over None dims in lp
+    """
+    none_dims = [i for i in range(len(lp.names)) if lp.names[i] is None]
+    if 0 != len(none_dims):
+        lp = lp.sum(none_dims)
+    return lp
 
 def nameify(args, kwargs = {}):
 
