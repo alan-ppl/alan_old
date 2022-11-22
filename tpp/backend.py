@@ -80,20 +80,11 @@ def reduce_K(all_lps, K_name):
 
     lps_with_K = align_tensors(lps_with_K)
 
-    # max_lps = [lp.max(K_name, keepdim=True)[0] for lp in lps_with_K]
-    # norm_ps = [(lp - mlp).exp() for (lp, mlp) in zip(lps_with_K, max_lps)]
-    #
-    # result_p = norm_ps[0]
-    # for norm_p in norm_ps[1:]:
-    #     result_p = result_p * norm_p
-    # result_p = result_p.mean(K_name, keepdim=True)
-    #
-    # result_lp = (result_p.log() + sum(max_lps)).squeeze(K_name)
+
     K = all_lps[0].align_to(K_name,...).shape[0]
 
 
     result_lp = t.logsumexp((sum(lps_with_K)), K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K))
-
     other_lps.append(result_lp)
     return other_lps
 
@@ -216,10 +207,10 @@ def sum_lps(lps):
         lps, _m = sum_plate(lps, plate_name)
         marginals = marginals + _m
 
-    assert 1==len(lps)
+    assert 0==len(sum(lps).shape)
     assert 1==lps[0].numel()
 
-    return lps[0], marginals
+    return sum(lps), marginals
 
 
 
@@ -233,9 +224,6 @@ def combine_lps(logps, logqs, dims):
     """
 
     assert len(logqs) <= len(logps)
-    #
-    # print(logqs)
-    # # print(logps)
 
     # check all named dimensions in logps are either positional, plates or "K"
     for lp in logqs.values():
@@ -244,23 +232,22 @@ def combine_lps(logps, logqs, dims):
             assert (n is None) or n=="K" or is_plate(n) or is_K(n)
 
     # convert K
+    for (n, lp) in logps.items():
+        if len(lp.shape) == 0:
+            logps[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
 
     for (n, lp) in logqs.items():
-        if lp.names[0] == None:
-            logqs[n] = lp.refine_names(repr(dims[n]))
+        if len(lp.shape) == 0:
+            logqs[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
         elif 'K' in lp.names:
             logqs[n] = lp.rename(K=repr(dims[n]))
-    # logqs = {n:lp.rename(K=K_prefix+n) for (n, lp) in logqs.items()}
 
-    # print(logps)
     # check all named dimensions in logps are either positional, plates or Ks
     for lp in logps.values():
         for n in lp.names:
             assert (n is None) or is_K(n) or is_plate(n)
 
-    # sum over all non-plate and non-K dimensions
-    # logps = {rv: sum_none_dims(lp) for (rv, lp) in logps.items()}
-    # logqs = {rv: sum_none_dims(lp) for (rv, lp) in logqs.items()}
+
 
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
@@ -276,17 +263,14 @@ def combine_lps(logps, logqs, dims):
         assert set(lp_plates) == set(lq_plates)
 
         # check there is a K_name corresponding to rv name in both tensors
-        # Unless it is LIW in which case it will be scalar
-        # print(len(lp.shape))
+
         assert repr(dims[rv]) in lp.names
         assert repr(dims[rv]) in lq.names
 
 
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-    # print(all_lps)
-    # for lp in all_lps:
-    #     print(lp.shape)
+
     return all_lps
 
 def sum_logpqs(logps, logqs, dims):
@@ -298,28 +282,13 @@ def sum_logpqs(logps, logqs, dims):
         elbo, used for VI
         marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
     """
-    # catch scalar (LIW) logps and logqs and don't pass them to sum_lps
-    scalar_lps = []
-    scalar_lqs = []
-    Kdim_lps = {}
-    Kdim_lqs = {}
-    for rv in logps:
-        lp = logps[rv]
-        if len(lp.shape) == 0:
-            scalar_lps.append(lp)
-        else:
-            Kdim_lps[rv] = lp
 
-    for rv in logqs:
-        lq = logqs[rv]
-        if len(lq.shape) == 0:
-            scalar_lqs.append(lq)
-        else:
-            Kdim_lqs[rv] = lq
 
-    all_lps = combine_lps(Kdim_lps, Kdim_lqs, dims)
+
+    all_lps = combine_lps(logps, logqs, dims)
     all_sum, marginals = sum_lps(all_lps)
-    return all_sum + sum(scalar_lps) - sum(scalar_lqs), marginals + scalar_lps + scalar_lqs
+
+    return all_sum, marginals #+ scalar_lps + scalar_lqs
 
 
 def vi(logps, logqs, dims):

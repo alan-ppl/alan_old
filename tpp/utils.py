@@ -6,11 +6,7 @@ from .tensor_utils import dename, dimtensormap, nameify
 def make_dims(P, K):
     tr = TraceSample()
     P(tr)
-    # names = list(tr.sample.keys())
-    # print(tr.values())
-    # Ks = [Dim(name='K', size=K)]
-    # for name in names:
-    #      Ks.append(Dim(name='K_{}'.format(name), size=K))
+
     groups = {}
     for v in set(tr.groups.values()):
         groups[v] = Dim(name='K_{}'.format(v), size=K)
@@ -20,19 +16,6 @@ def make_dims(P, K):
 
     return dims
 
-
-
-
-# def make_K(dims):
-#     if not (isinstance(dims, tuple) or isinstance(dims, list)):
-#         dims = [dims]
-#     for dim in dims:
-#         if hasattr(dim, 'plate'):
-#             if getattr(dim, 'plate') == True:
-#                 raise ValueError("Dims can't be both plate and K!")
-#         else:
-#             setattr(dim, 'K', True)
-#             setattr(dim, 'plate', False)
 
 class Q_module(nn.Module):
     def __init__(self):

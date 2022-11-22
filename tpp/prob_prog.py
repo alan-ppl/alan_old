@@ -66,14 +66,14 @@ class TraceSampleLogQ(Trace):
             sample = value.sample(K=self.K)
 
         # ## Assert no K being sampled, check value.sample_K
-        # if not hasdim(self.dims['K'], get_dims(sample)):
-        #     sample = sample.unsqueeze(0)[self.dims[key]]
+        if not hasdim(self.dims['K'], get_dims(sample)):
+            sample = sample#.unsqueeze(0)[self.dims['global']]
 
         self.sample[key] = sample
         # print(key)
         # print(sample)
-
         self.logp[key] = sum_none_dims(value.log_prob(sample))
+
 
 
     def __repr__(self) -> str:
@@ -129,7 +129,7 @@ class TraceLogP(Trace):
             if hasdim(self.dims['K'], get_dims(self.sample[key])):
                 sample = self.sample[key].index(self.dims['K'], self.dims[key])
             else:
-                sample = self.sample[key]#.unsqueeze(0)[self.dims[key]]
+                sample = self.sample[key]#.unsqueeze(0)[self.dims['global']]
             return sample
         return self.data[key]
 

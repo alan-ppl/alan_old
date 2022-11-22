@@ -34,13 +34,13 @@ print('...', flush=True)
 M = 2
 J = 2
 I = 4
-N = 4
+N = 8
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [1]#5,10,15]
 # Ns = [10,30]
 # Ms = [10,50,100]
 
@@ -53,22 +53,21 @@ def P(tr):
   '''
 
   #state level
-  tr['sigma_beta'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
+  tr['sigma_beta'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
   tr['mu_beta'] = tpp.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device))
   tr['beta'] = tpp.Normal(tr['mu_beta'], tr['sigma_beta'], sample_dim = plate_state)
 
   #county level
-  tr['gamma'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
-  tr['sigma_alpha'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
+  tr['gamma'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
+  tr['sigma_alpha'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
 
   tr['alpha'] = tpp.Normal(tr['beta'] + tr['gamma'] * county_uranium, tr['sigma_alpha'])
 
   #zipcode level
-  tr['sigma_omega'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
+  tr['sigma_omega'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
   tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'], sample_dim=plate_zipcode)
-
   #reading level
-  tr['sigma_obs'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([100.0]).to(device))
+  tr['sigma_obs'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
   tr['beta_int'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
   tr['obs'] = tpp.Normal(tr['omega'] + tr['beta_int']*basement, tr['sigma_obs'])
 
@@ -78,8 +77,8 @@ class Q(tpp.Q_module):
     def __init__(self):
         super().__init__()
         #sigma_beta
-        self.reg_param("sigma_beta_low", t.tensor([0.0]))
-        self.reg_param("sigma_beta_high", t.tensor([100.0]))
+        self.reg_param("sigma_beta_low", t.tensor([0.00001]).log())
+        self.reg_param("sigma_beta_high", t.tensor([9.9999]).log())
         #mu_beta
         self.reg_param("mu_beta_mean", t.zeros(()))
         self.reg_param("log_mu_beta_sigma", t.zeros(()))
@@ -87,26 +86,26 @@ class Q(tpp.Q_module):
         self.reg_param('beta_mu', t.zeros((M)), [plate_state])
         self.reg_param("log_beta_sigma", t.zeros((M)), [plate_state])
         #gamma
-        self.reg_param("gamma_low", t.tensor([0.0]))
-        self.reg_param("gamma_high", t.tensor([100.0]))
+        self.reg_param("gamma_low", t.tensor([0.00001]).log())
+        self.reg_param("gamma_high", t.tensor([9.9999]).log())
         #sigma_alpha
-        self.reg_param("sigma_alpha_low", t.tensor([0.0]))
-        self.reg_param("sigma_alpha_high", t.tensor([100.0]))
+        self.reg_param("sigma_alpha_low", t.tensor([0.00001]).log())
+        self.reg_param("sigma_alpha_high", t.tensor([9.9999]).log())
         #alpha
         self.reg_param("alpha_mu", t.zeros((M,J)), [plate_state, plate_county])
         self.reg_param("log_alpha_sigma", t.zeros((M,J)), [plate_state, plate_county])
 
         #sigma_omega
-        self.reg_param("sigma_omega_low", t.tensor([0.0]))
-        self.reg_param("sigma_omega_high", t.tensor([100.0]))
+        self.reg_param("sigma_omega_low", t.tensor([0.00001]).log())
+        self.reg_param("sigma_omega_high", t.tensor([9.9999]).log())
 
         #omega
         self.reg_param("omega_mu", t.zeros((M,J,I)), [plate_state, plate_county, plate_zipcode])
         self.reg_param("log_omega_sigma", t.zeros((M,J,I)), [plate_state, plate_county, plate_zipcode])
 
         #sigma_obs
-        self.reg_param("sigma_obs_low", t.tensor([0.0]))
-        self.reg_param("sigma_obs_high", t.tensor([100.0]))
+        self.reg_param("sigma_obs_low", t.tensor([0.00001]).log())
+        self.reg_param("sigma_obs_high", t.tensor([9.9999]).log())
 
         #beta_int
         self.reg_param("beta_int_mu", t.zeros(()))
@@ -114,35 +113,32 @@ class Q(tpp.Q_module):
 
     def forward(self, tr):
         #state level
-        sigma_beta_low = transform_to(half_open_interval(0.0, self.sigma_beta_high))(self.sigma_beta_low)
-        sigma_beta_high = transform_to(half_open_interval(sigma_beta_low, 100.0))(self.sigma_beta_high)
-        # print(self.sigma_beta_low)
-        # print(sigma_beta_low)
-        # print(self.sigma_beta_high)
-        # print(sigma_beta_high)
+        sigma_beta_low = t.max(t.tensor([0.0]), self.sigma_beta_low.exp())
+        sigma_beta_high = t.min(t.tensor([10.0]), self.sigma_beta_high.exp())
+
         tr['sigma_beta'] = tpp.Uniform(sigma_beta_low, sigma_beta_high)
         tr['mu_beta'] = tpp.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp())
         tr['beta'] = tpp.Normal(self.beta_mu, self.log_beta_sigma.exp())
 
         #county level
-        gamma_low = transform_to(half_open_interval(0.0, self.gamma_high - 1.0))(self.gamma_low)
-        gamma_high = transform_to(half_open_interval(gamma_low, 100.0))(self.gamma_high)
+        gamma_low = t.max(t.tensor([0.0]), self.gamma_low.exp())
+        gamma_high = t.min(t.tensor([10.0]), self.gamma_high.exp())
 
-        sigma_alpha_low = transform_to(half_open_interval(0.0, self.sigma_alpha_high - 1.0))(self.sigma_alpha_low)
-        sigma_alpha_high = transform_to(half_open_interval(sigma_alpha_low, 100.0))(self.sigma_alpha_high)
+        sigma_alpha_low = t.max(t.tensor([0.0]), self.sigma_alpha_low.exp())
+        sigma_alpha_high = t.min(t.tensor([10.0]), self.sigma_alpha_high.exp())
         tr['gamma'] = tpp.Uniform(gamma_low, gamma_high)
         tr['sigma_alpha'] = tpp.Uniform(sigma_alpha_low, sigma_alpha_high)
         tr['alpha'] = tpp.Normal(self.alpha_mu, self.log_alpha_sigma.exp())
 
         #zipcode level
-        sigma_omega_low = transform_to(half_open_interval(0.0, self.sigma_omega_high - 1.0))(self.sigma_omega_low)
-        sigma_omega_high = transform_to(half_open_interval(sigma_omega_low, 100.0))(self.sigma_omega_high)
+        sigma_omega_low = t.max(t.tensor([0.0]), self.sigma_omega_low.exp())
+        sigma_omega_high = t.min(t.tensor([10.0]), self.sigma_omega_high.exp())
         tr['sigma_omega'] = tpp.Uniform(sigma_omega_low, sigma_omega_high)
         tr['omega'] = tpp.Normal(self.omega_mu, self.log_omega_sigma.exp())
 
         #reading level
-        sigma_obs_low = transform_to(half_open_interval(0.0, self.sigma_obs_high - 1.0))(self.sigma_obs_low)
-        sigma_obs_high = transform_to(half_open_interval(sigma_obs_low, 100.0))(self.sigma_obs_high)
+        sigma_obs_low = t.max(t.tensor([0.0]), self.sigma_obs_low.exp())
+        sigma_obs_high = t.min(t.tensor([10.0]), self.sigma_obs_high.exp())
         tr['sigma_obs'] = tpp.Uniform(sigma_obs_low, sigma_obs_high)
         tr['beta_int'] = tpp.Normal(self.beta_int_mu, self.log_beta_int_sigma.exp())
 

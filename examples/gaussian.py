@@ -36,7 +36,7 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=1
+K=5
 dims = tpp.make_dims(P, K)
 print("K={}".format(K))
 for i in range(15000):

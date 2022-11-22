@@ -9,8 +9,15 @@ from functorch.dim import dims
 import json
 import numpy as np
 import itertools
+import random
 
-t.manual_seed(0)
+def seed_torch(seed=1029):
+    random.seed(seed)
+    np.random.seed(seed)
+    t.manual_seed(seed)
+    t.cuda.manual_seed(seed)
+
+seed_torch(0)
 # parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 #
 # parser.add_argument('N', type=int,
@@ -23,9 +30,9 @@ t.manual_seed(0)
 print('...', flush=True)
 
 M = 2
-J = 4
+J = 2
 I = 4
-N = 4
+N = 8
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -46,21 +53,21 @@ def P(tr):
   #state level
   tr['sigma_beta'] = tpp.Normal(t.tensor([10.0]).to(device), t.tensor([5.0]).to(device))
   tr['mu_beta'] = tpp.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device))
-  tr['beta'] = tpp.Normal(tr['mu_beta'], tr['sigma_beta'].exp(), sample_dim = plate_state)
+  tr['beta'] = tpp.Normal(tr['mu_beta'], tr['sigma_beta'].exp(), sample_dim = plate_state, group='local')
 
   #county level
   tr['gamma'] = tpp.Normal(t.tensor([50.0]).to(device), t.tensor([20.0]).to(device))
   tr['sigma_alpha'] = tpp.Normal(t.tensor([10.0]).to(device), t.tensor([5.0]).to(device))
-  tr['alpha'] = tpp.Normal(tr['beta'] + tr['gamma'] * county_uranium, tr['sigma_alpha'].exp())
+  tr['alpha'] = tpp.Normal(tr['beta'] + tr['gamma'] * county_uranium, tr['sigma_alpha'].exp(), group='local')
 
   #zipcode level
   tr['sigma_omega'] = tpp.Normal(t.tensor([10.0]).to(device), t.tensor([5.0]).to(device))
-  tr['omega'] = tpp.Normal(tr['sigma_alpha'], tr['sigma_omega'].exp(), sample_dim=plate_zipcode)
+  tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'].exp(), sample_dim=plate_zipcode, group='local')
 
   #reading level
   tr['sigma_obs'] = tpp.Normal(t.tensor([10.0]).to(device), t.tensor([5.0]).to(device))
   tr['beta_int'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['obs'] = tpp.Normal(tr['omega'] + tr['beta_int']*basement, tr['sigma_obs'].exp())
+  tr['obs'] = tpp.Normal(tr['omega'] + tr['beta_int']*basement, tr['sigma_obs'].exp(), group='local')
 
 
 
@@ -123,6 +130,7 @@ class Q(tpp.Q_module):
 
 data_y = {'obs':t.load('radon.pt')[plate_state, plate_county, plate_zipcode, plate_reading].to(device)}
 
+
 for K in Ks:
     print(K)
     results_dict[K] = results_dict.get(K, {})
@@ -130,7 +138,7 @@ for K in Ks:
 
     for i in range(5):
 
-        t.manual_seed(i)
+        seed_torch(i)
 
         model = tpp.Model(P, Q(), data_y)
         model.to(device)
@@ -140,17 +148,18 @@ for K in Ks:
 
 
 
-        dim = tpp.make_dims(P, K, exclude=['sigma_beta', 'mu_beta', 'gamma', 'sigma_alpha', 'sigma_omega', 'sigma_obs', 'beta_int'])
+        dim = tpp.make_dims(P, K)
 
-        for i in range(50000):
+        for j in range(100000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
+            print(elbo)
             (-elbo).backward()
             opt.step()
             scheduler.step()
 
-            if 0 == i%1000:
-                print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
+            if 0 == j%1000:
+                print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo.item()))
 
         elbos.append(elbo.item())
     results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}

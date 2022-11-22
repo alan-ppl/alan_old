@@ -35,7 +35,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1, 5,10,15]
+Ks = [1,5,10,15]
 # Ns = [10,30]
 # Ms = [10,50,100]
 
@@ -126,15 +126,15 @@ for K in Ks:
 
         dim = tpp.make_dims(P, K)
 
-        for i in range(75000):
+        for j in range(75000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
             (-elbo).backward()
             opt.step()
             scheduler.step()
 
-            if 0 == i%1000:
-                print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
+            if 0 == j%1000:
+                print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo.item()))
 
         elbos.append(elbo.item())
         # test_log_likelihoods.append(model.test_log_like(dims=dim, test_data=test_data_y))

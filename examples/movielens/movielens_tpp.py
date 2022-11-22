@@ -38,7 +38,7 @@ N = args.N
 
 plate_1, plate_2 = dims(2 , [M,N])
 
-x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+x = t.load('data/weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
 d_z = 18
 def P(tr):
   '''
@@ -79,7 +79,7 @@ class Q(tpp.Q_module):
 
 
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
+data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
 
 for K in Ks:
     print(K,M,N)
@@ -98,7 +98,7 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-        dim = tpp.make_dims(P, K, [plate_1])
+        dim = tpp.make_dims(P, K)
 
         for i in range(50000):
             opt.zero_grad()
