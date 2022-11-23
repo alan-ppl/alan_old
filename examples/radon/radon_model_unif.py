@@ -166,15 +166,15 @@ for K in Ks:
 
         dim = tpp.make_dims(P, K)
 
-        for i in range(250000):
+        for j in range(250000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
             (-elbo).backward()
             opt.step()
             scheduler.step()
 
-            if 0 == i%1000:
-                print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
+            if 0 == j%1000:
+                print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo.item()))
 
         elbos.append(elbo.item())
     results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
