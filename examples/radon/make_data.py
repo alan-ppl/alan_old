@@ -6,7 +6,7 @@ import torch as t
 M = 2
 J = 2
 I = 4
-N = 8
+N = 4
 
 df_srrs2 = pd.read_csv('srrs2.dat')
 df_cty = pd.read_csv('cty.dat')

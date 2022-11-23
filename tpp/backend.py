@@ -34,13 +34,36 @@ def ordered_unique(ls):
     d = {l:None for l in ls}
     return list(d.keys())
 
-def partition_tensors(lps, dim_name):
+def partition_tensors_plate(lps, dim_name):
     """
-    Partitions a list of tensors into two sets, one containing a given dim_name,
+    Partitions a list of tensors into two sets, one containing a given dim_name
+    or only has interactions with tensors that have that dim name,
     one that doesn't
     """
     has_dim = [lp for lp in lps if dim_name     in lp.names]
     no_dim  = [lp for lp in lps if dim_name not in lp.names]
+    no_dim_no_inter = []
+    dims_in_has_dim = unify_names(has_dim)
+    dims_in_no_dim = [set(lp.names) for lp in no_dim]
+    exclude = []
+    for i in range(len(dims_in_no_dim)):
+        lp = dims_in_no_dim[i]
+        if sum([len(lp.intersection(d)) for d in dims_in_no_dim]) == 2 and len(lp.intersection(set(dims_in_has_dim))) > 0:
+            has_dim.append(no_dim[i])
+        else:
+            no_dim_no_inter.append(no_dim[i])
+
+    return has_dim, no_dim_no_inter
+
+def partition_tensors(lps, dim_name):
+    """
+    Partitions a list of tensors into two sets, one containing a given dim_name
+    or only has interactions with tensors that have that dim name,
+    one that doesn't
+    """
+    has_dim = [lp for lp in lps if dim_name     in lp.names]
+    no_dim  = [lp for lp in lps if dim_name not in lp.names]
+
     return has_dim, no_dim
 
 def args_with_dim_name(args, dim_name):
@@ -68,7 +91,6 @@ def align_tensors(args):
     return [arg.align_to(*unified_names) for arg in args]
 
 
-
 def reduce_K(all_lps, K_name):
     """
     Takes a the full list of tensors and a K_name to reduce over.
@@ -77,16 +99,38 @@ def reduce_K(all_lps, K_name):
     Returns a list of the tensors without dim_name + the combined tensor.
     """
     lps_with_K, other_lps = partition_tensors(all_lps, K_name)
-
     lps_with_K = align_tensors(lps_with_K)
-
+    # lps_with_K = [tpp.tensor_utils.sum_none_dims(lp) for lp in lps_with_K]
 
     K = all_lps[0].align_to(K_name,...).shape[0]
-
-
+    # print(K_name)
+    # print('lps_with_K')
+    # print(lps_with_K)
+    # print([lp.shape for lp in lps_with_K])
     result_lp = t.logsumexp((sum(lps_with_K)), K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K))
+    # print('result_lp')
+    # print(result_lp)
     other_lps.append(result_lp)
     return other_lps
+
+# def reduce_K(all_lps, K_name):
+#     """
+#     Takes a the full list of tensors and a K_name to reduce over.
+#     Splits the list into those with and without that dimension.
+#     Combines all tensors with that dim.
+#     Returns a list of the tensors without dim_name + the combined tensor.
+#     """
+#     lps_with_K, other_lps = partition_tensors(all_lps, K_name)
+#
+#     lps_with_K = align_tensors(lps_with_K)
+#     # lps_with_K = [tpp.tensor_utils.sum_none_dims(lp) for lp in lps_with_K]
+#
+#     K = all_lps[0].align_to(K_name,...).shape[0]
+#
+#
+#     result_lp = sum([t.logsumexp(lp, K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K)) for lp in lps_with_K])
+#     other_lps.append(result_lp)
+#     return other_lps
 
 def reduce_Ks(lps, Ks_to_keep):
     """
@@ -161,22 +205,26 @@ def sum_plate(all_lps, plate_name=None):
     """
     if plate_name is not None:
         #partition tensors into those with/without plate_name
-        lower_lps, higher_lps = partition_tensors(all_lps, plate_name)
+        lower_lps, higher_lps = partition_tensors_plate(all_lps, plate_name)
     else:
         #top-level (no plates)
         lower_lps = all_lps
         higher_lps = []
 
     #collect K's that appear in higher plates
+    # print(higher_lps)
     Ks_to_keep = [n for n in unify_names(higher_lps) if is_K(n)]
-
     #sum over the K's that don't appear in higher plates
-
-    lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
+    # print(lower_lps)
+    # print(higher_lps)
 
     if plate_name is not None:
         #if we aren't at the top-level, sum over the plate to eliminate plate_name
-        lower_lps = [l.sum(plate_name) for l in lower_lps]
+        lower_lps = [l.sum(plate_name) if plate_name in l.names else l for l in lower_lps]
+
+    lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
+
+
 
 
 
@@ -205,6 +253,8 @@ def sum_lps(lps):
     marginals = []
     for plate_name in plate_names[::-1]:
         lps, _m = sum_plate(lps, plate_name)
+        # print(plate_name)
+        # print(lps)
         marginals = marginals + _m
 
     assert 0==len(sum(lps).shape)
@@ -267,7 +317,10 @@ def combine_lps(logps, logqs, dims):
         assert repr(dims[rv]) in lp.names
         assert repr(dims[rv]) in lq.names
 
-
+    # print('log_q')
+    # print(logqs)
+    # print('log_p')
+    # print(logps)
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
 

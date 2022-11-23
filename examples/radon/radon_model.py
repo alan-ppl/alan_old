@@ -32,7 +32,7 @@ print('...', flush=True)
 M = 2
 J = 2
 I = 4
-N = 8
+N = 4
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -143,16 +143,15 @@ for K in Ks:
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
-        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
+        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=50000, gamma=0.1)
 
 
 
         dim = tpp.make_dims(P, K)
 
-        for j in range(100000):
+        for j in range(250000):
             opt.zero_grad()
             elbo = model.elbo(dims=dim)
-            print(elbo)
             (-elbo).backward()
             opt.step()
             scheduler.step()
