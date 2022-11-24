@@ -1,6 +1,7 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .backend import vi, reweighted_wake_sleep, gibbs, sum_lps, sum_logpqs
+from .backend import sum_lps, sum_logpqs
+from .inference import vi, reweighted_wake_sleep, gibbs
 # from .cartesian_tensor import CartesianTensor
 from .utils import *
 from .tensor_utils import dename, sum_none_dims
@@ -12,7 +13,8 @@ class Model(nn.Module):
         self.Q = Q
         self.data = data
 
-    def elbo(self, dims):
+    def elbo(self, K):
+        dims = make_dims(self.P, K)
         #sample from approximate posterior
         trq = TraceSampleLogQ(dims=dims, data=self.data)
 
@@ -23,7 +25,8 @@ class Model(nn.Module):
 
         return vi(trp.log_prob(), trq.log_prob(), dims)
 
-    def importance_sample(self, dims):
+    def importance_sample(self, K):
+        dims = make_dims(self.P, K)
         #sample from approximate posterior
         trq = TraceSampleLogQ(dims=dims, data=self.data)
         self.Q(trq)
@@ -33,7 +36,8 @@ class Model(nn.Module):
         _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob(), dims)
         return gibbs(marginals)
 
-    def rws(self, dims):
+    def rws(self, K):
+        dims = make_dims(self.P, K)
         #sample from approximate posterior
         trq = TraceSampleLogQ(dims=dims, data=self.data, reparam=False)
         self.Q(trq)
@@ -44,7 +48,8 @@ class Model(nn.Module):
 
         return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), dims)
 
-    def pred_likelihood(self, dims, test_data, num_samples, reweighting=False, reparam=True):
+    def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
+        dims = make_dims(self.P, 1)
         pred_lik = 0
         #gotta be able to parallelise this
         for i in range(num_samples):
@@ -90,3 +95,16 @@ def sample(P, *names):
         return tr.sample
     else:
         return {n: tr.sample[n] for n in names}
+
+def make_dims(P, K):
+    tr = TraceSample()
+    P(tr)
+
+    groups = {}
+    for v in set(tr.groups.values()):
+        groups[v] = Dim(name='K_{}'.format(v), size=K)
+    dims = {'K':Dim(name='K', size=K)}
+    for k,v in tr.groups.items():
+        dims[k] = groups[v] if tr.groups[k] is not None else Dim(name='K_{}'.format(k), size=K)
+
+    return dims

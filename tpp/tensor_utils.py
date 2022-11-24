@@ -2,11 +2,14 @@ import torch
 import torch.nn.functional as F
 from functorch.dim import Tensor as DimTensor
 
-def hasdim(x, lst):
-  for element in lst:
-    if  x is element:
-      return True
-  return False
+# def hasdim(x, lst):
+#   for element in lst:
+#     if  x is element:
+#       return True
+#   return False
+
+# def hasdim(x, lst):
+#   return x in lst
 
 def dename(tensors):
 
@@ -122,7 +125,7 @@ def get_dims(tensors):
                 dims.append(dim)
 
     return dims
-    
+
 def sum_none_dims(lp):
     """
     Sum over None dims in lp

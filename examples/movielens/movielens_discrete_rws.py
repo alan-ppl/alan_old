@@ -2,7 +2,6 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 import argparse
@@ -105,11 +104,10 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 
-        dim = tpp.make_dims(model.P, K, [plate_1])
 
         for i in range(50000):
             opt.zero_grad()
-            theta_loss, phi_loss = model.rws(dims=dim)
+            theta_loss, phi_loss = model.rws(K=K)
             (theta_loss + phi_loss).backward()
             opt.step()
 
@@ -119,8 +117,7 @@ for K in Ks:
         elbos.append(phi_loss.item())
 
         test_model = tpp.Model(P(x_test), model.Q, test_data_y)
-        dim = tpp.make_dims(model.P, 1)
-        pred_likelihood = test_model.pred_likelihood(dims=dim, test_data=test_data_y, num_samples=1000, reparam=False).sum()
+        pred_likelihood = test_model.pred_likelihood(test_data=test_data_y, num_samples=1000, reparam=False).sum()
         pred_liks.append(pred_likelihood.item())
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks}
 

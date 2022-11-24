@@ -2,7 +2,6 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims, Dim
 import argparse
@@ -90,8 +89,6 @@ for K_size in Ks:
     elbos = []
     pred_liks = []
     for i in range(5):
-        dim = tpp.make_dims(P(x_train), K_size)
-        print(dim)
         t.manual_seed(i)
 
         model = tpp.Model(P(x_train), Q(), data_y)
@@ -99,14 +96,9 @@ for K_size in Ks:
 
         opt = t.optim.Adam(model.parameters(), lr=1E-4)
 
-
-        # dim = tpp.make_dims(P, K, [plate_1], exclude=['mu_z', 'psi_z'])
-        # K_group1 = Dim(name='K_group1', size=K)
-        # K = Dim(name='K', size=K)
-        # dim = {'K':K, 'mu_z':K_group1, 'z':K_group1, 'psi_z': K_group1}
         for i in range(50000):
             opt.zero_grad()
-            theta_loss, phi_loss = model.rws(dims=dim)
+            theta_loss, phi_loss = model.rws(K=K_size)
             (theta_loss + phi_loss).backward()
             opt.step()
 
@@ -114,9 +106,7 @@ for K_size in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))
 
         test_model = tpp.Model(P(x_test), model.Q, test_data_y)
-        dim = tpp.make_dims(model.P, 1)
-        dim = {'K':Dim(name='K', size=1), 'mu_z':Dim(name='K_group1', size=1), 'z':Dim(name='K_group1', size=1), 'psi_z': Dim(name='K_group1', size=1)}
-        pred_likelihood = test_model.pred_likelihood(dims=dim, test_data=test_data_y, num_samples=1000, reparam=False).sum()
+        pred_likelihood = test_model.pred_likelihood(test_data=test_data_y, num_samples=1000, reparam=False).sum()
         pred_liks.append(pred_likelihood.item())
     results_dict[N][M][K_size] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks}
 

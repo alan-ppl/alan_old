@@ -2,7 +2,6 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 
@@ -37,11 +36,10 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=5
-dims = tpp.make_dims(P, K)
 print("K={}".format(K))
 for i in range(15000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dims)
+    elbo = model.elbo(K)
     (-elbo).backward()
     opt.step()
 

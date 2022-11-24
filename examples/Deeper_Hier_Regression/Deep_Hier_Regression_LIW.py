@@ -2,7 +2,6 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 import argparse
@@ -123,11 +122,10 @@ for K in Ks:
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
-        dim = tpp.make_dims(P, K)
 
         for j in range(75000):
             opt.zero_grad()
-            elbo = model.elbo(dims=dim)
+            elbo = model.elbo(K=K)
             (-elbo).backward()
             opt.step()
             scheduler.step()
