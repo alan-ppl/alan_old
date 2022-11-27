@@ -145,7 +145,7 @@ class TraceLogP(Trace):
 
         #rename p and q (log q and q samples) here
         if key in self.sample:
-            K_name = group if group is not None else f"K_{key}"
+            K_name = 'K_{}'.format(group) if group is not None else f"K_{key}"
             if self.K_dim in get_dims(self.sample[key]):
                 if key not in self.dims:
                     self.dims[key] = Dim(name=K_name, size=self.K_dim.size)
@@ -155,9 +155,9 @@ class TraceLogP(Trace):
 
             else:
                 if key not in self.dims:
-                    dims[key] = Dim(name=K_name, size=1)
-                self.sample[key] = self.sample[key].unsqueeze(0)[dims[key]]
-                self.logq[key] = self.logq[key].unsqueeze(0)[dims[key]]
+                    self.dims[key] = Dim(name=K_name, size=1)
+                self.sample[key] = self.sample[key].unsqueeze(0)[self.dims[key]]
+                self.logq[key] = self.logq[key].unsqueeze(0).refine_names(K_name)
                 sample = self.sample[key]
 
         sample = self[key]

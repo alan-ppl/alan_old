@@ -22,7 +22,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
-        return vi(trp.log_prob(), trq.log_prob(), dims)
+        return vi(trp.log_prob(), trq.log_prob(), trp.dims)
 
     def importance_sample(self, K):
         K_dim = Dim(name='K', size=K)
@@ -32,7 +32,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
-        _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob(), dims)
+        _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob(), trp.dims)
         return gibbs(marginals)
 
     def rws(self, K):
@@ -45,7 +45,7 @@ class Model(nn.Module):
         trp = TraceLogP(trq.sample, self.data, K_dim=K_dim)
         self.P(trp)
 
-        return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), dims)
+        return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), trp.dims)
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
         K_dim = Dim(name='K', size=1)

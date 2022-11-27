@@ -275,9 +275,7 @@ def combine_lps(logps, logqs, dims):
     # check all named dimensions in logps are either positional, plates or "K"
     for lp in logqs.values():
         for n in lp.names:
-            # print(n)
             assert (n is None) or n=="K" or is_plate(n) or is_K(n)
-
     # # convert K
     # for (n, lp) in logps.items():
     #     if len(lp.shape) == 0:
@@ -310,8 +308,11 @@ def combine_lps(logps, logqs, dims):
         assert set(lp_plates) == set(lq_plates)
 
         # check there is a K_name corresponding to rv name in both tensors
-        assert 'K_{}'.format(rv) in lp.names
-        assert 'K_{}'.format(rv) in lq.names
+        # print(rv)
+        # print(lq.names)
+        # print(lq)
+        assert repr(dims[rv]) in lp.names
+        assert repr(dims[rv]) in lq.names
 
     # print('log_q')
     # print(logqs)
