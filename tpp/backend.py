@@ -240,6 +240,7 @@ def sum_lps(lps):
         marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
     """
     #ordered list of plates
+    # NOTE: This assumes the lps come in the right order! There should be an assert here.
     plate_names = [n for n in unify_names(lps) if is_plate(n)]
     #add top-layer (no plate)
     plate_names = [None] + plate_names
@@ -267,7 +268,8 @@ def combine_lps(logps, logqs, dims):
     Returns:
         all_lps: logps - logqs
     """
-
+    # print(logqs)
+    # print(logps)
     assert len(logqs) <= len(logps)
 
     # check all named dimensions in logps are either positional, plates or "K"
@@ -276,16 +278,16 @@ def combine_lps(logps, logqs, dims):
             # print(n)
             assert (n is None) or n=="K" or is_plate(n) or is_K(n)
 
-    # convert K
-    for (n, lp) in logps.items():
-        if len(lp.shape) == 0:
-            logps[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
-
-    for (n, lp) in logqs.items():
-        if len(lp.shape) == 0:
-            logqs[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
-        elif 'K' in lp.names:
-            logqs[n] = lp.rename(K=repr(dims[n]))
+    # # convert K
+    # for (n, lp) in logps.items():
+    #     if len(lp.shape) == 0:
+    #         logps[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
+    #
+    # for (n, lp) in logqs.items():
+    #     if len(lp.shape) == 0:
+    #         logqs[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
+    #     elif 'K' in lp.names:
+    #         logqs[n] = lp.rename(K=repr(dims[n]))
 
     # check all named dimensions in logps are either positional, plates or Ks
     for lp in logps.values():
@@ -308,9 +310,8 @@ def combine_lps(logps, logqs, dims):
         assert set(lp_plates) == set(lq_plates)
 
         # check there is a K_name corresponding to rv name in both tensors
-
-        assert repr(dims[rv]) in lp.names
-        assert repr(dims[rv]) in lq.names
+        assert 'K_{}'.format(rv) in lp.names
+        assert 'K_{}'.format(rv) in lq.names
 
     # print('log_q')
     # print(logqs)

@@ -14,50 +14,49 @@ class Model(nn.Module):
         self.data = data
 
     def elbo(self, K):
-        dims = make_dims(self.P, K)
+        K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
-        trq = TraceSampleLogQ(dims=dims, data=self.data)
+        trq = TraceSampleLogQ(dims=dims, data=self.data, K_dim=K_dim)
 
         self.Q(trq)
         #compute logP
-        trp = TraceLogP(trq.sample, self.data, dims=dims)
+        trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
-
         return vi(trp.log_prob(), trq.log_prob(), dims)
 
     def importance_sample(self, K):
-        dims = make_dims(self.P, K)
+        K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
-        trq = TraceSampleLogQ(dims=dims, data=self.data)
+        trq = TraceSampleLogQ(data=self.data, K_dim=K_dim)
         self.Q(trq)
         #compute logP
-        trp = TraceLogP(trq.sample, self.data, dims=dims)
+        trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
         _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob(), dims)
         return gibbs(marginals)
 
     def rws(self, K):
-        dims = make_dims(self.P, K)
+        K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
-        trq = TraceSampleLogQ(dims=dims, data=self.data, reparam=False)
+        trq = TraceSampleLogQ(data=self.data, reparam=False, K_dim=K_dim)
         self.Q(trq)
         #compute logP
         # trq.sample = {k:v.detach() for k,v in trq.sample.items()}
-        trp = TraceLogP(trq.sample, self.data, dims=dims)
+        trp = TraceLogP(trq.sample, self.data, K_dim=K_dim)
         self.P(trp)
 
         return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), dims)
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
-        dims = make_dims(self.P, 1)
+        K_dim = Dim(name='K', size=1)
         pred_lik = 0
         #gotta be able to parallelise this
         for i in range(num_samples):
-            trq = TraceSampleLogQ(dims=dims, data=test_data, reparam=reparam)
+            trq = TraceSampleLogQ(data=test_data, reparam=reparam, K_dim=K_dim)
             self.Q(trq)
             # print(trq.sample)
             #compute logP
-            trp = TraceLogP(trq.sample, test_data, dims=dims)
+            trp = TraceLogP(trq.sample, test_data, K_dim=K_dim)
             self.P(trp)
             # print(trp.log_prob())
             logps = {rv: sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}

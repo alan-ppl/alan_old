@@ -3,11 +3,12 @@ import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
 from .tensor_utils import dename, get_dims, sum_none_dims
-
+from functorch.dim import dims, Dim
 
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
 ]
+
 
 class Trace:
     def __init__(self):
@@ -37,16 +38,16 @@ class TraceSampleLogQ(Trace):
     Can high-level latents depend on plated lower-layer latents?  (I think so?)
     """
 
-    def __init__(self, data=None, dims=None, reparam=True):
+    def __init__(self, data=None, dims=None, reparam=True, K_dim = None):
         super().__init__()
         if data is None:
             data = {}
         self.data = data
         self.sample = {}
         self.logp = {}
-        self.K = dims['K']
         self.reparam = reparam
         self.dims = dims
+        self.K_dim = K_dim
 
     def __getitem__(self, key):
         if key in self.sample:
@@ -61,9 +62,9 @@ class TraceSampleLogQ(Trace):
         assert key not in self.data
         assert key not in self.sample
         if self.reparam:
-            sample = value.rsample(K=self.K)
+            sample = value.rsample(K=self.K_dim)
         else:
-            sample = value.sample(K=self.K)
+            sample = value.sample(K=self.K_dim)
 
         # # ## Assert no K being sampled, check value.sample_K
         # if not hasdim(self.dims['K'], get_dims(sample)):
@@ -113,29 +114,51 @@ class TraceSample(Trace):
 
 
 class TraceLogP(Trace):
-    def __init__(self, sample, data=None, dims = None):
-        self.sample = sample
+    def __init__(self, logq_trace, data=None, dims = None, K_dim = None):
+        self.sample = logq_trace.sample
+        self.logq = logq_trace.logp
         self.data = data
         # maintains an ordered list of tensors as they are generated
         self.logp = {}
-        self.dims = dims
+        self.dims = {}
+        self.K_dim = K_dim
 
 
     def __getitem__(self, key):
         # ensure tensor has been generated
+
+        assert self.K_dim not in get_dims(self.sample)
+
         assert (key in self.data) or (key in self.sample)
+
         if key in self.sample:
-            K_name = f"K_{key}"
-            if self.dims['K'] in get_dims(self.sample[key]):
-                sample = self.sample[key].index(self.dims['K'], self.dims[key])
-            else:
-                sample = self.sample[key]#.unsqueeze(0)[self.dims['global']]
+            sample = self.sample[key]
             return sample
+
         return self.data[key]
 
     def __setitem__(self, key, value):
         assert isinstance(value, WrappedDist)
         assert (key in self.data) or (key in self.sample)
-        sample = self[key]
 
+        group = value.group
+
+        #rename p and q (log q and q samples) here
+        if key in self.sample:
+            K_name = group if group is not None else f"K_{key}"
+            if self.K_dim in get_dims(self.sample[key]):
+                if key not in self.dims:
+                    self.dims[key] = Dim(name=K_name, size=self.K_dim.size)
+                self.sample[key] = self.sample[key].index(self.K_dim, self.dims[key])
+                self.logq[key] = self.logq[key].rename(K=K_name)
+                sample = self.sample[key]
+
+            else:
+                if key not in self.dims:
+                    dims[key] = Dim(name=K_name, size=1)
+                self.sample[key] = self.sample[key].unsqueeze(0)[dims[key]]
+                self.logq[key] = self.logq[key].unsqueeze(0)[dims[key]]
+                sample = self.sample[key]
+
+        sample = self[key]
         self.logp[key] = value.log_prob(sample)
