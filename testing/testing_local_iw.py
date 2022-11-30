@@ -1,7 +1,6 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 
@@ -15,9 +14,9 @@ def P(tr):
   '''
   tr['mu'] = tpp.Normal(t.zeros(1,), t.ones(1,))
 
-  tr['psi'] = tpp.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1, group='local')
+  tr['psi'] = tpp.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1)
 
-  tr['phi'] = tpp.Normal(tr['psi'], t.ones(1,), sample_dim=plate_2, group='local')
+  tr['phi'] = tpp.Normal(tr['psi'], t.ones(1,), sample_dim=plate_2)
 
   tr['obs'] = tpp.Normal(tr['phi'], t.ones(5,), sample_dim=plate_3, group='local')
 
@@ -52,11 +51,10 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K = 5
-dim = tpp.make_dims(P, K)
 
 for i in range(20000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dim)
+    elbo = model.elbo(K=K)
     (-elbo).backward()
     opt.step()
 
@@ -111,11 +109,10 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K = 5
-dim = tpp.make_dims(P, K)
 
 for i in range(20000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dim)
+    elbo = model.elbo(K=K)
     (-elbo).backward()
     opt.step()
 

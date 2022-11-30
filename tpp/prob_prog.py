@@ -3,12 +3,29 @@ import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
 from .tensor_utils import dename, get_dims, sum_none_dims
-from functorch.dim import dims, Dim
+from .backend import is_K, is_plate
 
+from functorch.dim import dims, Dim
 __all__ = [
     'Trace', 'TraceSampleLogQ', 'TraceSample', 'TraceLogP'
 ]
 
+def check_shared_dims(new_lp, lp, K_group):
+    """
+    Check that tensors with shared K_dims have the same plate dims
+    """
+    new_lp_dims = new_lp.names
+    lp_dims = lp.names
+
+    lp_K_dims = [dim for dim in lp_dims if is_K(dim)]
+
+    new_lp_plate_dims = [dim for dim in new_lp_dims if is_plate(dim)]
+    lp_plate_dims = [dim for dim in lp_dims if is_plate(dim)]
+
+    if K_group in lp_K_dims:
+        return new_lp_plate_dims == lp_plate_dims
+    else:
+        return True
 
 class Trace:
     def __init__(self):
@@ -147,8 +164,15 @@ class TraceLogP(Trace):
         if key in self.sample:
             K_name = 'K_{}'.format(group) if group is not None else f"K_{key}"
             if self.K_dim in get_dims(self.sample[key]):
+                #If we have a plain K_dim, rename it to K_name
+                if K_name not in [repr(dim) for dim in self.dims.values()]:
+                    # If K_name dim already exists don't make another
+                    dim = Dim(name=K_name, size=self.K_dim.size)
+                else:
+                    dim = self.dims[K_name]
                 if key not in self.dims:
-                    self.dims[key] = Dim(name=K_name, size=self.K_dim.size)
+                    self.dims[key] = dim
+                    self.dims[K_name] = dim
                 self.sample[key] = self.sample[key].index(self.K_dim, self.dims[key])
                 self.logq[key] = self.logq[key].rename(K=K_name)
                 sample = self.sample[key]
@@ -161,4 +185,8 @@ class TraceLogP(Trace):
                 sample = self.sample[key]
 
         sample = self[key]
-        self.logp[key] = value.log_prob(sample)
+        new_lp = value.log_prob(sample)
+        for log_p in self.logp.values():
+            if group:
+                assert check_shared_dims(new_lp, log_p, 'K_{}'.format(group))
+        self.logp[key] = new_lp

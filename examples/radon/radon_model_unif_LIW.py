@@ -54,17 +54,17 @@ def P(tr):
   #state level
   tr['sigma_beta'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
   tr['mu_beta'] = tpp.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device))
-  tr['beta'] = tpp.Normal(tr['mu_beta'], tr['sigma_beta'], sample_dim = plate_state, group='local')
+  tr['beta'] = tpp.Normal(tr['mu_beta'], tr['sigma_beta'], sample_dim = plate_state)
 
   #county level
   tr['gamma'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
   tr['sigma_alpha'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
 
-  tr['alpha'] = tpp.Normal(tr['beta'] + tr['gamma'] * county_uranium, tr['sigma_alpha'], group='local')
+  tr['alpha'] = tpp.Normal(tr['beta'] + tr['gamma'] * county_uranium, tr['sigma_alpha'])
 
   #zipcode level
   tr['sigma_omega'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
-  tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'], sample_dim=plate_zipcode, group='local')
+  tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'], sample_dim=plate_zipcode)
 
   #reading level
   tr['sigma_obs'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
