@@ -103,6 +103,7 @@ def reduce_K(all_lps, K_name):
 
     K = all_lps[0].align_to(K_name,...).shape[0]
 
+
     result_lp = t.logsumexp((sum(lps_with_K)), K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K))
 
     other_lps.append(result_lp)
@@ -297,7 +298,6 @@ def combine_lps(logps, logqs, dims):
     # print(logps)
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-
     return all_lps
 
 def sum_logpqs(logps, logqs, dims):
