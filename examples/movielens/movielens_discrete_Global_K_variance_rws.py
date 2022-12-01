@@ -107,7 +107,7 @@ for K in Ks:
 
         opt = t.optim.Adam(model.parameters(), lr=1E-4)
 
-        for i in range(50000):
+        for i in range(1000):
             opt.zero_grad()
             wake_theta_loss, wake_phi_loss = model.rws(K=K)
             (-wake_theta_loss + wake_phi_loss).backward()

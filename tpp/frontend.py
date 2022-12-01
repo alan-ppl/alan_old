@@ -56,7 +56,7 @@ class Model(nn.Module):
             self.Q(trq)
             # print(trq.sample)
             #compute logP
-            trp = TraceLogP(trq.sample, test_data, K_dim=K_dim)
+            trp = TraceLogP(trq, test_data, K_dim=K_dim)
             self.P(trp)
             # print(trp.log_prob())
             logps = {rv: sum_none_dims(lp) for (rv, lp) in trp.log_prob().items()}
