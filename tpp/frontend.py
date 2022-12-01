@@ -42,7 +42,7 @@ class Model(nn.Module):
         self.Q(trq)
         #compute logP
         # trq.sample = {k:v.detach() for k,v in trq.sample.items()}
-        trp = TraceLogP(trq.sample, self.data, K_dim=K_dim)
+        trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
 
         return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), trp.dims)

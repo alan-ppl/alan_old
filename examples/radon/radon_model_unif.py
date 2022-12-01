@@ -11,6 +11,7 @@ import itertools
 from torch.distributions.constraint_registry import transform_to
 from torch.distributions.constraints import half_open_interval
 import random
+import time
 
 def seed_torch(seed=1029):
     random.seed(seed)
@@ -135,14 +136,14 @@ class Q(tpp.Q_module):
         #zipcode level
         sigma_omega_low = t.max(self.low, self.sigma_omega_low.exp())
         sigma_omega_high = t.min(self.high, self.sigma_omega_high.exp())
-        tr['sigma_omega'] = tpp.Uniform(sigma_omega_low, sigma_omega_high)
+        tr['sigma_omega'] = tpp.Uniform(sigma_omega_low, sigma_omega_high, sample_K=False)
         tr['omega'] = tpp.Normal(self.omega_mu, self.log_omega_sigma.exp())
 
         #reading level
         sigma_obs_low = t.max(self.low, self.sigma_obs_low.exp())
         sigma_obs_high = t.min(self.high, self.sigma_obs_high.exp())
-        tr['sigma_obs'] = tpp.Uniform(sigma_obs_low, sigma_obs_high)
-        tr['beta_int'] = tpp.Normal(self.beta_int_mu, self.log_beta_int_sigma.exp())
+        tr['sigma_obs'] = tpp.Uniform(sigma_obs_low, sigma_obs_high, sample_K=False)
+        tr['beta_int'] = tpp.Normal(self.beta_int_mu, self.log_beta_int_sigma.exp(), sample_K=False)
 
 data_y = {'obs':t.load('radon.pt')[plate_state, plate_county, plate_zipcode, plate_reading].to(device)}
 
@@ -150,29 +151,31 @@ for K in Ks:
     print(K)
     results_dict[K] = results_dict.get(K, {})
     elbos = []
-
+    times = []
     for i in range(5):
-
+        per_seed_elbos = []
+        start = time.time()
         seed_torch(i)
 
         model = tpp.Model(P, Q(), data_y)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
-        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=50000, gamma=0.1)
+        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
-        for j in range(250000):
+        for j in range(50000):
             opt.zero_grad()
             elbo = model.elbo(K=K)
             (-elbo).backward()
             opt.step()
             scheduler.step()
-
+            per_seed_elbos.append(elbo.item())
             if 0 == j%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo.item()))
 
-        elbos.append(elbo.item())
-    results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
+        elbos.append(np.mean(per_seed_elbos[-50:]))
+        times.append(time.time() - start)
+    results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'avg_time':np.mean(times)}
 
 file = 'results/results_unif.json'
 with open(file, 'w') as f:

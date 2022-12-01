@@ -2,11 +2,11 @@ import torch
 import torch.nn.functional as F
 from functorch.dim import Tensor as DimTensor
 
-# def hasdim(x, lst):
-#   for element in lst:
-#     if  x is element:
-#       return True
-#   return False
+def has_dim(x, lst):
+  for element in lst:
+    if  x is element:
+      return True
+  return False
 
 # def hasdim(x, lst):
 #   return x in lst

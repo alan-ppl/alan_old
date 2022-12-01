@@ -2,7 +2,6 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 import numpy as np
@@ -43,16 +42,15 @@ model = tpp.Model(P, Q(), data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=5
-dim = tpp.make_dims(P, K)
 print("K={}".format(K))
 for i in range(5000):
     opt.zero_grad()
-    theta_loss, phi_loss = model.rws(dims=dim)
-    (theta_loss + phi_loss).backward()
+    wake_theta_loss, wake_phi_loss = model.rws(K=K)
+    (-wake_theta_loss + wake_phi_loss).backward()
     opt.step()
 
     if 0 == i%1000:
-        print(phi_loss.item())
+        print(wake_phi_loss.item())
         # print(theta_loss.item())
 
 

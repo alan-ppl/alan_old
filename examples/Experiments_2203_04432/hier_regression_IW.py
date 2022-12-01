@@ -8,8 +8,16 @@ import argparse
 import json
 import numpy as np
 import itertools
-t.manual_seed(0)
+import time
+import random
 
+def seed_torch(seed=1029):
+    random.seed(seed)
+    np.random.seed(seed)
+    t.manual_seed(seed)
+    t.cuda.manual_seed(seed)
+
+seed_torch(0)
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -96,7 +104,11 @@ for K in Ks:
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
     lrs = []
+    times = []
     for i in range(5):
+        per_seed_elbos = []
+        seed_torch(i)
+        start = time.time()
         lr = []
         t.manual_seed(i)
 
@@ -104,6 +116,7 @@ for K in Ks:
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
+        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
 
         for i in range(50000):
@@ -111,14 +124,15 @@ for K in Ks:
             elbo = model.elbo(K=K)
             (-elbo).backward()
             opt.step()
-
+            scheduler.step()
+            per_seed_elbos.append(elbo.item())
             if 0 == i%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
 
-        elbos.append(elbo.item())
+        elbos.append(np.mean(per_seed_elbos[-50:]))
+        times.append(time.time() - start)
+    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'avg_time':np.mean(times)}
 
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
-
-file = 'results/results_local_IW_N{0}_M{1}.json'.format(N,M)
+file = 'results/results_lr_local_IW_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

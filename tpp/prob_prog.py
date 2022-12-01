@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 import torch.nn as nn
 from .wrapped_distribution import WrappedDist
-from .tensor_utils import dename, get_dims, sum_none_dims
+from .tensor_utils import dename, get_dims, sum_none_dims, has_dim
 from .backend import is_K, is_plate
 
 from functorch.dim import dims, Dim
@@ -163,7 +163,7 @@ class TraceLogP(Trace):
         #rename p and q (log q and q samples) here
         if key in self.sample:
             K_name = 'K_{}'.format(group) if group is not None else f"K_{key}"
-            if self.K_dim in get_dims(self.sample[key]):
+            if has_dim(self.K_dim, get_dims(self.sample[key])):
                 #If we have a plain K_dim, rename it to K_name
                 if K_name not in [repr(dim) for dim in self.dims.values()]:
                     # If K_name dim already exists don't make another
@@ -181,7 +181,9 @@ class TraceLogP(Trace):
                 if key not in self.dims:
                     self.dims[key] = Dim(name=K_name, size=1)
                 self.sample[key] = self.sample[key].unsqueeze(0)[self.dims[key]]
-                self.logq[key] = self.logq[key].unsqueeze(0).refine_names(K_name)
+                logq_names = self.logq[key].names
+
+                self.logq[key] = self.logq[key].rename(None).unsqueeze(0).refine_names(*logq_names + (K_name,))
                 sample = self.sample[key]
 
         sample = self[key]

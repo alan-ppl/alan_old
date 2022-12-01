@@ -1,7 +1,6 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 

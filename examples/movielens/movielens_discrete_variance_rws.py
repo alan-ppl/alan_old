@@ -8,8 +8,16 @@ import argparse
 import json
 import numpy as np
 import itertools
+import time
+import random
 
-t.manual_seed(0)
+def seed_torch(seed=1029):
+    random.seed(seed)
+    np.random.seed(seed)
+    t.manual_seed(seed)
+    t.cuda.manual_seed(seed)
+
+seed_torch(0)
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -88,9 +96,10 @@ for K in Ks:
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
     pred_liks = []
+    times = []
     for i in range(5):
-
-        t.manual_seed(i)
+        seed_torch(i)
+        start = time.time()
 
         model = tpp.Model(P(x_train), Q(), data_y)
         model.to(device)
@@ -101,17 +110,18 @@ for K in Ks:
 
         for i in range(50000):
             opt.zero_grad()
-            theta_loss, phi_loss = model.rws(K=K)
-            (theta_loss + phi_loss).backward()
+            wake_theta_loss, wake_phi_loss = model.rws(K=K)
+            (-wake_theta_loss + wake_phi_loss).backward()
             opt.step()
 
             if 0 == i%1000:
-                print("Iteration: {0}, ELBO: {1:.2f}".format(i,phi_loss.item()))
+                print("Iteration: {0}, ELBO: {1:.2f}".format(i,wake_phi_loss.item()))
 
+        times.append(time.time() - start)
         test_model = tpp.Model(P(x_test), model.Q, test_data_y)
         pred_likelihood = test_model.pred_likelihood(test_data=test_data_y, num_samples=1000, reparam=False)
         pred_liks.append(pred_likelihood.item())
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks}
+    results_dict[N][M][K] = {'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks, 'avg_time':np.mean(times)}
 
 file = 'results/movielens_results_discrete_variance_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:

@@ -8,6 +8,7 @@ import argparse
 import json
 import numpy as np
 import itertools
+import time
 import random
 
 def seed_torch(seed=1029):
@@ -53,9 +54,9 @@ def P(tr):
   '''
 
   tr['mu_z1'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['mu_z2'] = tpp.Normal(tr['mu_z1'], t.ones(()).to(device), sample_dim=plate_muz2, group = 'local')
-  tr['mu_z3'] = tpp.Normal(tr['mu_z2'], t.ones(()).to(device), sample_dim=plate_muz3, group = 'local')
-  tr['mu_z4'] = tpp.Normal(tr['mu_z3'], t.ones(()).to(device), sample_dim=plate_muz4, group = 'local')
+  tr['mu_z2'] = tpp.Normal(tr['mu_z1'], t.ones(()).to(device), sample_dim=plate_muz2)
+  tr['mu_z3'] = tpp.Normal(tr['mu_z2'], t.ones(()).to(device), sample_dim=plate_muz3)
+  tr['mu_z4'] = tpp.Normal(tr['mu_z3'], t.ones(()).to(device), sample_dim=plate_muz4)
   tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
   tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
 
@@ -94,9 +95,9 @@ class Q(tpp.Q_module):
 
     def forward(self, tr):
         tr['mu_z1'] = tpp.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp(), sample_K=False)
-        tr['mu_z2'] = tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp())
-        tr['mu_z3'] = tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp())
-        tr['mu_z4'] = tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp())
+        tr['mu_z2'] = tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp(), sample_K=False)
+        tr['mu_z3'] = tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp(), sample_K=False)
+        tr['mu_z4'] = tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp(), sample_K=False)
         tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
         tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
 
@@ -112,8 +113,10 @@ for K in Ks:
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
     test_log_likelihoods = []
+    times = []
     for i in range(5):
-
+        per_seed_elbos = []
+        start = time.time()
         seed_torch(i)
 
         model = tpp.Model(P, Q(), data_y)
@@ -123,19 +126,20 @@ for K in Ks:
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
 
-        for j in range(75000):
+        for j in range(50000):
             opt.zero_grad()
             elbo = model.elbo(K=K)
             (-elbo).backward()
             opt.step()
             scheduler.step()
-
+            per_seed_elbos.append(elbo.item())
             if 0 == j%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo.item()))
 
-        elbos.append(elbo.item())
+        elbos.append(np.mean(per_seed_elbos[-50:]))
+        times.append(time.time() - start)
         # test_log_likelihoods.append(model.test_log_like(dims=dim, test_data=test_data_y))
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
+    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'avg_time':np.mean(times)}
 
 file = 'results/results_LIW_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:

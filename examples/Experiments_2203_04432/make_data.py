@@ -2,15 +2,21 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
 import tqdm
 from functorch.dim import dims
 import argparse
 import json
 import numpy as np
 import itertools
+import random
 
-t.manual_seed(0)
+def seed_torch(seed=1029):
+    random.seed(seed)
+    np.random.seed(seed)
+    t.manual_seed(seed)
+    t.cuda.manual_seed(seed)
+
+seed_torch(0)
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
@@ -46,11 +52,6 @@ for N in Ns:
 
 
         data_y = tpp.sample(P,"obs")
-        test_y
 
         t.save(data_y['obs'].order(*data_y['obs'].dims), 'data_y_{0}_{1}.pt'.format(N, M))
         t.save(x.order(*x.dims), 'weights_{0}_{1}.pt'.format(N,M))
-
-
-        test_data_y = tpp.sample(P,"obs")
-        t.save(data_y['obs'].order(*data_y['obs'].dims), 'test_data_y_{0}_{1}.pt'.format(N, M))

@@ -104,7 +104,7 @@ def reduce_K(all_lps, K_name):
     K = all_lps[0].align_to(K_name,...).shape[0]
 
 
-    result_lp = t.logsumexp((sum(lps_with_K)), K_name, keepdim=True).squeeze(K_name) - t.log(t.tensor(K))
+    result_lp = t.logsumexp((sum(lps_with_K)), K_name) - t.log(t.tensor(K))
 
     other_lps.append(result_lp)
     return other_lps

@@ -11,6 +11,7 @@ import itertools
 from torch.distributions.constraint_registry import transform_to
 from torch.distributions.constraints import half_open_interval
 import random
+import time
 
 def seed_torch(seed=1029):
     random.seed(seed)
@@ -64,7 +65,7 @@ def P(tr):
 
   #zipcode level
   tr['sigma_omega'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
-  tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'], sample_dim=plate_zipcode)
+  tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'], sample_dim=plate_zipcode, group='local')
 
   #reading level
   tr['sigma_obs'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
@@ -121,7 +122,7 @@ class Q(tpp.Q_module):
 
         tr['sigma_beta'] = tpp.Uniform(sigma_beta_low, sigma_beta_high, sample_K=False)
         tr['mu_beta'] = tpp.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp(), sample_K=False)
-        tr['beta'] = tpp.Normal(self.beta_mu, self.log_beta_sigma.exp())
+        tr['beta'] = tpp.Normal(self.beta_mu, self.log_beta_sigma.exp(), sample_K=False)
 
         #county level
         gamma_low = t.max(self.low, self.gamma_low.exp())
@@ -131,7 +132,7 @@ class Q(tpp.Q_module):
         sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
         tr['gamma'] = tpp.Uniform(gamma_low, gamma_high, sample_K=False)
         tr['sigma_alpha'] = tpp.Uniform(sigma_alpha_low, sigma_alpha_high, sample_K=False)
-        tr['alpha'] = tpp.Normal(self.alpha_mu, self.log_alpha_sigma.exp())
+        tr['alpha'] = tpp.Normal(self.alpha_mu, self.log_alpha_sigma.exp(), sample_K=False)
 
         #zipcode level
         sigma_omega_low = t.max(self.low, self.sigma_omega_low.exp())
@@ -151,30 +152,33 @@ for K in Ks:
     print(K)
     results_dict[K] = results_dict.get(K, {})
     elbos = []
-
+    times = []
     for i in range(5):
-
+        per_seed_elbos = []
+        start = time.time()
         seed_torch(i)
 
         model = tpp.Model(P, Q(), data_y)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
-        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=50000, gamma=0.1)
+        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
 
-        for j in range(250000):
+        for j in range(50000):
             opt.zero_grad()
             elbo = model.elbo(K=K)
             (-elbo).backward()
             opt.step()
             scheduler.step()
+            per_seed_elbos.append(elbo.item())
 
             if 0 == j%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo.item()))
 
-        elbos.append(elbo.item())
-    results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos}
+        elbos.append(np.mean(per_seed_elbos[-50:]))
+        times.append(time.time() - start)
+    results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'avg_time':np.mean(times)}
 
 file = 'results/results_unif_LIW.json'
 with open(file, 'w') as f:
