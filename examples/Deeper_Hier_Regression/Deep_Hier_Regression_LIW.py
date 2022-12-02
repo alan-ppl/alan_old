@@ -60,7 +60,7 @@ def P(tr):
   tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
   tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
 
-  tr['z'] = tpp.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_z, group='local')
+  tr['z'] = tpp.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_z)
 
   tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
 

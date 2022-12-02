@@ -162,7 +162,7 @@ for K in Ks:
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
-        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
+        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=20000, gamma=0.1)
 
 
         for j in range(100000):

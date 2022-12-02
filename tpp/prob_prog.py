@@ -183,7 +183,7 @@ class TraceLogP(Trace):
                 self.sample[key] = self.sample[key].unsqueeze(0)[self.dims[key]]
                 logq_names = self.logq[key].names
 
-                self.logq[key] = self.logq[key].rename(None).unsqueeze(0).refine_names(*logq_names + (K_name,))
+                self.logq[key] = self.logq[key].rename(None).unsqueeze(0).refine_names(*((K_name,) + logq_names))
                 sample = self.sample[key]
 
         sample = self[key]

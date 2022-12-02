@@ -21,10 +21,10 @@ with plt.rc_context(bundles.icml2022()):
         for j in range(len(Ms)):
             N = Ns[i]
             M = Ms[j]
-            with open('results/results_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/results_lr_N{0}_M{1}.json'.format(N,M)) as f:
                 results = json.load(f)
 
-            with open('results/results_local_IW_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/results_lr_local_IW_N{0}_M{1}.json'.format(N,M)) as f:
                 results_local_IW = json.load(f)
 
 
