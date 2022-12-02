@@ -165,7 +165,7 @@ for K in Ks:
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
 
 
-        for j in range(50000):
+        for j in range(100000):
             opt.zero_grad()
             elbo = model.elbo(K=K)
             (-elbo).backward()
