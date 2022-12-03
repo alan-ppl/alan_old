@@ -12,7 +12,6 @@ class WrappedDist:
         self.args = args
         self.kwargs = kwargs
         self.dist = dist
-
         if isinstance(sample_dim, Dim):
             self.sample_dim = sample_dim
             sample_shape = (sample_dim.size,)
@@ -29,34 +28,23 @@ class WrappedDist:
 
         self.sample_names = tuple([repr(dim) for dim in sample_dim])
 
-    def prepare_to_sample (self, K):
+    def prepare_to_sample(self, K):
         args = self.args
         kwargs = self.kwargs
         K_size = K.size if K is not None else None
         args, kwargs, denamify = nameify(args, kwargs)
-        # print('sample_shape')
-        # print(self.sample_shape)
-        # print(self.sample_names)
+
         # Sorted list of all unique names
         unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
         unified_names.discard(None)
         unified_names = sorted(unified_names)
-        # print(unified_names)
-        # for a in args:
-        #     print(a.shape)
+
         already_K = 'K' in unified_names
 
         sampling_K = K_size is not None and not already_K and self.sample_K
 
-
-
-        # sample_shape = (*self.sample_shape, K_size) if sampling_K else self.sample_shape
         sample_shape = self.sample_shape + (K_size,) if sampling_K else self.sample_shape
 
-        # if not self.sample_K:
-        #     sample_shape = sample_shape + (1,)
-        #     print('sample shape')
-        #     print(sample_shape)
         #Checking the user hasn't mistakenely labelled two variables with the same plate name
         if len(list(unified_names)) > 0:
             assert list(unified_names) != list(self.sample_names), "Don't label two variables with the same plate, it is unneccesary!"
@@ -67,17 +55,11 @@ class WrappedDist:
         max_pos_dim = max(
             sum(name is None for name in arg.names) for arg in tensors(args, kwargs)
         )
-        # print(max_pos_dim)
-        # for a in args:
-        #     print(a.names)
-        #Wargs, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
+
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
-        # for a in args:
-        #     print(a.shape)
+
         unified_names = ['K'] + sorted(unified_names) if sampling_K else sorted(unified_names)
 
-        # if not self.sample_K:
-        #     unified_names = [name] + sorted(unified_names)
         return args, kwargs, sample_shape, unified_names, denamify
 
     def rsample(self, K=None):

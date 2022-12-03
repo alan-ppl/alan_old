@@ -118,6 +118,9 @@ class TraceSample(Trace):
     def __setitem__(self, key, value):
         assert isinstance(value, WrappedDist)
         assert key not in self.sample
+        assert value.group == none
+
+
         try:
             self.sample[key] = value.rsample()
             self.groups[key] = value.group
@@ -157,6 +160,8 @@ class TraceLogP(Trace):
     def __setitem__(self, key, value):
         assert isinstance(value, WrappedDist)
         assert (key in self.data) or (key in self.sample)
+        assert value.sample_K == True
+
 
         group = value.group
 
