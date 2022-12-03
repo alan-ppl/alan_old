@@ -68,8 +68,8 @@ def P(tr):
   tr['omega'] = tpp.Normal(tr['alpha'], tr['sigma_omega'], sample_dim=plate_zipcode)
   #reading level
   tr['sigma_obs'] = tpp.Uniform(t.tensor([0.0]).to(device), t.tensor([10.0]).to(device))
-  tr['beta_int'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['obs'] = tpp.Normal(tr['omega'] + tr['beta_int']*basement, tr['sigma_obs'])
+  tr['psi_int'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+  tr['obs'] = tpp.Normal(tr['omega'] + tr['psi_int']*basement, tr['sigma_obs'])
 
 
 
@@ -108,8 +108,8 @@ class Q(tpp.Q_module):
         self.reg_param("sigma_obs_high", t.tensor([9.9999]).log())
 
         #beta_int
-        self.reg_param("beta_int_mu", t.zeros(()))
-        self.reg_param("log_beta_int_sigma", t.zeros(()))
+        self.reg_param("psi_int_mu", t.zeros(()))
+        self.reg_param("log_psi_int_sigma", t.zeros(()))
 
         self.high = t.tensor([10.0]).to(device)
         self.low = t.tensor([0.0]).to(device)
@@ -143,7 +143,7 @@ class Q(tpp.Q_module):
         sigma_obs_low = t.max(self.low, self.sigma_obs_low.exp())
         sigma_obs_high = t.min(self.high, self.sigma_obs_high.exp())
         tr['sigma_obs'] = tpp.Uniform(sigma_obs_low, sigma_obs_high, sample_K=False)
-        tr['beta_int'] = tpp.Normal(self.beta_int_mu, self.log_beta_int_sigma.exp(), sample_K=False)
+        tr['psi_int'] = tpp.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp(), sample_K=False)
 
 data_y = {'obs':t.load('radon.pt')[plate_state, plate_county, plate_zipcode, plate_reading].to(device)}
 
