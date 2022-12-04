@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
+from tpp.inference import vi
 import tqdm
 from functorch.dim import dims
 
@@ -16,7 +16,6 @@ def P(tr):
     tr['c'] = tpp.Normal(tr['b'], 1, sample_dim=plate_1)
     tr['d'] = tpp.Normal(tr['c'], 1, sample_dim=plate_2)
     tr['obs'] = tpp.Normal(tr['d'], 1, sample_dim=plate_3)
-
 
 class Q(tpp.Q_module):
     def __init__(self):
@@ -84,11 +83,10 @@ model = tpp.Model(P, Q(), {'obs': data['obs']})
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=5
-dims = tpp.make_dims(P, K)
 print("K={}".format(K))
 for i in range(20000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dims)
+    elbo = model.elbo(10)
     (-elbo).backward()
     opt.step()
 

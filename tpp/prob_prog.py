@@ -118,7 +118,7 @@ class TraceSample(Trace):
     def __setitem__(self, key, value):
         assert isinstance(value, WrappedDist)
         assert key not in self.sample
-        assert value.group == none
+        assert value.group == None
 
 
         try:
