@@ -2,8 +2,6 @@ import torch as t
 import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.inference import vi
-import tqdm
 from functorch.dim import dims
 
 J = 2

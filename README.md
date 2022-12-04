@@ -6,8 +6,8 @@ pip install -e ./
 
 
 Dependency:
-- Torch nightly
-- Functorch: https://github.com/facebookresearch/functorch
+- Torch 1.13
+- Current version of Functorch: https://github.com/facebookresearch/functorch `pip install functorch`
 
 Notes:
 - approximate posterior should be independent of data
