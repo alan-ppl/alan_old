@@ -1,6 +1,5 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .backend import sum_lps, sum_logpqs
 from .inference import vi, reweighted_wake_sleep
 from .utils import *
 from .tensor_utils import dename, sum_none_dims

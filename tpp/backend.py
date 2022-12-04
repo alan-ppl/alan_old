@@ -158,7 +158,7 @@ def sum_plate(all_lps, plate_name=None):
 
     return higher_lps
 
-def sum_lps(lps):
+def combine_tensors(lps):
     """
     The final, exported function.
     Arguments:
@@ -188,74 +188,3 @@ def sum_lps(lps):
 
 
 
-def combine_lps(logps, logqs):
-    """
-    Arguments:
-        logps: dict{rv_name -> log-probability tensor}
-        logqs: dict{rv_name -> log-probability tensor}
-    Returns:
-        all_lps: logps - logqs
-    """
-    # print(logqs)
-    # print(logps)
-    assert len(logqs) <= len(logps)
-
-    # check all named dimensions in logps are either positional, plates or "K"
-    for lp in logqs.values():
-        for n in lp.names:
-            assert (n is None) or n=="K" or is_plate(n) or is_K(n)
-    # # convert K
-    # for (n, lp) in logps.items():
-    #     if len(lp.shape) == 0:
-    #         logps[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
-    #
-    # for (n, lp) in logqs.items():
-    #     if len(lp.shape) == 0:
-    #         logqs[n] = lp.unsqueeze(0).refine_names(repr(dims[n]))
-    #     elif 'K' in lp.names:
-    #         logqs[n] = lp.rename(K=repr(dims[n]))
-
-    # check all named dimensions in logps are either positional, plates or Ks
-    for lp in logps.values():
-        for n in lp.names:
-            assert (n is None) or is_K(n) or is_plate(n)
-
-
-
-    # sanity checking for latents (only latents appear in logqs)
-    for rv in logqs:
-        #check that any rv in logqs is also in logps
-        assert rv in logps
-
-        lp = logps[rv]
-        lq = logqs[rv]
-
-        # check same plates appear in lp and lq
-        lp_plates = [n for n in lp.names if is_plate(n)]
-        lq_plates = [n for n in lq.names if is_plate(n)]
-        assert set(lp_plates) == set(lq_plates)
-
-        # check there is a K_name corresponding to rv name in both tensors
-        # print(rv)
-        # print(lq.names)
-        # print(lq)
-
-    # print('log_q')
-    # print(logqs)
-    # print('log_p')
-    # print(logps)
-    #combine all lps, negating logqs
-    all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
-    return all_lps
-
-def sum_logpqs(logps, logqs):
-    """
-    Arguments:
-        logps: dict{rv_name -> log-probability tensor}
-        logqs: dict{rv_name -> log-probability tensor}
-    Returns:
-        elbo, used for VI
-        marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
-    """
-    all_lps = combine_lps(logps, logqs)
-    return sum_lps(all_lps)
