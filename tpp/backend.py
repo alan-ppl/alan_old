@@ -119,6 +119,9 @@ def reduce_Ks(lps, Ks_to_keep):
 def max_dims(x, dims):
     if 0 == len(dims):
         return x
+    elif 1 == len(dims):
+        #this branch shouldn't be necessary, but there's a bug in flatten for named tensors with one dim
+        max_ = self.x.max(dims[0]).values
     else:
         ordered_dims = tuple(name for name in x.names if name in dims)
         return x.flatten(ordered_dims, 'flattened').max('flattened').values
