@@ -3,6 +3,7 @@ import torch.nn as nn
 import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 from functorch.dim import dims
+t.manual_seed(0)
 
 J = 2
 M = 3
