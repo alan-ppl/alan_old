@@ -155,7 +155,8 @@ def reduce_K(all_lps, K_name):
     lps_with_K, other_lps = partition_tensors(all_lps, K_name)
     lps_with_K = align_tensors(lps_with_K)
 
-    K = all_lps[0].align_to(K_name,...).shape[0]
+    K = lps_with_K[0].size(K_name)
+    assert K != 1
 
     for lp in all_lps:
         if K_name in lp.names:
