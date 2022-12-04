@@ -19,7 +19,7 @@ def reweighted_wake_sleep(logps, logqs):
 
     return wake_theta_loss, wake_phi_loss
 
-def combine_lps(logps, logqs):
+def combine_lpqs(logps, logqs):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -43,10 +43,10 @@ def combine_lps(logps, logqs):
         lp = logps[rv]
         lq = logqs[rv]
 
-        # check same plates appear in lp and lq
-        lp_plates = [n for n in lp.names if is_plate(n)]
-        lq_plates = [n for n in lq.names if is_plate(n)]
-        assert set(lp_plates) == set(lq_plates)
+        # check same plates/timeseries appear in lp and lq
+        lp_notK = [n for n in lp.names if not is_K(n)]
+        lq_notK = [n for n in lq.names if not is_K(n)]
+        assert set(lp_notK) == set(lq_notK)
 
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
@@ -60,8 +60,7 @@ def logPtmc(logps, logqs):
     Returns:
         elbo, used for VI
     """
-    all_lps = combine_lps(logps, logqs)
-    return combine_tensors(all_lps)
+    return sum_tensors(combine_lpqs(logps, logqs))
 
 
 

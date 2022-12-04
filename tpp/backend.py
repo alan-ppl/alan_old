@@ -158,7 +158,7 @@ def sum_plate(all_lps, plate_name=None):
 
     return higher_lps
 
-def combine_tensors(lps):
+def sum_tensors(lps):
     """
     The final, exported function.
     Arguments:
