@@ -34,27 +34,6 @@ def ordered_unique(ls):
     d = {l:None for l in ls}
     return list(d.keys())
 
-# def partition_tensors_plate(lps, dim_name):
-#     """
-#     Partitions a list of tensors into two sets, one containing a given dim_name
-#     or only has interactions with tensors that have that dim name,
-#     one that doesn't
-#     """
-#     has_dim = [lp for lp in lps if dim_name     in lp.names]
-#     no_dim  = [lp for lp in lps if dim_name not in lp.names]
-#     no_dim_no_inter = []
-#     dims_in_has_dim = unify_names(has_dim)
-#     dims_in_no_dim = [set(lp.names) for lp in no_dim]
-#     exclude = []
-#     for i in range(len(dims_in_no_dim)):
-#         lp = dims_in_no_dim[i]
-#         if sum([len(lp.intersection(d)) for d in dims_in_no_dim]) == 2 and len(lp.intersection(set(dims_in_has_dim))) > 0:
-#             has_dim.append(no_dim[i])
-#         else:
-#             no_dim_no_inter.append(no_dim[i])
-#
-#     return has_dim, no_dim_no_inter
-
 def partition_tensors(lps, dim_name):
     """
     Partitions a list of tensors into two sets, one containing a given dim_name
@@ -143,95 +122,6 @@ def max_dims(x, dims):
     else:
         ordered_dims = tuple(name for name in x.names if name in dims)
         return x.flatten(ordered_dims, 'flattened').max('flattened').values
-
-
-
-#def reduce_K(all_lps, K_name):
-#    """
-#    Takes a the full list of tensors and a K_name to reduce over.
-#    Splits the list into those with and without that dimension.
-#    Combines all tensors with that dim.
-#    Returns a list of the tensors without dim_name + the combined tensor.
-#    """
-#    lps_with_K, other_lps = partition_tensors(all_lps, K_name)
-#    lps_with_K = align_tensors(lps_with_K)
-#
-#    K = lps_with_K[0].size(K_name)
-#    assert K != 1
-#
-#    for lp in all_lps:
-#        if K_name in lp.names:
-#            K = lp.size(K_name)
-#            break
-#    
-#    result_lp = t.logsumexp((sum(lps_with_K)), K_name) - t.log(t.tensor(K))
-#
-#    other_lps.append(result_lp)
-#    return other_lps
-
-
-
-#def reduce_Ks(lps, Ks_to_keep):
-#    """
-#    Takes a list of log-probability tensors, and a list of dimension names to do the reductions.
-#
-#    Returns the full sum (for the variational objective) and a list of lists of
-#    partially reduced tensors representing marginal probabilities for Gibbs sampling.
-#    Arguments:
-#        lps: List of tensors within a plate
-#        K_dims_to_keep: List of K_dims to keep because they appear in higher-level plates.
-#    Returns:
-#        lps: log-probability tensors with all K's that just appear in this plate summed out
-#        List of (K_dim, tensors) pairs
-#    """
-#    marginals = []
-#    ordered_Ks = oe_dim_order(lps, Ks_to_keep)
-#
-#    for K_name in ordered_Ks:
-#        marginals.append((K_name, lps))
-#        lps = reduce_K(lps, K_name)
-#    return lps
-#
-#def oe_dim_order(lps, Ks_to_keep):
-#    """
-#    Returns an optimized dimension ordering for reduction.
-#    Arguments:
-#        lps: List of tensors within a plate
-#        K_dims_to_keep: List of K_dims to keep because they appear in higher-level plates.
-#    Returns:
-#        dim_order
-#    """
-#    #create backward and forward mappings from all tensor names to opt_einsum symbols
-#    unified_names = unify_names(lps)
-#    name2sym = dict()
-#    sym2name = dict()
-#    for (i, name) in enumerate(unified_names):
-#        sym = oe.get_symbol(i)
-#        name2sym[name] = sym
-#        sym2name[sym] = name
-#
-#    #create opt_einsum subscripts formula for inputs
-#    lp_syms = []
-#    for lp in lps:
-#        list_syms = [name2sym[n] for n in lp.names]
-#        lp_syms.append(''.join(list_syms))
-#
-#    #create opt_einsum subscripts formula for outputs
-#    #don't sum over plates or K_dims_to_keep, so
-#    #so they must appear in the output subscripts
-#    out_names = [n for n in unified_names if (not is_K(n) or (n in Ks_to_keep))]
-#    list_out_syms = [name2sym[n] for n in out_names]
-#    out_syms = ''.join(list_out_syms)
-#    subscripts = ','.join(lp_syms) + '->' + out_syms
-#
-#    #extract order from opt_einsum, and convert back to names
-#    ce = oe.contract_expression(subscripts, *[lp.shape for lp in lps])
-#    ordered_Ks = []
-#    for (_, syms, _, _, _) in ce.contraction_list:
-#        for sym in syms:
-#            ordered_Ks.append(sym2name[sym])
-#    return ordered_Ks
-
 
 def sum_plate(all_lps, plate_name=None):
     """
