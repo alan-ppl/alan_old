@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
-from .inference import vi, reweighted_wake_sleep
+from .inference import logPtmc
 from .utils import *
 from .tensor_utils import dename, sum_none_dims
 
@@ -11,7 +11,7 @@ class Model(nn.Module):
         self.Q = Q
         self.data = data
 
-    def val_lp_lq(self, K, reparam):
+    def lps_lqs_vals(self, K, reparam):
         K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
         trq = TraceSampleLogQ(data=self.data, reparam=reparam, K_dim=K_dim)
@@ -20,27 +20,27 @@ class Model(nn.Module):
         #compute logP
         trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
-        return trq.sample, trp.logp, trq.logp
-
+        return trp.logp, trq.logp, trq.sample
 
     def elbo(self, K):
-        _, lp, lq = self.val_lp_lq(K, reparam=True)
-        return vi(lp, lq)
+        lps, lqs, _ = self.lps_lqs_vals(K, reparam=True)
+        return logPtmc(lps, lqs)
 
     def rws(self, K):
-        _, lp, lq = self.val_lp_lq(K, reparam=True)
-        return reweighted_wake_sleep(lp, lq)
+        lps, lqs, _ = self.lps_lqs_vals(K, reparam=False)
+        # Wake-phase P update
+        p_obj = logPtmc(lps, {n:lq.detach() for (n,lq) in lqs.items()})
+        # Wake-phase Q update
+        lps = {n:lp.detach() for (n,lp) in lps.items()}
+        q_obj = logPtmc(lps, lqs)
 
-    def moment(self, K):
-        K_dim = Dim(name='K', size=K)
-        #sample from approximate posterior
-        trq = TraceSampleLogQ(data=self.data, K_dim=K_dim)
+        return p_obj, q_obj
 
-        self.Q(trq)
-        #compute logP
-        trp = TraceLogP(trq, self.data, K_dim=K_dim)
-        self.P(trp)
-        return vi(trp.log_prob(), trq.log_prob())
+    def moment(self, K, var_name, f=lambda x: x):
+        vals, lp, lq = self.val_lp_lq(K, reparam=True)
+        val = f(vals[var_name])
+        return moment(val, lp, lq)
+        
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
         K_dim = Dim(name='K', size=1)

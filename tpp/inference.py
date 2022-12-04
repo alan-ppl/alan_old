@@ -2,25 +2,8 @@ import torch as t
 from .backend import *
 
 
-def vi(logps, logqs):
-    elbo = logPtmc(logps, logqs)
-    return elbo
 
-def reweighted_wake_sleep(logps, logqs):
-
-    # ## Wake-phase Theta p update
-    wake_theta_loss = logPtmc(logps, {n:lq.detach() for (n,lq) in logqs.items()})
-    # print(wake_theta_loss)
-    ## Wake-phase phi q update
-    logps = {n:lp.detach() for (n,lp) in logps.items()}
-    wake_phi_loss = logPtmc(logps, logqs)
-    # print(wake_phi_loss)
-    ## Sleep-phase phi q update
-
-    return wake_theta_loss, wake_phi_loss
-
-
-def logPtmc(logps, logqs):
+def logPtmc(logps, logqs, val=None):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -28,7 +11,10 @@ def logPtmc(logps, logqs):
     Returns:
         elbo, used for VI
     """
-    return sum_tensors(combine_lpqs(logps, logqs))
+    all_tensors = combine_lpqs(logps, logqs)
+    if val is not None:
+        all_tensors.append(val)
+    return sum_tensors(all_tensors)
 
 def combine_lpqs(logps, logqs):
     """
