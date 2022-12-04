@@ -11,7 +11,27 @@ class Model(nn.Module):
         self.Q = Q
         self.data = data
 
+    def val_lp_lq(self, K, reparam):
+        K_dim = Dim(name='K', size=K)
+        #sample from approximate posterior
+        trq = TraceSampleLogQ(data=self.data, reparam=reparam, K_dim=K_dim)
+
+        self.Q(trq)
+        #compute logP
+        trp = TraceLogP(trq, self.data, K_dim=K_dim)
+        self.P(trp)
+        return trq.sample, trp.logp, trq.logp
+
+
     def elbo(self, K):
+        _, lp, lq = self.val_lp_lq(K, reparam=True)
+        return vi(lp, lq)
+
+    def rws(self, K):
+        _, lp, lq = self.val_lp_lq(K, reparam=True)
+        return reweighted_wake_sleep(lp, lq)
+
+    def moment(self, K):
         K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
         trq = TraceSampleLogQ(data=self.data, K_dim=K_dim)
@@ -21,21 +41,6 @@ class Model(nn.Module):
         trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
         return vi(trp.log_prob(), trq.log_prob())
-
-    def moment(self, K):
-        return None
-
-    def rws(self, K):
-        K_dim = Dim(name='K', size=K)
-        #sample from approximate posterior
-        trq = TraceSampleLogQ(data=self.data, reparam=False, K_dim=K_dim)
-        self.Q(trq)
-        #compute logP
-        # trq.sample = {k:v.detach() for k,v in trq.sample.items()}
-        trp = TraceLogP(trq, self.data, K_dim=K_dim)
-        self.P(trp)
-
-        return reweighted_wake_sleep(trp.log_prob(), trq.log_prob())
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
         K_dim = Dim(name='K', size=1)

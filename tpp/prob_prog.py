@@ -41,11 +41,6 @@ class Trace:
         """
         return WrappedDist(dist, *args, **kwargs)
 
-    def log_prob(self):
-        return {
-            k: v for (k, v) in self.logp.items()
-        }
-
 
 class TraceSampleLogQ(Trace):
     """

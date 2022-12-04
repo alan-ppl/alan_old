@@ -19,6 +19,17 @@ def reweighted_wake_sleep(logps, logqs):
 
     return wake_theta_loss, wake_phi_loss
 
+
+def logPtmc(logps, logqs):
+    """
+    Arguments:
+        logps: dict{rv_name -> log-probability tensor}
+        logqs: dict{rv_name -> log-probability tensor}
+    Returns:
+        elbo, used for VI
+    """
+    return sum_tensors(combine_lpqs(logps, logqs))
+
 def combine_lpqs(logps, logqs):
     """
     Arguments:
@@ -59,15 +70,6 @@ def combine_lpqs(logps, logqs):
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
     return all_lps
 
-def logPtmc(logps, logqs):
-    """
-    Arguments:
-        logps: dict{rv_name -> log-probability tensor}
-        logqs: dict{rv_name -> log-probability tensor}
-    Returns:
-        elbo, used for VI
-    """
-    return sum_tensors(combine_lpqs(logps, logqs))
 
 
 
