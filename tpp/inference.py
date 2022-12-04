@@ -35,6 +35,13 @@ def combine_lpqs(logps, logqs):
         for n in lp.names:
             assert is_K(n) or is_plate(n)
 
+    for (rv, lq) in logqs.items():
+        #only one k dimension in q
+        assert len(tuple(name for name in lq.names if is_K(name)))
+        #that k dimension is "K_$rv" where rv is the name of the random variable
+        Kname = next(name for name in lq.names if is_K(name))
+        assert Kname == K_prefix + rv
+
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
         #check that any rv in logqs is also in logps
