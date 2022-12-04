@@ -39,7 +39,8 @@ class Model(nn.Module):
     def moment(self, K, var_name, f=lambda x: x):
         vals, lp, lq = self.val_lp_lq(K, reparam=True)
         val = f(vals[var_name])
-        return moment(val, lp, lq)
+        #Rename plates!!
+        return logPtmc(lp, lq, val=val)
         
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
