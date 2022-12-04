@@ -298,7 +298,7 @@ def sum_lps(lps):
 
 
 
-def combine_lps(logps, logqs, dims):
+def combine_lps(logps, logqs):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -349,8 +349,6 @@ def combine_lps(logps, logqs, dims):
         # print(rv)
         # print(lq.names)
         # print(lq)
-        assert repr(dims[rv]) in lp.names
-        assert repr(dims[rv]) in lq.names
 
     # print('log_q')
     # print(logqs)
@@ -360,7 +358,7 @@ def combine_lps(logps, logqs, dims):
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
     return all_lps
 
-def sum_logpqs(logps, logqs, dims):
+def sum_logpqs(logps, logqs):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -369,10 +367,5 @@ def sum_logpqs(logps, logqs, dims):
         elbo, used for VI
         marginals: [(K_dim, list of marginal log-probability tensors)], used for Gibbs sampling
     """
-
-
-
-    all_lps = combine_lps(logps, logqs, dims)
-    all_sum = sum_lps(all_lps)
-
-    return all_sum #+ scalar_lps + scalar_lqs
+    all_lps = combine_lps(logps, logqs)
+    return sum_lps(all_lps)

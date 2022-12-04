@@ -1,8 +1,7 @@
 import torch.nn as nn
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
 from .backend import sum_lps, sum_logpqs
-from .inference import vi, reweighted_wake_sleep, gibbs
-# from .cartesian_tensor import CartesianTensor
+from .inference import vi, reweighted_wake_sleep
 from .utils import *
 from .tensor_utils import dename, sum_none_dims
 
@@ -16,24 +15,16 @@ class Model(nn.Module):
     def elbo(self, K):
         K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
-        trq = TraceSampleLogQ(dims=dims, data=self.data, K_dim=K_dim)
-
-        self.Q(trq)
-        #compute logP
-        trp = TraceLogP(trq, self.data, K_dim=K_dim)
-        self.P(trp)
-        return vi(trp.log_prob(), trq.log_prob(), trp.dims)
-
-    def importance_sample(self, K):
-        K_dim = Dim(name='K', size=K)
-        #sample from approximate posterior
         trq = TraceSampleLogQ(data=self.data, K_dim=K_dim)
+
         self.Q(trq)
         #compute logP
         trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
-        _, marginals = sum_logpqs(trp.log_prob(), trq.log_prob(), trp.dims)
-        return gibbs(marginals)
+        return vi(trp.log_prob(), trq.log_prob())
+
+    def moment(self, K):
+        return None
 
     def rws(self, K):
         K_dim = Dim(name='K', size=K)
@@ -45,7 +36,7 @@ class Model(nn.Module):
         trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
 
-        return reweighted_wake_sleep(trp.log_prob(), trq.log_prob(), trp.dims)
+        return reweighted_wake_sleep(trp.log_prob(), trq.log_prob())
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
         K_dim = Dim(name='K', size=1)

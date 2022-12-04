@@ -55,7 +55,7 @@ class TraceSampleLogQ(Trace):
     Can high-level latents depend on plated lower-layer latents?  (I think so?)
     """
 
-    def __init__(self, data=None, dims=None, reparam=True, K_dim = None):
+    def __init__(self, data=None, reparam=True, K_dim = None):
         super().__init__()
         if data is None:
             data = {}
@@ -63,7 +63,6 @@ class TraceSampleLogQ(Trace):
         self.sample = {}
         self.logp = {}
         self.reparam = reparam
-        self.dims = dims
         self.K_dim = K_dim
 
     def __getitem__(self, key):
@@ -134,7 +133,7 @@ class TraceSample(Trace):
 
 
 class TraceLogP(Trace):
-    def __init__(self, logq_trace, data=None, dims = None, K_dim = None):
+    def __init__(self, logq_trace, data=None, K_dim = None):
         self.sample = logq_trace.sample
         self.logq = logq_trace.logp
         self.data = data
