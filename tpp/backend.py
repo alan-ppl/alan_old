@@ -91,6 +91,60 @@ def align_tensors(args):
     return [arg.align_to(*unified_names) for arg in args]
 
 
+def reduce_Ks(lps, Ks_to_keep):
+    """
+    Takes a list of log-probability tensors, and a list of dimension names to do the reductions.
+
+    Returns the full sum (for the variational objective) and a list of lists of
+    partially reduced tensors representing marginal probabilities for Gibbs sampling.
+    Arguments:
+        lps: List of tensors within a plate
+        Ks_to_keep: List of K_dims to keep because they appear in higher-level plates.
+    Returns:
+        output: a single log-probability tensor with all K's appearing only in this plate summed out
+    """
+    all_names = unify_names(lps) 
+    #Make sure Ks_to_keep is restricted to Ks which are actually on lps
+    Ks_to_keep = list(set(Ks_to_keep).intersection(all_names))
+    #keep everything that isn't a K, and everything that we explicitly ask to keep
+    names_to_keep = [name for name in all_names if not is_K(name)] + Ks_to_keep
+
+    #Pytorch's weird einsum syntax requires us to assign an integer to each dimension
+    name_to_idx = {name : idx for (idx, name) in enumerate(all_names)}
+    lps_idxs = [[name_to_idx[name] for name in lp.names] for lp in lps]
+    out_idxs = [name_to_idx[name] for name in names_to_keep]
+
+    #subtract max to ensure numerical stability
+    maxes = [max_dims(lp, set(lp.names).difference(names_to_keep)) for lp in lps]
+    ps_minus_max = [(lp - max_.align_as(lp)).exp().rename(None) for (lp, max_) in zip(lps, maxes)]
+
+    #Interleaves lp and list of indices for the weird PyTorch einsum syntax.
+    args = [val for pair in zip(ps_minus_max, lps_idxs) for val in pair] + [out_idxs]
+
+    output = t.einsum(*args).rename(*names_to_keep).log() 
+
+    num_reductions = len(all_names) - len(output.names)
+    if 0 < num_reductions:
+        for lp in lps:
+            if any(is_K(name) for name in lp.names):
+                K_name = next(name for name in lp.names if is_K(name))
+                K = lp.size(K_name)
+                break
+        output = output - num_reductions*t.log(t.tensor(K))
+
+    for max_ in maxes:
+        output = output + max_.align_as(output)
+
+    return [output]
+
+def max_dims(x, dims):
+    #TODO: optimize by collapsing dims together and doing a single max.
+    for dim in dims:
+        x = x.max(dim).values
+    return x
+
+
+
 def reduce_K(all_lps, K_name):
     """
     Takes a the full list of tensors and a K_name to reduce over.
@@ -103,7 +157,11 @@ def reduce_K(all_lps, K_name):
 
     K = all_lps[0].align_to(K_name,...).shape[0]
 
-
+    for lp in all_lps:
+        if K_name in lp.names:
+            K = lp.size(K_name)
+            break
+    
     result_lp = t.logsumexp((sum(lps_with_K)), K_name) - t.log(t.tensor(K))
 
     other_lps.append(result_lp)
@@ -130,7 +188,7 @@ def reduce_Ks(lps, Ks_to_keep):
     for K_name in ordered_Ks:
         marginals.append((K_name, lps))
         lps = reduce_K(lps, K_name)
-    return lps, marginals
+    return lps
 
 def oe_dim_order(lps, Ks_to_keep):
     """
@@ -194,7 +252,7 @@ def sum_plate(all_lps, plate_name=None):
     Ks_to_keep = [n for n in unify_names(higher_lps) if is_K(n)]
     #sum over the K's that don't appear in higher plates
 
-    lower_lps, marginals = reduce_Ks(lower_lps, Ks_to_keep)
+    lower_lps = reduce_Ks(lower_lps, Ks_to_keep)
 
     if plate_name is not None:
         #if we aren't at the top-level, sum over the plate to eliminate plate_name
@@ -206,7 +264,7 @@ def sum_plate(all_lps, plate_name=None):
     higher_lps = higher_lps + lower_lps
 
 
-    return higher_lps, marginals
+    return higher_lps
 
 def sum_lps(lps):
     """
@@ -224,17 +282,17 @@ def sum_lps(lps):
     plate_names = [None] + plate_names
 
     #iterate from lowest plate
-    marginals = []
     for plate_name in plate_names[::-1]:
-        lps, _m = sum_plate(lps, plate_name)
+        lps = sum_plate(lps, plate_name)
         # print(plate_name)
         # print(lps)
-        marginals = marginals + _m
 
-    assert 0==len(sum(lps).shape)
-    assert 1==lps[0].numel()
+    assert 1==len(lps)
+    #assert 0==len(sum(lps).shape)
+    lp = lps[0]
+    assert 1==lp.numel()
 
-    return sum(lps), marginals
+    return lp#sum(lps)
 
 
 
@@ -313,6 +371,6 @@ def sum_logpqs(logps, logqs, dims):
 
 
     all_lps = combine_lps(logps, logqs, dims)
-    all_sum, marginals = sum_lps(all_lps)
+    all_sum = sum_lps(all_lps)
 
-    return all_sum, marginals #+ scalar_lps + scalar_lqs
+    return all_sum #+ scalar_lps + scalar_lqs

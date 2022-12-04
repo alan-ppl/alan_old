@@ -81,11 +81,11 @@ model = tpp.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=5
+K=10
 print("K={}".format(K))
 for i in range(20000):
     opt.zero_grad()
-    elbo = model.elbo(10)
+    elbo = model.elbo(K)
     (-elbo).backward()
     opt.step()
 
