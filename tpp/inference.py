@@ -13,7 +13,7 @@ def logPtmc(logps, logqs, extra_log_factors=None):
         elbo, used for VI
     """
     logps_with_K, logps_without_K, logqs_with_K, logqs_without_K = partition_log_probs(logps,logqs)
-    all_tensors = combine_lpqs(logps_with_K, logqs_with_K)
+    all_tensors = combine_lpqs(logps_with_K, logqs_with_K) + logps_without_K +  logqs_without_K
     if extra_log_factors is not None:
         all_tensors = all_tensors + extra_log_factors
     return sum_tensors(all_tensors)
