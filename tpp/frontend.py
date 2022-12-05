@@ -5,7 +5,7 @@ from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
 from .inference import logPtmc
 from .utils import *
 from .tensor_utils import dename, sum_none_dims, nameify
-from .backend import is_K
+from .backend import is_K, unify_names
 
 def zeros_like_noK(x, requires_grad=False):
     names = tuple(name for name in x.names if not is_K(name))
@@ -42,6 +42,46 @@ class Model(nn.Module):
         # Wake-phase Q update
         q_obj = logPtmc({n:lp.detach() for (n,lp) in trp.logp.items()}, trq.logp)
         return p_obj, q_obj
+
+#    def ess(self, K):
+#        trp, trq = self.traces(K, reparam=False)
+#        logp, logq = trp.logp, trq.logp
+#        logp2 = {k: 2*lp for (k, lp) in logp.items()}
+#        logq2 = {k: 2*lp for (k, lp) in logq.items()}
+#
+#        lp  = logPtmc(logp, logq)
+#        lp2 = logPtmc(logp2, logq2)
+#        #Both the numerator and denominator are divided by K^n.  But when we square the numerator, we end up with two factors of K^n
+#        #Its actually kind-of awkward to get rid of these extra factors, given that we can have e.g. grouped RVs, and RVs with no sampling
+#        return t.exp(2*lp - lp2)
+
+    def weights(self, K):
+        trp, trq = self.traces(K, reparam=False)
+        #Convert d to list
+        delta = t.eye(K)
+
+        #extract all K dims
+        all_names = unify_names(trp.logp)
+        K_names = tuple(name for name in all_names if is_K(name))
+        #extract plates associated with a K (minimal set).
+        #create J's that are k' \times plates
+        #create delta that is k \times k'
+
+        extra_log_factors = []
+        for (k, rvn, f) in d:
+            sample = trp.sample[rvn]
+            sample, _, _ = nameify(sample)
+            m = f(sample)
+            J = zeros_like_noK(sample, requires_grad=True)
+            Js.append(J)
+            extra_log_factors.append(m*J.align_as(m))
+
+        result = logPtmc(trp.logp, trq.logp, extra_log_factors)
+
+        Ems = t.autograd.grad(result, Js)
+        #Convert back to dict:
+        return {k: Em for ((k, _, _), Em) in zip(d, Ems)}
+        
 
     def moments(self, K, d):
         """
@@ -91,18 +131,6 @@ class Model(nn.Module):
         shape = dename(test_data['obs']).shape
         # pred_lik = pred_lik.rename(None).reshape(shape, -1)
         return pred_lik / num_samples
-
-    # def liw(self, dims):
-    #     #sample from approximate posterior
-    #     trq = TraceSampleLogQ(dims=dims, data=self.data)
-    #     self.Q(trq)
-    #     #compute logP
-    #     trq.sample = {k:v.detach() for k,v in trq.sample.items()}
-    #     trp = TraceLogP(trq.sample, self.data, dims=dims)
-    #     self.P(trp)
-    #
-    #     return local_iw(trp.log_prob(), trq.log_prob())
-
 
 def sample(P, *names):
     """
