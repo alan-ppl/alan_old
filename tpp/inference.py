@@ -4,7 +4,7 @@ from .ScaleTensor import ScaleTensor
 
 
 
-def logPtmc(logps, logqs, val=None):
+def logPtmc(logps, logqs, extra_log_factors=None):
     """
     Arguments:
         logps: dict{rv_name -> log-probability tensor}
@@ -13,9 +13,8 @@ def logPtmc(logps, logqs, val=None):
         elbo, used for VI
     """
     all_tensors = combine_lpqs(logps, logqs)
-    if val is not None:
-        #Change plate dims!!
-        all_tensors.append(ScaleTensor(val))
+    if extra_log_factors is not None:
+        all_tensors = all_tensors + extra_log_factors
     return sum_tensors(all_tensors)
 
 def combine_lpqs(logps, logqs):

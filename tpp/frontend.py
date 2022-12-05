@@ -1,8 +1,17 @@
+import torch as t
 import torch.nn as nn
+from torch.autograd import grad
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
 from .inference import logPtmc
 from .utils import *
 from .tensor_utils import dename, sum_none_dims
+
+def zeros_like_noK(x, requires_grad=False):
+    names = tuple(name for name in x.names if not is_K(name))
+    shape = tuple(x.size(name) for name in names)
+    return t.zeros(shape, names=names, dtype=x.dtype, device=x.device, requires_grad=requires_grad)
+    
+    
 
 class Model(nn.Module):
     def __init__(self, P, Q, data=None):
@@ -33,11 +42,30 @@ class Model(nn.Module):
         q_obj = logPtmc({n:lp.detach() for (n,lp) in trp.logp.items()}, trq.logp)
         return p_obj, q_obj
 
-    def moment(self, K, var_name, f=lambda x: x):
-        vals, lp, lq = self.val_lp_lq(K, reparam=True)
-        val = f(vals[var_name])
-        #Rename plates!!
-        return logPtmc(lp, lq, val=val)
+    def moments(self, K, d):
+        """
+        d is a dict, mapping strings representing the moment_name to tuples of 
+        the rv_name and a function (e.g. square for the second moment).
+        moment_name: (rv_name, function)
+        """
+        trp, trq = self.traces(K, reparam=False)
+        #Convert d to list
+        d = [(k, rvn, f) for (k, (rvn, f)) in d.items()]
+
+        extra_log_factors = []
+        Js = []
+        for (k, rvn, f) in d:
+            sample = trp.sample[rvn]
+            m = f(sample)
+            J = zeros_like_noK(sample, requires_grad=True)
+            Js.append(J)
+            extra_log_factors.append(m*J.align_as(m))
+         
+        result = logPtmc(trp.logp, trq.logp, extra_log_factors)
+
+        Ems = t.grad(result, Js)
+        #Convert back to dict:
+        return {k: Em for ((k, _, _), Em) in zip(d, Ems)}
         
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
