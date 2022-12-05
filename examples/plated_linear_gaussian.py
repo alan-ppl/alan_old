@@ -81,9 +81,9 @@ model = tpp.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=10
+K=5
 print("K={}".format(K))
-for i in range(1000):
+for i in range(20000):
     opt.zero_grad()
     elbo = model.elbo(K)
     (-elbo).backward()
@@ -92,7 +92,7 @@ for i in range(1000):
     if 0 == i%1000:
         print(elbo.item())
 
-print(model.moments(10, {"d_mean": ('d', lambda x: x)}))
+print(model.moments(100, {"d_mean": ('d', lambda x: x)}))
 
 post_cov_inv = (t.inverse(params_prior_cov ) + A.T @ t.inverse(cov_obs_prior) @ A)
 

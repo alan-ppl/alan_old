@@ -58,7 +58,6 @@ class Model(nn.Module):
         for (k, rvn, f) in d:
             sample = trp.sample[rvn]
             sample, _, _ = nameify(sample)
-            sample = sample[0]
             m = f(sample)
             J = zeros_like_noK(sample, requires_grad=True)
             Js.append(J)
