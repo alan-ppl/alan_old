@@ -1,5 +1,6 @@
 import torch as t
 from .backend import *
+from .ScaleTensor import ScaleTensor
 
 
 
@@ -13,7 +14,8 @@ def logPtmc(logps, logqs, val=None):
     """
     all_tensors = combine_lpqs(logps, logqs)
     if val is not None:
-        all_tensors.append(val)
+        #Change plate dims!!
+        all_tensors.append(ScaleTensor(val))
     return sum_tensors(all_tensors)
 
 def combine_lpqs(logps, logqs):
