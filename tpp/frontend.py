@@ -4,14 +4,15 @@ from torch.autograd import grad
 from .prob_prog import TraceSample, TraceSampleLogQ, TraceLogP
 from .inference import logPtmc
 from .utils import *
-from .tensor_utils import dename, sum_none_dims
+from .tensor_utils import dename, sum_none_dims, nameify
+from .backend import is_K
 
 def zeros_like_noK(x, requires_grad=False):
     names = tuple(name for name in x.names if not is_K(name))
     shape = tuple(x.size(name) for name in names)
     return t.zeros(shape, names=names, dtype=x.dtype, device=x.device, requires_grad=requires_grad)
-    
-    
+
+
 
 class Model(nn.Module):
     def __init__(self, P, Q, data=None):
@@ -44,7 +45,7 @@ class Model(nn.Module):
 
     def moments(self, K, d):
         """
-        d is a dict, mapping strings representing the moment_name to tuples of 
+        d is a dict, mapping strings representing the moment_name to tuples of
         the rv_name and a function (e.g. square for the second moment).
         moment_name: (rv_name, function)
         """
@@ -56,17 +57,19 @@ class Model(nn.Module):
         Js = []
         for (k, rvn, f) in d:
             sample = trp.sample[rvn]
+            sample, _, _ = nameify(sample)
+            sample = sample[0]
             m = f(sample)
             J = zeros_like_noK(sample, requires_grad=True)
             Js.append(J)
             extra_log_factors.append(m*J.align_as(m))
-         
+
         result = logPtmc(trp.logp, trq.logp, extra_log_factors)
 
-        Ems = t.grad(result, Js)
+        Ems = t.autograd.grad(result, Js)
         #Convert back to dict:
         return {k: Em for ((k, _, _), Em) in zip(d, Ems)}
-        
+
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
         K_dim = Dim(name='K', size=1)

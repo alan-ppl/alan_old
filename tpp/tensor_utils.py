@@ -136,7 +136,10 @@ def sum_none_dims(lp):
     return lp
 
 def nameify(args, kwargs = {}):
-
+    not_list = False
+    if not (isinstance(args, tuple) or isinstance(args, list)):
+        not_list = True
+        args = [args]
     dim_dict = get_dim_dict(list(args) + list(kwargs.values()))
     args, kwargs = dimtensormap(lambda x: make_named(x), args, kwargs)
     def f(x, sample_dims=None, K_dim = None):
@@ -154,5 +157,7 @@ def nameify(args, kwargs = {}):
                 dims.pop()
             dims = tuple(dims)
             return x.rename(None)[dims]
-
-    return args, kwargs, f
+    if not_list:
+        return args[0], kwargs, f
+    else:
+        return args, kwargs, f
