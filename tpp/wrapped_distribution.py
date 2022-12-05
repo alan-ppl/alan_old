@@ -32,6 +32,9 @@ class WrappedDist:
         args = self.args
         kwargs = self.kwargs
         K_size = K.size if K is not None else None
+        if K is not None:
+            if K.size == 1:
+                self.sample_K = False
         args, kwargs, denamify = nameify(args, kwargs)
 
         # Sorted list of all unique names
