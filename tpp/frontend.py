@@ -11,29 +11,26 @@ class Model(nn.Module):
         self.Q = Q
         self.data = data
 
-    def lps_lqs_vals(self, K, reparam):
+    def traces(self, K, reparam):
         K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
         trq = TraceSampleLogQ(data=self.data, reparam=reparam, K_dim=K_dim)
-
         self.Q(trq)
         #compute logP
         trp = TraceLogP(trq, self.data, K_dim=K_dim)
         self.P(trp)
-        return trp.logp, trq.logp, trq.sample
+        return trp, trq
 
     def elbo(self, K):
-        lps, lqs, _ = self.lps_lqs_vals(K, reparam=True)
-        return logPtmc(lps, lqs)
+        trp, trq = self.traces(K, reparam=True)
+        return logPtmc(trp.logp, trq.logp)
 
     def rws(self, K):
-        lps, lqs, _ = self.lps_lqs_vals(K, reparam=False)
+        trp, trq = self.traces(K, reparam=False)
         # Wake-phase P update
-        p_obj = logPtmc(lps, {n:lq.detach() for (n,lq) in lqs.items()})
+        p_obj = logPtmc(trp.logp, {n:lq.detach() for (n,lq) in trq.logp.items()})
         # Wake-phase Q update
-        lps = {n:lp.detach() for (n,lp) in lps.items()}
-        q_obj = logPtmc(lps, lqs)
-
+        q_obj = logPtmc({n:lp.detach() for (n,lp) in trp.logp.items()}, trq.logp)
         return p_obj, q_obj
 
     def moment(self, K, var_name, f=lambda x: x):
