@@ -4,6 +4,7 @@ import tpp
 from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 import tqdm
 from functorch.dim import dims
+t.manual_seed(0)
 
 def P(tr):
   '''

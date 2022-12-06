@@ -50,16 +50,16 @@ class Model(nn.Module):
         Produces normalized weights for each latent variable.
         """
         var_names = list(trp.sample.keys())
-        samples = [nameify(sample)[0] for sample in trp.sample.values()]
-        Js = [t.zeros_like(sample, requires_grad=True) for sample in samples]
+        samples = [nameify(trp.sample[var_name])[0] for var_name in var_names]
+        Js = [t.zeros_like(trq.logp[var_name], requires_grad=True) for var_name in var_names]
 
         result = logPtmc(trp.logp, trq.logp, Js)
 
         ws = list(t.autograd.grad(result, Js))
         #ws from autograd are unnamed, so here we put the names back.
         for i in range(len(ws)):
-            ws[i] = ws[i].rename(*samples[i].names)
-        return {var_name: (sample, w) for (var_name, sample, w) in zip(var_names, samples, ws)}
+            ws[i] = ws[i].rename(*Js[i].names)
+        return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
 
 
     def weights(self, K, N=None):
