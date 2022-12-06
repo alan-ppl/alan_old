@@ -7,10 +7,12 @@ from .utils import *
 from .tensor_utils import dename, sum_none_dims, nameify
 from .backend import is_K, unify_names
 
-def zeros_like_noK(x, requires_grad=False):
-    names = tuple(name for name in x.names if not is_K(name))
-    shape = tuple(x.size(name) for name in names)
-    return t.zeros(shape, names=names, dtype=x.dtype, device=x.device, requires_grad=requires_grad)
+#def zeros_like_noK(x, requires_grad=False):
+#    names = tuple(name for name in x.names if not is_K(name))
+#    shape = tuple(x.size(name) for name in names)
+#    return t.zeros(shape, names=names, dtype=x.dtype, device=x.device, requires_grad=requires_grad)
+
+
 
 
 
@@ -43,71 +45,54 @@ class Model(nn.Module):
         q_obj = logPtmc({n:lp.detach() for (n,lp) in trp.logp.items()}, trq.logp)
         return p_obj, q_obj
 
-#    def ess(self, K):
+    def weights_inner(self, trp, trq):
+        """
+        Produces normalized weights for each latent variable.
+        """
+        var_names = list(trp.sample.keys())
+        samples = [nameify(sample)[0] for sample in trp.sample.values()]
+        Js = [t.zeros_like(sample, requires_grad=True) for sample in samples]
+
+        result = logPtmc(trp.logp, trq.logp, Js)
+
+        ws = list(t.autograd.grad(result, Js))
+        #ws from autograd are unnamed, so here we put the names back.
+        for i in range(len(ws)):
+            ws[i] = ws[i].rename(*samples[i].names)
+        return {var_name: (sample, w) for (var_name, sample, w) in zip(var_names, samples, ws)}
+
+
+    def weights(self, K, N=None):
+        if N is None:
+            trp, trq = self.traces(K, reparam=False)
+            return self.weights_inner(trp, trq)
+        #else: run multiple iterations. 
+
+#    def moments(self, K, d):
+#        """
+#        d is a dict, mapping strings representing the moment_name to tuples of
+#        the rv_name and a function (e.g. square for the second moment).
+#        moment_name: (rv_name, function)
+#        """
 #        trp, trq = self.traces(K, reparam=False)
-#        logp, logq = trp.logp, trq.logp
-#        logp2 = {k: 2*lp for (k, lp) in logp.items()}
-#        logq2 = {k: 2*lp for (k, lp) in logq.items()}
+#        #Convert d to list
+#        d = [(k, rvn, f) for (k, (rvn, f)) in d.items()]
 #
-#        lp  = logPtmc(logp, logq)
-#        lp2 = logPtmc(logp2, logq2)
-#        #Both the numerator and denominator are divided by K^n.  But when we square the numerator, we end up with two factors of K^n
-#        #Its actually kind-of awkward to get rid of these extra factors, given that we can have e.g. grouped RVs, and RVs with no sampling
-#        return t.exp(2*lp - lp2)
-
-    def weights(self, K):
-        trp, trq = self.traces(K, reparam=False)
-        #Convert d to list
-        delta = t.eye(K)
-
-        #extract all K dims
-        all_names = unify_names(trp.logp)
-        K_names = tuple(name for name in all_names if is_K(name))
-        #extract plates associated with a K (minimal set).
-        #create J's that are k' \times plates
-        #create delta that is k \times k'
-
-        extra_log_factors = []
-        for (k, rvn, f) in d:
-            sample = trp.sample[rvn]
-            sample, _, _ = nameify(sample)
-            m = f(sample)
-            J = zeros_like_noK(sample, requires_grad=True)
-            Js.append(J)
-            extra_log_factors.append(m*J.align_as(m))
-
-        result = logPtmc(trp.logp, trq.logp, extra_log_factors)
-
-        Ems = t.autograd.grad(result, Js)
-        #Convert back to dict:
-        return {k: Em for ((k, _, _), Em) in zip(d, Ems)}
-        
-
-    def moments(self, K, d):
-        """
-        d is a dict, mapping strings representing the moment_name to tuples of
-        the rv_name and a function (e.g. square for the second moment).
-        moment_name: (rv_name, function)
-        """
-        trp, trq = self.traces(K, reparam=False)
-        #Convert d to list
-        d = [(k, rvn, f) for (k, (rvn, f)) in d.items()]
-
-        extra_log_factors = []
-        Js = []
-        for (k, rvn, f) in d:
-            sample = trp.sample[rvn]
-            sample, _, _ = nameify(sample)
-            m = f(sample)
-            J = zeros_like_noK(sample, requires_grad=True)
-            Js.append(J)
-            extra_log_factors.append(m*J.align_as(m))
-
-        result = logPtmc(trp.logp, trq.logp, extra_log_factors)
-
-        Ems = t.autograd.grad(result, Js)
-        #Convert back to dict:
-        return {k: Em for ((k, _, _), Em) in zip(d, Ems)}
+#        extra_log_factors = []
+#        Js = []
+#        for (k, rvn, f) in d:
+#            sample = trp.sample[rvn]
+#            sample, _, _ = nameify(sample)
+#            m = f(sample)
+#            J = zeros_like_noK(sample, requires_grad=True)
+#            Js.append(J)
+#            extra_log_factors.append(m*J.align_as(m))
+#
+#        result = logPtmc(trp.logp, trq.logp, extra_log_factors)
+#
+#        Ems = t.autograd.grad(result, Js)
+#        #Convert back to dict:
+#        return {k: Em for ((k, _, _), Em) in zip(d, Ems)}
 
 
     def pred_likelihood(self, test_data, num_samples, reweighting=False, reparam=True):
