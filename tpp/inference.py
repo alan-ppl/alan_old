@@ -12,7 +12,8 @@ def logPtmc(logps, logqs, extra_log_factors=None):
     Returns:
         elbo, used for VI
     """
-    all_tensors = combine_lpqs(logps, logqs)
+    logps_with_K, logps_without_K, logqs_with_K, logqs_without_K = partition_log_probs(logps,logqs)
+    all_tensors = combine_lpqs(logps_with_K, logqs_with_K) + logps_without_K +  logqs_without_K
     if extra_log_factors is not None:
         all_tensors = all_tensors + extra_log_factors
     return sum_tensors(all_tensors)
@@ -29,6 +30,7 @@ def combine_lpqs(logps, logqs):
     assert len(logqs) <= len(logps)
 
     # check all dimensions are named, and are either plates or named K-dimensions
+    #Note: this only checks named dimensions, it doesn't check if all dimensions are named.
     for lp in [*logps.values(), *logqs.values()]:
         for n in lp.names:
             assert is_K(n) or is_plate(n)
@@ -57,9 +59,26 @@ def combine_lpqs(logps, logqs):
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
     return all_lps
 
+def partition_log_probs(logps,logqs):
+    #partition logprobs into ones with and without K_dims
+    logps_without_K = []
+    logps_with_K = {}
+    logqs_without_K = []
+    logqs_with_K = {}
 
+    for (rv, lq) in logqs.items():
+        if len(tuple(name for name in lq.names if is_K(name))) == 0:
+            logqs_without_K.append(-lq)
+        else:
+            logqs_with_K[rv] = lq
 
+    for (rv, lp) in logps.items():
+        if len(tuple(name for name in lp.names if is_K(name))) == 0:
+            logps_without_K.append(lp)
+        else:
+            logps_with_K[rv] = lp
 
+    return logps_with_K, logps_without_K, logqs_with_K, logqs_without_K
 
 
 if __name__ == "__main__":
