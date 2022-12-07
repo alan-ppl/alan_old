@@ -5,7 +5,7 @@ from functorch.dim import dims, Tensor
 def univariate(*names):
     return ({name: 0 for name in names}, 0)
 univariate_loc_scale = univariate("loc", "scale")
-
+print(univariate_loc_scale)
 param_event_ndim = {
     "Bernoulli":                 univariate("probs", "logits"),
     "Beta":                      univariate("concentration1", "concentration0"),
@@ -27,7 +27,7 @@ param_event_ndim = {
     "LogNormal":                 univariate_loc_scale,
     "LowRankMultivariateNormal": ({"loc":1, "cov_factor":2, "cov_diag": 1}, 1),
     "Multinomial":               ({"total_count": 0, "probs": 1, "logits": 1}, 1),
-    "MultivariateNormal":        ({"loc": 1, "covariance_matrix": 2, "precision_matrix": 2, "scale_tril": 1}),
+    "MultivariateNormal":        ({"loc": 1, "covariance_matrix": 2, "precision_matrix": 2, "scale_tril": 1}, 1),
     "NegativeBinomial":          univariate("total_count", "probs", "logits"),
     "Normal":                    univariate_loc_scale,
     "Pareto":                    univariate("scale", "alpha"),
@@ -63,16 +63,15 @@ def generic_dims(x):
 
 def generic_order(x, dims):
     return x.order(dims) if isinstance(x, Tensor) else x
-    
+
 
 class TorchDimDist():
     def __init__(self, dist_name, *args, **kwargs):
         self.dist_name = dist_name
         param_ndim, self.result_ndim = param_event_ndim[dist_name]
         self.dist = getattr(td, dist_name)
-
         #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
-        arg_dict = {argname: args[i] for (i, argname) in enumerate(param_ndim.keys())}
+        arg_dict = {argname: args[i] for (i, argname) in enumerate(list(param_ndim.keys())[:len(args)])}
         #Merge args and kwargs into a unified kwarg dict
         self.torchdim_args = {**arg_dict, **kwargs}
         #No overlaps in the names for arg_dict and kwargs
@@ -99,8 +98,8 @@ class TorchDimDist():
         sample_dims = sorted(set(sample_dims).difference(self.all_torchdims))
         sample_shape = [dim.size for dim in sample_dims]
         sample = sample_method(sample_shape=sample_shape)
-        print(sample.shape)
-        return sample.__getitem__([*sample_dims, *self.all_torchdims, Ellipsis])
+        dims = [*sample_dims, *self.all_torchdims, Ellipsis]
+        return sample[dims]
 
     def rsample(self, sample_dims=()):
         return self.generic_sample("rsample", sample_dims)
@@ -109,8 +108,10 @@ class TorchDimDist():
         return self.generic_sample("sample", sample_dims)
 
     def log_prob(self, x):
-        return self.dist(**self.tensor_args)
-        
+        dims = x.dims
+        x = x.order(*dims)
+        return self.dist(**self.tensor_args).log_prob(x)[dims]
+
 def set_dist(dist_name):
     def inner(*args, **kwargs):
         return TorchDimDist(dist_name, *args, **kwargs)
@@ -125,3 +126,16 @@ mean = t.ones(3,3)[i]
 std = t.ones(())
 dist = Normal(mean, std)
 result = dist.sample(sample_dims=(j,))
+print(result)
+
+print(dist.log_prob(result))
+
+i = dims(1)
+j = dims(1, [10])
+mean = t.ones(3,3)[i]
+cov = t.eye((3))
+dist = MultivariateNormal(mean, precision_matrix=cov)
+result = dist.sample(sample_dims=(j,))
+print(result)
+
+print(dist.log_prob(result))
