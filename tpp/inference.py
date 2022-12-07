@@ -40,7 +40,9 @@ def combine_lpqs(logps, logqs):
         assert len(tuple(name for name in lq.names if is_K(name)))
         #that k dimension is "K_$rv" where rv is the name of the random variable
         Kname = next(name for name in lq.names if is_K(name))
-        assert Kname == K_prefix + rv
+
+        #No longer makes sense to do this with Global K_names
+        # assert Kname == K_prefix + rv
 
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:

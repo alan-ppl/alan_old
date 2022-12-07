@@ -135,6 +135,7 @@ class TraceLogP(Trace):
         # maintains an ordered list of tensors as they are generated
         self.logp = {}
         self.dims = {}
+        self.K_names2var = {}
         self.K_dim = K_dim
 
 
@@ -158,10 +159,10 @@ class TraceLogP(Trace):
 
 
         group = value.group
-
+        K_name = 'K_{}'.format(group) if group is not None else f"K_{key}"
         #rename p and q (log q and q samples) here
         if key in self.sample:
-            K_name = 'K_{}'.format(group) if group is not None else f"K_{key}"
+
             if has_dim(self.K_dim, get_dims(self.sample[key])):
                 #If we have a plain K_dim, rename it to K_name
                 if K_name not in [repr(dim) for dim in self.dims.values()]:
@@ -177,13 +178,12 @@ class TraceLogP(Trace):
                 sample = self.sample[key]
 
             else:
-                # if key not in self.dims:
-                #     self.dims[key] = Dim(name=K_name, size=1)
-                # self.sample[key] = self.sample[key].unsqueeze(0)[self.dims[key]]
-                # logq_names = self.logq[key].names
 
-                self.logq[key] = self.logq[key]#.rename(None).unsqueeze(0).refine_names(*((K_name,) + logq_names))
+                self.logq[key] = self.logq[key]
                 sample = self.sample[key]
+
+        if key not in self.K_names2var.get(K_name, []):
+            self.K_names2var[K_name] = self.K_names2var.get(K_name, []) + [key]
 
         sample = self[key]
         new_lp = value.log_prob(sample)
