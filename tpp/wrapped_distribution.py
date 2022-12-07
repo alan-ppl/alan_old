@@ -108,7 +108,6 @@ class WrappedDist:
 
         return sum_none_dims(log_probs)
 
-# Some distributions do not have rsample, how to handle? (e.g. Bernoulli)
 dist_names = [
     "Bernoulli",
     "Beta",
