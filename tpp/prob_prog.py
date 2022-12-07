@@ -178,12 +178,8 @@ class TraceLogP(Trace):
                 sample = self.sample[key]
 
             else:
-                # if key not in self.dims:
-                #     self.dims[key] = Dim(name=K_name, size=1)
-                # self.sample[key] = self.sample[key].unsqueeze(0)[self.dims[key]]
-                # logq_names = self.logq[key].names
 
-                self.logq[key] = self.logq[key]#.rename(None).unsqueeze(0).refine_names(*((K_name,) + logq_names))
+                self.logq[key] = self.logq[key]
                 sample = self.sample[key]
 
         if key not in self.K_names2var.get(K_name, []):
