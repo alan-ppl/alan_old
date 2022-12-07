@@ -65,25 +65,18 @@ class WrappedDist:
 
         return args, kwargs, sample_shape, unified_names, denamify
 
-    def rsample(self, K=None):
+    def generic_sample(self, f, K):
         args, kwargs, sample_shape, unified_names, denamify = self.prepare_to_sample(K)
 
-        samples = (self.dist(*args, **kwargs)
-                .rsample(sample_shape=sample_shape)
-                .refine_names(*self.sample_names, *unified_names, ...))
+        sample_rsample_method = getattr(self.dist(*args, **kwargs), f)
+        samples = sample_rsample_method(sample_shape=sample_shape).refine_names(*self.sample_names, *unified_names, ...)
 
         return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
 
     def sample(self, K=None):
-        args, kwargs, sample_shape, unified_names, denamify = self.prepare_to_sample(K)
-
-        samples = (self.dist(*args, **kwargs)
-                .sample(sample_shape=sample_shape)
-                .refine_names(*self.sample_names, *unified_names, ...))
-
-        samples = samples.detach()
-        return denamify(samples, sample_dims = self.sample_dim, K_dim = K)
-
+        return self.generic_sample("sample", K)
+    def rsample(self, K=None):
+        return self.generic_sample("rsample", K)
 
     def log_prob(self, x):
         assert isinstance(x, t.Tensor) or isinstance(x, DimTensor)

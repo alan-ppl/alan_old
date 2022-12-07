@@ -1,0 +1,20 @@
+Posterior sampling:
+  TraceP collects a dict mapping K_name -> list_of_var_names (which is usually necessary, but we do need when K_group).
+  Gather log_p for K_name, by adding together log_p in list_of_var_names.
+  Use log-determinant trick to extract conditionals.
+  Gibbs sampling.
+  Options for time-series:
+    Only sample the final state.
+    Sample all states.
+
+Unifying on torchdims?
+
+Time series
+  The time-series class is a distribution/WrappedDistribution
+  
+   
+
+  
+  
+
+
