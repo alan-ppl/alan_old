@@ -94,7 +94,7 @@ class Model(nn.Module):
         
         if data is None:
             data = {}
-        self.data, self.plates = proc_data(data, Q.plates)
+        self.data, self.plates = proc_data(data, Q.___plates)
 
     def traces(self, K, reparam, data):
         data, plates = proc_data(data, plates)
