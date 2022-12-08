@@ -86,7 +86,6 @@ class WrappedDist:
         # args, kwargs = cartesiantensormap(lambda x: x._t, args, kwargs)
 
         args, kwargs, denamify = nameify(args, kwargs)
-
         # Sorted list of all unique names
         unified_names = set([name for arg in tensors(args, kwargs) for name in arg.names])
         unified_names.discard(None)
@@ -99,9 +98,8 @@ class WrappedDist:
 
         args, kwargs = tensormap(lambda x: pad_nones(x, max_pos_dim), args, kwargs)
         args, kwargs = tensormap(lambda x: x.rename(None), args, kwargs)
-
-
-
+        print([x.shape for x in kwargs.values()])
+        print(args[-1].shape)
         log_probs = (self.dist(*args[:-1], **kwargs)
                 .log_prob(args[-1])
                 .refine_names(*unified_names, ...))

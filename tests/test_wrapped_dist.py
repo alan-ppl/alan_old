@@ -61,8 +61,8 @@ class TestWrappedDist(unittest.TestCase):
             scale=torch.ones(4, 3)[K_b]
         )
         ll = dist.log_prob(sample)
-        assert ll.shape == (4, 4, 3)
-        assert ll.names == ('K_a', 'K_b', None)
+        assert ll.shape == (4, 4)
+        assert ll.names == ('K_a', 'K_b')
 
         sample = torch.randn(4, 4, 3)[K_b, K_c]
         dist = Normal(
@@ -70,8 +70,8 @@ class TestWrappedDist(unittest.TestCase):
             scale=torch.ones(4, 4, 3)[K_a, K_c]
         )
         ll = dist.log_prob(sample)
-        assert ll.shape == (4, 4, 4, 3)
-        assert ll.names == ('K_a', 'K_b', 'K_c', None)
+        assert ll.shape == (4, 4, 4)
+        assert ll.names == ('K_a', 'K_b', 'K_c')
 
 
 if __name__ == '__main__':
