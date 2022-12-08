@@ -63,7 +63,7 @@ class Q(nn.Module):
 
         parameter_name = "_"+name
         self.register_parameter(parameter_name, nn.Parameter(tensor.rename(None)))
-        setattr(self, name, namedtensor_to_tdtensor(self._plates, tensor))
+        setattr(self, name, namedtensor_to_tdtensor(self.___plates, tensor))
 
 class Q_(Q):
     def __init__(self):
