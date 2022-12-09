@@ -1,4 +1,2 @@
-from .prob_prog import *
-from .frontend import Model, sample
-from .wrapped_distribution import *
-from .utils import *
+from .dist import *
+from .traces import *
