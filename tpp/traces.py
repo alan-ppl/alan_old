@@ -171,12 +171,12 @@ class TraceSampleLogQ(AbstractTrace):
         self.reparam = reparam
 
         self.samples = {}
-        self.logp = {}
+        self.logq = {}
 
     def sample(self, key, dist, multi_samples=True, plate=None):
         assert key not in self.data
         assert key not in self.samples
-        assert key not in self.logp
+        assert key not in self.logq
             
         sample_dims = []
         if plate is not None:
@@ -189,7 +189,7 @@ class TraceSampleLogQ(AbstractTrace):
             assert self.Kdim not in sample.dims, "Multiple samples are coming into this variable, so we can't stop it giving multiple samples at the output"
 
         self.samples[key] = sample
-        self.logp[key] = dist.log_prob(sample)
+        self.logq[key] = dist.log_prob(sample)
         
 
 class TraceLogP(AbstractTrace):
@@ -198,6 +198,7 @@ class TraceLogP(AbstractTrace):
 
         self.samples = {}
         self.logp = {}
+        self.logq = {}
 
         self.Kname_to_Kdim = {}
         self.var_to_Kname = {}
@@ -225,5 +226,7 @@ class TraceLogP(AbstractTrace):
             sample_q = self.trq[key]
             sample = sample_q.order(self.trq.Kdim)[Kdim]
             self.samples[key] = sample
+
+            self.logq[key] = self.trq.logq[key].order(self.trq.Kdim)[Kdim]
 
         self.logp[key] = dist.log_prob(sample)

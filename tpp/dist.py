@@ -164,7 +164,7 @@ class TorchDimDist():
         aligned_names = [dim2name[dim] for dim in aligned_dims]
         aligned_x = unaligned_named.align_to(*aligned_names, ...)
 
-        return self.dist(**self.args).log_prob(aligned_x.rename(None))[aligned_dims]
+        return self.dist(**self.args).log_prob(aligned_x.rename(None))[aligned_dims].sum()
 
 def set_dist(dist_name):
     def inner(*args, **kwargs):
