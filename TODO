@@ -4,8 +4,9 @@ Traces:
     timeseries name -> Kprev
     timeseries name -> T
     timeseries name -> Tm1
-    K name -> K dim
-    plate name -> plate dim
+    K name          -> K dim
+    plate name      ->        train plate dim
+    plate name      -> test + train plate dim
   Easy to switch between torchdims and named if we have these kinds of mapping. 
 
 
