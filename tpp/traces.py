@@ -2,30 +2,49 @@ import torch as t
 import torch.nn as nn
 from functorch.dim import dims, Dim
 
-def insert_plate_name(d, name, size):
+class Plates():
     """
-    Takes a name (string) and a size (int).
-    If name already present, checks size is consistent.
-    Else, creates a new torchdim with correct size.
+    A two way dict name (str) <-> dim (functorch.dim.Dim)
+    Functional API
     """
-    if name in d:
-        assert size == d[name].size
+    def __init__(name2dim=None, dim2name=None):
+        if name2dim is None:
+            self.name2dim = {}
+        if dim2name is None:
+            self.dim2name = {}
+
+    def insert_size(self, name, size):
+        if name in self.name2td:
+            assert size == name2dim[name].size
+            return self
+        else:
+            return Plates({name: dim, **self.name2dim},{dim: name, **self.dim2name})
+
+    def insert_size_dict(d):
+        for (name, size) in d.items():
+            d = self.insert_size(name, size)
         return d
-    else:
-        return {**d, name: size}
 
-def insert_named(d, tensor):
-    """
-    Inserts all named dimensions in a named tensor.
-    """
-    for dimname in tensor.names:
-        if dimname is not None:
-            d = self.insert_name_size(dimname, tensor.size(dimname))
-    return d
+    def insert_named_tensor(d):
+        for (name, size) in zip(d.names, d.shape):
+            if name is not None:
+                d = self.insert_size(name, size)
+        return d
 
-def namedtensor_to_tdtensors(plates, tensor):
-    torchdims = [slice(None) if (name is None) else plates[name] for name in named_tensor.names]
-    return named_tensor.rename(None)[torchdims]
+    def cat(self, other):
+        name2dim = {**self.name2dim, **other.name2dim}
+        dim2name = {**self.name2dim, **other.name2dim}
+        assert len(name2dim) == len(self.name2dim) + len(other.dim2name)
+        assert len(dim2name) == len(self.dim2name) + len(other.dim2name)
+        return Plates(name2dim, dim2name)
+
+    def named2dim_tensor(self, x):
+        torchdims = [slice(None) if (name is None) else self.name2dim[name] for name in x.names]
+        return x.rename(None)[torchdims]
+
+    def dim2named_tensor(self, x):
+        names = [slice(None) if (dim is None) else self.dim2name[name] for dim in x.dims]
+        return x.rename(*names)
 
 def proc_data(data, plates):
     """
@@ -38,7 +57,7 @@ def proc_data(data, plates):
 
     #Insert any dims in data tensors
     for tensor in data.values():
-        plates = insert_named_tensor(plates, tensor)
+        plates = plates.insert_named_tensor(tensor)
 
     #Convert data named tensors to torchdim tensors
     result_data = {k: namedtensor_to_tdtensors(plates, tensor) for (k, tensor) in data.items()}
@@ -59,7 +78,7 @@ class Q(nn.Module):
         Tensor is a named tensor for plate / T dimensions
         We collect all the plate dimensions in self._plates
         """
-        self.___plates = insert_named_tensor(self.___plates, tensor)
+        self.___plates = self.___plates.insert_named_tensor(tensor)
 
         parameter_name = "_"+name
         self.register_parameter(parameter_name, nn.Parameter(tensor.rename(None)))
@@ -69,14 +88,6 @@ class Q_(Q):
     def __init__(self):
         super().__init__()
         self.reg_param('a', t.ones(3,3).rename('plate_1', None))
-
-class Trace():
-    def __getitem__(self, key):
-        in_data   = key in self.data
-        in_sample = key in self.sample
-        assert in_data or in_sample
-        assert not (in_data and in_sample)
-        return self.sample[key] if in_sample else self.data[key]
 
 class Model(nn.Module):
     """
@@ -122,6 +133,66 @@ class Model(nn.Module):
         q_obj = logPtmc({n:lp.detach() for (n,lp) in trp.logp.items()}, trq.logp)
         return p_obj, q_obj
 
+    def weights_inner(self, trp, trq):
+        """
+        Produces normalized weights for each latent variable.
+        """
+        var_names = list(trp.sample.keys())
+        samples = [nameify(trp.sample[var_name])[0] for var_name in var_names]
+        Js = [t.zeros_like(trq.logp[var_name], requires_grad=True) for var_name in var_names]
+
+        result = logPtmc(trp.logp, trq.logp, Js)
+
+        ws = list(t.autograd.grad(result, Js))
+        #ws from autograd are unnamed, so here we put the names back.
+        for i in range(len(ws)):
+            ws[i] = ws[i].rename(*Js[i].names)
+        return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
+
+
+    def weights(self, K, N=None):
+        if N is None:
+            trp, trq = self.traces(K, reparam=False)
+            return self.weights_inner(trp, trq)
+        #else: run multiple iterations. 
+
+class Trace():
+    def __getitem__(self, key):
+        in_data   = key in self.data
+        in_sample = key in self.sample
+        assert in_data or in_sample
+        assert not (in_data and in_sample)
+        return self.sample[key] if in_sample else self.data[key]
+
+class TraceSample(Trace):
+    """
+    Draws samples from P.  Usually just used to sample fake data from the model.
+    """
+    def __init__(self, sizes=None):
+        super().__init__()
+        if sizes is None:
+            sizes = {}
+        self.plates = Plates().insert_size_dict(sizes)
+        self.reparam = False
+
+        self.data                 = {} 
+        self.samples              = {}
+
+    def sample(self, varname, dist, multi_samples=True, plate=None):
+        assert varname not in self.sample
+            
+        sample_dims = [] if plate is None else [self.plates[plate]]
+        self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+
+    def trace(self, varnames=None):
+        """
+        Returns samples as a named dict
+        """
+        if varnames is None:
+            varnames = self.samples.keys()
+        return {self.plates.named2dim_tensor(self.sample[varname]) for varname in varnames}
+
+
 class TraceSampleLogQ(Trace):
     """
     Samples a probabilistic program + evaluates log-probability.
@@ -156,6 +227,7 @@ class TraceSampleLogQ(Trace):
 
         self.sample[key] = sample
         self.logp[key] = dist.log_prob(sample)
+        
 
 class TraceLogP(Trace):
     def __init__(self, trq, data, plates):
