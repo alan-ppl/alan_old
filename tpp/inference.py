@@ -29,7 +29,7 @@ def combine_lpqs(logps, logqs):
     #Data tensors appear in logps but not logqs
     assert len(logqs) <= len(logps)
 
-    # check all dimensions are named, and are either plates or named K-dimensions
+    #check all dimensions are named, and are either plates or named K-dimensions
     #Note: this only checks named dimensions, it doesn't check if all dimensions are named.
     for lp in [*logps.values(), *logqs.values()]:
         for n in lp.names:
@@ -40,9 +40,6 @@ def combine_lpqs(logps, logqs):
         assert len(tuple(name for name in lq.names if is_K(name)))
         #that k dimension is "K_$rv" where rv is the name of the random variable
         Kname = next(name for name in lq.names if is_K(name))
-
-        #No longer makes sense to do this with Global K_names
-        # assert Kname == K_prefix + rv
 
     # sanity checking for latents (only latents appear in logqs)
     for rv in logqs:
@@ -60,27 +57,6 @@ def combine_lpqs(logps, logqs):
     #combine all lps, negating logqs
     all_lps = list(logps.values()) + [-lq for lq in logqs.values()]
     return all_lps
-
-def partition_log_probs(logps,logqs):
-    #partition logprobs into ones with and without K_dims
-    logps_without_K = []
-    logps_with_K = {}
-    logqs_without_K = []
-    logqs_with_K = {}
-
-    for (rv, lq) in logqs.items():
-        if len(tuple(name for name in lq.names if is_K(name))) == 0:
-            logqs_without_K.append(-lq)
-        else:
-            logqs_with_K[rv] = lq
-
-    for (rv, lp) in logps.items():
-        if len(tuple(name for name in lp.names if is_K(name))) == 0:
-            logps_without_K.append(lp)
-        else:
-            logps_with_K[rv] = lp
-
-    return logps_with_K, logps_without_K, logqs_with_K, logqs_without_K
 
 
 if __name__ == "__main__":

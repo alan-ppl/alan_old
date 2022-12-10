@@ -1,24 +1,73 @@
+from collections import namedtuple
+
 import torch as t
 import torch.nn as nn
 from functorch.dim import dims, Dim
-from .namesdims import NamesDims
 
-def proc_data(data, plates):
+from .utils import *
+
+def insert_size_dict(d, size_dict):
+    new_dict = {}
+    for (name, size) in size_dict.items():
+        if (name not in d):
+            dim = Dim(name, size)
+            new_dict[name] = dim
+        else:
+            assert size == d[name].size
+    return {**d, **new_dict}
+
+def insert_named_tensor(d, tensor):
     """
-    Adds all names in data named tensors to plates,
-    Converts all data from named tensors to torchdim tensors
+    Operates on dict mapping string (platename) to Dim (platedim)
+    """
+    return insert_size_dict(d, {name: tensor.size(name) for name in tensor.names if name is not None})
+
+def insert_named_tensors(d, tensors):
+    """
+    Operates on dict mapping string (platename) to Dim (platedim)
+    """
+    for tensor in tensors:
+        d = insert_named_tensor(d, tensor)
+    return d
+
+def named2dim_tensor(d, x):
+    """
+    Operates on dict mapping string (platename) to Dim (platedim)
+    """
+    torchdims = [slice(None) if (name is None) else d[name] for name in x.names]
+    return x.rename(None)[torchdims]
+
+def dim2named_tensor(x):
+    """
+    Doesn't need side information.
+    Will fail if duplicated dim names passed in
+    """
+    dims = generic_dims(x)
+    names = [repr(dim) for dim in dims]
+    return x[dims].rename(*names, ...)
+
+def named2dim_data(named_data, plates):
+    """
+    Converts data named tensors to torchdim tensors, and records any plates
+    Arguments:
+      named_data: dict mapping varname to named tensor data
+      plates: dict mapping platename to plate dim
+    Returns:
+      dim_data: dict mapping varname to torchdim tensor data
+      plates: dict mapping platename to plate dim
     """
     #Data often defaults to None.
-    if data is None:
-        data = {}
+    if named_data is None:
+        named_data = {}
+    if plates is None:
+        plates = {}
 
-    #Insert any dims in data tensors
-    for tensor in data.values():
-        plates = plates.insert_named_tensor(tensor)
+    #Insert any dims in data tensors into plates
+    plates = insert_named_tensors(plates, data.values())
 
     #Convert data named tensors to torchdim tensors
-    result_data = {k: plates.named2dim_tensor(tensor) for (k, tensor) in data.items()}
-    return result_data, plates
+    dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in data.items()}
+    return dim_data, plates
 
 class Q(nn.Module):
     """
@@ -31,19 +80,20 @@ class Q(nn.Module):
         self._plates = NamesDims()
         self.params = nn.ParameterList()
 
-    def reg_param(self, name, tensor):
+    def reg_param(self, name, tensor, dims=None):
         """
-        Tensor is a named tensor for plate / T dimensions
-        We collect all the plate dimensions in self._plates
+        Tensor could be named, or we could provide a dims (iterable of strings) argument.
         """
-        self._plates = self._plates.insert_named_tensor(tensor)
+        if dims is not None:
+            tensor = tensor.rename(*dims, *((tensor.ndim - len(dims))*[None]))
+        self._plates = insert_named_tensor(self._plates, tensor)
         self.params.append(nn.Parameter(tensor.rename(None)))
-        setattr(self, name, self._plates.named2dim_tensor(tensor))
+        setattr(self, name, _plates.named2dim_tensor(_plates, tensor))
 
 class Q_(Q):
     def __init__(self):
         super().__init__()
-        self.reg_param('a', t.ones(3,3).rename('plate_1', None))
+        self.reg_param('a', t.ones(3,3), dims=("plate_1",))
 
 class Model(nn.Module):
     """
@@ -61,21 +111,21 @@ class Model(nn.Module):
         
         if data is None:
             data = {}
-        self.data, self.plates = proc_data(data, NamesDims())
+        self.data, self.plates = named2dim_data(data, Q._plates)
 
     def traces(self, K, reparam, data):
-        data, plates = proc_data(data, self.Q._plates)
+        data, plates = proc_data(data, self.plates)
         all_data = {**self.data, **data}
         assert len(all_data) == len(self.data) + len(data)
        
-        K_dim = Dim(name='K', size=K)
         #sample from approximate posterior
-        trq = TraceSampleLogQ(K, all_data, plates, reparam)
+        trq = TraceQ(K, all_data, plates, reparam)
         self.Q(trq)
         #compute logP
-        trp = TraceLogP(trq)
+        trp = TraceP(trq)
         self.P(trp)
-        return trp, trq
+
+        return trp
 
     def elbo(self, K, data=None):
         trp, trq = self.traces(K, True, data)
@@ -123,12 +173,11 @@ class AbstractTrace():
 class TraceSample(AbstractTrace):
     """
     Draws samples from P.  Usually just used to sample fake data from the model.
+    sizes is a dict mapping platenames to plate sizes
     """
     def __init__(self, sizes=None):
         super().__init__()
-        if sizes is None:
-            sizes = {}
-        self.plates = NamesDims().insert_size_dict(sizes)
+        self.plates = insert_size_dict({}, sizes)
         self.reparam = False
 
         self.data                 = {} 
@@ -137,7 +186,7 @@ class TraceSample(AbstractTrace):
     def sample(self, varname, dist, multi_samples=True, plate=None):
         assert varname not in self.samples
             
-        sample_dims = [] if plate is None else [self.plates[plate]]
+        sample_dims = [] if plate is None else [self.plates.name2dim[plate]]
         self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
     def trace(self, varnames=None):
@@ -146,7 +195,7 @@ class TraceSample(AbstractTrace):
         """
         if varnames is None:
             varnames = self.samples.keys()
-        return {varname: self.plates.named2dim_tensor(self.samples[varname]) for varname in varnames}
+        return {varname: dim2named_tensor(self.samples[varname]) for varname in varnames}
 
 def sample(P, sizes=None, varnames=None):
     if sizes is None:
@@ -156,7 +205,7 @@ def sample(P, sizes=None, varnames=None):
     return tr.trace(varnames)
 
 
-class TraceSampleLogQ(AbstractTrace):
+class TraceQ(AbstractTrace):
     """
     Samples a probabilistic program + evaluates log-probability.
     Usually used for sampling the approximate posterior.
@@ -180,7 +229,7 @@ class TraceSampleLogQ(AbstractTrace):
             
         sample_dims = []
         if plate is not None:
-            sample_dims.append(self.plates[plate])
+            sample_dims.append(self.plates.name2dim[plate])
         if multi_samples:
             sample_dims.append(self.Kdim)
 
@@ -192,7 +241,7 @@ class TraceSampleLogQ(AbstractTrace):
         self.logq[key] = dist.log_prob(sample)
         
 
-class TraceLogP(AbstractTrace):
+class TraceP(AbstractTrace):
     def __init__(self, trq):
         self.trq = trq
 
@@ -200,8 +249,10 @@ class TraceLogP(AbstractTrace):
         self.logp = {}
         self.logq = {}
 
-        self.Kname_to_Kdim = {}
-        self.var_to_Kname = {}
+        self.groupname2dim = {}
+
+        #Get plates from trq
+        self.Ks     = set()
 
     @property
     def data(self):
@@ -212,16 +263,22 @@ class TraceLogP(AbstractTrace):
         assert key not in self.logp
         assert key not in self.var_to_Kname
 
-        if key in self.data:
+        #data
+        if key in self.data: 
             sample = self.data[key]
-        else:
-            Kname = f'K_{key if (group is None) else group}'
-            if Kname in self.Kname_to_Kdim:
-                Kdim = self.Kname_to_Kdim[Kname]
+        #latent variable
+        else: 
+            #grouped K's
+            if (group is not None): 
+                #new group of K's
+                if (group not in self.groupname2dim):
+                    self.groupname2dim[group] = Dim(f"K_{group}", self.trq.Kdim.size)
+                Kdim = self.groupname2dim[group]
                 assert Kdim.size == self.trq.Kdim.size
+            #non-grouped K's
             else:
-                Kdim = Dim(Kname, self.trq.Kdim.size)
-            self.var_to_Kname[key] = Kname
+                Kdim = Dim(f"K_{key}", self.trq.Kdim.size)
+            self.K.add(Kdim)
 
             sample_q = self.trq[key]
             sample = sample_q.order(self.trq.Kdim)[Kdim]
@@ -230,3 +287,5 @@ class TraceLogP(AbstractTrace):
             self.logq[key] = self.trq.logq[key].order(self.trq.Kdim)[Kdim]
 
         self.logp[key] = dist.log_prob(sample)
+
+    

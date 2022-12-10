@@ -188,6 +188,3 @@ def sum_tensors(lps):
     assert 1==lp.numel()
 
     return lp#sum(lps)
-
-
-

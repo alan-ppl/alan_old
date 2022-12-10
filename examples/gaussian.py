@@ -8,7 +8,7 @@ def P(tr):
   Bayesian Gaussian Model
   '''
   a = t.zeros(5,)
-  tr.sample('mu', tpp.Normal(a, t.ones(5,)))
+  tr.sample('mu', tpp.Normal(a, t.ones(5,)), plate="plate_1")
   tr.sample('obs', tpp.MultivariateNormal(tr['mu'], t.eye(5)))
 
 
@@ -20,9 +20,9 @@ class Q(tpp.Q):
         self.log_s_mu = nn.Parameter(t.zeros(5,))
 
     def forward(self, tr):
-        tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp()))
+        tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp()), plate="plate_1")
 
-data = tpp.sample(P, varnames=('obs',))
+data = tpp.sample(P, varnames=('obs',), sizes={"plate_1": 2})
 
 print(data)
 model = tpp.Model(P, Q(), data)

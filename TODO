@@ -1,3 +1,11 @@
+Implement torchdim tensor_product backend: 
+  could give considerable simplification in future
+Simplify dists by implmenting x.order(dims) which allows dims which aren't in x (probably by going through named tensors).
+
+Don't expose K-dimensions to user (just "K") for marginal weights or posterior samples.
+That makes mapping back to user-space much easier (as we just need to map plates + Ts, but not Ks).
+
+
 Traces:
   Dict mapping names to different kinds of torchdims (or names if the backend uses torchdims)
     timeseries name -> Kcurr

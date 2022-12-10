@@ -1,3 +1,6 @@
+from functorch.dim import Dim
+from .utils import generic_ndim, generic_dims, generic_order
+
 class NamesDims():
     """
     A two way dict name (str) <-> dim (functorch.dim.Dim)
@@ -5,15 +8,18 @@ class NamesDims():
     """
     def __init__(self, name2dim=None, dim2name=None):
         if name2dim is None:
-            self.name2dim = {}
+            name2dim = {}
         if dim2name is None:
-            self.dim2name = {}
+            dim2name = {}
+        self.name2dim = name2dim
+        self.dim2name = dim2name
 
     def insert_size(self, name, size):
-        if name in self.name2td:
+        if name in self.name2dim:
             assert size == name2dim[name].size
             return self
         else:
+            dim = Dim(name, size)
             return NamesDims({name: dim, **self.name2dim},{dim: name, **self.dim2name})
 
     def insert_size_dict(self, d):
@@ -39,6 +45,7 @@ class NamesDims():
         return x.rename(None)[torchdims]
 
     def dim2named_tensor(self, x):
-        names = [slice(None) if (dim is None) else self.dim2name[name] for dim in x.dims]
-        return x.rename(*names)
+        dims = generic_dims(x)
+        names = [self.dim2name[dim] for dim in dims]
+        return generic_order(x, dims).rename(*names, ...)
 
