@@ -131,7 +131,7 @@ class Model(nn.Module):
         return trp
 
     def elbo(self, K, data=None):
-        trp, trq = self.traces(K, True, data)
+        trp = self.traces(K, True, data)
         return logPtmc(trp.logp, trq.logp)
 
     def rws(self, K, data=None):

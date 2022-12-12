@@ -26,6 +26,7 @@ data = tpp.sample(P, varnames=('obs',)) #, sizes={"plate_1": 2})
 
 print(data)
 model = tpp.Model(P, Q(), data)
+tr = model.traces(2, True, {})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
