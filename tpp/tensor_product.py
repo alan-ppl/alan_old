@@ -138,20 +138,29 @@ class Sample():
         """
         Produces normalized weights for each latent variable.
 
-        Convert to named before backprop...
+        Make a little function that converts all the aunnamed to dim tensors
         """
-        samples = self.trp.samples
-        var_names = list(samples.keys())
-        samples   = [dim2named_tensor(samples[var_name]) for var_name in var_names]
-        logqs     = [self.trp.logq[var_name] for var_name in var_names]
-        Js        = [t.zeros_like(lq, requires_grad=True) for lq in logqs]
-        dimss     = [J.dims for J in Js]
-        namess    = [[repr(dim) for dim in dims] for dims in dimss]
+        var_names     = list(self.trp.samples.keys())
+        samples       = list(self.trp.samples.values())
+        logqs         = [self.trp.logq[var_name] for var_name in var_names]
+        dimss         = [lq.dims for lq in logqs]
+        undim_logqs   = [generic_order(lq, dims) for (lq, dims) in zip(logqs, dimss)]
 
-        result = self.tensor_product(extra_log_factors=Js)
+        #Start with Js with no dimensions (like NN parameters)
+        undim_Js = [t.zeros_like(ulq, requires_grad=True) for ulq in undim_logqs]
+        #Put torchdims back in.
+        dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
+        #Compute result with torchdim Js
+        result = self.tensor_product(extra_log_factors=dim_Js)
+        #But differentiate wrt non-torchdim Js
+        ws = list(t.autograd.grad(result, undim_Js))
 
-        ws = list(t.autograd.grad(result, Js))
-        #ws from autograd are unnamed, so here we put the names back.
+        result = {}
         for i in range(len(ws)):
-            ws[i] = ws[i].rename(*Js[i].names)
-        return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
+            sample = dim2named_tensor(samples[i], dimss[i])
+            #Replace arbitrary K with general K.
+            #dims = [self.trp.trq.Kdim if self.is_K(dim) else dim for dim in dimss[i]]
+            w = ws[i].rename(*[repr(dim) for dim in dimss[i]])
+            result[var_names[i]] = (sample, w)
+
+        return result

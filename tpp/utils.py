@@ -119,11 +119,12 @@ def singleton_order(x, dims):
     return result
 
 
-def dim2named_tensor(x):
+def dim2named_tensor(x, dims=None):
     """
     Doesn't need side information.
     Will fail if duplicated dim names passed in
     """
-    dims = generic_dims(x)
+    if dims is None:
+        dims = generic_dims(x)
     names = [repr(dim) for dim in dims]
     return generic_order(x, dims).rename(*names, ...)
