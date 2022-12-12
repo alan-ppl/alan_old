@@ -1,4 +1,4 @@
-from .tensor_product import TensorProduct
+from .tensor_product import Sample
 
 import torch as t
 import torch.nn as nn
@@ -103,11 +103,6 @@ class Q(nn.Module):
         else:
             return self._params[name][self._dims[name]]
 
-class Q_(Q):
-    def __init__(self):
-        super().__init__()
-        self.reg_param('a', t.ones(3,3), dims=("plate_1",))
-
 class Model(nn.Module):
     """
     Plate dimensions come from data.
@@ -126,7 +121,7 @@ class Model(nn.Module):
             data = {}
         self.data, self.plates = named2dim_data(data, Q._plates)
 
-    def tensor_product(self, K, reparam, data):
+    def sample(self, K, reparam, data):
         data, plates = named2dim_data(data, self.plates)
         all_data = {**self.data, **data}
         assert len(all_data) == len(self.data) + len(data)
@@ -138,56 +133,16 @@ class Model(nn.Module):
         trp = TraceP(trq)
         self.P(trp)
 
-        return TensorProduct(trp)
+        return Sample(trp)
 
     def elbo(self, K, data=None):
-        return self.tensor_product(K, True, data)()
+        return self.sample(K, True, data).elbo()
 
     def rws(self, K, data=None):
-        trp, trq = self.traces(K, reparam, data)
-        # Wake-phase P update
-        p_obj = logPtmc(trp.logp, {n:lq.detach() for (n,lq) in trq.logp.items()})
-        # Wake-phase Q update
-        q_obj = logPtmc({n:lp.detach() for (n,lp) in trp.logp.items()}, trq.logp)
-        return p_obj, q_obj
+        return self.sample(K, False, data).rws()
 
-    def weights_inner(self, trp, trq):
-        """
-        Produces normalized weights for each latent variable.
-        """
-        var_names = list(trp.sample.keys())
-        samples = [nameify(trp.sample[var_name])[0] for var_name in var_names]
-        Js = [t.zeros_like(trq.logp[var_name], requires_grad=True) for var_name in var_names]
-
-        result = logPtmc(trp.logp, trq.logp, Js)
-
-        ws = list(t.autograd.grad(result, Js))
-        #ws from autograd are unnamed, so here we put the names back.
-        for i in range(len(ws)):
-            ws[i] = ws[i].rename(*Js[i].names)
-        return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
-
-#    def weights_inner(self, trp, trq):
-#        """
-#        Produces normalized weights for each latent variable.
-#        """
-#        var_names = list(trp.sample.keys())
-#        samples = [nameify(trp.sample[var_name])[0] for var_name in var_names]
-#        Js = [t.zeros_like(trq.logp[var_name], requires_grad=True) for var_name in var_names]
-#
-#        result = logPtmc(trp.logp, trq.logp, Js)
-#
-#        ws = list(t.autograd.grad(result, Js))
-#        #ws from autograd are unnamed, so here we put the names back.
-#        for i in range(len(ws)):
-#            ws[i] = ws[i].rename(*Js[i].names)
-#        return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
-#
-#    def weights(self, K, N=None):
-#        if N is None:
-#            trp, trq = self.traces(K, reparam=False)
-#            return self.weights_inner(trp, trq)
-#        #else: run multiple iterations. 
+    def weights(self, K, data=None):
+        return self.sample(K, False, data).weights()
 
 class AbstractTrace():
     def __getitem__(self, key):

@@ -1,7 +1,7 @@
 from .utils import *
 
 
-class TensorProduct():
+class Sample():
     """
     Does error checking on the log-ps, and does the tensor product.
 
@@ -13,11 +13,7 @@ class TensorProduct():
     def __init__(self, trp):
         self.trp = trp
 
-        logqs = trp.logq
-        logps = trp.logp
-
-
-        for lp in [*logps.values(), *logqs.values()]:
+        for lp in [*trp.logp.values(), *trp.logq.values()]:
             #check all dimensions are named
             assert lp.shape == ()
             #Check dimensions are Ks or plates it doesn't check if all dimensions are named.
@@ -25,29 +21,22 @@ class TensorProduct():
             #    assert self.is_K(dim) or self.is_plate(dim)
 
 
-        for (rv, lq) in logqs.items():
+        for (rv, lq) in trp.logq.items():
             #check that any rv in logqs is also in logps
-            assert rv in logps
+            assert rv in trp.logp
 
-            lp = logps[rv]
-            lq = logqs[rv]
+            lp = trp.logp[rv]
+            lq = trp.logq[rv]
 
             # check same plates/timeseries appear in lp and lq
             lp_notK = [dim for dim in lp.names if not self.is_K(dim)]
             lq_notK = [dim for dim in lq.names if not self.is_K(dim)]
             assert set(lp_notK) == set(lq_notK)
 
-        #combine all lps, negating logqs
-        self.lpqs = []
-        for key in logps:
-            lpq = logps[key]
-            if key in logqs:
-                lpq = lpq - logqs[key]
-            self.lpqs.append(lpq)
 
         #Assumes that self.lps come in ordered
         self.plates = set(trp.trq.plates.values())
-        self.ordered_plate_dims = [dim for dim in unify_dims(logps.values()) if self.is_plate(dim)]
+        self.ordered_plate_dims = [dim for dim in unify_dims(trp.logp.values()) if self.is_plate(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
 
     def is_plate(self, dim):
@@ -56,13 +45,25 @@ class TensorProduct():
     def is_K(self, dim):
         return dim in self.trp.Ks
 
-    def __call__(self, extra_log_factors=()):
+    def tensor_product(self, logps=None, logqs=None, extra_log_factors=()):
         """
         Sums over plates, starting at the lowest plate. 
         The key exported method.
         """
+        if logps is None:
+            logps = self.trp.logp
+        if logqs is None:
+            logqs = self.trp.logq
 
-        tensors = [*self.lpqs, *extra_log_factors]
+        #combine all lps, negating logqs
+        lpqs = []
+        for key in logps:
+            lpq = logps[key]
+            if key in logqs:
+                lpq = lpq - logqs[key]
+            lpqs.append(lpq)
+
+        tensors = [*lpqs, *extra_log_factors]
 
         #iterate from lowest plate
         for plate_name in self.ordered_plate_dims[::-1]:
@@ -121,3 +122,36 @@ class TensorProduct():
         result = result - len(Ks_to_sum)*t.log(t.tensor(self.trp.trq.Kdim.size))
 
         return sum([result, *maxes])
+
+    def elbo(self):
+        return self.tensor_product()
+
+    def rws(self):
+        assert not self.reparam
+        # Wake-phase P update
+        p_obj = self.tensor_product(logqs={n:lq.detach() for (n,lq) in self.trp.logq.items()})
+        # Wake-phase Q update
+        q_obj = self.tensor_product(logps={n:lp.detach() for (n,lp) in trp.logp.items()})
+        return p_obj, q_obj
+
+    def weights(self):
+        """
+        Produces normalized weights for each latent variable.
+
+        Convert to named before backprop...
+        """
+        samples = self.trp.samples
+        var_names = list(samples.keys())
+        samples   = [dim2named_tensor(samples[var_name]) for var_name in var_names]
+        logqs     = [self.trp.logq[var_name] for var_name in var_names]
+        Js        = [t.zeros_like(lq, requires_grad=True) for lq in logqs]
+        dimss     = [J.dims for J in Js]
+        namess    = [[repr(dim) for dim in dims] for dims in dimss]
+
+        result = self.tensor_product(extra_log_factors=Js)
+
+        ws = list(t.autograd.grad(result, Js))
+        #ws from autograd are unnamed, so here we put the names back.
+        for i in range(len(ws)):
+            ws[i] = ws[i].rename(*Js[i].names)
+        return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
