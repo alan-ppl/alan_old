@@ -102,8 +102,7 @@ class TorchDimDist():
         #Same number of unnamed batch dims.
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         x_dims = generic_dims(x)
-        print((x_dims, self.dims))
-        new_dims = list(set(x_dims).difference(self.dims))#[dim for dim in x_dims if (dim not in self.dims)]
+        new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims]
         return self.dist(**self.all_args).log_prob(dim_align_to(x, all_dims))[all_dims].sum()
 
