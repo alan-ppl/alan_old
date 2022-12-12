@@ -65,10 +65,10 @@ def named2dim_data(named_data, plates):
         plates = {}
 
     #Insert any dims in data tensors into plates
-    plates = insert_named_tensors(plates, data.values())
+    plates = insert_named_tensors(plates, named_data.values())
 
     #Convert data named tensors to torchdim tensors
-    dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in data.items()}
+    dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in named_data.items()}
     return dim_data, plates
 
 class Q(nn.Module):
@@ -79,7 +79,7 @@ class Q(nn.Module):
     """
     def __init__(self):
         super().__init__()
-        self._plates = NamesDims()
+        self._plates = {}
         self.params = nn.ParameterList()
 
     def reg_param(self, name, tensor, dims=None):
@@ -87,6 +87,7 @@ class Q(nn.Module):
         Tensor could be named, or we could provide a dims (iterable of strings) argument.
         """
         if dims is not None:
+            assert tensor.names == tensor.ndim*(None,)
             tensor = tensor.rename(*dims, *((tensor.ndim - len(dims))*[None]))
         self._plates = insert_named_tensor(self._plates, tensor)
         self.params.append(nn.Parameter(tensor.rename(None)))
@@ -263,7 +264,6 @@ class TraceP(AbstractTrace):
     def sample(self, key, dist, group=None, plate=None):
         assert key not in self.samples
         assert key not in self.logp
-        assert key not in self.var_to_Kname
 
         #data
         if key in self.data: 
@@ -280,7 +280,7 @@ class TraceP(AbstractTrace):
             #non-grouped K's
             else:
                 Kdim = Dim(f"K_{key}", self.trq.Kdim.size)
-            self.K.add(Kdim)
+            self.Ks.add(Kdim)
 
             sample_q = self.trq[key]
             sample = sample_q.order(self.trq.Kdim)[Kdim]

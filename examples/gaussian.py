@@ -29,7 +29,7 @@ model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=5
+K=2
 print("K={}".format(K))
 for i in range(15000):
     opt.zero_grad()

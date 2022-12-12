@@ -83,7 +83,7 @@ class TorchDimDist():
             #Pad all args up to the right lengths, so that unnamed batching works.
             arg = pad_nones(arg, self.unnamed_batch_dims+param_ndim[argname])
             #Convert torchdim arguments into aligned tensor arguments.
-            arg = dim_align_to(arg, self.dims)
+            arg = singleton_order(arg, self.dims)
             assert not is_dimtensor(arg)
             self.all_args[argname] = arg
 
@@ -102,7 +102,7 @@ class TorchDimDist():
         x_dims = generic_dims(x)
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims, Ellipsis]
-        return self.dist(**self.all_args).log_prob(dim_align_to(x, all_dims))[all_dims].sum()
+        return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum()
 
 def set_dist(dist_name):
     def inner(*args, **kwargs):
