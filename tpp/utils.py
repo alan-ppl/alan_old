@@ -54,12 +54,13 @@ def partition_tensors(lps, dim):
 
 def max_dims(x, dims):
     #Ignore dims that aren't in the tensors
-    dims = list(set(generic_dims(tensor)).union(dims))
+    set_xdims = set(generic_dims(x))
+    dims = [dim for dim in dims if dim in set_xdims] #list(set(generic_dims(tensor)).union(dims))
 
     if 0 == len(dims):
         return x
     else:
-        return x.order(dims).flatten(0, len(dims)).max(0).values
+        return x.order(dims).flatten(0, len(dims)-1).max(0).values
 
 def torchdim_einsum(tensors, sum_dims):
     #There shouldn't be any non-torchdim dimensions.
@@ -77,7 +78,7 @@ def torchdim_einsum(tensors, sum_dims):
     for tensor in tensors:
         dims = tensor.dims
         arg_idxs.append([dim_to_idx[dim] for dim in dims])
-        undim_tensors.append(generic_order(tensor))
+        undim_tensors.append(generic_order(tensor, dims))
 
     einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
     return t.einsum(*einsum_args)[out_dims]

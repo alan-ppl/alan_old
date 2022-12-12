@@ -1,4 +1,4 @@
-from collections import namedtuple
+from .tensor_product import TensorProduct
 
 import torch as t
 import torch.nn as nn
@@ -116,7 +116,7 @@ class Model(nn.Module):
             data = {}
         self.data, self.plates = named2dim_data(data, Q._plates)
 
-    def traces(self, K, reparam, data):
+    def tensor_product(self, K, reparam, data):
         data, plates = named2dim_data(data, self.plates)
         all_data = {**self.data, **data}
         assert len(all_data) == len(self.data) + len(data)
@@ -128,10 +128,11 @@ class Model(nn.Module):
         trp = TraceP(trq)
         self.P(trp)
 
-        return trp
+        return TensorProduct(trp)
 
     def elbo(self, K, data=None):
-        trp = self.traces(K, True, data)
+        tp = self.tensor_product(K, True, data)
+        error()
         return logPtmc(trp.logp, trq.logp)
 
     def rws(self, K, data=None):
@@ -289,5 +290,3 @@ class TraceP(AbstractTrace):
             self.logq[key] = self.trq.logq[key].order(self.trq.Kdim)[Kdim]
 
         self.logp[key] = dist.log_prob(sample)
-
-    
