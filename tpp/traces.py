@@ -7,6 +7,8 @@ from functorch.dim import dims, Dim
 from .utils import *
 
 def insert_size_dict(d, size_dict):
+    if size_dict is None:
+        size_dict = {}
     new_dict = {}
     for (name, size) in size_dict.items():
         if (name not in d):
@@ -114,7 +116,7 @@ class Model(nn.Module):
         self.data, self.plates = named2dim_data(data, Q._plates)
 
     def traces(self, K, reparam, data):
-        data, plates = proc_data(data, self.plates)
+        data, plates = named2dim_data(data, self.plates)
         all_data = {**self.data, **data}
         assert len(all_data) == len(self.data) + len(data)
        
@@ -186,7 +188,7 @@ class TraceSample(AbstractTrace):
     def sample(self, varname, dist, multi_samples=True, plate=None):
         assert varname not in self.samples
             
-        sample_dims = [] if plate is None else [self.plates.name2dim[plate]]
+        sample_dims = [] if plate is None else [self.plates[plate]]
         self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
     def trace(self, varnames=None):

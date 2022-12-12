@@ -87,15 +87,13 @@ class TorchDimDist():
             assert not is_dimtensor(arg)
             self.all_args[argname] = arg
 
-
-
     def sample(self, reparam, sample_dims):
         torch_dist = self.dist(**self.all_args)
         sample_method = getattr(torch_dist, "rsample" if reparam else "sample")
         sample_dims = set(sample_dims).difference(self.dims)
         sample_shape = [dim.size for dim in sample_dims]
         sample = sample_method(sample_shape=sample_shape)
-        dims = [*sample_dims, *self.dims]
+        dims = [*sample_dims, *self.dims, Ellipsis]
         return sample[dims]
 
     def log_prob(self, x):
@@ -103,7 +101,7 @@ class TorchDimDist():
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         x_dims = generic_dims(x)
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
-        all_dims = [*new_dims, *self.dims]
+        all_dims = [*new_dims, *self.dims, Ellipsis]
         return self.dist(**self.all_args).log_prob(dim_align_to(x, all_dims))[all_dims].sum()
 
 def set_dist(dist_name):

@@ -37,7 +37,7 @@ class TestTorchdimDist(unittest.TestCase):
                 assert_sample = get_sample_asserter(target_shape, target_names)
                 assert_log_prob = get_log_prob_asserter(log_prob_shape, log_prob_names)
                 for i in range(3):
-                    sample = dist(loc, scale).rsample(sample_dims=sample_dim)
+                    sample = dist(loc, scale).sample(False, sample_dims=sample_dim)
                     lp = dist(loc, scale).log_prob(sample)
                     assert_sample(sample)
                     assert_log_prob(lp)

@@ -90,5 +90,6 @@ def dim_align_to(x, dims):
     """
     x_dims = set(generic_dims(x))
     dims_present = [dim for dim in dims if dim in x_dims]
-    idxs = [slice(None) if (dim in x_dims) else None for dim in dims]
+    idxs = [(slice(None) if (dim in x_dims) else None) for dim in dims]
+    idxs.append(Ellipsis)
     return generic_order(x, dims_present)[idxs]
