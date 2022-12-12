@@ -6,24 +6,25 @@ import tpp
 import unittest
 
 from tpp.dist import *
-from tpp.tensor_utils import get_dims, has_dim
 from functorch.dim import dims
 from torch.nn.functional import softmax
 import random
+
+
 def get_sample_asserter(target_shape, target_names):
     def inner(sample):
-        assert tpp.dename(sample).shape == target_shape
-
+        dims = generic_dims(sample)
+        assert  generic_order(sample, dims).shape == target_shape
         for i in range(len(target_names)):
-            assert tpp.tensor_utils.get_dims(sample)[i] is target_names[i]
+            assert dims[i] is target_names[i]
     return inner
 
 def get_log_prob_asserter(log_prob_shape, log_prob_names):
     def inner(lp):
-        assert tpp.dename(lp).shape == log_prob_shape
-
+        dims = generic_dims(lp)
+        assert generic_order(lp, dims).shape == log_prob_shape
         for i in range(len(log_prob_names)):
-            assert tpp.tensor_utils.get_dims(lp)[i] is log_prob_names[i]
+            assert dims[i] is log_prob_names[i]
     return inner
 
 class TestTorchdimDist(unittest.TestCase):
@@ -37,7 +38,7 @@ class TestTorchdimDist(unittest.TestCase):
                 assert_sample = get_sample_asserter(target_shape, target_names)
                 assert_log_prob = get_log_prob_asserter(log_prob_shape, log_prob_names)
                 for i in range(3):
-                    sample = dist(loc, scale).sample(False, sample_dims=sample_dim)
+                    sample = dist(loc, scale).sample(reparam=True, sample_dims=sample_dim)
                     lp = dist(loc, scale).log_prob(sample)
                     assert_sample(sample)
                     assert_log_prob(lp)
@@ -53,7 +54,7 @@ class TestTorchdimDist(unittest.TestCase):
                 assert_log_prob = get_log_prob_asserter(log_prob_shape, log_prob_names)
 
                 for i in range(3):
-                    sample = dist(probs).sample(sample_dims=sample_dim)
+                    sample = dist(probs).sample(reparam=False, sample_dims=sample_dim)
                     lp = dist(probs).log_prob(sample)
                     assert_sample(sample)
                     assert_log_prob(lp)
@@ -67,9 +68,8 @@ class TestTorchdimDist(unittest.TestCase):
             for dist in [Categorical]:
                 assert_sample = get_sample_asserter(target_shape, target_names)
                 assert_log_prob = get_log_prob_asserter(log_prob_shape, log_prob_names)
-
                 for i in range(3):
-                    sample = dist(probs).sample(sample_dims=sample_dim)
+                    sample = dist(probs).sample(reparam=False, sample_dims=sample_dim)
                     lp = dist(probs).log_prob(sample)
                     assert_sample(sample)
                     assert_log_prob(lp)
@@ -83,9 +83,8 @@ class TestTorchdimDist(unittest.TestCase):
             for dist in [Binomial, NegativeBinomial, Multinomial]:
                 assert_sample = get_sample_asserter(target_shape, target_names)
                 assert_log_prob = get_log_prob_asserter(log_prob_shape, log_prob_names)
-
                 for i in range(3):
-                    sample = dist(total_count,probs).sample(sample_dims=sample_dim)
+                    sample = dist(total_count,probs).sample(reparam=False, sample_dims=sample_dim)
                     lp = dist(total_count,probs).log_prob(sample)
                     assert_sample(sample)
                     assert_log_prob(lp)
@@ -99,9 +98,8 @@ class TestTorchdimDist(unittest.TestCase):
             for dist in [Beta, Kumaraswamy]:
                 assert_sample = get_sample_asserter(target_shape, target_names)
                 assert_log_prob = get_log_prob_asserter(log_prob_shape, log_prob_names)
-
                 for i in range(3):
-                    sample = dist(concentration0, concentration1).sample(sample_dims=sample_dim)
+                    sample = dist(concentration0, concentration1).sample(reparam=True, sample_dims=sample_dim)
                     lp = dist(concentration0, concentration1).log_prob(sample)
                     assert_sample(sample)
                     assert_log_prob(lp)
@@ -117,7 +115,7 @@ class TestTorchdimDist(unittest.TestCase):
                 assert_log_prob = get_log_prob_asserter(log_prob_shape, log_prob_names)
 
                 for i in range(3):
-                    sample = dist(rate).sample(sample_dims=sample_dim)
+                    sample = dist(rate).sample(reparam=False, sample_dims=sample_dim)
                     lp = dist(rate).log_prob(sample)
                     assert_sample(sample)
                     assert_log_prob(lp)
