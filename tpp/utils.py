@@ -1,6 +1,9 @@
 import torch as t
 from functorch.dim import Tensor
 
+def is_dimtensor(tensor):
+    return isinstance(tensor, Tensor)
+
 def unify_dims(tensors):
     """
     Returns unique ordered list of dims for tensors in args
@@ -85,8 +88,7 @@ def dim_align_to(x, dims):
     x[dims] fails if any dims aren't present in x.
     This has the named tensor align_to behaviour, but works with dims.
     """
-    x_dims = generic_dims(x)
+    x_dims = set(generic_dims(x))
     dims_present = [dim for dim in dims if dim in x_dims]
-    unaligned_tensor_x = x[dims_present]
     idxs = [slice(None) if (dim in x_dims) else None for dim in dims]
-    return x[idxs]
+    return generic_order(x, dims_present)[idxs]

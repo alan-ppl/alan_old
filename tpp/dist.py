@@ -69,36 +69,43 @@ class TorchDimDist():
         #Check for any positional arguments that are also given as a named argument.
         assert len(self.all_args) == len(kwargs) + len(arg_dict)
 
-        self.dims  = unify_dims(all_args.values())
+        self.dims  = unify_dims(self.all_args.values())
 
         #Find out the number of unnamed dims over which we batch.
-        unnamed_batch_dim_list = [generic_ndim(arg) - param_ndim[argname] for (argname, arg) in all_args.items()]
-        assert all(0<=x for x in unnamed_batch_dim_list)
-        self.unnamed_batch_dims = max(unnamed_batch_dim_list)
+        unnamed_batch_dims = [] 
+        for (argname, arg) in self.all_args.items():
+            unnamed_batch_dims.append(generic_ndim(arg) - param_ndim[argname]) 
+        assert all(0<=x for x in unnamed_batch_dims)
+        self.unnamed_batch_dims = max(unnamed_batch_dims)
 
 
-        for (argname, arg) in all_args.items():
+        for (argname, arg) in self.all_args.items():
             #Pad all args up to the right lengths, so that unnamed batching works.
             arg = pad_nones(arg, self.unnamed_batch_dims+param_ndim[argname])
             #Convert torchdim arguments into aligned tensor arguments.
             arg = dim_align_to(arg, self.dims)
+            assert not is_dimtensor(arg)
             self.all_args[argname] = arg
 
 
+
     def sample(self, reparam, sample_dims):
-        torch_dist = self.dist(**self.args)
+        torch_dist = self.dist(**self.all_args)
         sample_method = getattr(torch_dist, "rsample" if reparam else "sample")
         sample_dims = set(sample_dims).difference(self.dims)
         sample_shape = [dim.size for dim in sample_dims]
         sample = sample_method(sample_shape=sample_shape)
-        dims = [*sample_dims, *self.aligned_dims]
+        dims = [*sample_dims, *self.dims]
         return sample[dims]
 
     def log_prob(self, x):
+        #Same number of unnamed batch dims.
+        assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         x_dims = generic_dims(x)
-        new_dims = [dim for dim in x.dims if dim not in self.dims]
+        print((x_dims, self.dims))
+        new_dims = list(set(x_dims).difference(self.dims))#[dim for dim in x_dims if (dim not in self.dims)]
         all_dims = [*new_dims, *self.dims]
-        return self.dist(**self.args).log_prob(dim_align_to(x, all_dims))[all_dims]
+        return self.dist(**self.all_args).log_prob(dim_align_to(x, all_dims))[all_dims].sum()
 
 def set_dist(dist_name):
     def inner(*args, **kwargs):
