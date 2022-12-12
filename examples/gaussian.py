@@ -31,7 +31,7 @@ tp()
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=2
+K=5
 print("K={}".format(K))
 for i in range(15000):
     opt.zero_grad()

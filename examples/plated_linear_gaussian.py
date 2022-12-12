@@ -16,7 +16,7 @@ def P(tr):
     tr['d'] = tpp.Normal(tr['c'], 1, sample_dim=plate_2)
     tr['obs'] = tpp.Normal(tr['d'], 1, sample_dim=plate_3)
 
-class Q(tpp.Q_module):
+class Q(tpp.Q):
     def __init__(self):
         super().__init__()
         self.reg_param("m_a", t.zeros(()))

@@ -131,9 +131,7 @@ class Model(nn.Module):
         return TensorProduct(trp)
 
     def elbo(self, K, data=None):
-        tp = self.tensor_product(K, True, data)
-        error()
-        return logPtmc(trp.logp, trq.logp)
+        return self.tensor_product(K, True, data)()
 
     def rws(self, K, data=None):
         trp, trq = self.traces(K, reparam, data)

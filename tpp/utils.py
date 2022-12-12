@@ -80,8 +80,14 @@ def torchdim_einsum(tensors, sum_dims):
         arg_idxs.append([dim_to_idx[dim] for dim in dims])
         undim_tensors.append(generic_order(tensor, dims))
 
+    assert all(not is_dimtensor(tensor) for tensor in undim_tensors)
+
     einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
-    return t.einsum(*einsum_args)[out_dims]
+    result = t.einsum(*einsum_args)
+    if 0 < len(out_dims):
+        result = result[dims]
+    return result
+        
 
 def singleton_order(x, dims):
     """
@@ -90,11 +96,17 @@ def singleton_order(x, dims):
     x[dims] fails if any dims aren't present in x.
     This makes a new singleton dimension.
     """
+
     #Ignore final Ellipsis
     if (len(dims) > 0) and (dims[-1] is Ellipsis):
         dims = dims[:-1]
     #No Ellipsis anywhere else
     assert Ellipsis not in dims
+
+    #Return immediately if not a dim tensor
+    if not is_dimtensor(x):
+        assert 0==len(dims)
+        return x
 
     x_dims = set(generic_dims(x))
     dims_present = [dim for dim in dims if dim in x_dims]
