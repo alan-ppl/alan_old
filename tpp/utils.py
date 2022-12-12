@@ -47,20 +47,21 @@ def partition_tensors(lps, dim):
     or only has interactions with tensors that have that dim name,
     one that doesn't
     """
-    has_dim = [lp for lp in lps if dim     in generic_dims(lp)]
-    no_dim  = [lp for lp in lps if dim not in generic_dims(lp)]
+
+    has_dim = [lp for lp in lps if dim     in set(generic_dims(lp))]
+    no_dim  = [lp for lp in lps if dim not in set(generic_dims(lp))]
 
     return has_dim, no_dim
 
 def max_dims(x, dims):
     #Ignore dims that aren't in the tensors
     set_xdims = set(generic_dims(x))
-    dims = [dim for dim in dims if dim in set_xdims] #list(set(generic_dims(tensor)).union(dims))
+    dims = [dim for dim in dims if dim in set_xdims]
 
-    if 0 == len(dims):
+    if 0==len(dims):
         return x
     else:
-        return x.order(dims).flatten(0, len(dims)-1).max(0).values
+        return generic_order(x, dims).flatten(0, len(dims)-1).max(0).values
 
 def torchdim_einsum(tensors, sum_dims):
     #There shouldn't be any non-torchdim dimensions.
@@ -68,9 +69,11 @@ def torchdim_einsum(tensors, sum_dims):
     for tensor in tensors:
         assert tensor.shape == ()
 
+    set_sum_dims = set(sum_dims)
+
     all_dims = unify_dims(tensors)
     dim_to_idx = {dim: i for (i, dim) in enumerate(all_dims)}
-    out_dims = [dim for dim in all_dims if dim not in sum_dims]
+    out_dims = [dim for dim in all_dims if dim not in set_sum_dims]
     out_idxs = [dim_to_idx[dim] for dim in out_dims]
 
     undim_tensors = []
@@ -85,7 +88,7 @@ def torchdim_einsum(tensors, sum_dims):
     einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
     result = t.einsum(*einsum_args)
     if 0 < len(out_dims):
-        result = result[dims]
+        result = result[out_dims]
     return result
         
 
@@ -96,17 +99,15 @@ def singleton_order(x, dims):
     x[dims] fails if any dims aren't present in x.
     This makes a new singleton dimension.
     """
+    #Return immediately if not a dim tensor, as it broadcasts over everything
+    if not is_dimtensor(x):
+        return x
 
     #Ignore final Ellipsis
     if (len(dims) > 0) and (dims[-1] is Ellipsis):
         dims = dims[:-1]
     #No Ellipsis anywhere else
     assert Ellipsis not in dims
-
-    #Return immediately if not a dim tensor
-    if not is_dimtensor(x):
-        assert 0==len(dims)
-        return x
 
     x_dims = set(generic_dims(x))
     dims_present = [dim for dim in dims if dim in x_dims]
@@ -116,3 +117,13 @@ def singleton_order(x, dims):
     result = generic_order(x, dims_present)[idxs]
     assert not is_dimtensor(result)
     return result
+
+
+def dim2named_tensor(x):
+    """
+    Doesn't need side information.
+    Will fail if duplicated dim names passed in
+    """
+    dims = generic_dims(x)
+    names = [repr(dim) for dim in dims]
+    return generic_order(x, dims).rename(*names, ...)

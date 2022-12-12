@@ -7,13 +7,10 @@ from functorch.dim import dims, Dim
 from .utils import *
 
 def insert_size_dict(d, size_dict):
-    if size_dict is None:
-        size_dict = {}
     new_dict = {}
     for (name, size) in size_dict.items():
         if (name not in d):
-            dim = Dim(name, size)
-            new_dict[name] = dim
+            new_dict[name] = Dim(name, size)
         else:
             assert size == d[name].size
     return {**d, **new_dict}
@@ -36,17 +33,11 @@ def named2dim_tensor(d, x):
     """
     Operates on dict mapping string (platename) to Dim (platedim)
     """
-    torchdims = [slice(None) if (name is None) else d[name] for name in x.names]
-    return x.rename(None)[torchdims]
+    if 0==x.ndim:
+        return x
 
-def dim2named_tensor(x):
-    """
-    Doesn't need side information.
-    Will fail if duplicated dim names passed in
-    """
-    dims = generic_dims(x)
-    names = [repr(dim) for dim in dims]
-    return x[dims].rename(*names, ...)
+    torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
+    return x.rename(None)[torchdims]
 
 def named2dim_data(named_data, plates):
     """
@@ -80,18 +71,37 @@ class Q(nn.Module):
     def __init__(self):
         super().__init__()
         self._plates = {}
-        self.params = nn.ParameterList()
+        self._params = nn.ParameterDict()
+        self._dims = {}
 
     def reg_param(self, name, tensor, dims=None):
         """
         Tensor could be named, or we could provide a dims (iterable of strings) argument.
         """
+        #Save unnamed parameter
+        self._params[name] = nn.Parameter(tensor.rename(None))
+
+        #Put everything into names, and generate names for each dim.
         if dims is not None:
             assert tensor.names == tensor.ndim*(None,)
             tensor = tensor.rename(*dims, *((tensor.ndim - len(dims))*[None]))
         self._plates = insert_named_tensor(self._plates, tensor)
-        self.params.append(nn.Parameter(tensor.rename(None)))
-        setattr(self, name, _plates.named2dim_tensor(_plates, tensor))
+
+        tensor_dims = []
+        for dimname in tensor.names:
+            if dimname is None:
+                tensor_dims.append(slice(None))
+            else:
+                tensor_dims.append(self._plates[dimname])
+        if 0==tensor.ndim:
+            tensor_dims.append(Ellipsis)
+        self._dims[name] = tensor_dims
+
+    def __getattr__(self, name):
+        if name == "_params":
+            return self.__dict__["_modules"]["_params"]
+        else:
+            return self._params[name][self._dims[name]]
 
 class Q_(Q):
     def __init__(self):
@@ -191,20 +201,16 @@ class TraceSample(AbstractTrace):
         sample_dims = [] if plate is None else [self.plates[plate]]
         self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
-    def trace(self, varnames=None):
-        """
-        Returns samples as a named dict
-        """
-        if varnames is None:
-            varnames = self.samples.keys()
-        return {varname: dim2named_tensor(self.samples[varname]) for varname in varnames}
-
 def sample(P, sizes=None, varnames=None):
     if sizes is None:
         sizes = {}
     tr = TraceSample(sizes)
     P(tr)
-    return tr.trace(varnames)
+
+    if varnames is None:
+        varnames = tr.samples.keys()
+
+    return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
 
 class TraceQ(AbstractTrace):
