@@ -167,12 +167,27 @@ class Model(nn.Module):
             ws[i] = ws[i].rename(*Js[i].names)
         return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
 
-
-    def weights(self, K, N=None):
-        if N is None:
-            trp, trq = self.traces(K, reparam=False)
-            return self.weights_inner(trp, trq)
-        #else: run multiple iterations. 
+#    def weights_inner(self, trp, trq):
+#        """
+#        Produces normalized weights for each latent variable.
+#        """
+#        var_names = list(trp.sample.keys())
+#        samples = [nameify(trp.sample[var_name])[0] for var_name in var_names]
+#        Js = [t.zeros_like(trq.logp[var_name], requires_grad=True) for var_name in var_names]
+#
+#        result = logPtmc(trp.logp, trq.logp, Js)
+#
+#        ws = list(t.autograd.grad(result, Js))
+#        #ws from autograd are unnamed, so here we put the names back.
+#        for i in range(len(ws)):
+#            ws[i] = ws[i].rename(*Js[i].names)
+#        return {var_name: (sample, w.align_as(sample)) for (var_name, sample, w) in zip(var_names, samples, ws)}
+#
+#    def weights(self, K, N=None):
+#        if N is None:
+#            trp, trq = self.traces(K, reparam=False)
+#            return self.weights_inner(trp, trq)
+#        #else: run multiple iterations. 
 
 class AbstractTrace():
     def __getitem__(self, key):
