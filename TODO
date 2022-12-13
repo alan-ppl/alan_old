@@ -1,9 +1,13 @@
-Implement torchdim tensor_product backend: 
-  could give considerable simplification in future
-Simplify dists by implmenting x.order(dims) which allows dims which aren't in x (probably by going through named tensors).
+Warning that everything's going to break if you use multisample=False.
 
-Don't expose K-dimensions to user (just "K") for marginal weights or posterior samples.
-That makes mapping back to user-space much easier (as we just need to map plates + Ts, but not Ks).
+Postprocessing: K's
+
+Sampling from the conditional prior
+  Gibbs sampling
+  test moments
+  test log-likelihood
+
+Timeseries
 
 
 Traces:
@@ -12,15 +16,6 @@ Traces:
     timeseries name -> Kprev
     timeseries name -> T
     timeseries name -> Tm1
-    K name          -> K dim
     plate name      ->        train plate dim
     plate name      -> test + train plate dim
   Easy to switch between torchdims and named if we have these kinds of mapping. 
-
-
-
-Use log-determinant trick to extract conditionals.
-Gibbs sampling.
-Options for time-series:
-  Only sample the final state.
-  Sample all states.

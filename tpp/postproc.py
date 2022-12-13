@@ -2,12 +2,11 @@
 A bunch of functions to do useful things with dicts of samples and weights.
 """
 import torch as t
-from .backend import is_K
 
 def Kname(x):
-    Ks = tuple(K for K in x.names if is_K(K))
-    assert 1==len(Ks)
-    return Ks[0]
+    #Ks = tuple(K for K in x.names if is_K(K))
+    #assert 1==len(Ks)
+    return 'K'
 
 def map_or_apply(f):
     def inner(arg0, arg1=None):

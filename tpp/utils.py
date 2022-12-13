@@ -1,5 +1,5 @@
 import torch as t
-from functorch.dim import Tensor
+from functorch.dim import Tensor, Dim
 
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
@@ -128,3 +128,63 @@ def dim2named_tensor(x, dims=None):
         dims = generic_dims(x)
     names = [repr(dim) for dim in dims]
     return generic_order(x, dims).rename(*names, ...)
+
+def named2dim_tensor(d, x):
+    """
+    Operates on dict mapping string (platename) to Dim (platedim)
+    """
+    if 0==x.ndim:
+        return x
+
+    torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
+    return x.rename(None)[torchdims]
+
+def insert_size_dict(d, size_dict):
+    """
+    Operates on dict mapping string (platename) to Dim (platedim)
+    """
+    new_dict = {}
+    for (name, size) in size_dict.items():
+        if (name not in d):
+            new_dict[name] = Dim(name, size)
+        else:
+            assert size == d[name].size
+    return {**d, **new_dict}
+
+def insert_named_tensor(d, tensor):
+    """
+    Operates on dict mapping string (platename) to Dim (platedim)
+    """
+    return insert_size_dict(d, {name: tensor.size(name) for name in tensor.names if name is not None})
+
+def insert_named_tensors(d, tensors):
+    """
+    Operates on dict mapping string (platename) to Dim (platedim)
+    """
+    for tensor in tensors:
+        d = insert_named_tensor(d, tensor)
+    return d
+
+def named2dim_data(named_data, plates):
+    """
+    Converts data named tensors to torchdim tensors, and records any plates
+    Arguments:
+      named_data: dict mapping varname to named tensor data
+      plates: dict mapping platename to plate dim
+    Returns:
+      dim_data: dict mapping varname to torchdim tensor data
+      plates: dict mapping platename to plate dim
+    """
+    #Data often defaults to None.
+    if named_data is None:
+        named_data = {}
+    if plates is None:
+        plates = {}
+
+    #Insert any dims in data tensors into plates
+    plates = insert_named_tensors(plates, named_data.values())
+
+    #Convert data named tensors to torchdim tensors
+    dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in named_data.items()}
+    return dim_data, plates
+

@@ -1,148 +1,7 @@
-from .tensor_product import Sample
-
 import torch as t
-import torch.nn as nn
 from functorch.dim import dims, Dim
 
 from .utils import *
-
-def insert_size_dict(d, size_dict):
-    new_dict = {}
-    for (name, size) in size_dict.items():
-        if (name not in d):
-            new_dict[name] = Dim(name, size)
-        else:
-            assert size == d[name].size
-    return {**d, **new_dict}
-
-def insert_named_tensor(d, tensor):
-    """
-    Operates on dict mapping string (platename) to Dim (platedim)
-    """
-    return insert_size_dict(d, {name: tensor.size(name) for name in tensor.names if name is not None})
-
-def insert_named_tensors(d, tensors):
-    """
-    Operates on dict mapping string (platename) to Dim (platedim)
-    """
-    for tensor in tensors:
-        d = insert_named_tensor(d, tensor)
-    return d
-
-def named2dim_tensor(d, x):
-    """
-    Operates on dict mapping string (platename) to Dim (platedim)
-    """
-    if 0==x.ndim:
-        return x
-
-    torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
-    return x.rename(None)[torchdims]
-
-def named2dim_data(named_data, plates):
-    """
-    Converts data named tensors to torchdim tensors, and records any plates
-    Arguments:
-      named_data: dict mapping varname to named tensor data
-      plates: dict mapping platename to plate dim
-    Returns:
-      dim_data: dict mapping varname to torchdim tensor data
-      plates: dict mapping platename to plate dim
-    """
-    #Data often defaults to None.
-    if named_data is None:
-        named_data = {}
-    if plates is None:
-        plates = {}
-
-    #Insert any dims in data tensors into plates
-    plates = insert_named_tensors(plates, named_data.values())
-
-    #Convert data named tensors to torchdim tensors
-    dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in named_data.items()}
-    return dim_data, plates
-
-class Q(nn.Module):
-    """
-    Key problem: parameters in Q must have torchdim plates.
-    Solve this problem by making a new method to register parameters, "reg_param", which takes 
-    a named tensor, and builds up a mapping from names to torchdims.
-    """
-    def __init__(self):
-        super().__init__()
-        self._plates = {}
-        self._params = nn.ParameterDict()
-        self._dims = {}
-
-    def reg_param(self, name, tensor, dims=None):
-        """
-        Tensor could be named, or we could provide a dims (iterable of strings) argument.
-        """
-        #Save unnamed parameter
-        self._params[name] = nn.Parameter(tensor.rename(None))
-
-        #Put everything into names, and generate names for each dim.
-        if dims is not None:
-            assert tensor.names == tensor.ndim*(None,)
-            tensor = tensor.rename(*dims, *((tensor.ndim - len(dims))*[None]))
-        self._plates = insert_named_tensor(self._plates, tensor)
-
-        tensor_dims = []
-        for dimname in tensor.names:
-            if dimname is None:
-                tensor_dims.append(slice(None))
-            else:
-                tensor_dims.append(self._plates[dimname])
-        if 0==tensor.ndim:
-            tensor_dims.append(Ellipsis)
-        self._dims[name] = tensor_dims
-
-    def __getattr__(self, name):
-        if name == "_params":
-            return self.__dict__["_modules"]["_params"]
-        else:
-            return self._params[name][self._dims[name]]
-
-class Model(nn.Module):
-    """
-    Plate dimensions come from data.
-    Model(P, Q, data) is for non-minibatched data. 
-    elbo(K=10, data) is for minibatched data. 
-
-    data is stored as torchdim
-    """
-    def __init__(self, P, Q, data=None):
-        super().__init__()
-        self.P = P
-        self.Q = Q
-
-        
-        if data is None:
-            data = {}
-        self.data, self.plates = named2dim_data(data, Q._plates)
-
-    def sample(self, K, reparam, data):
-        data, plates = named2dim_data(data, self.plates)
-        all_data = {**self.data, **data}
-        assert len(all_data) == len(self.data) + len(data)
-       
-        #sample from approximate posterior
-        trq = TraceQ(K, all_data, plates, reparam)
-        self.Q(trq)
-        #compute logP
-        trp = TraceP(trq)
-        self.P(trp)
-
-        return Sample(trp)
-
-    def elbo(self, K, data=None):
-        return self.sample(K, True, data).elbo()
-
-    def rws(self, K, data=None):
-        return self.sample(K, False, data).rws()
-
-    def weights(self, K, data=None):
-        return self.sample(K, False, data).weights()
 
 class AbstractTrace():
     def __getitem__(self, key):
@@ -207,7 +66,7 @@ class TraceQ(AbstractTrace):
             
         sample_dims = []
         if plate is not None:
-            sample_dims.append(self.plates.name2dim[plate])
+            sample_dims.append(self.plates[plate])
         if multi_samples:
             sample_dims.append(self.Kdim)
 
