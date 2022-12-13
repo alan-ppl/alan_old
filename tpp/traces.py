@@ -149,9 +149,10 @@ class TracePred(AbstractTrace):
         self.data_train = data_train
         self.plates_train = plates_train
 
-        assert (all_data is None) or (sizes is None)
-        self.plates_all = insert_size_dict({}, sizes)
-        self.plates_all = insert_named_tensors(self.plates, data_all.values())
+        assert (data_all is None) or (sizes_all is None)
+        if sizes_all is not None:
+            self.plates_all = insert_size_dict({}, sizes_all)
+        self.plates_all = insert_named_tensors(self.plates_all, data_all.values())
         self.data_all   = self.named2dim_tensordict(data_all)
 
         self.samples_all  = {}
