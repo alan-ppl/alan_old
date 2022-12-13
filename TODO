@@ -3,7 +3,7 @@ Warning that everything's going to break if you use multisample=False.
 Postprocessing: K's
 
 Sampling from the conditional prior
-  Gibbs sampling
+  sampling from the conditional prior with more plates
   test moments
   test log-likelihood
 

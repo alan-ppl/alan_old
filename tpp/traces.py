@@ -52,8 +52,12 @@ class TraceQ(AbstractTrace):
     def __init__(self, K, data, plates, reparam):
         super().__init__()
         self.Kdim = Dim("K", K)
-        self.data = data
-        self.plates = plates
+
+        #Converts data to torchdim tensors, and adds plate dims to plates
+        self.data, self.plates = named2dim_data(data, plates)
+
+        #self.data = data
+        #self.plates = plates
         self.reparam = reparam
 
         self.samples = {}
@@ -123,3 +127,73 @@ class TraceP(AbstractTrace):
             self.logq[key] = self.trq.logq[key].order(self.trq.Kdim)[Kdim]
 
         self.logp[key] = dist.log_prob(sample)
+
+class TracePred(AbstractTrace):
+    """
+    Draws samples from P conditioned on samples from ...  
+    Usually just used to sample fake data from the model.
+
+    post_rvs is posterior samples of all latents + training data.
+
+    We can choose to provide data or sizes.
+      If we provide data, then we compute test_ll
+      If we provide sizes, then we compute predictive samples
+
+    
+    """
+    def __init__(self, N, samples_train, data_train, plates_train, data_all=None, sizes_all=None):
+        super().__init__()
+        self.N = N
+
+        self.samples_train = samples_train
+        self.data_train = data_train
+        self.plates_train = plates_train
+
+        assert (all_data is None) or (sizes is None)
+        self.plates_all = insert_size_dict({}, sizes)
+        self.plates_all = insert_named_tensors(self.plates, data_all.values())
+        self.data_all   = self.named2dim_tensordict(data_all)
+
+        self.samples_all  = {}
+        self.ll_all       = {}
+        self.ll_train     = {}
+
+        self.reparam      = False
+
+    def sample(self, varname, dist, multi_samples=True, plate=None):
+        assert varname not in self.samples_all
+        assert varname not in ll_all
+        assert varname not in ll_train
+
+        if varname in self.data_all:
+            sample_all = self.data_all[varname]
+        else:
+            sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        sample_train = self.samples_train[varname]
+
+        #Get a unified list of dimension names.
+        dims_all   = set(sample_all.dims)
+        dims_train = set(sample_train.dims)
+        dimnames_all   = [name for (name, dim) in self.plates  if dim in dims_all]
+        dimnames_train = [name for (name, dim) in train_plates if dim in dims_train]
+        assert set(dimnames_all) == set(dimnames_train)
+        dimnames = dimnames_all
+
+        #Corresponding list of dims for all and train.
+        dims_all   = [self.plates[dimname] for dimname in dimnames]
+        dims_train = [self.plates[dimname] for dimname in dimnames]
+        #Indices
+        idxs = [slice(0, l) for l in sample_train.shape[:len(dimnames)]]
+
+        #Strip torchdim.
+        sample_all   = generic_order(sample_all,   dims_all)
+        sample_train = generic_order(sample_train, dims_train)
+        #Actually do the replacement in-place
+        sample_all[idxs] = sample_train
+
+        if varname in self.data_all:
+            ll_all                 = dist.log_prob(sample_all)
+            self.ll_all[varname]   = ll_all
+            self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
+        else:
+            self.samples_all[varname] = sample_all

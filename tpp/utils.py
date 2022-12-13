@@ -139,6 +139,19 @@ def named2dim_tensor(d, x):
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
     return x.rename(None)[torchdims]
 
+def named2dim_tensordict(d, tensordict):
+    """
+    Converts data named tensors to torchdim tensors, and records any plates
+    Arguments:
+      named_data: dict mapping varname to named tensor data
+      plates: dict mapping platename to plate dim
+    Returns:
+      dim_data: dict mapping varname to torchdim tensor data
+      plates: dict mapping platename to plate dim
+    """
+    return {k: named2dim_tensor(d, tensor) for (k, tensor) in named_data.items()}
+
+
 def insert_size_dict(d, size_dict):
     """
     Operates on dict mapping string (platename) to Dim (platedim)
@@ -164,6 +177,8 @@ def insert_named_tensors(d, tensors):
     for tensor in tensors:
         d = insert_named_tensor(d, tensor)
     return d
+
+
 
 def named2dim_data(named_data, plates):
     """
