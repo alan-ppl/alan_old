@@ -55,7 +55,7 @@ def pad_nones(arg, ndim):
     else:
         return arg
 
-    
+
 
 class TorchDimDist():
     def __init__(self, dist_name, *args, **kwargs):
@@ -72,9 +72,9 @@ class TorchDimDist():
         self.dims  = unify_dims(self.all_args.values())
 
         #Find out the number of unnamed dims over which we batch.
-        unnamed_batch_dims = [] 
+        unnamed_batch_dims = []
         for (argname, arg) in self.all_args.items():
-            unnamed_batch_dims.append(generic_ndim(arg) - param_ndim[argname]) 
+            unnamed_batch_dims.append(generic_ndim(arg) - param_ndim[argname])
         assert all(0<=x for x in unnamed_batch_dims)
         self.unnamed_batch_dims = max(unnamed_batch_dims)
 
@@ -102,7 +102,12 @@ class TorchDimDist():
         x_dims = generic_dims(x)
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims, Ellipsis]
-        return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum()
+
+
+        if len(all_dims) > 1:
+            return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum().order(*all_dims[:-1])[all_dims[:-1]]
+        else:
+            return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum()
 
 def set_dist(dist_name):
     def inner(*args, **kwargs):
