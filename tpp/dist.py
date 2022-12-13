@@ -102,12 +102,10 @@ class TorchDimDist():
         x_dims = generic_dims(x)
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims, Ellipsis]
-
-
-        if len(all_dims) > 1:
-            return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum().order(*all_dims[:-1])[all_dims[:-1]]
-        else:
-            return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum()
+        return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum()
+        #if len(all_dims) > 1:
+        #    return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum().order(*all_dims[:-1])[all_dims[:-1]]
+        #else:
 
 def set_dist(dist_name):
     def inner(*args, **kwargs):

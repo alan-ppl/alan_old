@@ -150,10 +150,15 @@ class TracePred(AbstractTrace):
         self.plates_train = plates_train
 
         assert (data_all is None) or (sizes_all is None)
-        if sizes_all is not None:
-            self.plates_all = insert_size_dict({}, sizes_all)
+        if sizes_all is None:
+            sizes_all = {}
+        if data_all  is None:
+            data_all  = {}
+
+        self.plates_all = {}
+        self.plates_all = insert_size_dict({}, sizes_all)
         self.plates_all = insert_named_tensors(self.plates_all, data_all.values())
-        self.data_all   = self.named2dim_tensordict(data_all)
+        self.data_all   = named2dim_tensordict(self.plates_all, data_all)
 
         self.samples_all  = {}
         self.ll_all       = {}
@@ -161,10 +166,22 @@ class TracePred(AbstractTrace):
 
         self.reparam      = False
 
+    def __getitem__(self, key):
+        in_data   = key in self.data_all
+        in_sample = key in self.samples_all
+        assert in_data or in_sample
+        assert not (in_data and in_sample)
+        return self.samples_all[key] if in_sample else self.data_all[key]
+
     def sample(self, varname, dist, multi_samples=True, plate=None):
         assert varname not in self.samples_all
-        assert varname not in ll_all
-        assert varname not in ll_train
+        assert varname not in self.ll_all
+        assert varname not in self.ll_train
+
+        
+        sample_dims = [self.N]
+        if plate is not None:
+            sample_dims.append(self.plates_all[plate])
 
         if varname in self.data_all:
             sample_all = self.data_all[varname]
@@ -173,10 +190,10 @@ class TracePred(AbstractTrace):
         sample_train = self.samples_train[varname]
 
         #Get a unified list of dimension names.
-        dims_all   = set(sample_all.dims)
-        dims_train = set(sample_train.dims)
-        dimnames_all   = [name for (name, dim) in self.plates  if dim in dims_all]
-        dimnames_train = [name for (name, dim) in train_plates if dim in dims_train]
+        dims_all   = set(sample_all.dims)   #Includes N!
+        dims_train = set(sample_train.dims) #Includes N!
+        dimnames_all   = [name for (name, dim) in self.plates_all.items()   if dim in dims_all]
+        dimnames_train = [name for (name, dim) in self.plates_train.items() if dim in dims_train]
         assert set(dimnames_all) == set(dimnames_train)
         dimnames = dimnames_all
 
@@ -185,11 +202,13 @@ class TracePred(AbstractTrace):
         dims_train = [self.plates[dimname] for dimname in dimnames]
         #Indices
         idxs = [slice(0, l) for l in sample_train.shape[:len(dimnames)]]
+        idxs.append(Ellipsis)
 
         #Strip torchdim.
         sample_all   = generic_order(sample_all,   dims_all)
         sample_train = generic_order(sample_train, dims_train)
         #Actually do the replacement in-place
+        #breakpoint()
         sample_all[idxs] = sample_train
 
         if varname in self.data_all:
