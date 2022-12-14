@@ -120,7 +120,12 @@ class TestTorchdimDist(unittest.TestCase):
                     assert_sample(sample)
                     assert_log_prob(lp)
 
-        K_a, K_b, K_c, Plate_1 = dims(4 , [4,4,4,3])
+        A_size=4
+        B_size=5
+        C_size=6
+        Plate_1_size = 2
+        Plate_2_size = 3
+        K_a, K_b, K_c, Plate_1, Plate_2 = dims(5 , [A_size,B_size,C_size,Plate_1_size,Plate_2_size])
         # Loc-Scale
         test_loc_scale_dist(
             loc=torch.randn(4, 3), scale=torch.ones(4, 3),
@@ -128,23 +133,30 @@ class TestTorchdimDist(unittest.TestCase):
             log_prob_shape = (), log_prob_names = []
         )
         test_loc_scale_dist(
-            loc=torch.randn(4, 3)[K_a],
-            scale=torch.ones(4, 3)[K_a],
-            target_shape=(4, 3), target_names=[K_a],
-            log_prob_shape = (4,), log_prob_names = [K_a]
+            loc=torch.randn(A_size, 3)[K_a],
+            scale=torch.ones(A_size, 3)[K_a],
+            target_shape=(A_size, 3), target_names=[K_a],
+            log_prob_shape = (A_size,), log_prob_names = [K_a]
         )
         test_loc_scale_dist(
-            loc=torch.randn(4, 3)[K_a],
-            scale=torch.ones(4, 3)[K_b],
-            target_shape=(4, 4, 3), target_names=[K_a, K_b],
-            log_prob_shape = (4,4), log_prob_names = [K_a, K_b]
+            loc=torch.randn(A_size, 3)[K_a],
+            scale=torch.ones(B_size, 3)[K_b],
+            target_shape=(A_size, B_size, 3), target_names=[K_a, K_b],
+            log_prob_shape = (A_size, B_size), log_prob_names = [K_a, K_b]
         )
         test_loc_scale_dist(
-            loc=torch.randn(4, 3)[K_a],
-            scale=torch.ones(4, 3)[K_b],
-            target_shape=(3, 4, 4, 3), target_names=[Plate_1, K_a, K_b],
-            log_prob_shape = (3,4,4), log_prob_names = [Plate_1, K_a, K_b],
+            loc=torch.randn(A_size, 3)[K_a],
+            scale=torch.ones(B_size, 3)[K_b],
+            target_shape=(Plate_1_size, A_size, B_size, 3), target_names=[Plate_1, K_a, K_b],
+            log_prob_shape = (A_size, B_size,Plate_1_size), log_prob_names = [K_a, K_b, Plate_1],
             sample_dim=(Plate_1,)
+        )
+        test_loc_scale_dist(
+            loc=torch.randn(A_size, 3)[K_a],
+            scale=torch.ones(B_size, 3)[K_b],
+            target_shape=(Plate_1_size, Plate_2_size, A_size, B_size, 3), target_names=[Plate_1, Plate_2, K_a, K_b],
+            log_prob_shape = (A_size, B_size,Plate_1_size, Plate_2_size), log_prob_names = [K_a, K_b, Plate_1, Plate_2],
+            sample_dim=(Plate_1,Plate_2)
         )
         ## Probs non-categorical
         test_probs_non_categ_dist(
@@ -153,15 +165,21 @@ class TestTorchdimDist(unittest.TestCase):
             log_prob_shape = (), log_prob_names = []
         )
         test_probs_non_categ_dist(
-            probs=softmax(torch.randn(4, 3), dim=1)[K_a],
-            target_shape=(4, 3), target_names=[K_a],
-            log_prob_shape = (4,), log_prob_names = [K_a]
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(A_size, 3), target_names=[K_a],
+            log_prob_shape = (A_size,), log_prob_names = [K_a]
         )
         test_probs_non_categ_dist(
-            probs=softmax(torch.randn(4, 3), dim=1)[K_a],
-            target_shape=(3, 4, 3), target_names=[Plate_1, K_a],
-            log_prob_shape = (3,4), log_prob_names = [Plate_1, K_a],
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(Plate_1_size, A_size, 3), target_names=[Plate_1, K_a],
+            log_prob_shape = (A_size,Plate_1_size), log_prob_names = [K_a, Plate_1],
             sample_dim=(Plate_1,)
+        )
+        test_probs_non_categ_dist(
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(Plate_1_size, Plate_2_size, A_size, 3), target_names=[Plate_1, Plate_2, K_a],
+            log_prob_shape = (A_size,Plate_1_size, Plate_2_size), log_prob_names = [K_a, Plate_1, Plate_2],
+            sample_dim=(Plate_1,Plate_2)
         )
         ## Probs categorical
         test_probs_categ_dist(
@@ -170,15 +188,21 @@ class TestTorchdimDist(unittest.TestCase):
             log_prob_shape = (), log_prob_names = []
         )
         test_probs_categ_dist(
-            probs=softmax(torch.randn(4, 3), dim=1)[K_a],
-            target_shape=(4,), target_names=[K_a],
-            log_prob_shape = (4,), log_prob_names = [K_a]
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(A_size,), target_names=[K_a],
+            log_prob_shape = (A_size,), log_prob_names = [K_a]
         )
         test_probs_categ_dist(
-            probs=softmax(torch.randn(4, 3), dim=1)[K_a],
-            target_shape=(3, 4), target_names=[Plate_1, K_a],
-            log_prob_shape = (3,4), log_prob_names = [Plate_1,K_a],
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(Plate_1_size, A_size), target_names=[Plate_1, K_a],
+            log_prob_shape = (A_size,Plate_1_size), log_prob_names = [K_a,Plate_1],
             sample_dim=(Plate_1,)
+        )
+        test_probs_categ_dist(
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(Plate_1_size,Plate_2_size, A_size), target_names=[Plate_1, Plate_2, K_a],
+            log_prob_shape = (A_size,Plate_1_size, Plate_2_size), log_prob_names = [K_a,Plate_1, Plate_2],
+            sample_dim=(Plate_1,Plate_2)
         )
         #Probs total count
         test_probs_total_count_dist(
@@ -189,16 +213,23 @@ class TestTorchdimDist(unittest.TestCase):
         )
         test_probs_total_count_dist(
             total_count = random.randint(1,20),
-            probs=softmax(torch.randn(4, 3), dim=1)[K_a],
-            target_shape=(4,3), target_names=[K_a],
-            log_prob_shape = (4,), log_prob_names = [K_a]
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(A_size,3), target_names=[K_a],
+            log_prob_shape = (A_size,), log_prob_names = [K_a]
         )
         test_probs_total_count_dist(
             total_count = random.randint(1,20),
-            probs=softmax(torch.randn(4, 3), dim=1)[K_a],
-            target_shape=(3, 4, 3), target_names=[Plate_1, K_a],
-            log_prob_shape = (3, 4), log_prob_names = [Plate_1,K_a],
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(Plate_1_size, A_size, 3), target_names=[Plate_1, K_a],
+            log_prob_shape = (A_size,Plate_1_size), log_prob_names = [K_a,Plate_1],
             sample_dim=(Plate_1,)
+        )
+        test_probs_total_count_dist(
+            total_count = random.randint(1,20),
+            probs=softmax(torch.randn(A_size, 3), dim=1)[K_a],
+            target_shape=(Plate_1_size,Plate_2_size, A_size, 3), target_names=[Plate_1,Plate_2, K_a],
+            log_prob_shape = (A_size,Plate_1_size,Plate_2_size), log_prob_names = [K_a,Plate_1,Plate_2],
+            sample_dim=(Plate_1,Plate_2)
         )
         #Conentration
         test_concentration_dist(
@@ -207,20 +238,26 @@ class TestTorchdimDist(unittest.TestCase):
             log_prob_shape = (), log_prob_names = []
         )
         test_concentration_dist(
-            concentration0=torch.rand(4, 3)[K_a], concentration1=torch.rand(4, 3)[K_a],
-            target_shape=(4, 3), target_names=[K_a],
-            log_prob_shape = (4,), log_prob_names = [K_a]
+            concentration0=torch.rand(A_size, 3)[K_a], concentration1=torch.rand(A_size, 3)[K_a],
+            target_shape=(A_size, 3), target_names=[K_a],
+            log_prob_shape = (A_size,), log_prob_names = [K_a]
         )
         test_concentration_dist(
-            concentration0=torch.rand(4, 3)[K_a], concentration1=torch.rand(4, 3)[K_b],
-            target_shape=(4, 4, 3), target_names=[K_a, K_b],
-            log_prob_shape = (4,4), log_prob_names = [K_a, K_b]
+            concentration0=torch.rand(A_size, 3)[K_a], concentration1=torch.rand(B_size, 3)[K_b],
+            target_shape=(A_size, B_size, 3), target_names=[K_a, K_b],
+            log_prob_shape = (A_size, B_size), log_prob_names = [K_a, K_b]
         )
         test_concentration_dist(
-            concentration0=torch.rand(4, 3)[K_a], concentration1=torch.rand(4, 3)[K_b],
-            target_shape=(3, 4, 4, 3), target_names=[Plate_1, K_a, K_b],
-            log_prob_shape = (3,4,4), log_prob_names = [Plate_1, K_a, K_b],
+            concentration0=torch.rand(A_size, 3)[K_a], concentration1=torch.rand(B_size, 3)[K_b],
+            target_shape=(Plate_1_size, A_size, B_size, 3), target_names=[Plate_1, K_a, K_b],
+            log_prob_shape = (A_size, B_size,Plate_1_size), log_prob_names = [K_a, K_b, Plate_1],
             sample_dim=(Plate_1,)
+        )
+        test_concentration_dist(
+            concentration0=torch.rand(A_size, 3)[K_a], concentration1=torch.rand(B_size, 3)[K_b],
+            target_shape=(Plate_1_size, Plate_2_size, A_size, B_size, 3), target_names=[Plate_1, Plate_2, K_a, K_b],
+            log_prob_shape = (A_size, B_size,Plate_1_size,Plate_2_size), log_prob_names = [K_a, K_b, Plate_1, Plate_2],
+            sample_dim=(Plate_1,Plate_2)
         )
         #Rate
         test_rate_dist(
@@ -230,14 +267,20 @@ class TestTorchdimDist(unittest.TestCase):
         )
         test_rate_dist(
             rate=torch.randn(4, 3).exp()[K_a],
-            target_shape=(4,3), target_names=[K_a],
-            log_prob_shape = (4,), log_prob_names = [K_a]
+            target_shape=(A_size,3), target_names=[K_a],
+            log_prob_shape = (A_size,), log_prob_names = [K_a]
         )
         test_rate_dist(
             rate=torch.randn(4, 3).exp()[K_a],
-            target_shape=(3, 4, 3), target_names=[Plate_1, K_a],
-            log_prob_shape = (3, 4), log_prob_names = [Plate_1,K_a],
+            target_shape=(Plate_1_size, A_size, 3), target_names=[Plate_1, K_a],
+            log_prob_shape = (A_size,Plate_1_size), log_prob_names = [K_a,Plate_1],
             sample_dim=(Plate_1,)
+        )
+        test_rate_dist(
+            rate=torch.randn(4, 3).exp()[K_a],
+            target_shape=(Plate_1_size,Plate_2_size, A_size, 3), target_names=[Plate_1,Plate_2, K_a],
+            log_prob_shape = (A_size,Plate_1_size,Plate_2_size), log_prob_names = [K_a,Plate_1,Plate_2],
+            sample_dim=(Plate_1,Plate_2)
         )
 
     # def test_log_prob(self):
