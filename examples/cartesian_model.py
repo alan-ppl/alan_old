@@ -1,51 +1,51 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
-import tqdm
-from functorch.dim import dims
+t.manual_seed(0)
 
 def P(tr):
     scale = 0.1
-    tr['a'] = tpp.Normal(t.zeros(3,), 1)
-    tr['b'] = tpp.Normal(tr['a'] + 1, 1)
-    tr['c'] = tpp.Normal(t.zeros(3,), 1)
-    tr['d'] = tpp.Normal(tr['c'] + tr['b'], 1)
-    tr['obs'] = tpp.Normal(tr['d'], 0.1)
+    tr.sample('a', tpp.Normal(t.zeros(3,), 1))
+    tr.sample('b', tpp.Normal(tr['a'] + 1, 1))
+    tr.sample('c', tpp.Normal(t.zeros(3,), 1))
+    tr.sample('d', tpp.Normal(tr['c'] + tr['b'], 1))
+    tr.sample('obs', tpp.Normal(tr['d'], 0.1))
 
 
-class Q(nn.Module):
+class Q(tpp.Q):
     def __init__(self):
         super().__init__()
-        self.m_a = nn.Parameter(t.zeros(3,))
-        self.m_b = nn.Parameter(t.zeros(3,))
-        self.m_c = nn.Parameter(t.zeros(3,))
-        self.m_d = nn.Parameter(t.zeros(3,))
+        self.reg_param('m_a', t.zeros(3,))
+        self.reg_param('m_b', t.zeros(3,))
+        self.reg_param('m_c', t.zeros(3,))
+        self.reg_param('m_d', t.zeros(3,))
 
-        self.log_s_a = nn.Parameter(t.zeros(3,))
-        self.log_s_b = nn.Parameter(t.zeros(3,))
-        self.log_s_c = nn.Parameter(t.zeros(3,))
-        self.log_s_d = nn.Parameter(t.zeros(3,))
+        self.reg_param('log_s_a', t.zeros(3,))
+        self.reg_param('log_s_b', t.zeros(3,))
+        self.reg_param('log_s_c', t.zeros(3,))
+        self.reg_param('log_s_d', t.zeros(3,))
+
 
     def forward(self, tr):
-        tr['a'] = tpp.Normal(self.m_a, self.log_s_a.exp())
-        tr['b'] = tpp.Normal(self.m_b, self.log_s_b.exp())
-        tr['c'] = tpp.Normal(self.m_c, self.log_s_c.exp())
-        tr['d'] = tpp.Normal(self.m_d, self.log_s_d.exp())
+        tr.sample('a', tpp.Normal(self.m_a, self.log_s_a.exp()))
+        tr.sample('b', tpp.Normal(self.m_b, self.log_s_b.exp()))
+        tr.sample('c', tpp.Normal(self.m_c, self.log_s_c.exp()))
+        tr.sample('d', tpp.Normal(self.m_d, self.log_s_d.exp()))
 
-data = tpp.sample(P, "obs")
+
+
+data = tpp.sample(P,varnames=('obs',))
 
 model = tpp.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-2)
 
 K=10
-dim = tpp.make_dims(P, K)
+
 print("K={}".format(K))
 for i in range(1000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dim)
+    elbo = model.elbo(K=K)
     (-elbo).backward()
     opt.step()
 

@@ -6,7 +6,7 @@ from .utils import *
 class Q(nn.Module):
     """
     Key problem: parameters in Q must have torchdim plates.
-    Solve this problem by making a new method to register parameters, "reg_param", which takes 
+    Solve this problem by making a new method to register parameters, "reg_param", which takes
     a named tensor, and builds up a mapping from names to torchdims.
     """
     def __init__(self):
@@ -47,8 +47,8 @@ class Q(nn.Module):
 class Model(nn.Module):
     """
     Plate dimensions come from data.
-    Model(P, Q, data) is for non-minibatched data. 
-    elbo(K=10, data) is for minibatched data. 
+    Model(P, Q, data) is for non-minibatched data.
+    elbo(K=10, data) is for minibatched data.
 
     data is stored as torchdim
     """
@@ -57,7 +57,7 @@ class Model(nn.Module):
         self.P = P
         self.Q = Q
 
-        
+
         if data is None:
             data = {}
         self.data, self.plates = named2dim_data(data, Q._plates)
@@ -66,7 +66,7 @@ class Model(nn.Module):
         data, plates = named2dim_data(data, self.plates)
         all_data = {**self.data, **data}
         assert len(all_data) == len(self.data) + len(data)
-       
+
         #sample from approximate posterior
         trq = TraceQ(K, all_data, plates, reparam)
         self.Q(trq)
@@ -107,7 +107,7 @@ class Model(nn.Module):
 #        lls_train = trace_pred.ll_train
 #        assert set(ll_all.keys()) == set(ll_train.keys())
 #        total = 0.
-#        for varname in ll_all:        
+#        for varname in ll_all:
 #            ll_all   = lls_all[varname]
 #            ll_train = lls_train[varname]
 #
