@@ -93,7 +93,7 @@ class Model(nn.Module):
         sample = self.sample(K, False, data_train)
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
-        tr = TracePred(N, post_samples, sample.trp.data, sample.trp.trq.plates, data_all=data_all, sizes_all=None)
+        tr = TracePred(N, post_samples, sample.trp.data, sample.trp.trq.plates, data_all=data_all, sizes_all=sizes_all)
         self.P(tr)
         return tr, N
 
