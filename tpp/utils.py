@@ -1,6 +1,12 @@
 import torch as t
 from functorch.dim import Tensor, Dim
 
+# def has_dim(x, lst):
+#   for element in lst:
+#     if x is element:
+#       return True
+#   return False
+
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
 
@@ -27,7 +33,10 @@ def generic_order(x, dims):
     """
     Implements x.order(dims), which is only defined for torchdim tensors
     """
-    return x.order(*dims) if 0<len(dims) else x
+    if isinstance(x, Tensor):
+        return x.order(*dims) if 0<len(dims) else x
+    else:
+        return x
 
 def ordered_unique(ls):
     """
@@ -79,15 +88,14 @@ def torchdim_einsum(tensors, sum_dims):
     undim_tensors = []
     arg_idxs = []
     for tensor in tensors:
-        dims = tensor.dims
+        dims = generic_dims(tensor)
         arg_idxs.append([dim_to_idx[dim] for dim in dims])
         undim_tensors.append(generic_order(tensor, dims))
 
     assert all(not is_dimtensor(tensor) for tensor in undim_tensors)
 
     einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
-    # print('einsum_args')
-    # print(einsum_args)
+
     result = t.einsum(*einsum_args)
     if 0 < len(out_dims):
         result = result[out_dims]
@@ -116,6 +124,7 @@ def singleton_order(x, dims):
     dims_present = [dim for dim in dims if dim in x_dims]
     idxs = [(slice(None) if (dim in x_dims) else None) for dim in dims]
     idxs.append(Ellipsis)
+
 
     result = generic_order(x, dims_present)[idxs]
     assert not is_dimtensor(result)

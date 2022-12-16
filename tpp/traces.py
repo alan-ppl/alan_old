@@ -65,8 +65,6 @@ class TraceQ(AbstractTrace):
         self.logq = {}
 
     def sample(self, key, dist, multi_samples=True, plate=None):
-        print(key)
-        print(self.samples)
         assert key not in self.data
         assert key not in self.samples
         assert key not in self.logq
@@ -79,7 +77,8 @@ class TraceQ(AbstractTrace):
 
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         if not multi_samples:
-            assert self.Kdim not in sample.dims, "Multiple samples are coming into this variable, so we can't stop it giving multiple samples at the output"
+            for d in generic_dims(sample):
+                assert self.Kdim is not d, "Multiple samples are coming into this variable, so we can't stop it giving multiple samples at the output"
 
         self.samples[key] = sample
         self.logq[key] = dist.log_prob(sample)
@@ -123,13 +122,31 @@ class TraceP(AbstractTrace):
                 Kdim = Dim(f"K_{key}", self.trq.Kdim.size)
             self.Ks.add(Kdim)
 
-            sample_q = self.trq[key]
-            sample = sample_q.order(self.trq.Kdim)[Kdim]
+            sample = self.trq[key]
+
+            trq_dims = generic_dims(sample)
+            # has_k = has_dim(self.trq.Kdim, trq_dims)
+            has_k = self.trq.Kdim in set(trq_dims)
+            desired_dims = (self.trq.Kdim,) + trq_dims if not has_k else trq_dims
+
+            logq = self.trq.logq[key]
+
+
+
+            # need to rename K_dims if they exist
+            if has_k:
+                sample = generic_order(sample, (self.trq.Kdim,))[Kdim]
+                logq = generic_order(logq, (self.trq.Kdim,))[Kdim]
+
+
+
+
             self.samples[key] = sample
 
-            self.logq[key] = self.trq.logq[key].order(self.trq.Kdim)[Kdim]
+            self.logq[key] = logq
 
         self.logp[key] = dist.log_prob(sample)
+
 
 class TracePred(AbstractTrace):
     """

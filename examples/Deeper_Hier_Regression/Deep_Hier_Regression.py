@@ -45,8 +45,7 @@ if N == 30:
     d_z = 20
 else:
     d_z = 5
-x = t.load('weights_{0}_{1}.pt'.format(N,M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs', ...).to(device)
-# x = t.load('weights_{0}_{1}.pt'.format(N,M)).to(device)
+x = {'x':t.load('weights_{0}_{1}.pt'.format(N,M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs', ...).to(device)}
 def P(tr):
   '''
   Heirarchical Model
@@ -61,9 +60,8 @@ def P(tr):
 
   tr.sample('z', tpp.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plate='plate_z')
 
-  print(tr['z'] @ x)
 
-  tr.sample('obs', tpp.Normal((tr['z'] @ x), tr['psi_y'].exp()))
+  tr.sample('obs', tpp.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
 
 
@@ -120,7 +118,7 @@ for K in Ks:
         start = time.time()
         seed_torch(i)
 
-        model = tpp.Model(P, Q(), data_y)
+        model = tpp.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)

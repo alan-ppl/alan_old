@@ -46,7 +46,7 @@ if N == 30:
     d_z = 20
 else:
     d_z = 5
-x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+x = {'x':t.load('weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
 
 def P(tr):
   '''
@@ -57,9 +57,9 @@ def P(tr):
   tr.sample('psi_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
   tr.sample('psi_y', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
 
-  tr.sample('z', tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plate=plate_1)
+  tr.sample('z', tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plate='plate_1')
 
-  tr.sample('obs', tpp.Normal((tr['z'] @ x), tr['psi_y'].exp()))
+  tr.sample('obs', tpp.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
 
 
@@ -78,8 +78,8 @@ class Q(tpp.Q):
         self.reg_param("log_theta_psi_y", t.zeros(()))
 
         #z
-        self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
-        self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
+        self.reg_param("mu", t.zeros((M,d_z)), ['plate_1'])
+        self.reg_param("log_sigma", t.zeros((M, d_z)), ['plate_1'])
 
 
     def forward(self, tr):
@@ -90,7 +90,7 @@ class Q(tpp.Q):
 
         tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
+data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 
 for K in Ks:
     print(K,M,N)
@@ -107,7 +107,7 @@ for K in Ks:
         lr = []
         t.manual_seed(i)
 
-        model = tpp.Model(P, Q(), data_y)
+        model = tpp.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)

@@ -1,9 +1,7 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-import tqdm
-from functorch.dim import dims
+
 import argparse
 import json
 import numpy as np
@@ -43,25 +41,25 @@ M = args.M
 N = args.N
 
 
-plate_1, plate_2 = dims(2 , [M,N])
+sizes = {'plate_1':M, 'plate_2':N}
 
-x = t.load('data/weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+x = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
 d_z = 18
 def P(tr):
   '''
   Heirarchical Model
   '''
 
-  tr['mu_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
-  tr['psi_z'] = tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device))
+  tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+  tr.sample('psi_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
 
-  tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
+  tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plate='plate_1')
 
-  tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ x)
+  tr.sample('obs', tpp.Bernoulli(logits = tr['z'] @ tr['x']))
 
 
 
-class Q(tpp.Q_module):
+class Q(tpp.Q):
     def __init__(self):
         super().__init__()
         #mu_z
@@ -72,21 +70,21 @@ class Q(tpp.Q_module):
         self.reg_param("log_theta_psi_z", t.zeros((d_z,)))
 
         #z
-        self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
-        self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
+        self.reg_param("mu", t.zeros((M,d_z)), ['plate_1'])
+        self.reg_param("log_sigma", t.zeros((M, d_z)), ['plate_1'])
 
 
     def forward(self, tr):
-        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
-        tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp())
+        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
 
-        tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
-
-
+        tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
 
 
 
-data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
+
+
+data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 
 for K in Ks:
     print(K,M,N)
@@ -100,7 +98,7 @@ for K in Ks:
         seed_torch(i)
         start = time.time()
 
-        model = tpp.Model(P, Q(), data_y)
+        model = tpp.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)

@@ -66,9 +66,13 @@ class Sample():
 
         tensors = [*lpqs, *extra_log_factors]
 
+        ## Convert tensors to Float64
+        tensors = [x.to(dtype=t.float64) for x in tensors]
+
         #iterate from lowest plate
         for plate_name in self.ordered_plate_dims[::-1]:
             tensors = self.sum_plate(tensors, plate_name)
+
 
 
         assert 1==len(tensors)
@@ -114,6 +118,7 @@ class Sample():
 
         Same for timeseries and plate!
         """
+
         all_dims = unify_dims(tensors)
         Ks_to_sum    = [dim for dim in all_dims if self.is_K(dim) and (dim not in Ks_to_keep)]
 
@@ -122,8 +127,7 @@ class Sample():
         maxes = [max_dims(tensor, Ks_to_sum) for tensor in tensors]
 
         ## adding tiny amount for numerical stability
-        tensors_minus_max = [(tensor - m).exp() + 1e-7 for (tensor, m) in zip(tensors, maxes)]
-
+        tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
 
         result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 
