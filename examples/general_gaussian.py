@@ -1,11 +1,8 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
-import tqdm
-from functorch.dim import dims
 
+t.autograd.set_detect_anomaly(True)
 '''
 Test posterior inference with a general gaussian
 '''
@@ -18,43 +15,40 @@ sigma = sigma + t.eye(5)* 1e-5
 a = t.randn(5,)
 
 N = 10
-plate_1 = dims(1 , [N])
+sizes = {'plate_1': N}
 def P(tr):
-  '''
-  Bayesian Gaussian Model
-  '''
-
-  tr['mu'] = tpp.MultivariateNormal(a, sigma_0)
-  tr['obs'] = tpp.MultivariateNormal(tr['mu'], sigma, sample_dim=plate_1)
-
+    '''
+    Bayesian Gaussian Model
+    '''
+    tr.sample('mu',   tpp.MultivariateNormal(a, sigma_0))
+    tr.sample('obs',   tpp.MultivariateNormal(tr['mu'], sigma), plate='plate_1')
 
 
-class Q(nn.Module):
+
+
+class Q(tpp.Q):
     def __init__(self):
         super().__init__()
-        self.m_mu = nn.Parameter(t.zeros(5,))
-
-        self.s_mu = nn.Parameter(t.randn(5,5))
+        self.reg_param("m_mu", t.zeros(5,))
+        self.reg_param("s_mu", t.eye(5))
 
     def forward(self, tr):
         sigma_nn = self.s_mu @ self.s_mu.mT
         sigma_nn = sigma_nn + t.eye(5) * 1e-5
 
-        tr['mu'] = tpp.MultivariateNormal(self.m_mu, sigma_nn)
+        tr.sample('mu',   tpp.MultivariateNormal(self.m_mu, sigma_nn))
 
-data = tpp.sample(P, "obs")
-
-model = tpp.Model(P, Q(), data)
+data = tpp.sample(P, sizes)
+model = tpp.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=1
-dims = tpp.make_dims(P, K)
+K=5
 print("K={}".format(K))
 
 for i in range(20000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dims)
+    elbo = model.elbo(K)
     (-elbo).backward()
     opt.step()
 
@@ -65,7 +59,8 @@ inferred_mean = model.Q.m_mu
 inferred_cov = t.mm(model.Q.s_mu, model.Q.s_mu.t())
 inferred_cov.add_(t.eye(5)* 1e-5)
 
-y_hat = tpp.dename(data['obs'].mean(plate_1)).reshape(-1,1)
+
+y_hat = data['obs'].mean(0).reshape(-1,1)
 
 true_cov = t.inverse(N * t.inverse(sigma) + t.inverse(sigma_0))
 true_mean = (true_cov @ (N*t.inverse(sigma) @ y_hat + t.inverse(sigma_0)@a.reshape(-1,1))).reshape(1,-1)

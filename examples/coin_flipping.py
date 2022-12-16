@@ -1,59 +1,51 @@
 ### Coin flipping Example
-
-
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
-import tqdm
 from torch.distributions import transforms
-from functorch.dim import dims
 
-device = t.device("cuda" if t.cuda.is_available() else "cpu")
-### data
-y = {'obs': t.tensor([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0])}
+
 
 
 N = 10
-plate_1 = dims(1 , [N])
+sizes = {'plate_1':N}
 def P(tr):
     # define the hyperparameters that control the Beta prior
     alpha0 = t.tensor(10.0)
     beta0 = t.tensor(10.0)
-    # sample f from the Beta prior
-    tr['latent_fairness'] = tpp.Beta(alpha0,beta0)
-
-    tr['obs'] = tpp.Bernoulli(tr['latent_fairness'], sample_dim=plate_1)
+    tr.sample('latent_fairness', tpp.Beta(alpha0, beta0))
+    tr.sample('obs', tpp.Bernoulli(tr['latent_fairness']), plate='plate_1')
 
 
 
-class Q(nn.Module):
+class Q(tpp.Q):
     def __init__(self):
         super().__init__()
-        self.alphaq = nn.Parameter(t.tensor(1.2))
-        self.betaq = nn.Parameter(t.tensor(1.2))
+        self.reg_param("alphaq", t.tensor(1.2))
+        self.reg_param("betaq", t.tensor(1.2))
 
     def forward(self, tr):
-        tr['latent_fairness'] = tpp.Beta(self.alphaq.exp(), self.betaq.exp())
+        tr.sample('latent_fairness', tpp.Beta(self.alphaq, self.betaq))
 
 
 
-model = tpp.Model(P, Q(), y)
-model.to(device)
+
+
+data = tpp.sample(P, sizes)
+model = tpp.Model(P, Q(), {'obs': data['obs']})
+print(data)
 
 opt = t.optim.Adam(model.parameters(), lr=1e-3)
 
 K = 10
-Ks = tpp.make_dims(P, K)
 print("K={}".format(K))
-for i in range(15000):
+for i in range(5000):
     opt.zero_grad()
-    elbo = model.elbo(dims=Ks)
+    elbo = model.elbo(K=K)
     (-elbo).backward()
     opt.step()
 
-    if 0 == i%100:
+    if 0 == i%1000:
         print(elbo.item())
 
 

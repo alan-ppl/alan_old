@@ -86,11 +86,14 @@ def torchdim_einsum(tensors, sum_dims):
     assert all(not is_dimtensor(tensor) for tensor in undim_tensors)
 
     einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
+    # print('einsum_args')
+    # print(einsum_args)
     result = t.einsum(*einsum_args)
     if 0 < len(out_dims):
         result = result[out_dims]
+
     return result
-        
+
 
 def singleton_order(x, dims):
     """
@@ -133,10 +136,16 @@ def named2dim_tensor(d, x):
     """
     Operates on dict mapping string (platename) to Dim (platedim)
     """
+
     if 0==x.ndim:
         return x
 
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
+
+
+    if all(x is None for x in x.names):
+        return x
+
     return x.rename(None)[torchdims]
 
 def named2dim_tensordict(d, tensordict):
@@ -196,4 +205,3 @@ def named2dim_data(named_data, plates):
     #Convert data named tensors to torchdim tensors
     dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in named_data.items()}
     return dim_data, plates
-

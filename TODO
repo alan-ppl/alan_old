@@ -1,4 +1,6 @@
 Warning that everything's going to break if you use multisample=False.
+Local Importance weighting
+
 
 Postprocessing: K's
 
@@ -18,4 +20,7 @@ Traces:
     timeseries name -> Tm1
     plate name      ->        train plate dim
     plate name      -> test + train plate dim
-  Easy to switch between torchdims and named if we have these kinds of mapping. 
+  Easy to switch between torchdims and named if we have these kinds of mapping.
+
+How to integrate side information?
+  - maybe trace p needs a function that ensures the side information has the right plates?

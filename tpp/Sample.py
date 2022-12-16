@@ -48,7 +48,7 @@ class Sample():
 
     def tensor_product(self, logps=None, logqs=None, extra_log_factors=()):
         """
-        Sums over plates, starting at the lowest plate. 
+        Sums over plates, starting at the lowest plate.
         The key exported method.
         """
         if logps is None:
@@ -69,6 +69,7 @@ class Sample():
         #iterate from lowest plate
         for plate_name in self.ordered_plate_dims[::-1]:
             tensors = self.sum_plate(tensors, plate_name)
+
 
         assert 1==len(tensors)
         lp = tensors[0]
@@ -100,10 +101,10 @@ class Sample():
 
 
         return [*higher_lps, lower_lp]
-            
+
     def reduce_Ks(self, tensors, Ks_to_keep):
         """
-        Takes a list of log-probability tensors, and a list of dimension names to do the reductions, 
+        Takes a list of log-probability tensors, and a list of dimension names to do the reductions,
         and does a numerically stable log-einsum-exp
 
         Arguments:
@@ -113,14 +114,20 @@ class Sample():
 
         Same for timeseries and plate!
         """
-        all_dims = unify_dims(tensors) 
+        all_dims = unify_dims(tensors)
         Ks_to_sum    = [dim for dim in all_dims if self.is_K(dim) and (dim not in Ks_to_keep)]
-        
+
         #subtract max to ensure numerical stability.  Do max over all dims that we're summing over.
+
         maxes = [max_dims(tensor, Ks_to_sum) for tensor in tensors]
-        tensors_minus_max = [(tensor - m).exp() for (tensor, m) in zip(tensors, maxes)]
-        result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log() 
-        result = result - len(Ks_to_sum)*t.log(t.tensor(self.trp.trq.Kdim.size))
+
+        ## adding tiny amount for numerical stability
+        tensors_minus_max = [(tensor - m).exp() + 1e-7 for (tensor, m) in zip(tensors, maxes)]
+
+
+        result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
+
+        result = result - len(Ks_to_sum)*(t.log(t.tensor(self.trp.trq.Kdim.size)))
 
         return sum([result, *maxes])
 
@@ -128,11 +135,10 @@ class Sample():
         return self.tensor_product()
 
     def rws(self):
-        assert not self.reparam
         # Wake-phase P update
         p_obj = self.tensor_product(logqs={n:lq.detach() for (n,lq) in self.trp.logq.items()})
         # Wake-phase Q update
-        q_obj = self.tensor_product(logps={n:lp.detach() for (n,lp) in trp.logp.items()})
+        q_obj = self.tensor_product(logps={n:lp.detach() for (n,lp) in self.trp.logp.items()})
         return p_obj, q_obj
 
     def weights(self):
@@ -192,8 +198,8 @@ class Sample():
         marginals = list(t.autograd.grad(result, undim_Js))
         #Put dims back,
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
-        #Normalized, marg gives the "posterior marginals" over 
-        
+        #Normalized, marg gives the "posterior marginals" over
+
         Ks_so_far = set()
         #Dict mapping Kdim to NxPlates indexes.
         K_post_idxs = {}
@@ -227,9 +233,7 @@ class Sample():
                 cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
                 #Sample new K's
                 K_post_idxs[K] = Categorical(cond).sample(False, sample_dims=(N,))
-             
+
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
         return post_samples
-
-

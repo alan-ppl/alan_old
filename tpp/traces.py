@@ -21,12 +21,12 @@ class TraceSample(AbstractTrace):
         self.plates = insert_size_dict({}, sizes)
         self.reparam = False
 
-        self.data                 = {} 
+        self.data                 = {}
         self.samples              = {}
 
     def sample(self, varname, dist, multi_samples=True, plate=None):
         assert varname not in self.samples
-            
+
         sample_dims = [] if plate is None else [self.plates[plate]]
         self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
@@ -56,6 +56,7 @@ class TraceQ(AbstractTrace):
         #Converts data to torchdim tensors, and adds plate dims to plates
         self.data, self.plates = named2dim_data(data, plates)
 
+
         #self.data = data
         #self.plates = plates
         self.reparam = reparam
@@ -64,10 +65,12 @@ class TraceQ(AbstractTrace):
         self.logq = {}
 
     def sample(self, key, dist, multi_samples=True, plate=None):
+        print(key)
+        print(self.samples)
         assert key not in self.data
         assert key not in self.samples
         assert key not in self.logq
-            
+
         sample_dims = []
         if plate is not None:
             sample_dims.append(self.plates[plate])
@@ -80,7 +83,7 @@ class TraceQ(AbstractTrace):
 
         self.samples[key] = sample
         self.logq[key] = dist.log_prob(sample)
-        
+
 
 class TraceP(AbstractTrace):
     def __init__(self, trq):
@@ -104,12 +107,12 @@ class TraceP(AbstractTrace):
         assert key not in self.logp
 
         #data
-        if key in self.data: 
+        if key in self.data:
             sample = self.data[key]
         #latent variable
-        else: 
+        else:
             #grouped K's
-            if (group is not None): 
+            if (group is not None):
                 #new group of K's
                 if (group not in self.groupname2dim):
                     self.groupname2dim[group] = Dim(f"K_{group}", self.trq.Kdim.size)
@@ -130,7 +133,7 @@ class TraceP(AbstractTrace):
 
 class TracePred(AbstractTrace):
     """
-    Draws samples from P conditioned on samples from ...  
+    Draws samples from P conditioned on samples from ...
     Usually just used to sample fake data from the model.
 
     post_rvs is posterior samples of all latents + training data.
@@ -139,7 +142,7 @@ class TracePred(AbstractTrace):
       If we provide data, then we compute test_ll
       If we provide sizes, then we compute predictive samples
 
-    
+
     """
     def __init__(self, N, samples_train, data_train, plates_train, data_all=None, sizes_all=None):
         super().__init__()
@@ -178,7 +181,7 @@ class TracePred(AbstractTrace):
         assert varname not in self.ll_all
         assert varname not in self.ll_train
 
-        
+
         sample_dims = [self.N]
         if plate is not None:
             sample_dims.append(self.plates_all[plate])
