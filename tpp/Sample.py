@@ -66,24 +66,14 @@ class Sample():
 
         #iterate from lowest plate
         for plate_name in self.ordered_plate_dims[::-1]:
-            tensors = self.sum_plate(tensors, plate_name)
-
-
+            tensors = self.sum_plate_T(tensors, plate_name)
 
         assert 1==len(tensors)
         lp = tensors[0]
         assert 1==lp.numel()
         return lp
 
-    def sum_plate(self, lps, plate_dim):
-        """
-        Arguments:
-            tensors: list of all tensor factors, both including and not including plate.
-            plate_dim
-        Returns:
-            lps: full list of log-probability tensors with plate_name summed out
-        This is the only method that differs for time-series vs plate
-        """
+    def sum_plate_T(self, lps, plate_dim): 
         if plate_dim is not None:
             #partition tensors into those with/without plate_name
             lower_lps, higher_lps = partition_tensors(lps, plate_dim)
@@ -94,12 +84,21 @@ class Sample():
         #collect K's that appear in higher plates
         Ks_to_keep = set([dim for dim in unify_dims(higher_lps) if self.is_K(dim)])
 
+        if any(isinstance(lp, TimeseriesLogP) for lp in lower_lps):
+            lower_lp = self.sum_T(lower_lps, plate_dim, Ks_to_keep)
+        else:
+            lower_lp = self.sum_plate(lower_lps, plate_dim, Ks_to_keep)
+
+        return [*higher_lps, lower_lp]
+
+    def sum_T(self, lps, plate_dim): 
+        pass
+
+    def sum_plate(self, lower_lps, plate_dim, Ks_to_keep):
         lower_lp = self.reduce_Ks(lower_lps, Ks_to_keep)
         if plate_dim is not None:
             lower_lp = lower_lp.sum(plate_dim)
-
-
-        return [*higher_lps, lower_lp]
+        return lower_lp
 
     def reduce_Ks(self, tensors, Ks_to_keep):
         """
