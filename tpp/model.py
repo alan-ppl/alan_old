@@ -98,22 +98,38 @@ class Model(nn.Module):
         return tr, N
 
     def predictive_samples(self, K, N, data_train=None, sizes_all=None):
-        trace_pred, N = predictive(self, K, N, data_train=data_train, data_all=None, sizes_all=sizes_all)
+        trace_pred, N = predictive(self, K, N, data_train=data_train, sizes_all=sizes_all)
         #Convert everything to named
         #Return a dict mapping 
         #Convert everything to named
         return trace_pred.samples
 
-#    def predictive_ll(self, K, N, data_train=None, data_all=None):
-#        trace_pred, N = predictive(self, K, N, data_train=None, data_all=data_all, sizes_all=None)
-#        lls_all   = trace_pred.ll_all
-#        lls_train = trace_pred.ll_train
-#        assert set(ll_all.keys()) == set(ll_train.keys())
-#        total = 0.
-#        for varname in ll_all:
-#            ll_all   = lls_all[varname]
-#            ll_train = lls_train[varname]
-#
-#            dims_all = [dim for dim in ll_all.dims if dim is not N]
-#
-#        return
+    def predictive_ll(self, K, N, data_train=None, data_all=None):
+        """
+        Run as (e.g. for plated_linear_gaussian.py)
+
+        >>> obs = t.randn((4, 6, 8), names=("plate_1", "plate_2", "plate_3"))
+        >>> model.predictive_ll(5, 10, data_all={"obs": obs})
+        """
+        trace_pred, N = self.predictive(K, N, data_train=data_train, data_all=data_all)
+        lls_all   = trace_pred.ll_all
+        lls_train = trace_pred.ll_train
+        assert set(lls_all.keys()) == set(lls_train.keys())
+
+        result = {}
+        for varname in lls_all:
+            print(varname)
+            ll_all   = lls_all[varname]
+            ll_train = lls_train[varname]
+
+            dims_all   = [dim for dim in ll_all.dims   if dim is not N]
+            dims_train = [dim for dim in ll_train.dims if dim is not N]
+            assert len(dims_all) == len(dims_train)
+
+            if 0 < len(dims_all):
+                ll_all   = ll_all.sum(dims_all)
+                ll_train = ll_train.sum(dims_train)
+
+            result[varname] = (ll_all - ll_train).mean(N)
+
+        return result
