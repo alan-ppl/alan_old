@@ -63,6 +63,11 @@ def partition_tensors(lps, dim):
     return has_dim, no_dim
 
 def max_dims(x, dims):
+    """
+    Note that this _keeps_ dims, and maxes over everything else, which
+    goes against the usual convention
+    """
+ 
     #Ignore dims that aren't in the tensors
     set_xdims = set(generic_dims(x))
     dims = [dim for dim in dims if dim in set_xdims]
@@ -214,3 +219,66 @@ def named2dim_data(named_data, plates):
     #Convert data named tensors to torchdim tensors
     dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in named_data.items()}
     return dim_data, plates
+
+def chain_reduce(f, ms, T, Kprev, Kcurr):
+    ms = ms.order(T)
+    Kmid = Dim('Kmid', K.size)
+
+    while ms.shape[0] != 1:
+        prev = ms[::2]
+        curr = ms[1::2]
+        remainder = None
+
+        #If there's an odd number of tensors
+        if len(prev) > len(curr):
+            assert len(prev) == len(curr)+1
+            remainder = prev[-1:]
+            prev = prev[:-1]
+            
+        #Rename so that the matmul makes sense.
+        prev = prev.order(Kcurr)[Kmid]
+        curr = curr.order(Kprev)[Kmid]
+
+        ms = f(prev, curr, Kmid)
+        if remainder is not None:
+            ms = t.cat([ms, remainder], 0)
+
+    return ms[0]
+
+def td_matmul(prev, curr, Kmid):
+    return (prev*curr).sum(Kmid)
+
+def logmmexp(prev, curr, Kmid):
+    max_prev = max_dims(prev, (Kmid,))
+    max_curr = max_dims(curr, (Kmid,))
+
+    exp_prev_minus_max = (prev - max_prev).exp()
+    exp_curr_minus_max = (curr - max_curr).exp()
+
+    result_minus_max = td_matmul(exp_prev_minus_max, exp_curr_minus_max, Kmid).log()
+    return result_minus_max + max_prev + max_curr
+
+def logmmeanexp(prev, curr, Kmid):
+    return logmmexp(prev, curr, Kmid) - t.log(t.tensor(Kmid.size))
+
+if __name__ == "__main__":
+    from functorch.dim import dims
+
+    #chain_reduce and td_matmul
+    T, Kprev, K = dims(3, [5, 3, 3])
+    tensor_ms = t.randn(5, 3, 3)
+
+    tensor_result = t.chain_matmul(*t.unbind(tensor_ms, 0))
+    td_result = chain_reduce(td_matmul, tensor_ms[T, Kprev, K], T, Kprev, K).order(Kprev, K)
+    assert t.allclose(tensor_result, td_result)
+
+    #logmmexp
+    Kmid = dims(1, [3])
+    A = t.randn(3,3)
+    B = t.randn(3,3)
+    
+    tensor_result = (t.exp(A) @ t.exp(B)).log()
+    td_result = logmmexp(A[Kprev, Kmid], B[Kmid, K], Kmid).order(Kprev, K)
+    assert t.allclose(tensor_result, td_result)
+
+    

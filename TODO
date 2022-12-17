@@ -26,9 +26,7 @@ Tests:
 
 Masks / nested tensors for different numbers of observations in a plate...
 
-Timeseries:
-Timeseries class:
-  
+
 
 Timeseries implementation notes
   * logq is a single T x K matrix.
