@@ -115,7 +115,13 @@ class TraceP(AbstractTrace):
         if T is not None:
             dist.set_Tdim(self.trq.plates[T])
 
-        has_k = self.trq.Kdim in set(generic_dims(self.trq[key]))
+        dims_sample = set(generic_dims(self.trq[key]))
+        
+        #Check that the sample provided by TraceQ actually has the required plate.
+        if plate is not None:
+            assert self.trq.plates[plate] in dims_sample, "Plates in Q don't match those in P"
+
+        has_k = self.trq.Kdim in dims_sample
 
         #data
         if key in self.data:

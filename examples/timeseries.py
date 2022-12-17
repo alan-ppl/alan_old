@@ -10,7 +10,7 @@ def P(tr):
     tr.sample('obs', tpp.Normal(tr['ts'], 1))
 
 def Q(tr):
-    tr.sample('decay', tpp.Normal(-3, 1))
+    tr.sample('decay', tpp.Normal(-3, 1), plate="plate_1")
     transition = lambda x: tpp.Normal(t.exp(tr['decay']) * x, 0.01)
     tr.sample('ts', tpp.Timeseries(0, transition), T="Tb")
 
