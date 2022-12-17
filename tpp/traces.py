@@ -27,9 +27,11 @@ class TraceSample(AbstractTrace):
     def sample(self, varname, dist, multi_samples=True, plate=None, T=None):
         assert varname not in self.samples
 
+        if T is not None:
+            dist.set_Tdim(self.plates[T])
+
         sample_dims = [] if plate is None else [self.plates[plate]]
-        T_dim = None if T is None else [self.plates[T]]
-        self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims, T_dim=T_dim)
+        self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
 def sample(P, sizes=None, varnames=None):
     if sizes is None:
@@ -70,14 +72,16 @@ class TraceQ(AbstractTrace):
         assert key not in self.samples
         assert key not in self.logq
 
+        if T is not None:
+            dist.set_Tdim(self.plates[T])
+
         sample_dims = []
         if plate is not None:
             sample_dims.append(self.plates[plate])
         if multi_samples:
             sample_dims.append(self.Kdim)
 
-        T_dim = None if T is None else [self.plates[T]]
-        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims, T_dim=T_dim)
+        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
         if not multi_samples:
             for d in generic_dims(sample):

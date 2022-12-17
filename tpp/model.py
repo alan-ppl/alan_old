@@ -60,7 +60,8 @@ class Model(nn.Module):
 
         if data is None:
             data = {}
-        self.data, self.plates = named2dim_data(data, Q._plates)
+        plates = Q._plates if hasattr(Q, "_plates") else {}
+        self.data, self.plates = named2dim_data(data, plates)
 
     def sample(self, K, reparam, data):
         data, plates = named2dim_data(data, self.plates)
