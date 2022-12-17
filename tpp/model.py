@@ -97,10 +97,13 @@ class Model(nn.Module):
         self.P(tr)
         return tr, N
 
-#    def predictive_samples(self, K, N, data_train=None, sizes_all=None):
-#        trace_pred, N = predictive(self, K, N, data_train=None, data_all=None, sizes_all=sizes_all)
-#        return trace_pred.samples
-#
+    def predictive_samples(self, K, N, data_train=None, sizes_all=None):
+        trace_pred, N = predictive(self, K, N, data_train=data_train, data_all=None, sizes_all=sizes_all)
+        #Convert everything to named
+        #Return a dict mapping 
+        #Convert everything to named
+        return trace_pred.samples
+
 #    def predictive_ll(self, K, N, data_train=None, data_all=None):
 #        trace_pred, N = predictive(self, K, N, data_train=None, data_all=data_all, sizes_all=None)
 #        lls_all   = trace_pred.ll_all

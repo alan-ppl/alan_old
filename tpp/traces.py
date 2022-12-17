@@ -207,7 +207,8 @@ class TracePred(AbstractTrace):
             sample_all = self.data_all[varname]
         else:
             sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
-        sample_train = self.samples_train[varname]
+
+        sample_train = self.data_train[varname] if (varname in self.data_train) else self.samples_train[varname]
 
         #Get a unified list of dimension names.
         dims_all   = set(sample_all.dims)   #Includes N!
@@ -238,5 +239,7 @@ class TracePred(AbstractTrace):
             ll_all                 = dist.log_prob(sample_all)
             self.ll_all[varname]   = ll_all
             self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
+        elif varname in self.data_train:
+            self.data_all[varname] = sample_all
         else:
             self.samples_all[varname] = sample_all
