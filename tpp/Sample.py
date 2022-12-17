@@ -46,25 +46,20 @@ class Sample():
     def is_K(self, dim):
         return dim in self.trp.Ks
 
-    def tensor_product(self, logps=None, logqs=None, extra_log_factors=()):
+    def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):
         """
         Sums over plates, starting at the lowest plate.
         The key exported method.
         """
-        if logps is None:
-            logps = self.trp.logp
-        if logqs is None:
-            logqs = self.trp.logq
+        logps = self.trp.logp
+        logqs = self.trp.logq
 
-        #combine all lps, negating logqs
-        lpqs = []
-        for key in logps:
-            lpq = logps[key]
-            if key in logqs:
-                lpq = lpq - logqs[key]
-            lpqs.append(lpq)
+        if detach_p:
+            logps = {n:lp.detach() for (n,lp) in logps.items()}
+        if detach_q:
+            logqs = {n:lq.detach() for (n,lq) in logqs.items()}
 
-        tensors = [*lpqs, *extra_log_factors]
+        tensors = [*logps.values(), *[-lq for lq in logqs.values()], *extra_log_factors]
 
         ## Convert tensors to Float64
         tensors = [x.to(dtype=t.float64) for x in tensors]
@@ -140,9 +135,9 @@ class Sample():
 
     def rws(self):
         # Wake-phase P update
-        p_obj = self.tensor_product(logqs={n:lq.detach() for (n,lq) in self.trp.logq.items()})
+        p_obj = self.tensor_product(detach_q=True)
         # Wake-phase Q update
-        q_obj = self.tensor_product(logps={n:lp.detach() for (n,lp) in self.trp.logp.items()})
+        q_obj = self.tensor_product(detach_p=True)
         return p_obj, q_obj
 
     def weights(self):
