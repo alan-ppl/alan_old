@@ -108,9 +108,14 @@ class TraceP(AbstractTrace):
     def data(self):
         return self.trq.data
 
-    def sample(self, key, dist, group=None, plate=None):
+    def sample(self, key, dist, group=None, plate=None, T=None):
         assert key not in self.samples
         assert key not in self.logp
+
+        if T is not None:
+            dist.set_Tdim(self.trq.plates[T])
+
+        has_k = self.trq.Kdim in set(generic_dims(self.trq[key]))
 
         #data
         if key in self.data:
@@ -130,29 +135,18 @@ class TraceP(AbstractTrace):
             self.Ks.add(Kdim)
 
             sample = self.trq[key]
-
-            trq_dims = generic_dims(sample)
-            # has_k = has_dim(self.trq.Kdim, trq_dims)
-            has_k = self.trq.Kdim in set(trq_dims)
-            desired_dims = (self.trq.Kdim,) + trq_dims if not has_k else trq_dims
-
             logq = self.trq.logq[key]
 
-
-
-            # need to rename K_dims if they exist
+            # rename K_dim if it exists
             if has_k:
                 sample = generic_order(sample, (self.trq.Kdim,))[Kdim]
                 logq = generic_order(logq, (self.trq.Kdim,))[Kdim]
 
-
-
-
             self.samples[key] = sample
-
             self.logq[key] = logq
 
-        self.logp[key] = dist.log_prob(sample)
+        #Timeseries needs to know the Kdim, but other distributions ignore it.
+        self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_k else None))
 
 
 class TracePred(AbstractTrace):

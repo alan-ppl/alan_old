@@ -1,5 +1,6 @@
 from .utils import *
 from .dist import Categorical
+from .timeseries import TimeseriesLogP
 
 
 class Sample():
@@ -15,11 +16,10 @@ class Sample():
         self.trp = trp
 
         for lp in [*trp.logp.values(), *trp.logq.values()]:
-            #check all dimensions are named
-            assert lp.shape == ()
-            #Check dimensions are Ks or plates it doesn't check if all dimensions are named.
-            #for dim in lp.dims:
-            #    assert self.is_K(dim) or self.is_plate(dim)
+            if isinstance(lp, TimeseriesLogP):
+                assert lp.first.shape == () and lp.rest.shape == ()
+            else:
+                assert lp.shape == ()
 
 
         for (rv, lq) in trp.logq.items():
@@ -30,8 +30,8 @@ class Sample():
             lq = trp.logq[rv]
 
             # check same plates/timeseries appear in lp and lq
-            lp_notK = [dim for dim in lp.names if not self.is_K(dim)]
-            lq_notK = [dim for dim in lq.names if not self.is_K(dim)]
+            lp_notK = [dim for dim in lp.dims if not self.is_K(dim)]
+            lq_notK = [dim for dim in lq.dims if not self.is_K(dim)]
             assert set(lp_notK) == set(lq_notK)
 
 

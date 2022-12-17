@@ -21,7 +21,8 @@ def generic_dims(x):
     """
     Implements x.dims, which is only defined for torchdim tensors
     """
-    return x.dims if isinstance(x, Tensor) else ()
+    #return x.dims if isinstance(x, Tensor) else ()
+    return x.dims if hasattr(x, "dims") else ()
 
 def generic_order(x, dims):
     """

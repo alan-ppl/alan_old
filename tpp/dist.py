@@ -104,13 +104,13 @@ class TorchDimDist():
         all_dims = [*new_dims, *self.dims, Ellipsis]
         log_prob = self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims]
 
-
-
         if self.unnamed_batch_dims > 0:
             log_prob = log_prob.sum()
 
         return log_prob
 
+    def log_prob_P(self, x, Kdim):
+        return self.log_prob(x)
 
 def set_dist(dist_name):
     def inner(*args, **kwargs):
