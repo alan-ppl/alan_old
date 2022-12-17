@@ -24,11 +24,12 @@ class TraceSample(AbstractTrace):
         self.data                 = {}
         self.samples              = {}
 
-    def sample(self, varname, dist, multi_samples=True, plate=None):
+    def sample(self, varname, dist, multi_samples=True, plate=None, T=None):
         assert varname not in self.samples
 
         sample_dims = [] if plate is None else [self.plates[plate]]
-        self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        T_dim = None if T is None else [self.plates[T]]
+        self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims, T_dim=T_dim)
 
 def sample(P, sizes=None, varnames=None):
     if sizes is None:
@@ -64,7 +65,7 @@ class TraceQ(AbstractTrace):
         self.samples = {}
         self.logq = {}
 
-    def sample(self, key, dist, multi_samples=True, plate=None):
+    def sample(self, key, dist, multi_samples=True, plate=None, T=None):
         assert key not in self.data
         assert key not in self.samples
         assert key not in self.logq
@@ -75,7 +76,9 @@ class TraceQ(AbstractTrace):
         if multi_samples:
             sample_dims.append(self.Kdim)
 
-        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        T_dim = None if T is None else [self.plates[T]]
+        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims, T_dim=T_dim)
+
         if not multi_samples:
             for d in generic_dims(sample):
                 assert self.Kdim is not d, "Multiple samples are coming into this variable, so we can't stop it giving multiple samples at the output"

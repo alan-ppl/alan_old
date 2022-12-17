@@ -7,18 +7,41 @@ We might want an approximate posterior that goes up the plate heirarchy.
   We could do this averaging through trace (e.g. `tr.mean(rv, "plate_1")`)
   This API is a bit strange, but means that we can allow averaging in Q but not P.
 
+Do something with covariates?
+  They currently come in as data, which isn't correct.
+  Really, they should come in as a `covariates` dict (like the data dict).
+  This would come in in `Model` and all the other methods `VI` etc.
+  Allows error checking (e.g. we can check that all the data have a corresponding log-likelihood).
+
+Error checking for minibatching.
+  Currently, data enters through `Model` or through e.g. `vi`.
+  Data entering through `vi` can be minibatched.
+  But minibatched data has restrictions:
+    We can't (at least currently) learn datapoint specific parameters.
+    We can't have shared K-dimensions with minibatched data.
+  And we don't currently check these restrictions.
+
+Tests:
+  Importance sampling and importance weighting give the same moments.
+
+Masks / nested tensors for different numbers of observations in a plate...
+
 Timeseries:
 Timeseries class:
   
-Two API options:
-  tr.sample("a", Timeseries(initial_state, transition), T="T", inputs=None)
-    Timeseries.sample(reparam, T_dim, inputs=None, sample_dim=())
-    Advantages:  
-      we can poke Timeseries
-  tr.timeseries("a", initial_state, transition, inputs=None, T="T")
-    Advantages
-      Cleaner function calls?
-      Decoupled from sample
+
+Timeseries implementation notes
+  * logq is a single T x K matrix.
+  * Keep logp_first and logp_rest together.
+    * Keep them in a class which has sensible dims (to decide the ordering of the tensor sum).
+  * Split all the dependent tensors into first and rest for the sums over K.
+  * Allow directly observing timeseries?
+  * Syntax: tr.sample("a", Timeseries(initial_state, transition, inputs=None), Tdim="T", plate=...)
+
+Timeseries principles:
+  * Code for everything (esp. e.g. Traces) that doesn't work with logp is exactly the same.
+  
+
 Plates have a T dimension (as we can have a plate with size T).
 Additionally, we have a dict mapping timeseries_name => T, Tm1, Kcurr, Kprev
 Timeseries: we need to get rid of all K's except K_curr and K_prev (as we get rid of all K's when we sum over the plate).
@@ -27,20 +50,4 @@ Timeseries: we need to get rid of all K's except K_curr and K_prev (as we get ri
   store initial and rest log-prob in a named tensor.
   assume only one timeseries in each plate.
   
-Do something with covariates?
-  They currently come in as data, which doesn't seem quite correct.
 
-Tests:
-  Importance sampling and importance weighting give the same moments.
-
-Masks + nested tensors for different numbers of observations in a plate...
-
-Traces:
-  Dict mapping names to different kinds of torchdims (or names if the backend uses torchdims)
-    timeseries name -> Kcurr
-    timeseries name -> Kprev
-    timeseries name -> T
-    timeseries name -> Tm1
-    plate name      ->        train plate dim
-    plate name      -> test + train plate dim
-  Easy to switch between torchdims and named if we have these kinds of mapping.

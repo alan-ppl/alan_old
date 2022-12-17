@@ -87,7 +87,8 @@ class TorchDimDist():
             assert not is_dimtensor(arg)
             self.all_args[argname] = arg
 
-    def sample(self, reparam, sample_dims):
+    def sample(self, reparam, sample_dims, T_dim=None):
+        assert T_dim is None
         torch_dist = self.dist(**self.all_args)
         sample_method = getattr(torch_dist, "rsample" if reparam else "sample")
         sample_dims = set(sample_dims).difference(self.dims)
