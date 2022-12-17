@@ -220,17 +220,19 @@ class TracePred(AbstractTrace):
         #Corresponding list of dims for all and train.
         dims_all   = [self.plates_all[dimname]   for dimname in dimnames]
         dims_train = [self.plates_train[dimname] for dimname in dimnames]
-        #Indices
-        idxs = [slice(0, l) for l in sample_train.shape[:len(dimnames)]]
-        idxs.append(Ellipsis)
-
+        dims_all.append(Ellipsis)
+        dims_train.append(Ellipsis)
         #Strip torchdim.
         sample_all   = generic_order(sample_all,   dims_all)   #Still torchdim, as it has N!
         sample_train = generic_order(sample_train, dims_train) #Still torchdim, as it has N!
+
+        idxs = [slice(0, l) for l in sample_train.shape[:len(dimnames)]]
+        idxs.append(Ellipsis)
+
         #Actually do the replacement in-place
-        if varname == 'c':
-            breakpoint()
         sample_all[idxs] = sample_train
+        #Put torchdim back
+        sample_all = sample_all[dims_all]
 
         if varname in self.data_all:
             ll_all                 = dist.log_prob(sample_all)
