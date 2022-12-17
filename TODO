@@ -1,13 +1,39 @@
+multisample = False
+  Warning that lots of things break if you use multisample=False.
+  Do something sensible in importance sampling/weighting with multisample=False
 
-Postprocessing: K's
+We might want an approximate posterior that goes up the plate heirarchy.
+  In that case, we probably want an approximate posterior which allows us to e.g. average over plates.
+  We could do this averaging through trace (e.g. `tr.mean(rv, "plate_1")`)
+  This API is a bit strange, but means that we can allow averaging in Q but not P.
 
-Sampling from the conditional prior
-  sampling from the conditional prior with more plates
-  test moments
-  test log-likelihood
+Timeseries:
+Timeseries class:
+  
+Two API options:
+  tr.sample("a", Timeseries(initial_state, transition), T="T", inputs=None)
+    Timeseries.sample(reparam, T_dim, inputs=None, sample_dim=())
+    Advantages:  
+      we can poke Timeseries
+  tr.timeseries("a", initial_state, transition, inputs=None, T="T")
+    Advantages
+      Cleaner function calls?
+      Decoupled from sample
+Plates have a T dimension (as we can have a plate with size T).
+Additionally, we have a dict mapping timeseries_name => T, Tm1, Kcurr, Kprev
+Timeseries: we need to get rid of all K's except K_curr and K_prev (as we get rid of all K's when we sum over the plate).
+  problem: initial and rest of the transitions have different shapes.
+  solution: split all tensors into initial and rest, then do reduce K's over them separately.
+  store initial and rest log-prob in a named tensor.
+  assume only one timeseries in each plate.
+  
+Do something with covariates?
+  They currently come in as data, which doesn't seem quite correct.
 
-Timeseries
+Tests:
+  Importance sampling and importance weighting give the same moments.
 
+Masks + nested tensors for different numbers of observations in a plate...
 
 Traces:
   Dict mapping names to different kinds of torchdims (or names if the backend uses torchdims)
