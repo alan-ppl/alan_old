@@ -97,19 +97,20 @@ class TorchDimDist():
         return sample[dims]
 
     def log_prob(self, x):
-        #Same number of unnamed batch dims.
+        #Same number of unnamed batch dims
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         x_dims = generic_dims(x)
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims, Ellipsis]
         log_prob = self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims]
 
-        if self.unnamed_batch_dims == 0:
-            return log_prob
-        return log_prob.sum()
-        #if len(all_dims) > 1:
-        #    return self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))[all_dims].sum().order(*all_dims[:-1])[all_dims[:-1]]
-        #else:
+
+
+        if self.unnamed_batch_dims > 0:
+            log_prob = log_prob.sum()
+
+        return log_prob
+
 
 def set_dist(dist_name):
     def inner(*args, **kwargs):

@@ -1,9 +1,7 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-import tqdm
-from functorch.dim import dims, Dim
+
 import argparse
 import json
 import numpy as np
@@ -43,10 +41,9 @@ M = args.M
 N = args.N
 
 
-plate_1, plate_2 = dims(2 , [M,N])
-
-x_train = t.load('data/weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
-x_test = t.load('data/test_weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+sizes = {'plate_1':M, 'plate_2':N}
+x_train = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+x_test = {'x':t.load('data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
 d_z = 18
 class P(nn.Module):
     def __init__(self, x):
@@ -57,13 +54,13 @@ class P(nn.Module):
         Heirarchical Model
         '''
 
-        tr['mu_z'] = tpp.Normal(t.zeros((2,d_z)).to(device), t.ones((2,d_z)).to(device))
-        tr['psi_z'] = tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device))
+        tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+        tr.sample('psi_z', tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)))
 
-        tr['z'] = tpp.Normal(tr['mu_z'], tr['psi_z'].exp(), sample_dim=plate_1)
-        tr['obs'] = tpp.Bernoulli(logits = tr['z'] @ self.x)
+        tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plate='plate_1')
+        tr.sample('obs', tpp.Bernoulli(logits = tr['z'] @ tr['x']))
 
-class Q(tpp.Q_module):
+class Q(tpp.Q):
     def __init__(self):
         super().__init__()
         #mu_z
@@ -73,22 +70,22 @@ class Q(tpp.Q_module):
         self.reg_param('psi_z_logits', t.randn(5))
 
         #z
-        self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
-        self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
+        self.reg_param("mu", t.zeros((M,d_z)), ['plate_1'])
+        self.reg_param("log_sigma", t.zeros((M, d_z)), ['plate_1'])
 
 
     def forward(self, tr):
-        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp())
-        tr['psi_z'] = tpp.Categorical(logits=self.psi_z_logits)
+        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+        tr.sample('psi_z', tpp.Categorical(logits=self.psi_z_logits))
 
-        tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
-
-
+        tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
 
 
 
-data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
-test_data_y = {'obs':t.load('data/test_data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
+
+
+data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
+test_data_y = {'obs':t.load('data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 for K in Ks:
     print(K,M,N)
     results_dict[N] = results_dict.get(N, {})
@@ -101,7 +98,7 @@ for K in Ks:
         seed_torch(i)
         start = time.time()
 
-        model = tpp.Model(P(x_train), Q(), data_y)
+        model = tpp.Model(P(x_train), Q(), data_y | x_train)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-4)
@@ -118,7 +115,7 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,wake_phi_loss.item()))
 
         times.append(time.time() - start)
-        test_model = tpp.Model(P(x_test), model.Q, test_data_y)
+        test_model = tpp.Model(P(x_test), model.Q, test_data_y | x_test)
         pred_likelihood = test_model.pred_likelihood(test_data=test_data_y, num_samples=1000, reparam=False)
         pred_liks.append(pred_likelihood.item())
     results_dict[N][M][K] = {'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks, 'avg_time':np.mean(times)}

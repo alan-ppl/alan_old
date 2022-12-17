@@ -1,9 +1,7 @@
 import torch as t
 import torch.nn as nn
 import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-import tqdm
-from functorch.dim import dims
+
 import argparse
 import json
 import numpy as np
@@ -18,6 +16,7 @@ def seed_torch(seed=1029):
     t.cuda.manual_seed(seed)
 
 seed_torch(0)
+
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -41,28 +40,31 @@ Ks = [1,5,10,15]
 M = args.M
 N = args.N
 
-plate_1, plate_2 = dims(2 , [M,N])
+
+sizes = {'plate_1':M, 'plate_2':N}
 if N == 30:
     d_z = 20
 else:
     d_z = 5
-x = t.load('weights_{0}_{1}.pt'.format(N,M))[plate_1,plate_2].to(device)
+x = {'x':t.load('weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+
 def P(tr):
   '''
   Heirarchical Model
   '''
 
-  tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-  tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+  tr.sample('mu_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('psi_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('psi_y', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
 
-  tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1, group='local')
+  tr.sample('z', tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plate='plate_1')
 
-  tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
+  tr.sample('obs', tpp.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
 
 
-class Q(tpp.Q_module):
+
+class Q(tpp.Q):
     def __init__(self):
         super().__init__()
         #mu_z
@@ -76,26 +78,19 @@ class Q(tpp.Q_module):
         self.reg_param("log_theta_psi_y", t.zeros(()))
 
         #z
-        self.reg_param("mu", t.zeros((M,d_z)), [plate_1])
-        self.reg_param("log_sigma", t.zeros((M, d_z)), [plate_1])
+        self.reg_param("mu", t.zeros((M,d_z)), ['plate_1'])
+        self.reg_param("log_sigma", t.zeros((M, d_z)), ['plate_1'])
 
 
     def forward(self, tr):
-        tr['mu_z'] = tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp(), sample_K=False)
-        tr['psi_z'] = tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp(), sample_K=False)
-        tr['psi_y'] = tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp(), sample_K=False)
-
-        # sigma_z = self.sigma @ self.sigma.mT
-        # eye = t.eye(d_z).to(device)
-        # z_eye = eye * 0.001
-        # sigma_z = sigma_z + z_eye
-        #print(self.mu * t.ones((M,)).to(device)[plate_1])
-
-        tr['z'] = tpp.Normal(self.mu, self.log_sigma.exp())
+        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()), multi_samples=False)
+        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_samples=False)
+        tr.sample('psi_y', tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp()), multi_samples=False)
 
 
+        tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M))[plate_1,plate_2].to(device)}
+data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 
 for K in Ks:
     print(K,M,N)
@@ -103,8 +98,8 @@ for K in Ks:
     results_dict[N][M] = results_dict[N].get(M, {})
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
-    lrs = []
     times = []
+    lrs = []
     for i in range(5):
         per_seed_elbos = []
         seed_torch(i)
@@ -112,12 +107,11 @@ for K in Ks:
         lr = []
         t.manual_seed(i)
 
-        model = tpp.Model(P, Q(), data_y)
+        model = tpp.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
         scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
-
 
         for i in range(50000):
             opt.zero_grad()
