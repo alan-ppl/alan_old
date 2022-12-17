@@ -1,12 +1,6 @@
 import torch as t
 from functorch.dim import Tensor, Dim
 
-# def has_dim(x, lst):
-#   for element in lst:
-#     if x is element:
-#       return True
-#   return False
-
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
 
@@ -33,10 +27,15 @@ def generic_order(x, dims):
     """
     Implements x.order(dims), which is only defined for torchdim tensors
     """
-    if isinstance(x, Tensor):
-        return x.order(*dims) if 0<len(dims) else x
-    else:
-        return x
+    #Drop trailing Ellipsis.
+    if (0 < len(dims)) and (dims[-1] == Ellipsis):
+        dims = dims[:-1]
+
+    #If x is a torch tensor, then we can't have any dims.
+    if isinstance(x, t.Tensor):
+        assert 0 == len(dims)
+
+    return x.order(*dims) if 0<len(dims) else x
 
 def ordered_unique(ls):
     """
