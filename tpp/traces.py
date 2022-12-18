@@ -74,6 +74,13 @@ class TraceQ(AbstractTrace):
         assert key not in self.samples
         assert key not in self.logq
 
+        if multi_samples==False:
+            warn("""multi_samples=False will break alot of things, 
+                including importance sampling, importance weighting, 
+                and RWS. Prefer grouped K's wherever possible.  
+                Though it is necessary to do Bayesian reasoning about 
+                parameters when we minibatch across latent variables""")
+
         if T is not None:
             dist.set_Tdim(self.plates[T])
 
