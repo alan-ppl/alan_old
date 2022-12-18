@@ -69,17 +69,21 @@ class TraceQ(AbstractTrace):
         self.samples = {}
         self.logq = {}
 
-    def sample(self, key, dist, multi_samples=True, plate=None, T=None):
+    def sample(self, key, dist, multi_sample=True, plate=None, T=None):
         assert key not in self.data
         assert key not in self.samples
         assert key not in self.logq
 
-        if multi_samples==False:
-            warn("""multi_samples=False will break alot of things, 
-                including importance sampling, importance weighting, 
-                and RWS. Prefer grouped K's wherever possible.  
-                Though it is necessary to do Bayesian reasoning about 
-                parameters when we minibatch across latent variables""")
+        if multi_sample==False:
+            warn("""
+
+WARNING: multi_sample=False will break alot of things, 
+including importance sampling, importance weighting, 
+and RWS. Prefer grouped K's wherever possible.  
+Though it is necessary to do Bayesian reasoning about 
+parameters when we minibatch across latent variables
+
+""")
 
         if T is not None:
             dist.set_Tdim(self.plates[T])
@@ -87,12 +91,12 @@ class TraceQ(AbstractTrace):
         sample_dims = []
         if plate is not None:
             sample_dims.append(self.plates[plate])
-        if multi_samples:
+        if multi_sample:
             sample_dims.append(self.Kdim)
 
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
-        if not multi_samples:
+        if not multi_sample:
             for d in generic_dims(sample):
                 assert self.Kdim is not d, "Multiple samples are coming into this variable, so we can't stop it giving multiple samples at the output"
 

@@ -30,8 +30,8 @@ class Sample():
             lq = trp.logq[rv]
 
             # check same plates/timeseries appear in lp and lq
-            lp_notK = [dim for dim in lp.dims if not self.is_K(dim)]
-            lq_notK = [dim for dim in lq.dims if not self.is_K(dim)]
+            lp_notK = [dim for dim in generic_dims(lp) if not self.is_K(dim)]
+            lq_notK = [dim for dim in generic_dims(lq) if not self.is_K(dim)]
             assert set(lp_notK) == set(lq_notK)
 
 
