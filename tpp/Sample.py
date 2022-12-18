@@ -84,7 +84,9 @@ class Sample():
         #collect K's that appear in higher plates
         Ks_to_keep = set([dim for dim in unify_dims(higher_lps) if self.is_K(dim)])
 
-        if any(isinstance(lp, TimeseriesLogP) for lp in lower_lps):
+        n_timeseries = sum(isinstance(lp, TimeseriesLogP) for lp in lower_lps)
+        assert n_timeseries in [0, 1]
+        if n_timeseries == 1:
             lower_lp = self.sum_T(lower_lps, plate_dim, Ks_to_keep)
         else:
             lower_lp = self.sum_plate(lower_lps, plate_dim, Ks_to_keep)
