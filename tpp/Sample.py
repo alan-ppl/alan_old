@@ -108,12 +108,10 @@ class Sample():
         first = self.reduce_Ks_to_keep([ts.first, *firsts], Ks_to_keep)
         rest  = self.reduce_Ks_to_keep([ts.rest,  *rests],  Ks_to_keep)
         
-        first = first.order.order(ts.K).order(ts.Kprev) #Kprev
+        first = first.order(ts.K)[ts.Kprev] #Replace K with Kprev
         rest = chain_logmmmeanexp(rest, ts.Tm1, ts.Kprev, ts.K) #Kprev x Knext
-        
-        breakpoint()
-        #Reduce over Ks...
-        #Implement reduce_Ks in terms of inner method...
+
+        return reduce_Ks([first, rest], [ts.Kprev, ts.K])
 
     def sum_plate(self, lower_lps, plate_dim, Ks_to_keep):
         lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
