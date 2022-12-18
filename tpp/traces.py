@@ -1,7 +1,9 @@
+from warnings import warn
 import torch as t
 from functorch.dim import dims, Dim
 
 from .utils import *
+from .timeseries import Timeseries
 
 class AbstractTrace():
     def __getitem__(self, key):
@@ -122,6 +124,18 @@ class TraceP(AbstractTrace):
             assert self.trq.plates[plate] in dims_sample, "Plates in Q don't match those in P"
 
         has_k = self.trq.Kdim in dims_sample
+
+        if isinstance(dist, Timeseries) and (dist._inputs is not None):
+            warn("Generative models with timeseries with inputs are likely to be highly inefficient; if possible, try to eliminate the inputs (e.g. by marginalising them)")
+
+        if isinstance(dist, Timeseries) and (group is not None):
+            #Works around a limitation in importance sampling.
+            #Namely, we importance sample variables according to their order in P.
+            #If we have a plate and a timeseries which are grouped, then we have to sample the timeseries first
+            #that'll happen directly if the timeseries appears first in the probabilistic model,
+            #but we'll do something wrong if we try to sample the plate first.
+            assert group not in self.groupname2dim, "Timeseries can be grouped, but must be the first thing sampled with a group"
+            
 
         #data
         if key in self.data:

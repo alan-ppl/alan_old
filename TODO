@@ -41,7 +41,12 @@ Tests:
 
 Timeseries:
   Prediction
-  Importance sampling (ignore the case where we want to just sample the last state).
+  Importance sampling
+    Simplification: ignore the case where we want to just sample the last state.
+    Problem:
+      Current implementation samples in the order of the generative model.
+      But we can't do that with timeseries if it has an input, and the input + timeseries are grouped.
+       
 
 Fast / natural gradient updates
 
