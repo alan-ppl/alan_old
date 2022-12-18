@@ -21,31 +21,54 @@ Error checking for minibatching.
     We can't have shared K-dimensions with minibatched data.
   And we don't currently check these restrictions.
 
-Tests:
-  Importance sampling and importance weighting give the same moments.
-
 Masks / nested tensors for different numbers of observations in a plate...
 
+Reduce memory consumption:
+  Tips in docs:
+    Group everything in a plate.
+    Make sure you're heirarchy doesn't skip a plate.
+  Memory checkpointing (maybe around reduce_Ks)?
 
+Memory diagnostics:
+  Method to print size of log_prob for all tensors.
+  Maybe use device="meta" so that we don't run out of memory?
 
-Timeseries implementation notes
-  * logq is a single T x K matrix.
-  * Keep logp_first and logp_rest together.
-    * Keep them in a class which has sensible dims (to decide the ordering of the tensor sum).
-  * Split all the dependent tensors into first and rest for the sums over K.
-  * Allow directly observing timeseries?
-  * Syntax: tr.sample("a", Timeseries(initial_state, transition, inputs=None), Tdim="T", plate=...)
+Tests:
+  Importance sampling and importance weighting give the same moments.
+  Timeseries: 
+    ELBO is the same if we unroll; test by handwriting equivalent traces. 
+    Moments work.
 
-Timeseries principles:
-  * Code for everything (esp. e.g. Traces) that doesn't work with logp is exactly the same.
-  
+Timeseries:
+  Prediction
+  Importance sampling (ignore the case where we want to just sample the last state).
 
-Plates have a T dimension (as we can have a plate with size T).
-Additionally, we have a dict mapping timeseries_name => T, Tm1, Kcurr, Kprev
-Timeseries: we need to get rid of all K's except K_curr and K_prev (as we get rid of all K's when we sum over the plate).
-  problem: initial and rest of the transitions have different shapes.
-  solution: split all tensors into initial and rest, then do reduce K's over them separately.
-  store initial and rest log-prob in a named tensor.
-  assume only one timeseries in each plate.
-  
+Fast / natural gradient updates
 
+Sum out discrete variables:
+  Sum them out in P;
+  Don't appear in Q.
+
+Check that when doing importance sampling we can specify a subset of the plate sizes.
+
+Finally solve memory problems?
+  Probably you only want to split over a plate.  This is nice because:
+    It is easy for the user to reason about (they know about plates but not Ks).
+    We only need to implement the sum-reduction, rather than the einsum for Ks
+  Implementation:
+    do the forward pass in a for-loop
+    use torch.utils.checkpoint in the loop to avoid saving memory at each iteration.
+    may need to implement a torch.autograd.Function to avoid _ever_ instansiating/saving the full tensor?
+    Implementation should be easy for plates, but not timeseries
+    Can't split twice as I assume we can't nest torch.utils.checkpoint.
+
+  BatchTensor:
+    Manually specify some tensors as BatchTensor, and give the dimension(s) along which we batch.
+    When we do an op on a BatchTensor, we get a LazyTensor.
+
+  LazyTensor:
+    Just records input args + func.
+    LazyTensor knows all the batched torchdims.
+    Once we reduce over the last batched torchdim, we actually perform the computation.
+    
+  Check whether meta tensors work with torchdim
