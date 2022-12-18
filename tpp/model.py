@@ -63,7 +63,7 @@ class Model(nn.Module):
         plates = Q._plates if hasattr(Q, "_plates") else {}
         self.data, self.plates = named2dim_data(data, plates)
 
-    def sample(self, K, reparam, data):
+    def sample(self, K, reparam, data, memory_diagnostics=False):
         data, plates = named2dim_data(data, self.plates)
         all_data = {**self.data, **data}
         assert len(all_data) == len(self.data) + len(data)
@@ -72,7 +72,7 @@ class Model(nn.Module):
         trq = TraceQ(K, all_data, plates, reparam)
         self.Q(trq)
         #compute logP
-        trp = TraceP(trq)
+        trp = TraceP(trq, memory_diagnostics=memory_diagnostics)
         self.P(trp)
 
         return Sample(trp)

@@ -1,11 +1,6 @@
-multisample = False
-  Warning that lots of things break if you use multisample=False.
+multisample=False:
+  Die when we try RWS.
   Do something sensible in importance sampling/weighting with multisample=False
-
-We might want an approximate posterior that goes up the plate heirarchy.
-  In that case, we probably want an approximate posterior which allows us to e.g. average over plates.
-  We could do this averaging through trace (e.g. `tr.mean(rv, "plate_1")`)
-  This API is a bit strange, but means that we can allow averaging in Q but not P.
 
 Do something with covariates?
   They currently come in as data, which isn't correct.
@@ -30,8 +25,7 @@ Reduce memory consumption:
   Memory checkpointing (maybe around reduce_Ks)?
 
 Memory diagnostics:
-  Method to print size of log_prob for all tensors.
-  Maybe use device="meta" so that we don't run out of memory?
+  Method to print size of log_prob for all tensors, in TraceP
 
 Tests:
   Importance sampling and importance weighting give the same moments.
@@ -42,12 +36,12 @@ Tests:
 Timeseries importance sampling
   Abstract out some part of the sampling process, so it can be re-used for plates and timeseries.
        
-
 Fast / natural gradient updates
 
 Sum out discrete variables:
-  Sum them out in P;
-  Don't appear in Q.
+  Not necessary as we have RWS.
+  Most obvious approach is to sum them out in P, so they don't appear in Q.
+  Implemented as K-dimensions with different sizes.
 
 Check that when doing importance sampling we can specify a subset of the plate sizes.
 

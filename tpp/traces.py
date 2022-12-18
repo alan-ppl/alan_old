@@ -103,10 +103,30 @@ parameters when we minibatch across latent variables
         self.samples[key] = sample
         self.logq[key] = dist.log_prob(sample)
 
+    def reduce_plate(self, f, x, plate):
+        """
+        We may want an approximate posterior that samples the low-level latents
+        plates before the high-level parameters.  We may also want the approximate
+        posterior for the parameters to depend on e.g. the sampled values of the
+        low-level latents.  As the latents will have a plate dimension that doesn't
+        appear in the parameters, that means we'll need to reduce along a plate.
+        But the user can't do that easily, because they don't have access to the 
+        torchdim Dim for the plate, they only have a string.  The user therefore
+        needs to use methods defined on this trace.
+
+        Note that these do not exist on TraceP, because aggregating/mixing along
+        a plate in the generative model will break things!
+        """
+        return f(x, self.plates[plate])
+
+    def mean(x, plate):
+        return reduce_plate(t.mean, x, plate)
+
 
 class TraceP(AbstractTrace):
-    def __init__(self, trq):
+    def __init__(self, trq, memory_diagnostics=False):
         self.trq = trq
+        self.memory_diagnostics=memory_diagnostics
 
         self.samples = {}
         self.logp = {}
