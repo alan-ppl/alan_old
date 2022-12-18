@@ -205,7 +205,7 @@ class Sample():
         marginals = list(t.autograd.grad(result, undim_Js))
         #Put dims back,
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
-        #Normalized, marg gives the "posterior marginals" over
+        #Normalized, marg gives the "posterior marginals" over Ks
 
         Ks_so_far = set()
         #Dict mapping Kdim to NxPlates indexes.

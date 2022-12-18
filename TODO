@@ -44,8 +44,13 @@ Timeseries:
   Importance sampling
     Simplification: ignore the case where we want to just sample the last state.
     Problem:
-      Current implementation samples in the order of the generative model.
-      But we can't do that with timeseries if it has an input, and the input + timeseries are grouped.
+      Dealing with TimeseriesLogP
+      Define a method that:
+        takes: 
+          a list including tensors and TimeseriesLogP
+        and returns:
+          a flat list of tensors
+          a function to go back
        
 
 Fast / natural gradient updates
