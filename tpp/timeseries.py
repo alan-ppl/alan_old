@@ -102,3 +102,39 @@ class TimeseriesLogP():
         first = self.first.to(dtype=dtype, device=device)
         rest  = self.rest.to(dtype=dtype, device=device)
         return self.similar(first, rest)
+
+def tslp_to_tuple(tslp):
+    """
+    Takes a TimeseriesLogP, and returns a tuple of first and rest, and a method for going backwards.
+    """
+    return (tslp.first, tslp.rest), tslp.similar
+
+def flatten_tslp_list(ls):
+    length = len(ls)
+    inverses = []
+    result = []
+    for l in ls:
+        if isinstance(l, TimeseriesLogP):
+            (first, rest), inverse = tslp_to_tuple(l)
+            result.append(first)
+            result.append(rest)
+            inverses.append(inverse)
+        else:
+            result.append(l)
+            inverses.append(None)
+
+    def inverse(xs):
+        xs = [*xs]   #Copy list, as we're going to modify it in-place using pop
+        _result = []
+        for inverse in inverses[::-1]: #Pop pulls things off in reverse order
+            if inverse is None:
+                _result.append(xs.pop())
+            else:
+                rest  = xs.pop()
+                first = xs.pop()
+                _result.append(inverse(first, rest))
+        assert 0==len(xs)
+        assert length == len(_result)
+        return _result[::-1] #Resulting list has been reversed
+
+    return result, inverse
