@@ -222,7 +222,10 @@ def named2dim_data(named_data, plates):
 
 def chain_reduce(f, ms, T, Kprev, Kcurr):
     ms = ms.order(T)
-    Kmid = Dim('Kmid', K.size)
+    assert Kprev.size == Kcurr.size
+    assert Kprev in set(ms.dims)
+    assert Kcurr in set(ms.dims)
+    Kmid = Dim('Kmid', Kprev.size)
 
     while ms.shape[0] != 1:
         prev = ms[::2]
@@ -261,6 +264,9 @@ def logmmexp(prev, curr, Kmid):
 def logmmeanexp(prev, curr, Kmid):
     return logmmexp(prev, curr, Kmid) - t.log(t.tensor(Kmid.size))
 
+def chain_logmmmeanexp(ms, T, Kprev, Kcurr):
+    return chain_reduce(logmmeanexp, ms, T, Kprev, Kcurr)
+
 if __name__ == "__main__":
     from functorch.dim import dims
 
@@ -282,3 +288,15 @@ if __name__ == "__main__":
     assert t.allclose(tensor_result, td_result)
 
     
+def reduce_Ks(tensors, Ks_to_sum):
+    """
+    Fundamental method that sums over Ks
+    """
+    maxes = [max_dims(tensor, Ks_to_sum) for tensor in tensors]
+    # add a tiny amount for numerical stability
+    tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
+    result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
+
+    if 0<len(Ks_to_sum):
+        result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum()
+    return sum([result, *maxes])

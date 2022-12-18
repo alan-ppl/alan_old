@@ -68,6 +68,8 @@ class TimeseriesLogP():
         x_prev  = x[:-1][self.Tm1]
         x_curr  = x[1:][self.Tm1]
 
+        x_prev  = x_prev.order(Kdim)[self.Kprev]
+
         #Compute log probabilities
         self.first = dist.transition(dist.initial_state, *dist.input(0)).log_prob(x_first)
 
@@ -80,3 +82,9 @@ class TimeseriesLogP():
         all_dims = set(generic_dims(self.first)).intersection(generic_dims(self.rest))
         all_dims.add(self.T)
         self.dims = list(all_dims.difference([self.Kprev, self.Tm1]))
+
+    def to(self, dtype=None, device=None):
+        #WARNING: in-place update!!
+        self.first = self.first.to(dtype=dtype, device=device)
+        self.rest  = self.rest.to(dtype=dtype, device=device)
+        return self

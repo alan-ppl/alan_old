@@ -93,16 +93,35 @@ class Sample():
 
         return [*higher_lps, lower_lp]
 
-    def sum_T(self, lps, plate_dim): 
-        pass
+    def sum_T(self, lower_lps, T, Ks_to_keep):
+        ts     =  next(lp for lp in lower_lps if     isinstance(lp, TimeseriesLogP))
+        non_ts = tuple(lp for lp in lower_lps if not isinstance(lp, TimeseriesLogP))
+        assert ts.T is T
+
+        #Split all the non-timeseries log-p's into the first and rest.
+        non_ts_T = [lp.order(T)    for lp in non_ts]
+        firsts   = [lp[0]          for lp in non_ts_T]
+        rests    = [lp[1:][ts.Tm1] for lp in non_ts_T]
+
+        #Reduce over Ks separately for first and rest
+        Ks_to_keep = [ts.K, *Ks_to_keep]
+        first = self.reduce_Ks_to_keep([ts.first, *firsts], Ks_to_keep)
+        rest  = self.reduce_Ks_to_keep([ts.rest,  *rests],  Ks_to_keep)
+        
+        first = first.order.order(ts.K).order(ts.Kprev) #Kprev
+        rest = chain_logmmmeanexp(rest, ts.Tm1, ts.Kprev, ts.K) #Kprev x Knext
+        
+        breakpoint()
+        #Reduce over Ks...
+        #Implement reduce_Ks in terms of inner method...
 
     def sum_plate(self, lower_lps, plate_dim, Ks_to_keep):
-        lower_lp = self.reduce_Ks(lower_lps, Ks_to_keep)
+        lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
         if plate_dim is not None:
             lower_lp = lower_lp.sum(plate_dim)
         return lower_lp
 
-    def reduce_Ks(self, tensors, Ks_to_keep):
+    def reduce_Ks_to_keep(self, tensors, Ks_to_keep):
         """
         Takes a list of log-probability tensors, and a list of dimension names to do the reductions,
         and does a numerically stable log-einsum-exp
@@ -116,20 +135,10 @@ class Sample():
         """
 
         all_dims = unify_dims(tensors)
+        Ks_to_keep = set(Ks_to_keep)
         Ks_to_sum    = [dim for dim in all_dims if self.is_K(dim) and (dim not in Ks_to_keep)]
+        return reduce_Ks(tensors, Ks_to_sum)
 
-        #subtract max to ensure numerical stability.  Do max over all dims that we're summing over.
-
-        maxes = [max_dims(tensor, Ks_to_sum) for tensor in tensors]
-
-        ## adding tiny amount for numerical stability
-        tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
-
-        result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
-
-        result = result - len(Ks_to_sum)*(t.log(t.tensor(self.trp.trq.Kdim.size)))
-
-        return sum([result, *maxes])
 
     def elbo(self):
         return self.tensor_product()

@@ -18,4 +18,4 @@ data = tpp.sample(P, varnames=('obs',), sizes={"Tb": 20, "plate_1": 3})
 
 model = tpp.Model(P, Q, data)
 sample = model.sample(5, True, {})
-#Lost a plate and not throwing an error!!!
+elbo = model.elbo(5)
