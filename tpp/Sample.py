@@ -253,7 +253,8 @@ class Sample():
         var_names           = list(self.trp.samples.keys())
         samples             = list(self.trp.samples.values())
         logps_u             = [self.trp.logp[var_name] for var_name in var_names]
-        #Flatten first and rest in TimeseriesLogP
+        #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
+        #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
         logps_f, unflatten  = flatten_tslp_list(logps_u)
         dimss               = [lp.dims for lp in logps_f]
         undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps_f, dimss)]
@@ -270,7 +271,7 @@ class Sample():
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
         #Normalized, marg gives the "posterior marginals" over Ks
 
-        #Unflatten first and rest in TimeseriesLogP
+        #Wrap back up the first and last marginals relating to TimeseriesLogP.
         marginals = unflatten(marginals)
 
         Ks_so_far = set()
