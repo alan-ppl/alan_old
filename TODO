@@ -39,18 +39,8 @@ Tests:
     ELBO is the same if we unroll; test by handwriting equivalent traces. 
     Moments work.
 
-Timeseries:
-  Prediction
-  Importance sampling
-    Simplification: ignore the case where we want to just sample the last state.
-    Problem:
-      Dealing with TimeseriesLogP
-      Define a method that:
-        takes: 
-          a list including tensors and TimeseriesLogP
-        and returns:
-          a flat list of tensors
-          a function to go back
+Timeseries importance sampling
+  Abstract out some part of the sampling process, so it can be re-used for plates and timeseries.
        
 
 Fast / natural gradient updates

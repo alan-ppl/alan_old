@@ -290,8 +290,10 @@ class Sample():
             #Should be zero (e.g. if grouped) or one new K.
             assert len(new_Ks) in (0, 1)
 
+            if isinstance(marginals[i], TimeseriesLogP):
+                pass
             #If there's a new K, then we need to do posterior sampling for that K.
-            if 1==len(new_Ks):
+            elif 1==len(new_Ks):
                 K = new_Ks[0]
                 Ks_so_far.add(K)
                 #index into marg for the previous Ks, which gives an unnormalized posterior.
