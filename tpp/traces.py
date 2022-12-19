@@ -304,15 +304,19 @@ class TracePred(AbstractTrace):
             T_all = dist.T
             T_idx = next(i for (i, dim) in enumerate(dims_all) if dim is T_all)
             T_train = dims_train[T_idx]
-            sample_at_undim = sample_all.order[T_all][:T_train.size]
-            sample_at = sample_at_undim[T_train]
-            sample_init = sample_at_undim[-1]
             T_test = Dim('T_test', T_all.size - T_train.size)
- 
-            if dist._inputs is not None:
-                pass
 
-            test_dist = Timeseries(sample_init, dist.transition, dist.inputs)
+            sample_train, sample_test = split_test_train(sample_all, T_all, T_train, T_test)
+            sample_init = sample_train.order[T_train][-1]
+ 
+            inputs = ()
+            if dist._inputs is not None:
+                inputs_train, inputs_test = split_test_train(dist._inputs, T_all, T_train, T_test)
+                inputs = (inputs_test,)
+
+            test_dist = Timeseries(sample_init, dist.transition, *inputs)
+            sample_test = test_dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+            sample_all = t.cat([sample_train.order[T_train], sample_test.order[T_test]], 0)[T_all]
 
         self.samples_all[varname] = sample_all
 
@@ -335,3 +339,6 @@ class TracePred(AbstractTrace):
         self.ll_all[varname]   = ll_all
         self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
 
+def split_train_test(x, T_all, T_train, T_test):
+    x_undim = x.order[T_all]
+    return x[:T_train.size][T_train], x[T_train.size:][T_test]
