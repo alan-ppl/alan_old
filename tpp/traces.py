@@ -245,7 +245,39 @@ class TracePred(AbstractTrace):
         assert not (in_data and in_sample)
         return self.samples_all[key] if in_sample else self.data_all[key]
 
+    def corresponding_plates(self, x_all, x_train):
+        """
+        x_all and x_train are tensors with plates, but the all and training plates
+        have different sizes.  This returns two lists of torchdims, representing the
+        plates for x_all and x_train.  It also checks that x_all and x_train have
+        the same plates.
+        """
+        dims_all   = set(x_all.dims)   #Includes N!
+        dims_train = set(x_train.dims) #Includes N!
+        dimnames_all   = [name for (name, dim) in self.plates_all.items()   if dim in dims_all]
+        dimnames_train = [name for (name, dim) in self.plates_train.items() if dim in dims_train]
+        assert set(dimnames_all) == set(dimnames_train)
+        dimnames = dimnames_all
+
+        #Corresponding list of dims for all and train.
+        dims_all   = [self.plates_all[dimname]   for dimname in dimnames]
+        dims_train = [self.plates_train[dimname] for dimname in dimnames]
+        dims_all.append(Ellipsis)
+        dims_train.append(Ellipsis)
+        return dims_all, dims_train
+
     def sample(self, varname, dist, multi_samples=True, plate=None):
+        """
+        We have three possible things: sample_tt, sample_at, sample_aa. 
+        Here, t/a stand for train/all. The first t/a is for the previous
+        plates.  The second t/a is for the current plate.  We treat them
+        separately, because we need to be careful if plate is a timeseries
+
+        Basic algorithm:
+        draw sample_at from prior
+        replace sample_tt in sample_at.
+        sample extra to get sample_aa.
+        """
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train
@@ -262,28 +294,34 @@ class TracePred(AbstractTrace):
 
         sample_train = self.data_train[varname] if (varname in self.data_train) else self.samples_train[varname]
 
-        #Get a unified list of dimension names.
-        dims_all   = set(sample_all.dims)   #Includes N!
-        dims_train = set(sample_train.dims) #Includes N!
-        dimnames_all   = [name for (name, dim) in self.plates_all.items()   if dim in dims_all]
-        dimnames_train = [name for (name, dim) in self.plates_train.items() if dim in dims_train]
-        assert set(dimnames_all) == set(dimnames_train)
-        dimnames = dimnames_all
+        dims_all, dims_train = self.corresponding_plates(sample_all, sample_train)
+        ##Get a unified list of dimension names.
+        #dims_all   = set(sample_all.dims)   #Includes N!
+        #dims_train = set(sample_train.dims) #Includes N!
+        #dimnames_all   = [name for (name, dim) in self.plates_all.items()   if dim in dims_all]
+        #dimnames_train = [name for (name, dim) in self.plates_train.items() if dim in dims_train]
+        #assert set(dimnames_all) == set(dimnames_train)
+        #dimnames = dimnames_all
 
-        #Corresponding list of dims for all and train.
-        dims_all   = [self.plates_all[dimname]   for dimname in dimnames]
-        dims_train = [self.plates_train[dimname] for dimname in dimnames]
-        dims_all.append(Ellipsis)
-        dims_train.append(Ellipsis)
+        ##Corresponding list of dims for all and train.
+        #dims_all   = [self.plates_all[dimname]   for dimname in dimnames]
+        #dims_train = [self.plates_train[dimname] for dimname in dimnames]
+        #dims_all.append(Ellipsis)
+        #dims_train.append(Ellipsis)
         #Strip torchdim.
         sample_all   = generic_order(sample_all,   dims_all)   #Still torchdim, as it has N!
         sample_train = generic_order(sample_train, dims_train) #Still torchdim, as it has N!
 
-        idxs = [slice(0, l) for l in sample_train.shape[:len(dimnames)]]
+        idxs = [slice(0, l) for l in sample_train.shape[:len(dims_all)]]
         idxs.append(Ellipsis)
 
-        #Actually do the replacement in-place
-        sample_all[idxs] = sample_train
+        if varname in self.data_all:
+            pass
+            #assert t.allclose(sample_all[idxs], sample_train)
+        else:
+            #Actually do the replacement in-place
+            sample_all[idxs] = sample_train
+
         #Put torchdim back
         sample_all = sample_all[dims_all]
 
@@ -295,3 +333,10 @@ class TracePred(AbstractTrace):
             self.data_all[varname] = sample_all
         else:
             self.samples_all[varname] = sample_all
+
+    def _sample_logp(self, varname, dist, multi_samples=True, plate=None):
+        sample_all = self.data_all[varname]
+
+        ll_all                 = dist.log_prob(sample_all)
+        self.ll_all[varname]   = ll_all
+        self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
