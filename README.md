@@ -94,7 +94,7 @@ where `tpp.dist` is one of the distributions [listed below](#choice-of-distribut
 
 You can define the plated model above as so:
 ```py
-sizes = {'plate_1':M, 'plate_2':N}
+sizes = {'plate_1':N, 'plate_2':M}
 def P(tr):
     tr.sample('mu',   tpp.MultivariateNormal(t.zeros(5), t.eye(5)))
     tr.sample('phi', tpp.MultivariateNormal(tr['phi'], t.eye(5)), plate='plate_1')
@@ -111,6 +111,13 @@ def P(tr):
 ```
 
 Combinations between the importance samples within groups of latents are not computed. For a model with $n$ latents, $m$ of which are grouped into $k$ groups $(k \leq m)$ there will be $K^{n - m + k}$ importance samples drawn.
+
+<!-- #### Using weights and conditional information
+We show in [Conditioning On Data](#using-pre-existing-data) how to load weights and conditional information. To use it in $P$ you do the following (assuming the key 'weights' is used): -->
+
+
+
+
 
 ### Defining $Q$
 
@@ -182,11 +189,50 @@ Choices for `tpp.dist` include most distributions listed in https://pytorch.org/
 
 Note: For models with discrete latents only the [RWS](#reweighted-wake-sleep) inference method is supported.
 
+Conditioning on data
+====================
+
+Having defined a probabilistic model and proposal you can provide data as so:
+
+### Using the probabilistic model to provide data
+
+If you dont already have data you can use $P$ to sample some:
+
+```py
+data = tpp.sample(P, varnames=('obs',))
+model = tpp.Model(P, Q(), data)
+```
+
+### Using pre-existing data
+If you already have some saved data you can load them (as PyTorch Tensors) as use them as follows:
+
+```py
+obs = loaded_obs.rename('plate_1', 'plate_2',...) #rename with whichever plate names you are using in P
+
+#some weights
+weights = loaded_weights.rename('plate_1', 'plate_2',...) #Or whichever plates are needed
+
+data = {'obs':obs, 'weights':weights}
+
+def P(tr):
+    tr.sample('mu',   tpp.MultivariateNormal(t.zeros(5), t.eye(5)))
+    tr.sample('obs',   tpp.Normal(tr['mu'] @ tr['weights'], 1))
+
+### Define Q
+...
+
+model = tpp.Model(P, Q(), data)
+
+### Train Q
+...
+```
+
+A good example of this is in [the radon model](./examples/radon/randon_model_unif.py)
 
 Inference Methods
 =================
 
-We support two objective functions for inference:
+We support two objective functions for inference. All methods require the user to specify the number $K$ of samples to be drawn for each latent (or group of latents).
 
 ## Evidence Lower Bound (IWAE)
 In the training loop:
