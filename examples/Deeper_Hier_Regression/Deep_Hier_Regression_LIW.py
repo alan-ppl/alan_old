@@ -52,12 +52,12 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr.sample('mu_z1', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
-  tr.sample('mu_z2', tpp.Normal(tr['mu_z1'], t.ones(()).to(device)), plate='plate_muz2')
-  tr.sample('mu_z3', tpp.Normal(tr['mu_z2'], t.ones(()).to(device)), plate='plate_muz3')
-  tr.sample('mu_z4', tpp.Normal(tr['mu_z3'], t.ones(()).to(device)), plate='plate_muz4')
-  tr.sample('psi_y', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
-  tr.sample('psi_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('mu_z1', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
+  tr.sample('mu_z2', tpp.Normal(tr['mu_z1'], t.ones(()).to(device)), plate='plate_muz2', group='local')
+  tr.sample('mu_z3', tpp.Normal(tr['mu_z2'], t.ones(()).to(device)), plate='plate_muz3', group='local')
+  tr.sample('mu_z4', tpp.Normal(tr['mu_z3'], t.ones(()).to(device)), plate='plate_muz4', group='local')
+  tr.sample('psi_y', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
+  tr.sample('psi_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
 
   tr.sample('z', tpp.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plate='plate_z')
 
@@ -95,12 +95,12 @@ class Q(tpp.Q):
 
 
     def forward(self, tr):
-        tr.sample('mu_z1', tpp.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp()), multi_samples=False)
-        tr.sample('mu_z2', tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp()), multi_samples=False)
-        tr.sample('mu_z3', tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp()), multi_samples=False)
-        tr.sample('mu_z4', tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp()), multi_samples=False)
-        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_samples=False)
-        tr.sample('psi_y', tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp()), multi_samples=False)
+        tr.sample('mu_z1', tpp.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp()))
+        tr.sample('mu_z2', tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp()))
+        tr.sample('mu_z3', tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp()))
+        tr.sample('mu_z4', tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp()))
+        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
+        tr.sample('psi_y', tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp()))
 
 
         tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))

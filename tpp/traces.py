@@ -75,14 +75,13 @@ class TraceQ(AbstractTrace):
         assert key not in self.logq
 
         if multi_sample==False:
-            warn("""
-
-WARNING: multi_sample=False will break alot of things, 
-including importance sampling, importance weighting, 
-and RWS. Prefer grouped K's wherever possible.  
-Though it is necessary to do Bayesian reasoning about 
+            warn(
+            """
+            WARNING: multi_sample=False will break alot of things,
+including importance sampling, importance weighting,
+and RWS. Prefer grouped K's wherever possible.
+Though it is necessary to do Bayesian reasoning about
 parameters when we minibatch across latent variables
-
 """)
 
         if T is not None:
@@ -110,7 +109,7 @@ parameters when we minibatch across latent variables
         posterior for the parameters to depend on e.g. the sampled values of the
         low-level latents.  As the latents will have a plate dimension that doesn't
         appear in the parameters, that means we'll need to reduce along a plate.
-        But the user can't do that easily, because they don't have access to the 
+        But the user can't do that easily, because they don't have access to the
         torchdim Dim for the plate, they only have a string.  The user therefore
         needs to use methods defined on this trace.
 
@@ -149,7 +148,7 @@ class TraceP(AbstractTrace):
             dist.set_Tdim(self.trq.plates[T])
 
         dims_sample = set(generic_dims(self.trq[key]))
-        
+
         #Check that the sample provided by TraceQ actually has the required plate.
         if plate is not None:
             assert self.trq.plates[plate] in dims_sample, "Plates in Q don't match those in P"
@@ -166,7 +165,7 @@ class TraceP(AbstractTrace):
             #that'll happen directly if the timeseries appears first in the probabilistic model,
             #but we'll do something wrong if we try to sample the plate first.
             assert group not in self.groupname2dim, "Timeseries can be grouped, but must be the first thing sampled with a group"
-            
+
 
         #data
         if key in self.data:
@@ -304,7 +303,7 @@ class TracePred(AbstractTrace):
         sample_all = sample_all[dims_all]
 
         if isinstance(dist, Timeseries):
-            #Throw away the "test" part of the timeseries, and resample. Note that 
+            #Throw away the "test" part of the timeseries, and resample. Note that
             #we sampled all (including test) of the timeseries in the first place
             #because any inputs would be all (including test).  We could modify the
             #inputs earlier on, but that would involve timeseries-specific branching
@@ -316,7 +315,7 @@ class TracePred(AbstractTrace):
 
             sample_train, sample_test = split_train_test(sample_all, T_all, T_train, T_test)
             sample_init = sample_train.order(T_train)[-1]
- 
+
             inputs = ()
             if dist._inputs is not None:
                 inputs_train, inputs_test = split_train_test(dist._inputs, T_all, T_train, T_test)

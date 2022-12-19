@@ -50,8 +50,8 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-  tr.sample('psi_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+  tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)), group='local')
+  tr.sample('psi_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)), group='local')
 
   tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plate='plate_1')
 
@@ -75,8 +75,8 @@ class Q(tpp.Q):
 
 
     def forward(self, tr):
-        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()), multi_samples=False)
-        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_samples=False)
+        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
 
         tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
 

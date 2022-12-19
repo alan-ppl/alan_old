@@ -1,7 +1,7 @@
 from .utils import *
 from .timeseries import TimeseriesLogP, flatten_tslp_list
 from .dist import Categorical
-
+from functorch.dim import dims, Tensor
 
 class Sample():
     """
@@ -73,7 +73,7 @@ class Sample():
         assert 1==lp.numel()
         return lp
 
-    def sum_plate_T(self, lps, plate_dim): 
+    def sum_plate_T(self, lps, plate_dim):
         if plate_dim is not None:
             #partition tensors into those with/without plate_name
             lower_lps, higher_lps = partition_tensors(lps, plate_dim)
@@ -122,7 +122,7 @@ class Sample():
         Ks_to_keep = [ts.K, *Ks_to_keep]
         first = self.reduce_Ks_to_keep([ts.first, *firsts], Ks_to_keep)
         rest  = self.reduce_Ks_to_keep([ts.rest,  *rests],  Ks_to_keep)
-        
+
         first = first.order(ts.K)[ts.Kprev] #Replace K with Kprev
         rest = chain_logmmmeanexp(rest, ts.Tm1, ts.Kprev, ts.K) #Kprev x Knext
 
@@ -186,15 +186,23 @@ class Sample():
 
         result = {}
         for i in range(len(ws)):
-            sample = dim2named_tensor(samples[i], dimss[i])
-            w = ws[i].rename(*[repr(dim) for dim in dimss[i]])
+
+            #sample = dim2named_tensor(samples[i], dimss[i])
+            sample = samples[i]
+
+
+            # w = ws[i].rename(*[repr(dim) for dim in dimss[i]])
+            w = ws[i][dimss[i]]
+
             #Replace arbitrary K with general K.
             K_dim = next(dim for dim in dimss[i] if self.is_K(dim))
             K_name = repr(K_dim)
-            K_dict = {K_name: 'K'}
-            sample = sample.rename(**K_dict)
-            w      = w.rename(**K_dict)
-
+            K = dims(1)
+            # K_dict = {K_name: 'K'}
+            # sample = sample.rename(**K_dict)
+            # w      = w.rename(**K_dict)
+            sample = sample.order((K_dim,))[K]
+            w = w.order((K_dim,))[K]
             result[var_names[i]] = (sample, w)
 
         return result
@@ -306,7 +314,7 @@ class Sample():
         #Go through each variable in the order it was generated in P
         for i in range(len(var_names)):
             marg = marginals[i]
-            #marg could be tensor or TimeseriesLogP.  However, TimeseriesLogP defines 
+            #marg could be tensor or TimeseriesLogP.  However, TimeseriesLogP defines
             #.dims, and the resulting new_K should make sense for both .first and .last
             new_Ks = [dim for dim in generic_dims(marg) if self.is_K(dim) and (dim not in K_post_idxs)]
 

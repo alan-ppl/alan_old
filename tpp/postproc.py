@@ -2,6 +2,7 @@
 A bunch of functions to do useful things with dicts of samples and weights.
 """
 import torch as t
+from .utils import *
 
 def Kname(x):
     #Ks = tuple(K for K in x.names if is_K(K))
@@ -19,7 +20,7 @@ def map_or_apply(f):
     return inner
 
 def Ef(f):
-    return map_or_apply(lambda sample, w: (w*f(sample)).sum(Kname(sample)))
+    return map_or_apply(lambda sample, w: dim2named_tensor((w*f(sample))).sum(Kname(sample)))
 mean_raw     = lambda x: x
 mean2_raw    = lambda x: x**2
 p_lower_raw  = lambda value: lambda x: (x < value).to(dtype=x.dtype)
@@ -37,7 +38,7 @@ Relevant quantites that aren't plain moments
 """
 var = map_or_apply(lambda sample, w: mean2(sample, w) - (mean(sample, w))**2)
 std = map_or_apply(lambda sample, w: var(sample, w).sqrt())
-ess = map_or_apply(lambda _, w: 1/((w**2).sum(Kname(w))))
+ess = map_or_apply(lambda _, w: (1/((w**2))).order(*w.dims).sum())
 
 """
 Standard errors (which only make sense for plain moments)

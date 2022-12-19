@@ -45,23 +45,23 @@ def P(tr):
   '''
 
   #state level
-  tr.sample('sigma_beta', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('mu_beta', tpp.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
+  tr.sample('sigma_beta', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), group='local')
+  tr.sample('mu_beta', tpp.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), group='local')
   tr.sample('beta', tpp.Normal(tr['mu_beta'], tr['sigma_beta']), plate = 'plate_state')
 
   #county level
-  tr.sample('gamma', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('sigma_alpha', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+  tr.sample('gamma', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), group='local')
+  tr.sample('sigma_alpha', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), group='local')
 
-  tr.sample('alpha', tpp.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']))
+  tr.sample('alpha', tpp.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']), group='local')
 
   #zipcode level
-  tr.sample('sigma_omega', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+  tr.sample('sigma_omega', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), group='local')
   tr.sample('omega', tpp.Normal(tr['alpha'], tr['sigma_omega']), plate='plate_zipcode')
 
   #reading level
-  tr.sample('sigma_obs', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('psi_int', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('sigma_obs', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), group='local')
+  tr.sample('psi_int', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
   tr.sample('obs', tpp.Normal(tr['omega'] + tr['psi_int']*tr['basement'], tr['sigma_obs']))
 
 
@@ -112,9 +112,9 @@ class Q(tpp.Q):
         sigma_beta_low = t.max(self.low, self.sigma_beta_low.exp())
         sigma_beta_high = t.min(self.high, self.sigma_beta_high.exp())
 
-        tr.sample('sigma_beta', tpp.Uniform(sigma_beta_low, sigma_beta_high), multi_samples=False)
-        tr.sample('mu_beta', tpp.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_samples=False)
-        tr.sample('beta', tpp.Normal(self.beta_mu, self.log_beta_sigma.exp()), multi_samples=False)
+        tr.sample('sigma_beta', tpp.Uniform(sigma_beta_low, sigma_beta_high))
+        tr.sample('mu_beta', tpp.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()))
+        tr.sample('beta', tpp.Normal(self.beta_mu, self.log_beta_sigma.exp()))
 
         #county level
         gamma_low = t.max(self.low, self.gamma_low.exp())
@@ -122,21 +122,21 @@ class Q(tpp.Q):
 
         sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
         sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
-        tr.sample('gamma', tpp.Uniform(gamma_low, gamma_high), multi_samples=False)
-        tr.sample('sigma_alpha', tpp.Uniform(sigma_alpha_low, sigma_alpha_high), multi_samples=False)
-        tr.sample('alpha', tpp.Normal(self.alpha_mu, self.log_alpha_sigma.exp()), multi_samples=False)
+        tr.sample('gamma', tpp.Uniform(gamma_low, gamma_high))
+        tr.sample('sigma_alpha', tpp.Uniform(sigma_alpha_low, sigma_alpha_high))
+        tr.sample('alpha', tpp.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))
 
         #zipcode level
         sigma_omega_low = t.max(self.low, self.sigma_omega_low.exp())
         sigma_omega_high = t.min(self.high, self.sigma_omega_high.exp())
-        tr.sample('sigma_omega', tpp.Uniform(sigma_omega_low, sigma_omega_high), multi_samples=False)
+        tr.sample('sigma_omega', tpp.Uniform(sigma_omega_low, sigma_omega_high))
         tr.sample('omega', tpp.Normal(self.omega_mu, self.log_omega_sigma.exp()))
 
         #reading level
         sigma_obs_low = t.max(self.low, self.sigma_obs_low.exp())
         sigma_obs_high = t.min(self.high, self.sigma_obs_high.exp())
-        tr.sample('sigma_obs', tpp.Uniform(sigma_obs_low, sigma_obs_high), multi_samples=False)
-        tr.sample('psi_int', tpp.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()), multi_samples=False)
+        tr.sample('sigma_obs', tpp.Uniform(sigma_obs_low, sigma_obs_high))
+        tr.sample('psi_int', tpp.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))
 
 data_y = {'obs':t.load('radon.pt').rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...).to(device)}
 

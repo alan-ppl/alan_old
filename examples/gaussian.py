@@ -1,14 +1,15 @@
 import torch as t
 import torch.nn as nn
 import tpp
+from tpp.postproc import *
 t.manual_seed(0)
 
 def P(tr):
   '''
   Bayesian Gaussian Model
   '''
-  a = t.zeros(5,)
-  tr.sample('mu', tpp.Normal(a, t.ones(5,))) #, plate="plate_1")
+  a = t.zeros(5)
+  tr.sample('mu', tpp.Normal(a, t.ones(5))) #, plate="plate_1")
   tr.sample('obs', tpp.MultivariateNormal(tr['mu'], t.eye(5)))
 
 
@@ -16,8 +17,8 @@ def P(tr):
 class Q(tpp.Q):
     def __init__(self):
         super().__init__()
-        self.reg_param('m_mu', t.zeros(5,))
-        self.reg_param('log_s_mu', t.zeros(5,))
+        self.reg_param('m_mu', t.zeros(5))
+        self.reg_param('log_s_mu', t.zeros(5))
 
     def forward(self, tr):
         tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp())) #, plate="plate_1")
@@ -56,3 +57,18 @@ print(b_n)
 
 print("True covariance")
 print(t.diag(A_n))
+
+
+print('Moments')
+print('Mean')
+print(mean(model.weights(10000)))
+print(stderr_mean(model.weights(10000)))
+print('Mean squared')
+print(mean2(model.weights(10000)))
+print(stderr_mean2(model.weights(10000)))
+print('Variance')
+print(var(model.weights(10000)))
+print('Standard Deviation')
+print(std(model.weights(10000)))
+print('Effective Sample Size')
+print(ess(model.weights(10000)))
