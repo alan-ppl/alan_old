@@ -284,7 +284,6 @@ class Sample():
 
         #### Sampling the K's
 
-        Ks_so_far = set()
         #Dict mapping Kdim to NxPlates indexes.
         K_post_idxs = {}
         post_samples = {}
@@ -292,7 +291,15 @@ class Sample():
         #Go through each variable in the order it was generated in P
         for i in range(len(var_names)):
             marg = marginals[i]
-            new_Ks = self.new_Ks(marg, Ks_so_far)
+            #marg could be tensor or TimeseriesLogP.  However, TimeseriesLogP defines 
+            #.dims, and the resulting new_K should make sense for both .first and .last
+            new_Ks = [dim for dim in generic_dims(marg) if self.is_K(dim) and (dim not in K_post_idxs)]
+
+            #Timeseries must be associated with a new K.  Should be enforced in TraceP,
+            #but check again here.
+            if isinstance(marg, TimeseriesLogP):
+                assert 1==len(new_Ks)
+
             #Should be zero (e.g. if grouped) or one new K.
             assert len(new_Ks) in (0, 1)
 
@@ -300,27 +307,43 @@ class Sample():
             if 1==len(new_Ks):
                 K = new_Ks[0]
                 if isinstance(marg, TimeseriesLogP):
-                    first_cond = marg.first[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
+                    #sample the initial state (t=0)
+                    init_K_post = sample_cond(marg.first, K, K_post_idxs, N)
+
+                    #sample the rest of the states (t=1...T-1)
+                    T          = marg.T
+                    Kprev      = marg.Kprev
+                    rest       = rest.order(marg.T) #Bring T to first dimension.
+
+                    #Tensor to record all the K's
+                    K_posts    = init_K_post[None, ...].expand(T.size)
+
+                    for _t in range(1, T.size):
+                        Kprev_post = Kposts[t-1].order(K)[Kprev]
+                        _K_post_idxs = {Kprev: Kprev_post, **K_post_idxs}
+
+                        #rest runs from t=1...T-1, so rest[0] corresponds to time t=1.
+                        #could be optimized by indexing into marg with K_post_idxs once.
+                        K_posts[t] = sample_cond(rest[t-1], K, _K_post_idxs, N)
+
+                    K_post_idxs[K] = K_posts
+
                 else:
-                    #index into marg for the previous Ks, which gives an unnormalized posterior.
-                    prev_Ks = self.prev_Ks(marg, Ks_so_far)
-                    marg = generic_order(marg, prev_Ks)
-                    cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
-                    #Sample the new Ks
-                    K_post_idxs[K] = sample_cond(cond, K, N)
-                Ks_so_far.add(K)
+                    K_post_idxs[K] = sample_cond(marg, K, K_post_idxs, N)
 
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
         return post_samples
 
-    def new_Ks(self, x, Ks_so_far):
-        return [dim for dim in generic_dims(x) if self.is_K(dim) and (dim not in Ks_so_far)]
+def sample_cond(marg, K, K_post_idxs, N):
+    prev_Ks = [dim for dim in generic_dims(marg) if (dim in K_post_idxs)]
 
-    def prev_Ks(self, x, Ks_so_far):
-        return [dim for dim in generic_dims(x) if self.is_K(dim) and (dim     in Ks_so_far)]
+    marg = generic_order(marg, prev_Ks)
+    #index into marg for the previous Ks, which gives an unnormalized posterior.
+    #note that none of the previous Ks have a T dimension, so we don't need to
+    #do any time indexing...
+    cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
 
-def sample_cond(cond, K, N):
     #Check none of the conditional probabilites are big and negative
     assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
     #Set any small and negative conditional probaiblities to zero.
