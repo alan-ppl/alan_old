@@ -14,6 +14,12 @@ def P(tr):
     tr.sample('d',   tpp.Normal(tr['c'], 1), plate='plate_2')
     tr.sample('obs', tpp.Normal(tr['d'], 1), plate='plate_3')
 
+#def Q(tr):
+#    tr.sample('a',   tpp.Normal(t.zeros(()), 1))
+#    tr.sample('b',   tpp.Normal(tr['a'], 1))
+#    tr.sample('c',   tpp.Normal(tr['b'], 1), plate='plate_1')
+#    tr.sample('d',   tpp.Normal(tr['c'], 1), plate='plate_2')
+
 class Q(tpp.Q):
     def __init__(self):
         super().__init__()

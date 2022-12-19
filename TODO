@@ -38,7 +38,7 @@ Tests:
     Moments work.
 
 Timeseries importance sampling
-  Abstract out some part of the sampling process, so it can be re-used for plates and timeseries.
+  extra_log_factors can deal with TimeSeriesLogP?
        
 Fast / natural gradient updates
   Have a bunch of "base" classes representing e.g. a Gaussian approximate posterior.

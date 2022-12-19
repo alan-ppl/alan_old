@@ -84,18 +84,33 @@ class Sample():
         #collect K's that appear in higher plates
         Ks_to_keep = set([dim for dim in unify_dims(higher_lps) if self.is_K(dim)])
 
-        n_timeseries = sum(isinstance(lp, TimeseriesLogP) for lp in lower_lps)
-        assert n_timeseries in [0, 1]
-        if n_timeseries == 1:
-            lower_lp = self.sum_T(lower_lps, plate_dim, Ks_to_keep)
+        ts  = [lp for lp in lower_lps if     isinstance(lp, TimeseriesLogP)]
+        nts = [lp for lp in lower_lps if not isinstance(lp, TimeseriesLogP)]
+        assert len(ts) in [0, 1, 2]
+
+        if 2==len(ts):
+            #Could happen if we have a timeseries extra_log_factor when importance sampling
+            #In that case, both the timeseries had better be the same!
+            assert set(ts[0].first.dims) == set(ts[1].first.dims)
+            assert set(ts[0].rest.dims)  == set(ts[1].rest.dims)
+            assert ts[0].first.ndim == ts[1].first.ndim
+            assert ts[0].rest.ndim  == ts[1].rest.ndim
+
+            assert ts[0].K     is ts[1].K
+            assert ts[0].Kprev is ts[1].Kprev
+            assert ts[0].T     is ts[1].T
+            assert ts[0].Tm1   is ts[1].Tm1
+
+            ts = [ts[0].similar(ts[0].first + ts[1].first, ts[0].rest + ts[1].rest)]
+
+        if len(ts) == 1:
+            lower_lp = self.sum_T(ts[0], nts, plate_dim, Ks_to_keep)
         else:
-            lower_lp = self.sum_plate(lower_lps, plate_dim, Ks_to_keep)
+            lower_lp = self.sum_plate(nts, plate_dim, Ks_to_keep)
 
         return [*higher_lps, lower_lp]
 
-    def sum_T(self, lower_lps, T, Ks_to_keep):
-        ts     =  next(lp for lp in lower_lps if     isinstance(lp, TimeseriesLogP))
-        non_ts = tuple(lp for lp in lower_lps if not isinstance(lp, TimeseriesLogP))
+    def sum_T(self, ts, non_ts, T, Ks_to_keep):
         assert ts.T is T
 
         #Split all the non-timeseries log-p's into the first and rest.
@@ -268,7 +283,7 @@ class Sample():
         #Put torchdims back in.
         dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
         #Compute result with torchdim Js
-        result = self.tensor_product(extra_log_factors=dim_Js)
+        result = self.tensor_product(extra_log_factors=unflatten(dim_Js))
         #But differentiate wrt non-torchdim Js
         marginals = list(t.autograd.grad(result, undim_Js))
         #Put dims back,
@@ -336,6 +351,10 @@ class Sample():
         return post_samples
 
 def sample_cond(marg, K, K_post_idxs, N):
+    """
+    Takes the marginal probability (marg), and a dict of indices for the previous K's (K_post_idxs)
+    and returns N (torchdim Dim) samples of the current K (torchdim Dim).
+    """
     prev_Ks = [dim for dim in generic_dims(marg) if (dim in K_post_idxs)]
 
     marg = generic_order(marg, prev_Ks)
