@@ -8,8 +8,12 @@ setup(
 
     packages = find_packages(),
     install_requires=[
-    'opt-einsum',
-    'tqdm'
+    "torch>=1.13.0",
+    'functorch',
+    ],
+    extras_requires=[
+    'numpy',
+    'pandas'
     ],
     include_package_data = True,
     platforms = "any",
