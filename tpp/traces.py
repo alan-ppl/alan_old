@@ -283,8 +283,13 @@ class TracePred(AbstractTrace):
         assert varname not in self.ll_train
 
         if varname in self.data_all:
-            return self._sample_logp(varname, dist, multi_samples=multi_samples, plate=plate)
+            #Computing log-probabilities and putting them in self.ll_all and self.ll_train
+            self._sample_logp(varname, dist, multi_samples, plate)
+        else:
+            #Computing samples, and putting them in self.sample_all
+            self._sample_sample(varname, dist, multi_samples, plate)
 
+    def _sample_sample(self, varname, dist, multisamples, plate):
         sample_dims = [self.N]
         if plate is not None:
             sample_dims.append(self.plates_all[plate])
@@ -306,7 +311,7 @@ class TracePred(AbstractTrace):
         #Put torchdim back
         self.samples_all[varname] = sample_all[dims_all]
 
-    def _sample_logp(self, varname, dist, multi_samples=True, plate=None):
+    def _sample_logp(self, varname, dist, multi_samples, plate):
         sample_all   = self.data_all[varname]
         sample_train = self.data_train[varname]
 
