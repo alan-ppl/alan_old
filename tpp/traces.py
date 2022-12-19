@@ -301,8 +301,18 @@ class TracePred(AbstractTrace):
         sample_all = sample_all[dims_all]
 
         if isinstance(dist, Timeseries):
-            #Throw away everything after training T, and sample from prior
-            pass
+            T_all = dist.T
+            T_idx = next(i for (i, dim) in enumerate(dims_all) if dim is T_all)
+            T_train = dims_train[T_idx]
+            sample_at_undim = sample_all.order[T_all][:T_train.size]
+            sample_at = sample_at_undim[T_train]
+            sample_init = sample_at_undim[-1]
+            T_test = Dim('T_test', T_all.size - T_train.size)
+ 
+            if dist._inputs is not None:
+                pass
+
+            test_dist = Timeseries(sample_init, dist.transition, dist.inputs)
 
         self.samples_all[varname] = sample_all
 

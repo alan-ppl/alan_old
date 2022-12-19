@@ -12,11 +12,11 @@ class Timeseries():
         assert isinstance(Tdim, Dim)
         self.Tdim = Tdim
 
-        if self._inputs is not None:
-            self._inputs = self._inputs.order(Tdim)
-
     def input(self, t):
-        return () if (self._inputs is None) else (inputs[t],)
+        if self._inputs is None:
+            return ()
+        else:
+            return (self._inputs.order(self.Tdim)[t],)
 
     def sample(self, reparam, sample_dims):
         result = [self.transition(self.initial_state, *self.input(0)).sample(reparam, sample_dims)]
