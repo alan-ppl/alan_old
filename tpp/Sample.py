@@ -1,6 +1,6 @@
 from .utils import *
-from .dist import Categorical
 from .timeseries import TimeseriesLogP, flatten_tslp_list
+from .dist import Categorical
 
 
 class Sample():
@@ -271,7 +271,7 @@ class Sample():
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
         #Normalized, marg gives the "posterior marginals" over Ks
 
-        #Wrap back up the first and last marginals relating to TimeseriesLogP.
+        #Wrap up the first and last marginals into a TimeseriesLogP.
         marginals = unflatten(marginals)
 
         Ks_so_far = set()
@@ -281,7 +281,7 @@ class Sample():
 
         #Go through each variable in the order it was generated in P
         for i in range(len(var_names)):
-            #All Ks in this variable.
+            #All Ks in this variable.  logps_u[i] could be a TimeseriesLogP, but dims is defined for TimeseriesLogP.
             Ks = [dim for dim in logps_u[i].dims if self.is_K(dim)]
             #Ks = [dim for dim in  if self.is_K(dim)]
             #Split into Ks that are new for this variable, and old
@@ -290,27 +290,31 @@ class Sample():
             #Should be zero (e.g. if grouped) or one new K.
             assert len(new_Ks) in (0, 1)
 
-            if isinstance(marginals[i], TimeseriesLogP):
-                pass
+            
             #If there's a new K, then we need to do posterior sampling for that K.
-            elif 1==len(new_Ks):
+            if 1==len(new_Ks):
                 K = new_Ks[0]
                 Ks_so_far.add(K)
+                marg = marginals[i]
+                
                 #index into marg for the previous Ks, which gives an unnormalized posterior.
-                marg = generic_order(marginals[i], prev_Ks)
+                marg = generic_order(marg, prev_Ks)
                 cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
-
-                #Check none of the conditional probabilites are big and negative
-                assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
-                #Set any small and negative conditional probaiblities to zero.
-                cond = cond * (cond > 0)
-
-                #Put current K at the back for the sampling,
-                cond = cond.order(K)
-                cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
-                #Sample new K's
-                K_post_idxs[K] = Categorical(cond).sample(False, sample_dims=(N,))
+                #Sample the new Ks
+                K_post_idxs[K] = sample_cond(cond, K, N)
 
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
         return post_samples
+
+def sample_cond(cond, K, N):
+    #Check none of the conditional probabilites are big and negative
+    assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
+    #Set any small and negative conditional probaiblities to zero.
+    cond = cond * (cond > 0)
+
+    #Put current K at the back for the sampling,
+    cond = cond.order(K)
+    cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
+    #Sample new K's
+    return Categorical(cond).sample(False, sample_dims=(N,))

@@ -1,6 +1,10 @@
-multisample=False:
-  Die when we try RWS.
-  Do something sensible in importance sampling/weighting with multisample=False
+Needing to convert to float64 seems flakey.
+  Ultimately, the problem is that use einsum, rather than log-sum-exp for each reduction.
+  Is there something better we can do?
+
+multisample=False.  Ideally, we would
+  die when we try RWS
+  do something sensible in importance sampling/weighting with multisample=False
 
 Do something with covariates?
   They currently come in as data, which isn't correct.
@@ -37,6 +41,22 @@ Timeseries importance sampling
   Abstract out some part of the sampling process, so it can be re-used for plates and timeseries.
        
 Fast / natural gradient updates
+  Have a bunch of "base" classes representing e.g. a Gaussian approximate posterior.
+  Natural gradients:
+    Question: How to deal with non-negativity?
+    Advantage: Works with multi_sample=False
+    Implementation: classes with parameters with requires_grad=True, but they aren't parameters?
+  Moment updates:
+    The classes are parameterised by their mean parameters.
+    Updated the mean parameters towards the values from the last importance-weighted posterior sample.
+    Only works with multi_sample=True
+    Works with sufficient statistics (as after the update, its like computing the expected sufficient statistics of a mixture).
+    Implementation: Only needs methods to convert sufficient statistics to conventional params
+
+
+    
+    
+  
 
 Sum out discrete variables:
   Not necessary as we have RWS.
