@@ -248,7 +248,11 @@ class Sample():
     def _importance_samples(self, N):
         """
         Returns torchdim tensors, so not for external use.
+        Divided into two parts: computing the marginals over K, and actually sampling
+        The marginals are computed using the derivative of log Z again.
+        We sample forward, following the generative model.
         """
+        #### Computing the marginals
         #ordered in the order of generating under P
         var_names           = list(self.trp.samples.keys())
         samples             = list(self.trp.samples.values())
@@ -273,6 +277,12 @@ class Sample():
 
         #Wrap up the first and last marginals into a TimeseriesLogP.
         marginals = unflatten(marginals)
+
+        #Delete everything that's a flat list (otherwise we risk difficult-to-catch bugs).
+        #Could also separate computing marginals into a separate function.
+        del logps_f, unflatten, dimss, undim_logps, undim_Js, dim_Js, result
+
+        #### Sampling the K's
 
         Ks_so_far = set()
         #Dict mapping Kdim to NxPlates indexes.
