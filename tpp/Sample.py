@@ -307,11 +307,14 @@ class Sample():
                 Ks_so_far.add(K)
                 marg = marginals[i]
                 
-                #index into marg for the previous Ks, which gives an unnormalized posterior.
-                marg = generic_order(marg, prev_Ks)
-                cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
-                #Sample the new Ks
-                K_post_idxs[K] = sample_cond(cond, K, N)
+                if isinstance(marg, TimeseriesLogP):
+                    pass
+                else:
+                    #index into marg for the previous Ks, which gives an unnormalized posterior.
+                    marg = generic_order(marg, prev_Ks)
+                    cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
+                    #Sample the new Ks
+                    K_post_idxs[K] = sample_cond(cond, K, N)
 
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
