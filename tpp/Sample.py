@@ -291,34 +291,34 @@ class Sample():
 
         #Go through each variable in the order it was generated in P
         for i in range(len(var_names)):
-            #All Ks in this variable.  logps_u[i] could be a TimeseriesLogP, but dims is defined for TimeseriesLogP.
-            Ks = [dim for dim in logps_u[i].dims if self.is_K(dim)]
-            #Ks = [dim for dim in  if self.is_K(dim)]
-            #Split into Ks that are new for this variable, and old
-            new_Ks  = [dim for dim in Ks if (dim not in Ks_so_far)]
-            prev_Ks = [dim for dim in Ks if (dim     in Ks_so_far)]
+            marg = marginals[i]
+            new_Ks = self.new_Ks(marg, Ks_so_far)
             #Should be zero (e.g. if grouped) or one new K.
             assert len(new_Ks) in (0, 1)
 
-            
             #If there's a new K, then we need to do posterior sampling for that K.
             if 1==len(new_Ks):
                 K = new_Ks[0]
-                Ks_so_far.add(K)
-                marg = marginals[i]
-                
                 if isinstance(marg, TimeseriesLogP):
-                    pass
+                    first_cond = marg.first[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
                 else:
                     #index into marg for the previous Ks, which gives an unnormalized posterior.
+                    prev_Ks = self.prev_Ks(marg, Ks_so_far)
                     marg = generic_order(marg, prev_Ks)
                     cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
                     #Sample the new Ks
                     K_post_idxs[K] = sample_cond(cond, K, N)
+                Ks_so_far.add(K)
 
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
         return post_samples
+
+    def new_Ks(self, x, Ks_so_far):
+        return [dim for dim in generic_dims(x) if self.is_K(dim) and (dim not in Ks_so_far)]
+
+    def prev_Ks(self, x, Ks_so_far):
+        return [dim for dim in generic_dims(x) if self.is_K(dim) and (dim     in Ks_so_far)]
 
 def sample_cond(cond, K, N):
     #Check none of the conditional probabilites are big and negative
