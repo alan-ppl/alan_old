@@ -94,7 +94,7 @@ where `tpp.dist` is one of the distributions [listed below](#choice-of-distribut
 
 You can define the plated model above as so:
 ```py
-sizes = {'plate_1':N, 'plate_2':M}
+sizes = {'plate_1':M, 'plate_2':N}
 def P(tr):
     tr.sample('mu',   tpp.MultivariateNormal(t.zeros(5), t.eye(5)))
     tr.sample('phi', tpp.MultivariateNormal(tr['phi'], t.eye(5)), plate='plate_1')
