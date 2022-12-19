@@ -326,22 +326,20 @@ class Sample():
                     init_K_post = sample_cond(marg.first, K, K_post_idxs, N)
 
                     #sample the rest of the states (t=1...T-1)
-                    T          = marg.T
                     Kprev      = marg.Kprev
-                    rest       = rest.order(marg.T) #Bring T to first dimension.
+                    rest       = marg.rest.order(marg.Tm1) #Bring Tm1 to first dimension.
 
                     #Tensor to record all the K's
-                    K_posts    = init_K_post[None, ...].expand(T.size)
+                    K_posts    = init_K_post[None, ...].expand(marg.T.size)
 
-                    for _t in range(1, T.size):
-                        Kprev_post = Kposts[t-1].order(K)[Kprev]
-                        _K_post_idxs = {Kprev: Kprev_post, **K_post_idxs}
+                    for _t in range(1, marg.T.size):
+                        _K_post_idxs = {Kprev: K_posts[_t-1], **K_post_idxs}
 
                         #rest runs from t=1...T-1, so rest[0] corresponds to time t=1.
                         #could be optimized by indexing into marg with K_post_idxs once.
-                        K_posts[t] = sample_cond(rest[t-1], K, _K_post_idxs, N)
+                        K_posts[_t] = sample_cond(rest[_t-1], K, _K_post_idxs, N)
 
-                    K_post_idxs[K] = K_posts
+                    K_post_idxs[K] = K_posts[marg.T]
 
                 else:
                     K_post_idxs[K] = sample_cond(marg, K, K_post_idxs, N)
