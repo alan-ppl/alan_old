@@ -1,4 +1,4 @@
-Needing to convert to float64 seems flakey.
+Needing to convert log-probs to float64 seems flakey.
   Ultimately, the problem is that use einsum, rather than log-sum-exp for each reduction.
   Is there something better we can do?
 
@@ -30,6 +30,7 @@ Reduce memory consumption:
 
 Memory diagnostics:
   Method to print size of log_prob for all tensors, in TraceP
+  device='meta' seems to work with torchdims
 
 Tests:
   Importance sampling and importance weighting give the same moments.
@@ -37,9 +38,6 @@ Tests:
     ELBO is the same if we unroll; test by handwriting equivalent traces. 
     Moments work.
 
-Timeseries importance sampling
-  extra_log_factors can deal with TimeSeriesLogP?
-       
 Fast / natural gradient updates
   Have a bunch of "base" classes representing e.g. a Gaussian approximate posterior.
   Natural gradients:

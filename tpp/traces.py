@@ -304,6 +304,11 @@ class TracePred(AbstractTrace):
         sample_all = sample_all[dims_all]
 
         if isinstance(dist, Timeseries):
+            #Throw away the "test" part of the timeseries, and resample. Note that 
+            #we sampled all (including test) of the timeseries in the first place
+            #because any inputs would be all (including test).  We could modify the
+            #inputs earlier on, but that would involve timeseries-specific branching
+            #in two places.
             T_all = dist.Tdim
             T_idx = next(i for (i, dim) in enumerate(dims_all) if dim is T_all)
             T_train = dims_train[T_idx]
