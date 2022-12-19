@@ -267,35 +267,24 @@ class TracePred(AbstractTrace):
         return dims_all, dims_train
 
     def sample(self, varname, dist, multi_samples=True, plate=None):
-        """
-        We have three possible things: sample_tt, sample_at, sample_aa. 
-        Here, t/a stand for train/all. The first t/a is for the previous
-        plates.  The second t/a is for the current plate.  We treat them
-        separately, because we need to be careful if plate is a timeseries
-
-        Basic algorithm:
-        draw sample_at from prior
-        replace sample_tt in sample_at.
-        sample extra to get sample_aa.
-        """
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train
 
         if varname in self.data_all:
-            #Computing log-probabilities and putting them in self.ll_all and self.ll_train
+            #Compute predictive log-probabilities and put them in self.ll_all and self.ll_train
             self._sample_logp(varname, dist, multi_samples, plate)
         else:
-            #Computing samples, and putting them in self.sample_all
+            #Compute samples, and put them in self.sample_all
             self._sample_sample(varname, dist, multi_samples, plate)
 
     def _sample_sample(self, varname, dist, multisamples, plate):
         sample_dims = [self.N]
+
         if plate is not None:
             sample_dims.append(self.plates_all[plate])
 
         sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
-
         sample_train = self.data_train[varname] if (varname in self.data_train) else self.samples_train[varname]
 
         dims_all, dims_train = self.corresponding_plates(sample_all, sample_train)
@@ -309,7 +298,13 @@ class TracePred(AbstractTrace):
         sample_all[idxs] = sample_train
 
         #Put torchdim back
-        self.samples_all[varname] = sample_all[dims_all]
+        sample_all = sample_all[dims_all]
+
+        if isinstance(dist, Timeseries):
+            #Throw away everything after training T, and sample from prior
+            pass
+
+        self.samples_all[varname] = sample_all
 
     def _sample_logp(self, varname, dist, multi_samples, plate):
         sample_all   = self.data_all[varname]
