@@ -289,10 +289,7 @@ class TracePred(AbstractTrace):
         if plate is not None:
             sample_dims.append(self.plates_all[plate])
 
-        if varname in self.data_all:
-            sample_all = self.data_all[varname]
-        else:
-            sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
         sample_train = self.data_train[varname] if (varname in self.data_train) else self.samples_train[varname]
 
@@ -303,24 +300,11 @@ class TracePred(AbstractTrace):
         idxs = [slice(0, l) for l in sample_train.shape[:len(dims_all)]]
         idxs.append(Ellipsis)
 
-        if varname in self.data_all:
-            pass
-            #assert t.allclose(sample_all[idxs], sample_train)
-        else:
-            #Actually do the replacement in-place
-            sample_all[idxs] = sample_train
+        #Actually do the replacement in-place
+        sample_all[idxs] = sample_train
 
         #Put torchdim back
-        sample_all = sample_all[dims_all]
-
-        if varname in self.data_all:
-            ll_all                 = dist.log_prob(sample_all)
-            self.ll_all[varname]   = ll_all
-            self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
-        elif varname in self.data_train:
-            self.data_all[varname] = sample_all
-        else:
-            self.samples_all[varname] = sample_all
+        self.samples_all[varname] = sample_all[dims_all]
 
     def _sample_logp(self, varname, dist, multi_samples=True, plate=None):
         sample_all   = self.data_all[varname]
