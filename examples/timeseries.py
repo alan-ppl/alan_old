@@ -20,3 +20,8 @@ model = tpp.Model(P, Q, data)
 sample = model.sample(5, True, {})
 elbo = model.elbo(5)
 sample = model.importance_samples(5, 10)
+
+obs = t.randn((30, 4), names=('Tb', 'plate_1'))
+obs[:20, :3] = data['obs']
+pred_ll = model.predictive_ll(5, 10, data_all={"obs": obs})
+
