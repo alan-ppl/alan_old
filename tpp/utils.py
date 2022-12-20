@@ -67,7 +67,7 @@ def max_dims(x, dims):
     Note that this _keeps_ dims, and maxes over everything else, which
     goes against the usual convention
     """
- 
+
     #Ignore dims that aren't in the tensors
     set_xdims = set(generic_dims(x))
     dims = [dim for dim in dims if dim in set_xdims]
@@ -237,7 +237,7 @@ def chain_reduce(f, ms, T, Kprev, Kcurr):
             assert len(prev) == len(curr)+1
             remainder = prev[-1:]
             prev = prev[:-1]
-            
+
         #Rename so that the matmul makes sense.
         prev = prev.order(Kcurr)[Kmid]
         curr = curr.order(Kprev)[Kmid]
@@ -282,12 +282,12 @@ if __name__ == "__main__":
     Kmid = dims(1, [3])
     A = t.randn(3,3)
     B = t.randn(3,3)
-    
+
     tensor_result = (t.exp(A) @ t.exp(B)).log()
     td_result = logmmexp(A[Kprev, Kmid], B[Kmid, K], Kmid).order(Kprev, K)
     assert t.allclose(tensor_result, td_result)
 
-    
+
 def reduce_Ks(tensors, Ks_to_sum):
     """
     Fundamental method that sums over Ks
@@ -298,5 +298,5 @@ def reduce_Ks(tensors, Ks_to_sum):
     result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 
     if 0<len(Ks_to_sum):
-        result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum()
+        result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum().to(result.get_device())
     return sum([result, *maxes])
