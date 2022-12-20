@@ -105,7 +105,7 @@ for K in Ks:
 
 
 
-        for i in range(50000):
+        for i in range(50):
             opt.zero_grad()
             wake_theta_loss, wake_phi_loss = model.rws(K=K)
             (-wake_theta_loss + wake_phi_loss).backward()
@@ -115,9 +115,10 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,wake_phi_loss.item()))
 
         times.append(time.time() - start)
-        test_model = tpp.Model(P(x_test), model.Q, test_data_y | x_test)
-        pred_likelihood = test_model.pred_likelihood(test_data=test_data_y, num_samples=1000, reparam=False)
-        pred_liks.append(pred_likelihood.item())
+        # test_model = tpp.Model(P(x_test), model.Q, test_data_y | x_test)
+        pred_likelihood = model.predictive_ll(K = K, N = 10, data_all=test_data_y | x_test)
+        print(pred_likelihood)
+        pred_liks.append(pred_likelihood['obs'].item())
     results_dict[N][M][K] = {'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks, 'avg_time':np.mean(times)}
 
 file = 'results/movielens_results_global_K_rws_N{0}_M{1}.json'.format(N,M)

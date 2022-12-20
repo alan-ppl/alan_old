@@ -143,7 +143,6 @@ class TraceP(AbstractTrace):
     def sample(self, key, dist, group=None, plate=None, T=None):
         assert key not in self.samples
         assert key not in self.logp
-
         if T is not None:
             dist.set_Tdim(self.trq.plates[T])
 
@@ -265,7 +264,7 @@ class TracePred(AbstractTrace):
         dims_train.append(Ellipsis)
         return dims_all, dims_train
 
-    def sample(self, varname, dist, multi_samples=True, plate=None, T=None):
+    def sample(self, varname, dist, multi_samples=True, group=None, plate=None, T=None):
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train

@@ -25,4 +25,4 @@ obs = t.randn((30, 4), names=('Tb', 'plate_1'))
 obs[:20, :3] = data['obs']
 pred_samples = model.predictive_samples(5, 10, sizes_all={'Tb': 30, 'plate_1':4})
 pred_ll = model.predictive_ll(5, 10, data_all={"obs": obs})
-
+print(pred_ll)

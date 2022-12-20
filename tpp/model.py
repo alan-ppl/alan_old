@@ -101,7 +101,7 @@ class Model(nn.Module):
     def predictive_samples(self, K, N, data_train=None, sizes_all=None):
         trace_pred, N = self.predictive(K, N, data_train=data_train, sizes_all=sizes_all)
         #Convert everything to named
-        #Return a dict mapping 
+        #Return a dict mapping
         #Convert everything to named
         return trace_pred.samples_all
 
@@ -119,18 +119,22 @@ class Model(nn.Module):
 
         result = {}
         for varname in lls_all:
-            print(varname)
             ll_all   = lls_all[varname]
             ll_train = lls_train[varname]
+
+            print(varname)
 
             dims_all   = [dim for dim in ll_all.dims   if dim is not N]
             dims_train = [dim for dim in ll_train.dims if dim is not N]
             assert len(dims_all) == len(dims_train)
 
+            print(dims_all)
+            print(dims_train)
             if 0 < len(dims_all):
                 ll_all   = ll_all.sum(dims_all)
                 ll_train = ll_train.sum(dims_train)
-
+            print(ll_all)
+            print(ll_train)
             result[varname] = (ll_all - ll_train).mean(N)
 
         return result

@@ -13,21 +13,21 @@ param_event_ndim = {
     "Binomial":                  univariate("total_count", "probs", "logits"),#
     "Categorical":               ({"probs": 1, "logits": 1}, 0),#
     "Cauchy":                    univariate_loc_scale,#
-    "Chi2":                      univariate("df"),
+    "Chi2":                      univariate("df"),#
     "ContinuousBernoulli":       univariate("probs", "logits"),#
-    "Dirichlet":                 ({"concentration": 1}, 1),
+    "Dirichlet":                 ({"concentration": 1}, 1),#
     "Exponential":               univariate("rate"),#
-    "FisherSnedecor":            univariate("df1", "df2"),
-    "Gamma":                     univariate("concentration", "rate"),
+    "FisherSnedecor":            univariate("df1", "df2"),#
+    "Gamma":                     univariate("concentration", "rate"),#
     "Geometric":                 univariate("probs", "logits"),#
     "Gumbel":                    univariate_loc_scale,#
-    "HalfCauchy":                univariate("scale"),
-    "HalfNormal":                univariate("scale"),
+    "HalfCauchy":                univariate("scale"),#
+    "HalfNormal":                univariate("scale"),#
     "Kumaraswamy":               univariate("concentration1", "concentration0"),#
-    "LKJCholesky":               ({"dim":0, "concentration":0}, 2),
+    "LKJCholesky":               ({"dim":0, "concentration":0}, 2),#
     "Laplace":                   univariate_loc_scale,#
     "LogNormal":                 univariate_loc_scale,#
-    "LowRankMultivariateNormal": ({"loc":1, "cov_factor":2, "cov_diag": 1}, 1),
+    "LowRankMultivariateNormal": ({"loc":1, "cov_factor":2, "cov_diag": 1}, 1),#
     "Multinomial":               ({"total_count": 0, "probs": 1, "logits": 1}, 1),#
     "MultivariateNormal":        ({"loc": 1, "covariance_matrix": 2, "precision_matrix": 2, "scale_tril": 1}, 1),
     "NegativeBinomial":          univariate("total_count", "probs", "logits"),#
@@ -76,6 +76,7 @@ class TorchDimDist():
         unnamed_batch_dims = []
         for (argname, arg) in self.all_args.items():
             unnamed_batch_dims.append(generic_ndim(arg) - param_ndim[argname])
+
         assert all(0<=x for x in unnamed_batch_dims)
         self.unnamed_batch_dims = max(unnamed_batch_dims)
 
