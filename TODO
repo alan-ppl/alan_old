@@ -37,12 +37,31 @@ Memory diagnostics:
   device='meta' seems to work with torchdims
 
 Tests:
+  Q-Q plots:
+    P(z) = \int P(x) P(z|x) 
+    i.e. distribution of latents from prior is the same as:
+      repeatedly
+      sampling data, x, from the prior
+      sampling latents, z
   Importance sampling and importance weighting give the same moments.
   Timeseries: 
     ELBO is the same if we unroll; test by handwriting equivalent traces. 
     Moments work.
+  Natural gradients:
+    Test conv -> mean by sampling.
 
-Fast / natural gradient updates
+Natural gradient updates
+  Beta + inverse gamma
+
+  Construct an approximate posterior from:
+    A bunch of samples from the prior (to get the sizes)
+    A few extra bits and pieces (distribution, optionally init)
+
+  If we do multisamples, we should be able to update using wake-phase Q update.
+    Should be equivalent to importance weighting first.
+
+  Natural gradient updates should also work with the elbo if we multi_sample = False?
+
   Have a bunch of "base" classes representing e.g. a Gaussian approximate posterior.
   Natural gradients:
     Question: How to deal with non-negativity?

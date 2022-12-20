@@ -28,7 +28,7 @@ def inverse_digamma(y):
 
 def tuple_assert_allclose(xs, ys):
     for (x, y) in zip(xs, ys):
-        assert t.allclose(x, y)
+        assert t.allclose(x, y, atol=1E-5)
 
 class AbstractNat():
     """
@@ -52,6 +52,14 @@ class AbstractNat():
     Start with conv parameters.
     Convert to nat + mean parameters.
     Check all other conversions give expected quantities.
+
+    mean <-> nat is always differentiable
+    mean <-> nat is frequently non-differentiable
+
+    Therefore, fundamentally work in terms of mean parameters.
+    We update the mean parameters by taking grads wrt natural parameters 
+    (as this requires a differentiable mapping nat -> conv)
+    and apply the grad to the mean parameters.
     """
 
     #Interchange mean and natural parameters
@@ -205,11 +213,6 @@ class NatGamma(AbstractNat):
     def test_conv(self, N):
         return (t.randn(N).exp(),t.randn(N).exp())
 
-#class NatBeta(AbstractNat):
-#    dist = Beta
-#    sufficient_stats = (t.log, lambda x: t.log(1-x))
-#
-#MvN
 
 if __name__ == "__main__":
     N = 10
