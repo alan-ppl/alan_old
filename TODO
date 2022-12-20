@@ -1,3 +1,26 @@
+Tests:
+  Timeseries: 
+    Moments from rolled vs unrolled models are the same.
+    GP-distributed timeseries.
+  Plates:
+    ??
+  Q-Q plots:
+    P(z) = \int P(x) P(z|x) 
+    i.e. distribution of latents from prior is the same as:
+      repeatedly
+      sampling data, x, from the prior
+      sampling latents, z
+  Importance sampling and importance weighting give the same moments.
+  Natural gradients:
+    Test conv -> mean by sampling.
+  Conjugate priors.
+
+Discrete variables:
+  Key difference with discrete variables is that we _sum_ we don't _average_ over the probabilities
+    (because there is a P(discrete variable) term, which would be 1/N if the prior is discrete).
+  To prep for discrete variables, we shift the subtracting of the log K terms out of the tensor product.
+  Instead, subtract log K from logP in TraceP, whenever we encounter a new K.
+
 torchdims
   Cleanup `==` vs `is` for dimension comparison.
   Check whether there are some more torchdim conventions which could clean up the code.
@@ -29,32 +52,21 @@ Masks / nested tensors for different numbers of observations in a plate...
 Reduce memory consumption:
   Tips in docs:
     Group everything in a plate.
-    Make sure you're heirarchy doesn't skip a plate.
+    Make sure your heirarchy doesn't skip a plate.
   Memory checkpointing (maybe around reduce_Ks)?
 
 Memory diagnostics:
   Method to print size of log_prob for all tensors, in TraceP
   device='meta' seems to work with torchdims
 
-Tests:
-  Q-Q plots:
-    P(z) = \int P(x) P(z|x) 
-    i.e. distribution of latents from prior is the same as:
-      repeatedly
-      sampling data, x, from the prior
-      sampling latents, z
-  Importance sampling and importance weighting give the same moments.
-  Timeseries: 
-    ELBO is the same if we unroll; test by handwriting equivalent traces. 
-    Moments work.
-  Natural gradients:
-    Test conv -> mean by sampling.
 
 Natural gradient updates
   Beta + inverse gamma
 
   Construct an approximate posterior from:
-    A bunch of samples from the prior (to get the sizes)
+    A bunch of samples from the prior to give:
+      sizes
+      initialization (also requires multiple samples from prior)
     A few extra bits and pieces (distribution, optionally init)
 
   If we do multisamples, we should be able to update using wake-phase Q update.
