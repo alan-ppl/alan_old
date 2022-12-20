@@ -15,6 +15,7 @@ param_event_ndim = {
     "Cauchy":                    univariate_loc_scale,#
     "Chi2":                      univariate("df"),
     "ContinuousBernoulli":       univariate("probs", "logits"),#
+    "Dirichlet":                 ({"concentration": 1}, 1),
     "Exponential":               univariate("rate"),#
     "FisherSnedecor":            univariate("df1", "df2"),
     "Gamma":                     univariate("concentration", "rate"),
