@@ -261,11 +261,8 @@ def logmmexp(prev, curr, Kmid):
     result_minus_max = td_matmul(exp_prev_minus_max, exp_curr_minus_max, Kmid).log()
     return result_minus_max + max_prev + max_curr
 
-def logmmeanexp(prev, curr, Kmid):
-    return logmmexp(prev, curr, Kmid) - t.log(t.tensor(Kmid.size))
-
-def chain_logmmmeanexp(ms, T, Kprev, Kcurr):
-    return chain_reduce(logmmeanexp, ms, T, Kprev, Kcurr)
+def chain_logmmexp(ms, T, Kprev, Kcurr):
+    return chain_reduce(logmmexp, ms, T, Kprev, Kcurr)
 
 if __name__ == "__main__":
     from functorch.dim import dims
@@ -297,6 +294,6 @@ def reduce_Ks(tensors, Ks_to_sum):
     tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
     result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 
-    if 0<len(Ks_to_sum):
-        result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum().to(device=result.device)
+    #if 0<len(Ks_to_sum):
+    #    result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum().to(device=result.device)
     return sum([result, *maxes])

@@ -1,3 +1,4 @@
+import math
 from warnings import warn
 import torch as t
 from functorch.dim import dims, Dim
@@ -245,6 +246,8 @@ class TraceP(AbstractTrace):
         if plate is not None:
             assert self.trq.plates[plate] in dims_sample, "Plates in Q don't match those in P"
 
+        minus_log_K = 0.
+
         #If the sample has a trq.Kdim
         has_Q_K = self.trq.Kdim in dims_sample
         if has_Q_K:
@@ -258,7 +261,11 @@ class TraceP(AbstractTrace):
             #non-grouped K's
             else:
                 Kdim = Dim(f"K_{key}", self.trq.Kdim.size)
-            self.Ks.add(Kdim)
+
+            if Kdim not in self.Ks:
+                #New K-dimension.
+                minus_log_K = -math.log(self.trq.Kdim.size)
+                self.Ks.add(Kdim)
 
             #Rename K -> K_groupname, or K_varname.
             sample = sample.order(self.trq.Kdim)[Kdim]
@@ -270,7 +277,7 @@ class TraceP(AbstractTrace):
             self.logq[key] = logq
 
         #Timeseries needs to know the Kdim, but other distributions ignore it.
-        self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_Q_K else None))
+        self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_Q_K else None)) + minus_log_K
 
 
 class TracePred(AbstractTrace):

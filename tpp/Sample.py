@@ -124,7 +124,7 @@ class Sample():
         rest  = self.reduce_Ks_to_keep([ts.rest,  *rests],  Ks_to_keep)
 
         first = first.order(ts.K)[ts.Kprev] #Replace K with Kprev
-        rest = chain_logmmmeanexp(rest, ts.Tm1, ts.Kprev, ts.K) #Kprev x Knext
+        rest = chain_logmmexp(rest, ts.Tm1, ts.Kprev, ts.K) #Kprev x Knext
 
         return reduce_Ks([first, rest], [ts.Kprev, ts.K])
 

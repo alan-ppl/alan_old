@@ -103,6 +103,10 @@ class TimeseriesLogP():
         rest  = self.rest.to(dtype=dtype, device=device)
         return self.similar(first, rest)
 
+    def __add__(self, other):
+        assert isinstance(other, float)
+        return self.similar(self.first + other, self.rest + other)
+
 def tslp_to_tuple(tslp):
     """
     Takes a TimeseriesLogP, and returns a tuple of first and rest, and a method for going backwards.
