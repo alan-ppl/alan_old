@@ -90,19 +90,7 @@ class Sample():
 
         if 2==len(ts):
             #Could happen if we have a timeseries extra_log_factor when importance sampling
-            #In that case, both the timeseries had better be the same!
-            assert set(ts[0].first.dims) == set(ts[1].first.dims)
-            assert set(ts[0].rest.dims)  == set(ts[1].rest.dims)
-            assert ts[0].first.ndim == ts[1].first.ndim
-            assert ts[0].rest.ndim  == ts[1].rest.ndim
-
-            assert ts[0].K     is ts[1].K
-            assert ts[0].Kprev is ts[1].Kprev
-            assert ts[0].T     is ts[1].T
-            assert ts[0].Tm1   is ts[1].Tm1
-
-            ts = [ts[0].similar(ts[0].first + ts[1].first, ts[0].rest + ts[1].rest)]
-
+            ts = [ts[0] + ts[1]]
         if len(ts) == 1:
             lower_lp = self.sum_T(ts[0], nts, plate_dim, Ks_to_keep)
         else:

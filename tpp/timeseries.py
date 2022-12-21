@@ -104,8 +104,22 @@ class TimeseriesLogP():
         return self.similar(first, rest)
 
     def __add__(self, other):
-        assert isinstance(other, float)
-        return self.similar(self.first + other, self.rest + other)
+        if isinstance(other, float):
+            return self.similar(self.first + other, self.rest + other)
+        elif isinstance(other, TimeseriesLogP):
+            assert set(self.first.dims) == set(other.first.dims)
+            assert set(self.rest.dims)  == set(other.rest.dims)
+            assert self.first.ndim == other.first.ndim
+            assert self.rest.ndim  == other.rest.ndim
+
+            assert self.K     is other.K
+            assert self.Kprev is other.Kprev
+            assert self.T     is other.T
+            assert self.Tm1   is other.Tm1
+            return self.similar(self.first + other.first, self.rest + other.rest)
+        else:
+            raise Exception(f"Don't know how to add {other} to a TimeseriesLogP")
+            
 
 def tslp_to_tuple(tslp):
     """

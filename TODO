@@ -1,29 +1,13 @@
 Tests:
-  Discrete graphical model which can be completely enumerated.
-    Check: 
-      moments
-      model evidence
-    For:
-      Approximate posterior
-      Complete enumeration
-      Sampling from prior
+  Predictive posteriors
   Q-Q plots: P(z) = \int P(x) P(z|x) 
     Repeatedly sample data, x, from the prior.
     Sample P(z|x).
     Specifically, compare moments.
     Can be done very quickly with importance sampling.
-  Importance sampling and importance weighting give the same moments.
   Timeseries: 
     Moments from rolled vs unrolled models are the same.
     GP-distributed timeseries.
-  Conjugate priors.
-    Models are all latent variable models with one parameter and a bunch of latents.
-      Beta - Bernoulli
-      Normal - Normal
-    Check:
-      posterior moments
-      model evidence
-      posterior predictive
 
 Shift logic for combining TimeseriesLogP into TimeseriesLogP
 
