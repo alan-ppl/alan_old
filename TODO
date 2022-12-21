@@ -1,3 +1,8 @@
+Papers:
+  Stats paper.
+  ML paper.
+  MCMC paper.
+
 Tests:
   Predictive posteriors
   Q-Q plots: P(z) = \int P(x) P(z|x) 
@@ -9,7 +14,7 @@ Tests:
     Moments from rolled vs unrolled models are the same.
     GP-distributed timeseries.
 
-Shift logic for combining TimeseriesLogP into TimeseriesLogP
+Multiple iterations of importance weighting 
 
 torchdims
   Cleanup `==` vs `is` for dimension comparison.
@@ -49,32 +54,13 @@ Memory diagnostics:
   Method to print size of log_prob for all tensors, in TraceP
   device='meta' seems to work with torchdims
 
-
 Natural gradient updates
   Beta + inverse gamma
 
-  Construct an approximate posterior from:
-    A bunch of samples from the prior to give:
-      sizes
-      initialization (also requires multiple samples from prior)
-    A few extra bits and pieces (distribution, optionally init)
-
-  If we do multisamples, we should be able to update using wake-phase Q update.
-    Should be equivalent to importance weighting first.
-
-  Natural gradient updates should also work with the elbo if we multi_sample = False?
-
-  Have a bunch of "base" classes representing e.g. a Gaussian approximate posterior.
-  Natural gradients:
-    Question: How to deal with non-negativity?
-    Advantage: Works with multi_sample=False
-    Implementation: classes with parameters with requires_grad=True, but they aren't parameters?
-  Moment updates:
-    The classes are parameterised by their mean parameters.
-    Updated the mean parameters towards the values from the last importance-weighted posterior sample.
-    Only works with multi_sample=True
-    Works with sufficient statistics (as after the update, its like computing the expected sufficient statistics of a mixture).
-    Implementation: Only needs methods to convert sufficient statistics to conventional params
+  When sampling from the prior, allow multiple samples (so that we can gather moments).
+  Initialize approximate posteriors using prior moments.
+  Natural gradient should work very well for RWS!
+  May work, but less well with VI
 
 Mixture models
   Most of the obvious approaches won't work too well due to symmetry (e.g. each datapoint has an equal chance of being assigned to each cluster).
