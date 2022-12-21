@@ -304,6 +304,12 @@ model = tpp.Model(P, Q(), data)
 model.predictive_ll(K, num_importance_weights, data_all={"obs": obs})
 ```
 
+<!--
+have to note that data_all must be larger than the training data, you have to concatenate training and testing data_all
+Also note that pred_lls can be calculated just with training data
+
+ -->
+
 
 Timeseries
 ==========
