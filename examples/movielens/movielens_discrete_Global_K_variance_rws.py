@@ -42,8 +42,9 @@ N = args.N
 
 
 sizes = {'plate_1':M, 'plate_2':N}
-x_train = {'x': t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+x_train = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
 x_test = {'x':t.load('data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+all_x = {'x': t.vstack([x_train['x'],x_test['x']])}
 d_z = 18
 class P(nn.Module):
     def __init__(self, x):
@@ -86,6 +87,7 @@ class Q(tpp.Q):
 
 data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 test_data_y = {'obs':t.load('data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
+all_data = {'obs': t.vstack([data_y['obs'],test_data_y['obs']])}
 for K in Ks:
     print(K,M,N)
     results_dict[N] = results_dict.get(N, {})
@@ -105,7 +107,7 @@ for K in Ks:
 
 
 
-        for i in range(50):
+        for i in range(50000):
             opt.zero_grad()
             wake_theta_loss, wake_phi_loss = model.rws(K=K)
             (-wake_theta_loss + wake_phi_loss).backward()
@@ -116,7 +118,7 @@ for K in Ks:
 
         times.append(time.time() - start)
         # test_model = tpp.Model(P(x_test), model.Q, test_data_y | x_test)
-        pred_likelihood = model.predictive_ll(K = K, N = 10, data_all=test_data_y | x_test)
+        pred_likelihood = model.predictive_ll(K = K, N = 1000, data_all=all_data | all_x)
         print(pred_likelihood)
         pred_liks.append(pred_likelihood['obs'].item())
     results_dict[N][M][K] = {'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks, 'avg_time':np.mean(times)}
