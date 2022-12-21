@@ -144,7 +144,14 @@ class TraceP(AbstractTrace):
         return self.trq.data
 
     def sample_logQ_prior(self, dist, plate, Kdim):
+        """
+        When variables are omitted in TraceQ, we sample them from the prior.
+        This only makes sense with multiple samples, which is nice as we no
+        longer have the opportunity to set multi_sample=False in TraceQ.
 
+        The basic strategy is to sample from the prior dist, then take the 
+        "diagonal" for all K's.
+        """
         sample_dims = []
         all_Ks = set(self.Ks)
         if 0 == sum(dim in self.Ks for dim in dist.dims):
@@ -164,7 +171,32 @@ class TraceP(AbstractTrace):
         logq   = generic_order(logq_all,   Ks)[idxs][Kdim]
         return sample, logq
 
-    def sample(self, key, dist, group=None, plate=None, T=None):
+    def sum_discrete(self, key, dist, plate):
+        """
+        Enumerates discrete variables.
+        """
+        plates = set(dist.dims)
+        plates.add(self.plates[plate])
+        plates = list(plates)
+
+        if isinstance(dist, Bernoulli):
+            N = 2
+        elif isinstance(dist, Categorical):
+            N = next(dist.all_args.values()).shape[-1]
+        else:
+            raise NotImplemented()
+
+        Edim = Dim(f'E_{key}', N)
+        values = t.arange(N)[Kdim]
+        #Add a bunch of 1 dimensions.
+        values = values[(len(plates)*[None])]
+        #Expand them to full size
+        values = values.expand(*[plate.size for plate in plates])
+        #And name them
+        values = values[plates]
+        return values, Edim
+
+    def sample(self, key, dist, group=None, plate=None, T=None, sum_discrete=False):
         assert key not in self.samples
         assert key not in self.logp
         if T is not None:
@@ -182,21 +214,32 @@ class TraceP(AbstractTrace):
             assert group not in self.groupname2dim, "Timeseries can be grouped, but must be the first thing sampled with a group"
 
         if (key in self.trq):
-            #data or latent variable sampled in Q
+            #We already have a value for the sample, either because it is 
+            #in the data, or because we sampled the variable in Q.
+            assert not sum_discrete
             sample = self.trq[key]
             logq = self.trq.logq[key] if key in self.trq.samples else None
         else:
-            #data or latent variable sampled in Q
-            sample, logq = self.sample_logQ_prior(dist, plate, self.trq.Kdim)
-            #here is where we do things for discrete variables!
+            #We don't already have a value for the sample, and we're either
+            #going to sample from the prior, or enumerate a discrete variable
+            if sum_discrete:
+                #Analytically sum out a discrete latent
+                assert group is None
+                sample, Kdim = self.sum_discrete(key, dist, plate)
+                logq = 0.
+                self.Ks.add(Kdim)
+            else:
+                #Sample from prior
+                sample, logq = self.sample_logQ_prior(dist, plate, self.trq.Kdim)
         
         dims_sample = set(generic_dims(sample))
-        has_k = self.trq.Kdim in dims_sample
         #Check that the sample actually has the required plate.
         if plate is not None:
             assert self.trq.plates[plate] in dims_sample, "Plates in Q don't match those in P"
 
-        if logq is not None: #i.e. if a latent variable and not data.
+        #If the sample has a trq.Kdim
+        has_Q_K = self.trq.Kdim in dims_sample
+        if has_Q_K:
             #grouped K's
             if (group is not None):
                 #new group of K's
@@ -209,16 +252,17 @@ class TraceP(AbstractTrace):
                 Kdim = Dim(f"K_{key}", self.trq.Kdim.size)
             self.Ks.add(Kdim)
 
-            # rename K_dim if it exists
-            if has_k:
-                sample = sample.order(self.trq.Kdim)[Kdim]
-                logq = logq.order(self.trq.Kdim)[Kdim]
+            #Rename K -> K_groupname, or K_varname.
+            sample = sample.order(self.trq.Kdim)[Kdim]
+            logq = logq.order(self.trq.Kdim)[Kdim]
 
+        if key not in self.data:
             self.samples[key] = sample
+        if logq is not None:
             self.logq[key] = logq
 
         #Timeseries needs to know the Kdim, but other distributions ignore it.
-        self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_k else None))
+        self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_Q_K else None))
 
 
 class TracePred(AbstractTrace):
