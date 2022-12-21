@@ -1,4 +1,4 @@
-<!-- To get startted:
+<!-- To get started:
 
 ```
 pip install -e ./
@@ -189,14 +189,14 @@ Choices for `tpp.dist` include most distributions listed in https://pytorch.org/
 
 Note: For models with discrete latents only the [RWS](#reweighted-wake-sleep) inference method is supported.
 
-Conditioning on data
-====================
+Covariates
+===========
 
 Having defined a probabilistic model and proposal you can provide data as so:
 
 ### Using the probabilistic model to provide data
 
-If you dont already have data you can use $P$ to sample some:
+If you don't already have data you can use $P$ to sample some:
 
 ```py
 data = tpp.sample(P, varnames=('obs',))
@@ -255,3 +255,55 @@ for i in range(10000):
     (-wake_theta_loss + wake_phi_loss).backward()
     opt.step()
 ```
+
+Calculating Moments
+===================
+
+Given a proposal (trained or untrained) we can draw importance weighting moments from the posterior:
+
+```py
+from tpp.postproc import mean
+
+### Define P and Q and data
+
+model = tpp.Model(P, Q(), data)
+
+### Optionally train model
+
+#Compute the mean with 10000 importance weights
+mean(model.weights(10000))
+```
+
+Moments supported:
+
+- `mean` - Mean
+- `mean2` - Squared mean
+- `p_lower(value)` - Proportion of samples lower than `value`
+- `p_higher(value)` - Proportion of samples higher than `value`
+- `var` - Variance
+- `std` - Standard Deviation
+- `ess` - Effective Sample Size
+- `stderr_mean` - Standard error of the mean
+- `stderr_mean2` - Standard error of the squared mean
+- `stderr_p_lower` - Standard error of p_lower
+- `stderr_p_higher` - Standard error of p_higher
+
+Calculating predictive log likelihood
+=====================================
+
+We can calculate predictive log likelihood for a model as follows:
+
+```py
+### Define P and Q and data
+
+model = tpp.Model(P, Q(), data)
+
+### train model
+
+#Compute the mean with 10000 importance weights
+model.predictive_ll(K, num_importance_weights, data_all={"obs": obs})
+```
+
+
+Timeseries
+==========
