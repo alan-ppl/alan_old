@@ -298,5 +298,5 @@ def reduce_Ks(tensors, Ks_to_sum):
     result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 
     if 0<len(Ks_to_sum):
-        result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum().to(result.get_device())
+        result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum().to(device=result.device)
     return sum([result, *maxes])

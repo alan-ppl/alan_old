@@ -7,11 +7,14 @@ from .timeseries import Timeseries
 
 class AbstractTrace():
     def __getitem__(self, key):
+        assert key in self
+        return self.samples[key] if (key in self.samples) else self.data[key]
+
+    def __contains__(self, key):
         in_data   = key in self.data
         in_sample = key in self.samples
-        assert in_data or in_sample
         assert not (in_data and in_sample)
-        return self.samples[key] if in_sample else self.data[key]
+        return in_data or in_sample
 
 class TraceSample(AbstractTrace):
     """
@@ -140,19 +143,32 @@ class TraceP(AbstractTrace):
     def data(self):
         return self.trq.data
 
+    def sample_logQ_prior(self, dist, plate, Kdim):
+
+        sample_dims = []
+        all_Ks = set(self.Ks)
+        if 0 == sum(dim in self.Ks for dim in dist.dims):
+            #If there aren't any K's in the dist, then add a K.
+            sample_dims = [Kdim]
+            all_Ks.add(Kdim)
+        if plate is not None:
+            sample_dims.append(self.trq.plates[plate])
+
+        sample_all = dist.sample(self.trq.reparam, sample_dims)
+        logq_all   = dist.log_prob(sample_all)
+
+        Ks = [dim for dim in generic_dims(sample_all) if dim in all_Ks]
+        idxs = len(Ks) * [range(Kdim.size)]
+
+        sample = generic_order(sample_all, Ks)[idxs][Kdim]
+        logq   = generic_order(logq_all,   Ks)[idxs][Kdim]
+        return sample, logq
+
     def sample(self, key, dist, group=None, plate=None, T=None):
         assert key not in self.samples
         assert key not in self.logp
         if T is not None:
             dist.set_Tdim(self.trq.plates[T])
-
-        dims_sample = set(generic_dims(self.trq[key]))
-
-        #Check that the sample provided by TraceQ actually has the required plate.
-        if plate is not None:
-            assert self.trq.plates[plate] in dims_sample, "Plates in Q don't match those in P"
-
-        has_k = self.trq.Kdim in dims_sample
 
         if isinstance(dist, Timeseries) and (dist._inputs is not None):
             warn("Generative models with timeseries with inputs are likely to be highly inefficient; if possible, try to eliminate the inputs (e.g. by marginalising them)")
@@ -165,12 +181,22 @@ class TraceP(AbstractTrace):
             #but we'll do something wrong if we try to sample the plate first.
             assert group not in self.groupname2dim, "Timeseries can be grouped, but must be the first thing sampled with a group"
 
-
-        #data
-        if key in self.data:
-            sample = self.data[key]
-        #latent variable
+        if (key in self.trq):
+            #data or latent variable sampled in Q
+            sample = self.trq[key]
+            logq = self.trq.logq[key] if key in self.trq.samples else None
         else:
+            #data or latent variable sampled in Q
+            sample, logq = self.sample_logQ_prior(dist, plate, self.trq.Kdim)
+            #here is where we do things for discrete variables!
+        
+        dims_sample = set(generic_dims(sample))
+        has_k = self.trq.Kdim in dims_sample
+        #Check that the sample actually has the required plate.
+        if plate is not None:
+            assert self.trq.plates[plate] in dims_sample, "Plates in Q don't match those in P"
+
+        if logq is not None: #i.e. if a latent variable and not data.
             #grouped K's
             if (group is not None):
                 #new group of K's
@@ -183,13 +209,10 @@ class TraceP(AbstractTrace):
                 Kdim = Dim(f"K_{key}", self.trq.Kdim.size)
             self.Ks.add(Kdim)
 
-            sample = self.trq[key]
-            logq = self.trq.logq[key]
-
             # rename K_dim if it exists
             if has_k:
-                sample = generic_order(sample, (self.trq.Kdim,))[Kdim]
-                logq = generic_order(logq, (self.trq.Kdim,))[Kdim]
+                sample = sample.order(self.trq.Kdim)[Kdim]
+                logq = logq.order(self.trq.Kdim)[Kdim]
 
             self.samples[key] = sample
             self.logq[key] = logq

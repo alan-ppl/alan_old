@@ -15,11 +15,27 @@ Tests:
     Test conv -> mean by sampling.
   Conjugate priors.
 
-Discrete variables:
+Sampling from prior
+  Can't mix sampling from the prior with complete enumeration!!
+  Can't multi_sample=False with sampling from the prior.
+
+Why is data in trq and trp?
+
+Mixture models
+  Most of the obvious approaches won't work too well due to symmetry (e.g. each datapoint has an equal chance of being assigned to each cluster).
+  The right approach is to define a prior + approximate posterior over partitions.
+  Approximate posterior should be written in terms of "affinities" (datapoint 4 wants to be with datapoint 3 but not datapoints 1 or 2).
+  We can use the partition to define a dynamic plate (as we have independence across clusters).
+
+Summing out discrete variables:
+  If you're summing out, then don't include them in the approximate posterior.
+  kwarg in sample in TraceP enumerate=True.
+   
   Key difference with discrete variables is that we _sum_ we don't _average_ over the probabilities
     (because there is a P(discrete variable) term, which would be 1/N if the prior is discrete).
   To prep for discrete variables, we shift the subtracting of the log K terms out of the tensor product.
   Instead, subtract log K from logP in TraceP, whenever we encounter a new K.
+
 
 torchdims
   Cleanup `==` vs `is` for dimension comparison.

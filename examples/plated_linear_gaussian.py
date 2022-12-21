@@ -64,7 +64,7 @@ obss = []
 for i in range(1000):
     sample = tpp.sample(P, sizes)
 
-model = tpp.Model(P, Q(), {'obs': data['obs']})
+model = tpp.Model(P, lambda tr: None, {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
