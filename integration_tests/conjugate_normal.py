@@ -17,7 +17,10 @@ def P(tr):
     tr.sample('theta', tpp.Normal(0, s_theta))
     tr.sample('z',     tpp.Normal(tr['theta'], s_z), plate="plate_1")
     tr.sample('obs',   tpp.Normal(tr['z'], s_obs))
-#The model is specifically chosen such that P(obs|theta) = N(theta, v_z + v_obs).
+
+def P_int(tr):
+    tr.sample('theta', tpp.Normal(0, s_theta))
+    tr.sample('obs',   tpp.Normal(tr['theta'], (v_z + v_obs).sqrt())
 
 N = 2
 obs = t.ones(N) + 0.1 * t.randn(N)

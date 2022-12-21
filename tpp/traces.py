@@ -1,6 +1,7 @@
 import math
 from warnings import warn
 import torch as t
+import torch.distributions as td
 from functorch.dim import dims, Dim
 
 from .utils import *
@@ -183,19 +184,21 @@ class TraceP(AbstractTrace):
         """
         Enumerates discrete variables.
         """
+        if dist.dist_name not in ["Bernoulli", "Categorical"]:
+            raise Exception(f'Can only sum over discrete random variables with a Bernoulli or Categorical distribution.  Trying to sum over a "{dist.dist_name}" distribution.')
+
         plates = set(dist.dims)
-        plates.add(self.plates[plate])
+        plates.add(self.trq.plates[plate])
         plates = list(plates)
 
-        if isinstance(dist, Bernoulli):
-            N = 2
-        elif isinstance(dist, Categorical):
-            N = next(dist.all_args.values()).shape[-1]
-        else:
-            raise NotImplemented()
+        torch_dist = dist.dist(**dist.all_args)
 
-        Edim = Dim(f'E_{key}', N)
-        values = t.arange(N)[Kdim]
+        values = torch_dist.enumerate_support(expand=False)
+        values = values.view(-1)
+        assert 1 == values.ndim
+        Edim = Dim(f'E_{key}', values.shape[0])
+        values = values[Edim]
+        
         #Add a bunch of 1 dimensions.
         values = values[(len(plates)*[None])]
         #Expand them to full size
@@ -236,7 +239,7 @@ class TraceP(AbstractTrace):
                 sample, Kdim = self.sum_discrete(key, dist, plate)
                 logq = 0.
                 self.Ks.add(Kdim)
-                self.Es.add(Edim)
+                self.Es.add(Kdim)
             else:
                 #Sample from prior
                 sample, logq = self.sample_logQ_prior(dist, plate, self.trq.Kdim)

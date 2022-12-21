@@ -59,6 +59,9 @@ def pad_nones(arg, ndim):
 
 
 class TorchDimDist():
+    """
+    self.dist and self.dims are exposed!
+    """
     def __init__(self, dist_name, *args, **kwargs):
         self.dist_name = dist_name
         param_ndim, self.result_ndim = param_event_ndim[dist_name]
