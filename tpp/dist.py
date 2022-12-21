@@ -62,6 +62,9 @@ class TorchDimDist():
     def __init__(self, dist_name, *args, **kwargs):
         self.dist_name = dist_name
         param_ndim, self.result_ndim = param_event_ndim[dist_name]
+        for kwarg in kwargs:
+            if kwarg not in param_ndim:
+                raise Exception(f'Unrecognised argument "{kwarg}" given to "{self.dist_name}" distribution.  "{self.dist_name}" only accepts {tuple(param_ndim.keys())}.')
         self.dist = getattr(td, dist_name)
         #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
         arg_dict = {argname: args[i] for (i, argname) in enumerate(list(param_ndim.keys())[:len(args)])}
@@ -91,6 +94,8 @@ class TorchDimDist():
 
     def sample(self, reparam, sample_dims):
         torch_dist = self.dist(**self.all_args)
+        if reparam and not torch_dist.has_rsample:
+            raise Exception(f'Trying to do reparameterised sampling of {self.dist_name}, which is not implemented by PyTorch (likely because {self.dist_name} is a distribution over discrete random variables).')
         sample_method = getattr(torch_dist, "rsample" if reparam else "sample")
         sample_dims = set(sample_dims).difference(self.dims)
         sample_shape = [dim.size for dim in sample_dims]

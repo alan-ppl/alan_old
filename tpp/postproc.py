@@ -38,7 +38,7 @@ Relevant quantites that aren't plain moments
 """
 var = map_or_apply(lambda sample, w: mean2(sample, w) - (mean(sample, w))**2)
 std = map_or_apply(lambda sample, w: var(sample, w).sqrt())
-ess = map_or_apply(lambda _, w: dim2named_tensor((1/((w**2)))).sum(Kname(w)))
+ess = map_or_apply(lambda _, w: 1/(dim2named_tensor(w**2).sum(Kname(w))))
 
 """
 Standard errors (which only make sense for plain moments)

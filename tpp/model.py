@@ -1,3 +1,4 @@
+from warnings import warn
 import torch.nn as nn
 from .traces import TraceQ, TraceP, TracePred
 from .Sample import Sample
@@ -52,7 +53,7 @@ class Model(nn.Module):
 
     data is stored as torchdim
     """
-    def __init__(self, P, Q, data=None):
+    def __init__(self, P, Q=lambda tr: None, data=None):
         super().__init__()
         self.P = P
         self.Q = Q
@@ -77,8 +78,10 @@ class Model(nn.Module):
 
         return Sample(trp)
 
-    def elbo(self, K, data=None):
-        return self.sample(K, True, data).elbo()
+    def elbo(self, K, data=None, reparam=True):
+        if not reparam:
+            warn("Evaluating the ELBO without reparameterising.  This can be valid, e.g. if you're just trying to compute a bound on the model evidence.  But it won't work if you try to train the generative model / approximate posterior using the non-reparameterised ELBO as the objective.")
+        return self.sample(K, reparam, data).elbo()
 
     def rws(self, K, data=None):
         return self.sample(K, False, data).rws()
