@@ -18,21 +18,21 @@ def P_int(tr):
 
 #### Approximate posterior over z
 
-#def P(tr):
-#    tr.sample('theta', tpp.Beta(1, 1))
-#    tr.sample('z',     tpp.Bernoulli(tr['theta']), plate="plate_1")
-#    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['theta'] + pobs_z0*(1-tr['theta'])))
-#
-#Q_prior = lambda tr: None
-#def Q_fac(tr):
-#    tr.sample('theta', tpp.Beta(1, 1))
-#    tr.sample('z',     tpp.Bernoulli(0.5), plate="plate_1")
-#def Q_nonfac(tr):
-#    tr.sample('theta', tpp.Beta(1, 1))
-#    tr.sample('z',     tpp.Bernoulli(tr['theta']), plate="plate_1")
-#Qs = [Q_prior, Q_fac, Q_nonfac]
-#
-#test_vs_int(P_int, P, Qs, obs, K=1000, N=1001)
+def P(tr):
+    tr.sample('theta', tpp.Beta(1, 1))
+    tr.sample('z',     tpp.Bernoulli(tr['theta']), plate="plate_1")
+    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['theta'] + pobs_z0*(1-tr['theta'])))
+
+Q_prior = lambda tr: None
+def Q_fac(tr):
+    tr.sample('theta', tpp.Beta(1, 1))
+    tr.sample('z',     tpp.Bernoulli(0.5), plate="plate_1")
+def Q_nonfac(tr):
+    tr.sample('theta', tpp.Beta(1, 1))
+    tr.sample('z',     tpp.Bernoulli(tr['theta']), plate="plate_1")
+Qs = [Q_prior, Q_fac, Q_nonfac]
+
+test_vs_int(P_int, P, Qs, obs, K=1000, N=1001)
    
 
 #### Sum over z

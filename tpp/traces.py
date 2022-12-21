@@ -350,7 +350,7 @@ class TracePred(AbstractTrace):
         dims_train.append(Ellipsis)
         return dims_all, dims_train
 
-    def sample(self, varname, dist, multi_samples=True, group=None, plate=None, T=None):
+    def sample(self, varname, dist, group=None, plate=None, T=None, sum_discrete=False):
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train
@@ -360,12 +360,12 @@ class TracePred(AbstractTrace):
 
         if varname in self.data_all:
             #Compute predictive log-probabilities and put them in self.ll_all and self.ll_train
-            self._sample_logp(varname, dist, multi_samples, plate)
+            self._sample_logp(varname, dist, plate)
         else:
             #Compute samples, and put them in self.sample_all
-            self._sample_sample(varname, dist, multi_samples, plate)
+            self._sample_sample(varname, dist, plate)
 
-    def _sample_sample(self, varname, dist, multisamples, plate):
+    def _sample_sample(self, varname, dist, plate):
         sample_dims = [self.N]
 
         if plate is not None:
@@ -413,7 +413,7 @@ class TracePred(AbstractTrace):
 
         self.samples_all[varname] = sample_all
 
-    def _sample_logp(self, varname, dist, multi_samples, plate):
+    def _sample_logp(self, varname, dist, plate):
         sample_all   = self.data_all[varname]
         sample_train = self.data_train[varname]
 
