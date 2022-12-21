@@ -198,6 +198,7 @@ class TraceP(AbstractTrace):
         assert 1 == values.ndim
         Edim = Dim(f'E_{key}', values.shape[0])
         values = values[Edim]
+        #values is now just all a vector containing values in the support.
         
         #Add a bunch of 1 dimensions.
         values = values[(len(plates)*[None])]
@@ -237,7 +238,7 @@ class TraceP(AbstractTrace):
                 #Analytically sum out a discrete latent
                 assert group is None
                 sample, Kdim = self.sum_discrete(key, dist, plate)
-                logq = 0.
+                logq = t.zeros_like(sample)
                 self.Ks.add(Kdim)
                 self.Es.add(Kdim)
             else:
