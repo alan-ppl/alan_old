@@ -136,8 +136,10 @@ class TraceP(AbstractTrace):
 
         self.groupname2dim = {}
 
-        #Get plates from trq
+        #All Ks, including sum_discrete
         self.Ks     = set()
+        #Only sum_discrete
+        self.Es     = set()
 
     @property
     def data(self):
@@ -152,6 +154,11 @@ class TraceP(AbstractTrace):
         The basic strategy is to sample from the prior dist, then take the 
         "diagonal" for all K's.
         """
+
+        #Don't depend on any enumerated variables (in which case sampling
+        #from the prior doesn't make sense).
+        assert all((dim not in self.Es) for dim in dist.dims)
+
         sample_dims = []
         all_Ks = set(self.Ks)
         if 0 == sum(dim in self.Ks for dim in dist.dims):
@@ -228,6 +235,7 @@ class TraceP(AbstractTrace):
                 sample, Kdim = self.sum_discrete(key, dist, plate)
                 logq = 0.
                 self.Ks.add(Kdim)
+                self.Es.add(Edim)
             else:
                 #Sample from prior
                 sample, logq = self.sample_logQ_prior(dist, plate, self.trq.Kdim)
