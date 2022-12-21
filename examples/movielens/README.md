@@ -35,4 +35,4 @@ VI with all latents grouped:
 python movielens_discrete_Global_K_variance_rws.py N M
 ```
 
-With $N \in \{30,200\}$, $M \in \{10,50,100\}$
+With $N \in \lbrace 30,200 \rbrace$, $M \in \lbrace 10,50,100 \rbrace$
