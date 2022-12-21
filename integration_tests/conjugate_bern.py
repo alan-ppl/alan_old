@@ -10,7 +10,9 @@ pobs_z1 = 0.8
 pobs_z0 = 0.3
 
 N = 3
-obs = (t.rand(3)>0.5).to(dtype=t.float).rename("plate_1")
+obs = (t.rand(N)>0.5).to(dtype=t.float).rename("plate_1")
+obs_all = (t.rand(N+2)>0.5).to(dtype=t.float).rename("plate_1") 
+obs_all[:N] = obs
 
 def P_int(tr):
     tr.sample('theta', tpp.Beta(1, 1))
@@ -32,8 +34,7 @@ def Q_nonfac(tr):
     tr.sample('z',     tpp.Bernoulli(tr['theta']), plate="plate_1")
 Qs = [Q_prior, Q_fac, Q_nonfac]
 
-test_vs_int(P_int, P, Qs, obs, K=1000, N=1001)
-   
+test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001)
 
 #### Sum over z
 
@@ -47,7 +48,4 @@ def Q_fac(tr):
     tr.sample('theta', tpp.Beta(1, 1))
 Qs = [Q_prior, Q_fac]
 
-test_vs_int(P_int, P, Qs, obs, K=1000, N=1001)
-   
-
-
+test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001)

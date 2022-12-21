@@ -198,67 +198,6 @@ class Sample():
     def _importance_samples(self, N):
         """
         Returns torchdim tensors, so not for external use.
-        """
-        #ordered in the order of generating under P
-        var_names     = list(self.trp.samples.keys())
-        samples       = list(self.trp.samples.values())
-        logps         = [self.trp.logp[var_name] for var_name in var_names]
-        dimss         = [lp.dims for lp in logps]
-        undim_logps   = [generic_order(lp, dims) for (lp, dims) in zip(logps, dimss)]
-
-        #Start with Js with no dimensions (like NN parameters)
-        undim_Js = [t.zeros_like(ulp, requires_grad=True) for ulp in undim_logps]
-        #Put torchdims back in.
-        dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
-        #Compute result with torchdim Js
-        result = self.tensor_product(extra_log_factors=dim_Js)
-        #But differentiate wrt non-torchdim Js
-        marginals = list(t.autograd.grad(result, undim_Js))
-        #Put dims back,
-        marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
-        #Normalized, marg gives the "posterior marginals" over Ks
-
-        Ks_so_far = set()
-        #Dict mapping Kdim to NxPlates indexes.
-        K_post_idxs = {}
-        post_samples = {}
-
-        #Go through each variable in the order it was generated in P
-        for i in range(len(var_names)):
-            #All Ks in this variable.
-            Ks = [dim for dim in dimss[i] if self.is_K(dim)]
-            #Split into Ks that are new for this variable, and old
-            new_Ks  = [dim for dim in Ks if (dim not in Ks_so_far)]
-            prev_Ks = [dim for dim in Ks if (dim     in Ks_so_far)]
-            #Should be zero (e.g. if grouped) or one new K.
-            assert len(new_Ks) in (0, 1)
-
-            #If there's a new K, then we need to do posterior sampling for that K.
-            if 1==len(new_Ks):
-                K = new_Ks[0]
-                Ks_so_far.add(K)
-                #index into marg for the previous Ks, which gives an unnormalized posterior.
-                marg = generic_order(marginals[i], prev_Ks)
-                cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
-
-                #Check none of the conditional probabilites are big and negative
-                assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
-                #Set any small and negative conditional probaiblities to zero.
-                cond = cond * (cond > 0)
-
-                #Put current K at the back for the sampling,
-                cond = cond.order(K)
-                cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
-                #Sample new K's
-                K_post_idxs[K] = Categorical(cond).sample(False, sample_dims=(N,))
-
-            sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
-            post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
-        return post_samples
-
-    def _importance_samples(self, N):
-        """
-        Returns torchdim tensors, so not for external use.
         Divided into two parts: computing the marginals over K, and actually sampling
         The marginals are computed using the derivative of log Z again.
         We sample forward, following the generative model.
@@ -340,6 +279,7 @@ class Sample():
                 else:
                     K_post_idxs[K] = sample_cond(marg, K, K_post_idxs, N)
 
+            #the sample should only have one K, so pick it out and index into it.
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
         return post_samples

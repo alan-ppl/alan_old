@@ -187,7 +187,7 @@ class TraceP(AbstractTrace):
         if dist.dist_name not in ["Bernoulli", "Categorical"]:
             raise Exception(f'Can only sum over discrete random variables with a Bernoulli or Categorical distribution.  Trying to sum over a "{dist.dist_name}" distribution.')
 
-        plates = set(dist.dims)
+        plates = set(dim for dim in dist.dims if (dim in self.trq.plates))
         plates.add(self.trq.plates[plate])
         plates = list(plates)
 
@@ -228,7 +228,8 @@ class TraceP(AbstractTrace):
         if (key in self.trq):
             #We already have a value for the sample, either because it is 
             #in the data, or because we sampled the variable in Q.
-            assert not sum_discrete
+            if sum_discrete:
+                raise Exception("If you're summing over a discrete latent variable, you don't need to provide a proposal / approximate posterior for that variable.")
             sample = self.trq[key]
             logq = self.trq.logq[key] if key in self.trq.samples else None
         else:

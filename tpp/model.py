@@ -67,6 +67,8 @@ class Model(nn.Module):
     def sample(self, K, reparam, data, memory_diagnostics=False):
         data, plates = named2dim_data(data, self.plates)
         all_data = {**self.data, **data}
+        if 0==len(all_data):
+            raise Exception("No data provided either to the model or to the called method")
         assert len(all_data) == len(self.data) + len(data)
 
         #sample from approximate posterior
@@ -95,6 +97,14 @@ class Model(nn.Module):
 
     def predictive(self, K, N, data_train=None, data_all=None, sizes_all=None):
         sample = self.sample(K, False, data_train)
+
+        if (data_all is not None):
+            if not any(sample.trp.data[dataname].numel() < dat.numel() for (dataname, dat) in data_all.items()):
+                raise Exception(f"None of the tensors provided data_all is bigger than those provided at training time, so it doesn't make sense to make predictions.  If you just want posterior samples, use model.importance_samples(...)")
+        if (sizes_all is not None):
+            if not any(self.trp.trq.plates[platename] < size for (platename, size) in sizes_all.items()):
+                raise Exception("None of the sizes provided in sizes_all are bigger than those in the training data, so we can't make any predictions.  If you just want posterior samples, use model.importance_samples")
+
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
         tr = TracePred(N, post_samples, sample.trp.data, sample.trp.trq.plates, data_all=data_all, sizes_all=sizes_all)
@@ -115,6 +125,7 @@ class Model(nn.Module):
         >>> obs = t.randn((4, 6, 8), names=("plate_1", "plate_2", "plate_3"))
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
         """
+
         trace_pred, N = self.predictive(K, N, data_train=data_train, data_all=data_all)
         lls_all   = trace_pred.ll_all
         lls_train = trace_pred.ll_train
@@ -125,19 +136,19 @@ class Model(nn.Module):
             ll_all   = lls_all[varname]
             ll_train = lls_train[varname]
 
-            print(varname)
+            #print(varname)
 
             dims_all   = [dim for dim in ll_all.dims   if dim is not N]
             dims_train = [dim for dim in ll_train.dims if dim is not N]
             assert len(dims_all) == len(dims_train)
 
-            print(dims_all)
-            print(dims_train)
+            #print(dims_all)
+            #print(dims_train)
             if 0 < len(dims_all):
                 ll_all   = ll_all.sum(dims_all)
                 ll_train = ll_train.sum(dims_train)
-            print(ll_all)
-            print(ll_train)
+            #print(ll_all)
+            #print(ll_train)
             result[varname] = (ll_all - ll_train).mean(N)
 
         return result
