@@ -6,9 +6,21 @@ from .utils import *
 
 class Q(nn.Module):
     """
-    Key problem: parameters in Q must have torchdim plates.
-    Solve this problem by making a new method to register parameters, "reg_param", which takes
-    a named tensor, and builds up a mapping from names to torchdims.
+    A thin wrapper on nn.Module, which is only necessary if we want to
+    learn separate parameters for each latent variable in a plate. In that 
+    case, the learned parameters need to be torchdim tensors, and this class
+    allows that.
+
+    In particular, any parameter with a plate should be registered with 
+    ```
+    class MyQ(Q):
+        def __init__(self):
+            super().__init__()
+            self.reg_param("a", t.ones(3,4), ("plate_1"))
+    ```
+    
+    The size of this plate will also feed into the inference of plate sizes
+    performed in `Model`.
     """
     def __init__(self):
         super().__init__()
@@ -17,9 +29,18 @@ class Q(nn.Module):
         self._dims = {}
 
     def reg_param(self, name, tensor, dims=None):
+        """ Register a parameter with plate dimensions.
+        Args:
+            name (str):            the name of the parameter.
+            tensor (torch.Tensor): the tensor (may be named).
+            dims:                  the dimension names, starting from dimension 0.
+
+        You may specify the plates either by providing a named tensor, or by 
+        providing a dims argument, but not both!
         """
-        Tensor could be named, or we could provide a dims (iterable of strings) argument.
-        """
+        if (dims is not None) and any(name is not None in tensor.names):
+            raise Exception("Names should be provided either using a named tensor _or_ using the dims optional argument.  Names provided in a named tensor and in the dims optional argument.")
+
         #Save unnamed parameter
         self._params[name] = nn.Parameter(tensor.rename(None))
 
@@ -46,25 +67,32 @@ class Q(nn.Module):
             return self._params[name][self._dims[name]]
 
 class Model(nn.Module):
-    """
-    Plate dimensions come from data.
-    Model(P, Q, data) is for non-minibatched data.
-    elbo(K=10, data) is for minibatched data.
-
-    data is stored as torchdim
+    """Model class.
+    Args:
+        P:    The generative model, written as a function that takes a trace.
+        Q:    The proposal / approximate posterior. Optional. If not provided,
+              then we use the prior as Q.
+        data: Any non-minibatched data. This is usually used in statistics,
+              where we have small-medium data that we can reason about as a 
+              block. This is a dictionary mapping variable name to named-tensors
+              representing the data. We infer plate sizes from the sizes of 
+              the named dimensions in data (and from the sizes of any parameters
+              in Q).
     """
     def __init__(self, P, Q=lambda tr: None, data=None):
         super().__init__()
         self.P = P
         self.Q = Q
 
-
         if data is None:
             data = {}
         plates = Q._plates if hasattr(Q, "_plates") else {}
         self.data, self.plates = named2dim_data(data, plates)
 
-    def sample(self, K, reparam, data, memory_diagnostics=False):
+    def _sample(self, K, reparam, data, memory_diagnostics=False):
+        """
+        Internal method that actually runs P and Q.
+        """
         data, plates = named2dim_data(data, self.plates)
         all_data = {**self.data, **data}
         if 0==len(all_data):
@@ -81,22 +109,67 @@ class Model(nn.Module):
         return Sample(trp)
 
     def elbo(self, K, data=None, reparam=True):
+        """Compute the ELBO.
+        Args:
+            K:       the number of samples drawn for each latent variable.
+            data:    Any minibatched data.
+            reparam: Whether to use the reparameterisation trick.  If you want to use the
+                     ELBO as an objective in VI, then this needs to be True (and it is 
+                     true by default).  However, sampling with reparam=True will fail if 
+                     you have discrete latent variables. Indeed, you can't do standard VI
+                     with discrete latents. That said, if you have discrete latent
+                     variables, you may still want to compute a bound on the model
+                     evidence, and that's probably the only case where reparam=False makes
+                     sense.
+        """
         if not reparam:
             warn("Evaluating the ELBO without reparameterising.  This can be valid, e.g. if you're just trying to compute a bound on the model evidence.  But it won't work if you try to train the generative model / approximate posterior using the non-reparameterised ELBO as the objective.")
-        return self.sample(K, reparam, data).elbo()
+        return self._sample(K, reparam, data).elbo()
 
     def rws(self, K, data=None):
-        return self.sample(K, False, data).rws()
+        """Compute RWS objectives
+        Args:
+            K:       the number of samples drawn for each latent variable.
+            data:    Any minibatched data.
+        Returns:
+            p_obj: Objective for the P update
+            q_obj: Objective for the wake-phase Q update
+
+        RWS ...
+        """
+        return self._sample(K, False, data).rws()
 
     def weights(self, K, data=None):
-        return self.sample(K, False, data).weights()
+        """Compute marginal importance weights
+        Args:
+            K:       the number of samples drawn for each latent variable.
+            data:    Any minibatched data.
+        Returns:
+            A dictionary mapping the variable name to a tuple of weights and samples.
+            These weights and samples may be used directly, or may be processed to
+            give e.g. moments, ESS etc. using the functions in tpp.postproc
+        """
+        return self._sample(K, False, data).weights()
 
     def importance_samples(self, K, N, data=None):
+        """Compute posterior samples
+        Args:
+            K:       the number of samples drawn for each latent variable.
+            N:       the number of importance samples returned.
+            data:    Any minibatched data.
+        Returns:
+            A dictionary mapping the variable name to the posterior sample.
+
+        Notes:
+            * This is only really useful for prediction. If you're looking 
+              for moments, you should use importance weights processed by 
+              tpp.postproc.  This will be more accurate...
+        """
         N = Dim('N', N)
-        return self.sample(K, False, data)._importance_samples(N)
+        return self._sample(K, False, data)._importance_samples(N)
 
     def predictive(self, K, N, data_train=None, data_all=None, sizes_all=None):
-        sample = self.sample(K, False, data_train)
+        sample = self._sample(K, False, data_train)
 
         if (data_all is not None):
             if not any(sample.trp.data[dataname].numel() < dat.numel() for (dataname, dat) in data_all.items()):
