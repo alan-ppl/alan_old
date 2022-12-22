@@ -37,12 +37,12 @@ class Sample():
 
 
         #Assumes that self.lps come in ordered
-        self.plates = set(trp.trq.plates.values())
+        self.platedims = set(trp.trq.platedims.values())
         self.ordered_plate_dims = [dim for dim in unify_dims(trp.logp.values()) if self.is_plate(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
 
     def is_plate(self, dim):
-        return dim in self.plates
+        return dim in self.platedims
 
     def is_K(self, dim):
         return dim in self.trp.Ks

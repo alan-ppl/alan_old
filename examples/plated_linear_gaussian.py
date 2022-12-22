@@ -6,7 +6,7 @@ t.manual_seed(0)
 J = 2
 M = 3
 N = 4
-plate_sizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
+platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 def P(tr):
     tr.sample('a',   tpp.Normal(t.zeros(()), 1))
     tr.sample('b',   tpp.Normal(tr['a'], 1))
@@ -54,7 +54,7 @@ class Q(tpp.Q):
 
 
 
-data = tpp.sample(P, plate_sizes)
+data = tpp.sample(P, platesizes)
 
 a = []
 bs = []
@@ -62,7 +62,7 @@ cs = []
 ds = []
 obss = []
 for i in range(1000):
-    sample = tpp.sample(P, plate_sizes)
+    sample = tpp.sample(P, platesizes)
 
 #model = tpp.Model(P, lambda tr: None, {'obs': data['obs']})
 model = tpp.Model(P, Q(), {'obs': data['obs']})

@@ -93,8 +93,8 @@ class Model(nn.Module):
         #here, we gather plate dimensions from the first two.
         #in _sample, we gather plate dimensions from the last one.
         Q_plates = Q._plates if hasattr(Q, "_plates") else {}
-        self.plates = extend_plates_with_named_tensors(Q_plates, data.values())
-        self.data   = named2dim_tensordict(self.plates, data)
+        self.platedims = extend_plates_with_named_tensors(Q_plates, data.values())
+        self.data   = named2dim_tensordict(self.platedims, data)
 
     def _sample(self, K, reparam, data, memory_diagnostics=False):
         """
@@ -102,8 +102,8 @@ class Model(nn.Module):
         """
         if data is None:
             data = {}
-        plates = extend_plates_with_named_tensors(self.plates, data.values())
-        data = named2dim_tensordict(plates, data)
+        platedims = extend_plates_with_named_tensors(self.platedims, data.values())
+        data = named2dim_tensordict(platedims, data)
 
         all_data = {**self.data, **data}
         if 0==len(all_data):
@@ -111,7 +111,7 @@ class Model(nn.Module):
         assert len(all_data) == len(self.data) + len(data)
 
         #sample from approximate posterior
-        trq = TraceQ(K, all_data, plates, reparam)
+        trq = TraceQ(K, all_data, platedims, reparam)
         self.Q(trq)
         #compute logP
         trp = TraceP(trq, memory_diagnostics=memory_diagnostics)
@@ -179,30 +179,32 @@ class Model(nn.Module):
         N = Dim('N', N)
         return self._sample(K, False, data)._importance_samples(N)
 
-    def predictive(self, K, N, data_train=None, data_all=None, sizes_all=None):
-        sample = self._sample(K, False, data_train)
+    def _predictive(self, K, N, data_all=None, platesizes_all=None):
+        sample = self._sample(K, False, None)
 
         if (data_all is not None):
             if not any(sample.trp.data[dataname].numel() < dat.numel() for (dataname, dat) in data_all.items()):
                 raise Exception(f"None of the tensors provided data_all is bigger than those provided at training time, so it doesn't make sense to make predictions.  If you just want posterior samples, use model.importance_samples(...)")
-        if (sizes_all is not None):
+        if (platesizes_all is not None):
             if not any(self.trp.trq.plates[platename] < size for (platename, size) in sizes_all.items()):
                 raise Exception("None of the sizes provided in sizes_all are bigger than those in the training data, so we can't make any predictions.  If you just want posterior samples, use model.importance_samples")
 
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
-        tr = TracePred(N, post_samples, sample.trp.data, sample.trp.trq.plates, data_all=data_all, sizes_all=sizes_all)
+        tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all)
         self.P(tr)
         return tr, N
 
-    def predictive_samples(self, K, N, data_train=None, sizes_all=None):
-        trace_pred, N = self.predictive(K, N, data_train=data_train, sizes_all=sizes_all)
+    def predictive_samples(self, K, N, platesizes_all=None):
+        if platesizes_all is None:
+            platesizes_all = {}
+        trace_pred, N = self._predictive(K, N, None, platesizes_all)
         #Convert everything to named
         #Return a dict mapping
         #Convert everything to named
         return trace_pred.samples_all
 
-    def predictive_ll(self, K, N, data_train=None, data_all=None):
+    def predictive_ll(self, K, N, data_all):
         """
         Run as (e.g. for plated_linear_gaussian.py)
 
@@ -210,7 +212,7 @@ class Model(nn.Module):
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
         """
 
-        trace_pred, N = self.predictive(K, N, data_train=data_train, data_all=data_all)
+        trace_pred, N = self._predictive(K, N, data_all, None)
         lls_all   = trace_pred.ll_all
         lls_train = trace_pred.ll_train
         assert set(lls_all.keys()) == set(lls_train.keys())

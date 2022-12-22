@@ -35,10 +35,10 @@ class AbstractTrace():
         if isinstance(plates, str):
             plates = (plates,)
         for plate in plates:
-            if (plate is not None) and (plate not in self.plates):
-                raise Exception(f"Plate '{plate}' on variable '{key}' not present.  Instead, we only have {tuple(self.plates.keys())}.")
-        if (T is not None) and (T not in self.plates):
-            raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.plates.keys())}.")
+            if (plate is not None) and (plate not in self.platedims):
+                raise Exception(f"Plate '{plate}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
+        if (T is not None) and (T not in self.platedims):
+            raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
 
     def check(self, key, plate, T):
         self.check_varname(key)
@@ -51,9 +51,9 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, plate_sizes, N):
+    def __init__(self, platesizes, N):
         super().__init__()
-        self.plates = extend_plates_with_sizes({}, plate_sizes)
+        self.platedims = extend_plates_with_sizes({}, platesizes)
         self.Ns = () if (N is None) else (Dim('N', N),)
 
         self.reparam = False
@@ -65,12 +65,12 @@ class TraceSample(AbstractTrace):
         self.check(key, plates, T)
 
         if T is not None:
-            dist.set_Tdim(self.plates[T])
+            dist.set_Tdim(self.platedims[T])
 
-        sample_dims = [*self.Ns, *platenames2platedims(self.plates, plates)]
+        sample_dims = [*self.Ns, *platenames2platedims(self.platedims, plates)]
         self.samples[key] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
-def sample(P, plate_sizes=None, N=None, varnames=None):
+def sample(P, platesizes=None, N=None, varnames=None):
     """Draw samples from a generative model (with no data).
     
     Args:
@@ -84,9 +84,9 @@ def sample(P, plate_sizes=None, N=None, varnames=None):
         represented as a named tensor (e.g. so that it is suitable 
         for use as data).
     """
-    if plate_sizes is None:
-        plate_sizes = {}
-    tr = TraceSample(plate_sizes, N)
+    if platesizes is None:
+        platesizes = {}
+    tr = TraceSample(platesizes, N)
     P(tr)
 
     if varnames is None:
@@ -102,12 +102,12 @@ class TraceQ(AbstractTrace):
     The latents may depend on the data (as in a VAE), but it doesn't make sense to "sample" data.
     Can high-level latents depend on plated lower-layer latents?  (I think so?)
     """
-    def __init__(self, K, data, plates, reparam):
+    def __init__(self, K, data, platedims, reparam):
         super().__init__()
         self.Kdim = Dim("K", K)
 
         self.data = data
-        self.plates = plates
+        self.platedims = platedims
 
         self.reparam = reparam
 
@@ -124,10 +124,10 @@ class TraceQ(AbstractTrace):
             warn("WARNING: multi_sample=False will break alot of things, including importance sampling, importance weighting, and RWS. Prefer grouped K's wherever possible. Though it is necessary to do Bayesian reasoning about parameters when we minibatch across latent variables")
 
         if T is not None:
-            dist.set_Tdim(self.plates[T])
+            dist.set_Tdim(self.platedims[T])
 
         Kdims = (self.Kdim,) if multi_sample else ()
-        platedims = platenames2platedims(self.plates, plates)
+        platedims = platenames2platedims(self.platedims, plates)
         sample_dims = (*Kdims, *platedims)
 
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
@@ -153,7 +153,7 @@ class TraceQ(AbstractTrace):
         Note that these do not exist on TraceP, because aggregating/mixing along
         a plate in the generative model will break things!
         """
-        return f(x, self.plates[plate])
+        return f(x, self.platedims[plate])
 
     def mean(x, plate):
         return reduce_plate(t.mean, x, plate)
@@ -180,8 +180,8 @@ class TraceP(AbstractTrace):
         return self.trq.data
 
     @property
-    def plates(self):
-        return self.trq.plates
+    def platedims(self):
+        return self.trq.platedims
 
     def sample_logQ_prior(self, dist, plates, Kdim):
         """
@@ -197,7 +197,7 @@ class TraceP(AbstractTrace):
         #from the prior doesn't make sense).
         assert all((dim not in self.Es) for dim in dist.dims)
 
-        sample_dims = platenames2platedims(self.plates, plates)
+        sample_dims = platenames2platedims(self.platedims, plates)
 
         all_Ks = set(self.Ks)
         if 0 == sum(dim in self.Ks for dim in dist.dims):
@@ -222,8 +222,8 @@ class TraceP(AbstractTrace):
         if dist.dist_name not in ["Bernoulli", "Categorical"]:
             raise Exception(f'Can only sum over discrete random variables with a Bernoulli or Categorical distribution.  Trying to sum over a "{dist.dist_name}" distribution.')
 
-        dim_plates    = set(dim for dim in dist.dims if (dim in self.plates))
-        sample_plates = platenames2platedims(self.plates, plates)
+        dim_plates    = set(dim for dim in dist.dims if (dim in self.platedims))
+        sample_plates = platenames2platedims(self.platedims, plates)
         plates = list(dim_plates.union(sample_plates))
 
         torch_dist = dist.dist(**dist.all_args)
@@ -249,7 +249,7 @@ class TraceP(AbstractTrace):
         self.check(key, plates, T)
         assert key not in self.logp
         if T is not None:
-            dist.set_Tdim(self.plates[T])
+            dist.set_Tdim(self.platedims[T])
 
         if isinstance(dist, Timeseries) and (dist._inputs is not None):
             warn("Generative models with timeseries with inputs are likely to be highly inefficient; if possible, try to rewrite the model so that timeseries doesn't have inputs.  For instance, you could marginalise the inputs and include them as noise in the transitions.")
@@ -334,23 +334,25 @@ class TracePred(AbstractTrace):
 
 
     """
-    def __init__(self, N, samples_train, data_train, plates_train, data_all=None, sizes_all=None):
+    def __init__(self, N, samples_train, data_train, data_all, platedims_train, platesizes_all):
         super().__init__()
         self.N = N
 
         self.samples_train = samples_train
         self.data_train = data_train
-        self.plates_train = plates_train
+        self.platedims_train = platedims_train
 
-        assert (data_all is None) != (sizes_all is None)
-        if sizes_all is None:
-            sizes_all = {}
-        if data_all  is None:
-            data_all  = {}
-
-        self.plates_all = extend_plates_with_sizes({}, sizes_all)
-        self.plates_all = extend_plates_with_named_tensors(self.plates_all, data_all.values())
-        self.data_all   = named2dim_tensordict(self.plates_all, data_all)
+        #Either data_all or platesizes_all is not None, but not both.
+        assert (data_all is None) != (platesizes_all is None)
+ 
+        if platesizes_all is not None:
+            self.platedims_all = extend_plates_with_sizes({}, platesizes_all)
+            self.data_all      = {}
+        elif data_all is not None:
+            self.platedims_all = extend_plates_with_named_tensors({}, data_all.values())
+            self.data_all      = named2dim_tensordict(self.platedims_all, data_all)
+        else:
+            assert False
 
         self.samples_all  = {}
         self.ll_all       = {}
@@ -374,14 +376,14 @@ class TracePred(AbstractTrace):
         """
         dims_all   = set(x_all.dims)   #Includes N!
         dims_train = set(x_train.dims) #Includes N!
-        dimnames_all   = [name for (name, dim) in self.plates_all.items()   if dim in dims_all]
-        dimnames_train = [name for (name, dim) in self.plates_train.items() if dim in dims_train]
+        dimnames_all   = [name for (name, dim) in self.platedims_all.items()   if dim in dims_all]
+        dimnames_train = [name for (name, dim) in self.platedims_train.items() if dim in dims_train]
         assert set(dimnames_all) == set(dimnames_train)
         dimnames = dimnames_all
 
         #Corresponding list of dims for all and train.
-        dims_all   = [self.plates_all[dimname]   for dimname in dimnames]
-        dims_train = [self.plates_train[dimname] for dimname in dimnames]
+        dims_all   = [self.platedims_all[dimname]   for dimname in dimnames]
+        dims_train = [self.platedims_train[dimname] for dimname in dimnames]
         dims_all.append(Ellipsis)
         dims_train.append(Ellipsis)
         return dims_all, dims_train
@@ -392,7 +394,7 @@ class TracePred(AbstractTrace):
         assert varname not in self.ll_train
 
         if T is not None:
-            dist.set_Tdim(self.plates_all[T])
+            dist.set_Tdim(self.platedims_all[T])
 
         if varname in self.data_all:
             #Compute predictive log-probabilities and put them in self.ll_all and self.ll_train
@@ -402,7 +404,7 @@ class TracePred(AbstractTrace):
             self._sample_sample(varname, dist, plates)
 
     def _sample_sample(self, varname, dist, plates):
-        sample_dims = platenames2platedims(self.plates_all, plates)
+        sample_dims = platenames2platedims(self.platedims_all, plates)
         sample_dims.append(self.N)
 
         sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
