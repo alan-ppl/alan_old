@@ -31,9 +31,12 @@ class AbstractTrace():
             raise Exception(f"Trying to sample named {key}, but we have already sampled a variable with this name")
         check_not_reserved(key)
 
-    def check_plate_present(self, key, plate, T):
-        if (plate is not None) and (plate not in self.plates):
-            raise Exception(f"Plate '{plate}' on variable '{key}' not present.  Instead, we only have {tuple(self.plates.keys())}.")
+    def check_plate_present(self, key, plates, T):
+        if isinstance(plates, str):
+            plates = (plates,)
+        for plate in plates:
+            if (plate is not None) and (plate not in self.plates):
+                raise Exception(f"Plate '{plate}' on variable '{key}' not present.  Instead, we only have {tuple(self.plates.keys())}.")
         if (T is not None) and (T not in self.plates):
             raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.plates.keys())}.")
 
@@ -48,9 +51,9 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, size_dict, N):
+    def __init__(self, plate_sizes, N):
         super().__init__()
-        self.plates = extend_plates_with_size_dict({}, size_dict)
+        self.plates = extend_plates_with_sizes({}, plate_sizes)
         self.Ns = () if (N is None) else (Dim('N', N),)
 
         self.reparam = False
@@ -58,18 +61,16 @@ class TraceSample(AbstractTrace):
         self.data                 = {}
         self.samples              = {}
 
-    def sample(self, key, dist, group=None, plate=None, T=None, sum_discrete=False):
-        self.check(key, plate, T)
+    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
+        self.check(key, plates, T)
 
         if T is not None:
             dist.set_Tdim(self.plates[T])
 
-        sample_dims = [*self.Ns]
-        if plate is not None:
-            sample_dims.append(self.plates[plate])
+        sample_dims = [*self.Ns, *platenames2platedims(self.plates, plates)]
         self.samples[key] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
-def sample(P, plates=None, N=None, varnames=None):
+def sample(P, plate_sizes=None, N=None, varnames=None):
     """Draw samples from a generative model (with no data).
     
     Args:
@@ -83,9 +84,9 @@ def sample(P, plates=None, N=None, varnames=None):
         represented as a named tensor (e.g. so that it is suitable 
         for use as data).
     """
-    if plates is None:
-        plates = {}
-    tr = TraceSample(plates, N)
+    if plate_sizes is None:
+        plate_sizes = {}
+    tr = TraceSample(plate_sizes, N)
     P(tr)
 
     if varnames is None:
@@ -113,8 +114,8 @@ class TraceQ(AbstractTrace):
         self.samples = {}
         self.logq = {}
 
-    def sample(self, key, dist, multi_sample=True, plate=None, T=None):
-        self.check(key, plate, T)
+    def sample(self, key, dist, multi_sample=True, plates=(), T=None):
+        self.check(key, plates, T)
         if key in self.data:
             raise Exception(f"Q acts as a proposal / approximate posterior for latent variables, so we should only sample latent variables in Q.  However, we are sampling '{key}', which is data.")
         assert key not in self.logq
@@ -125,11 +126,9 @@ class TraceQ(AbstractTrace):
         if T is not None:
             dist.set_Tdim(self.plates[T])
 
-        sample_dims = []
-        if plate is not None:
-            sample_dims.append(self.plates[plate])
-        if multi_sample:
-            sample_dims.append(self.Kdim)
+        Kdims = (self.Kdim,) if multi_sample else ()
+        platedims = platenames2platedims(self.plates, plates)
+        sample_dims = (*Kdims, *platedims)
 
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
@@ -184,7 +183,7 @@ class TraceP(AbstractTrace):
     def plates(self):
         return self.trq.plates
 
-    def sample_logQ_prior(self, dist, plate, Kdim):
+    def sample_logQ_prior(self, dist, plates, Kdim):
         """
         When variables are omitted in TraceQ, we sample them from the prior.
         This only makes sense with multiple samples, which is nice as we no
@@ -198,14 +197,13 @@ class TraceP(AbstractTrace):
         #from the prior doesn't make sense).
         assert all((dim not in self.Es) for dim in dist.dims)
 
-        sample_dims = []
+        sample_dims = platenames2platedims(self.plates, plates)
+
         all_Ks = set(self.Ks)
         if 0 == sum(dim in self.Ks for dim in dist.dims):
             #If there aren't any K's in the dist, then add a K.
-            sample_dims = [Kdim]
+            sample_dims.append(Kdim)
             all_Ks.add(Kdim)
-        if plate is not None:
-            sample_dims.append(self.plates[plate])
 
         sample_all = dist.sample(self.trq.reparam, sample_dims)
         logq_all   = dist.log_prob(sample_all)
@@ -217,16 +215,16 @@ class TraceP(AbstractTrace):
         logq   = generic_order(logq_all,   Ks)[idxs][Kdim]
         return sample, logq
 
-    def sum_discrete(self, key, dist, plate):
+    def sum_discrete(self, key, dist, plates):
         """
         Enumerates discrete variables.
         """
         if dist.dist_name not in ["Bernoulli", "Categorical"]:
             raise Exception(f'Can only sum over discrete random variables with a Bernoulli or Categorical distribution.  Trying to sum over a "{dist.dist_name}" distribution.')
 
-        plates = set(dim for dim in dist.dims if (dim in self.plates))
-        plates.add(self.plates[plate])
-        plates = list(plates)
+        dim_plates    = set(dim for dim in dist.dims if (dim in self.plates))
+        sample_plates = platenames2platedims(self.plates, plates)
+        plates = list(dim_plates.union(sample_plates))
 
         torch_dist = dist.dist(**dist.all_args)
 
@@ -238,15 +236,17 @@ class TraceP(AbstractTrace):
         #values is now just all a vector containing values in the support.
         
         #Add a bunch of 1 dimensions.
-        values = values[(len(plates)*[None])]
+        idxs = (len(plates)*[None])
+        idxs.append(Ellipsis)
+        values = values[idxs]
         #Expand them to full size
         values = values.expand(*[plate.size for plate in plates])
         #And name them
         values = values[plates]
         return values, Edim
 
-    def sample(self, key, dist, group=None, plate=None, T=None, sum_discrete=False):
-        self.check(key, plate, T)
+    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
+        self.check(key, plates, T)
         assert key not in self.logp
         if T is not None:
             dist.set_Tdim(self.plates[T])
@@ -277,18 +277,15 @@ class TraceP(AbstractTrace):
                 #Analytically sum out a discrete latent
                 if group is not None:
                     raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but you have also provided a group.  This doesn't make sense.  Only variables sampled from Q can be grouped.")
-                sample, Kdim = self.sum_discrete(key, dist, plate)
+                sample, Kdim = self.sum_discrete(key, dist, plates)
                 logq = t.zeros_like(sample)
                 self.Ks.add(Kdim)
                 self.Es.add(Kdim)
             else:
                 #Sample from prior
-                sample, logq = self.sample_logQ_prior(dist, plate, self.trq.Kdim)
+                sample, logq = self.sample_logQ_prior(dist, plates, self.trq.Kdim)
         
         dims_sample = set(generic_dims(sample))
-        #Check that the sample actually has the required plate.
-        if plate is not None:
-            assert self.plates[plate] in dims_sample, "Plates in Q don't match those in P"
 
         minus_log_K = 0.
 
@@ -351,7 +348,7 @@ class TracePred(AbstractTrace):
         if data_all  is None:
             data_all  = {}
 
-        self.plates_all = extend_plates_with_size_dict({}, sizes_all)
+        self.plates_all = extend_plates_with_sizes({}, sizes_all)
         self.plates_all = extend_plates_with_named_tensors(self.plates_all, data_all.values())
         self.data_all   = named2dim_tensordict(self.plates_all, data_all)
 
@@ -389,7 +386,7 @@ class TracePred(AbstractTrace):
         dims_train.append(Ellipsis)
         return dims_all, dims_train
 
-    def sample(self, varname, dist, group=None, plate=None, T=None, sum_discrete=False):
+    def sample(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False):
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train
@@ -399,16 +396,14 @@ class TracePred(AbstractTrace):
 
         if varname in self.data_all:
             #Compute predictive log-probabilities and put them in self.ll_all and self.ll_train
-            self._sample_logp(varname, dist, plate)
+            self._sample_logp(varname, dist, plates)
         else:
             #Compute samples, and put them in self.sample_all
-            self._sample_sample(varname, dist, plate)
+            self._sample_sample(varname, dist, plates)
 
-    def _sample_sample(self, varname, dist, plate):
-        sample_dims = [self.N]
-
-        if plate is not None:
-            sample_dims.append(self.plates_all[plate])
+    def _sample_sample(self, varname, dist, plates):
+        sample_dims = platenames2platedims(self.plates_all, plates)
+        sample_dims.append(self.N)
 
         sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         sample_train = self.data_train[varname] if (varname in self.data_train) else self.samples_train[varname]
@@ -452,7 +447,7 @@ class TracePred(AbstractTrace):
 
         self.samples_all[varname] = sample_all
 
-    def _sample_logp(self, varname, dist, plate):
+    def _sample_logp(self, varname, dist, plates):
         sample_all   = self.data_all[varname]
         sample_train = self.data_train[varname]
 

@@ -134,7 +134,7 @@ def named2dim_tensordict(d, tensordict):
     return {k: named2dim_tensor(d, tensor) for (k, tensor) in tensordict.items()}
 
 
-def extend_plates_with_size_dict(plates, size_dict):
+def extend_plates_with_sizes(plates, size_dict):
     """Extends a plate dict using a size dict.
     Args:
         d (plate dict): dictionary mapping plate name to torchdim Dim.
@@ -159,7 +159,7 @@ def extend_plates_with_named_tensor(plates, tensor):
         a plate dict extended with the sizes of the named dimensions in `tensor`.
     """
     size_dict = {name: tensor.size(name) for name in tensor.names if name is not None}
-    return extend_plates_with_size_dict(plates, size_dict)
+    return extend_plates_with_sizes(plates, size_dict)
 
 def extend_plates_with_named_tensors(plates, tensors):
     """Extends a plate dict using any named dimensions in `tensors`.
@@ -172,6 +172,11 @@ def extend_plates_with_named_tensors(plates, tensors):
     for tensor in tensors:
         plates = extend_plates_with_named_tensor(plates, tensor)
     return plates
+
+def platenames2platedims(plates, platenames):
+    if isinstance(platenames, str):
+        platenames = (platenames,)
+    return [plates[pn] for pn in platenames]
 
 
 #### Utilities for tensor reductions.
