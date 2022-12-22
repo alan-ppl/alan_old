@@ -30,55 +30,23 @@ def tuple_assert_allclose(xs, ys):
     for (x, y) in zip(xs, ys):
         assert t.allclose(x, y, atol=1E-5)
 
-class AbstractNat():
+class AbstractConversions():
     """
-    Need to interconvert between three sets of parameters:
-    mean         (mean) parameters (exponential family)
-    natural      (nat)  parameters (exponential family)
-    conventional (conv) parameters (i.e. that go into the PyTorch distribution)
+    Must provide methods interconvert natural <-> conventional <-> mean parameters, i.e.
+    self.conv2nat(self, *conv)
+    self.nat2conv(self, *nat)
 
-    We need interconversions between all of these:
-    mean <-> nat for natural gradients
-    conv -> mean/nat for initialisation
-    mean/nat -> conv for initialisation
+    self.conv2mean(self, *conv)
+    self.mean2conv(self, *mean)
 
-    We provide defaults which compute the desired parameters from the input
-    parameters by going through the other parameter. This gives you all 
-    interchanges if you provide a subset.  In particular, you need:
-      A cycle: mean -> nat -> conv -> mean
-      Two reversible interchanges, e.g. mean <-> nat and nat <-> conv
-
-    Testing proceedure:
-    Start with conv parameters.
-    Convert to nat + mean parameters.
-    Check all other conversions give expected quantities.
-
-    mean <-> nat is always differentiable
-    mean <-> nat is frequently non-differentiable
-
-    Therefore, fundamentally work in terms of mean parameters.
-    We update the mean parameters by taking grads wrt natural parameters 
-    (as this requires a differentiable mapping nat -> conv)
-    and apply the grad to the mean parameters.
+    We provide a default for natural <-> mean parameters by going through the conventional
+    parameters
     """
-
-    #Interchange mean and natural parameters
+    #Interchange mean and natural parameters by going through conventional parameters
     def mean2nat(self, *mean):
         return self.conv2nat(*self.mean2conv(*mean))
     def nat2mean(self, *nat):
         return self.conv2mean(*self.nat2conv(*nat))
-
-    #Interchange conventional and natural parameters
-    def conv2nat(self, *conv):
-        return self.mean2nat(*self.conv2mean(*conv))
-    def nat2conv(self, *nat):
-        return self.mean2conv(*self.nat2mean(*nat))
-
-    #Interchange conventional and mean parameters
-    def conv2mean(self, *conv):
-        return self.nat2mean(*self.conv2nat(*conv))
-    def mean2conv(self, *mean):
-        return self.nat2conv(*self.mean2nat(*mean))
 
     def test(self, N):
         conv = self.test_conv(N)
@@ -91,25 +59,27 @@ class AbstractNat():
         tuple_assert_allclose(nat,  self.mean2nat(*mean))
         tuple_assert_allclose(mean, self.nat2mean(*nat))
 
-class NatExIdId(AbstractNat):
+class AbstractNEFConversions(AbstractConversions):
+    """
+    For Natural Exponential Families, see:
+    https://en.wikipedia.org/wiki/Natural_exponential_family
+    """
     sufficient_stats = (Ex,)
-    mean2nat  = identity
-    nat2mean  = identity
     conv2nat  = identity
     nat2conv  = identity
     conv2mean = identity
     mean2conv = identity
-class NatBernoulli(NatExIdId):
+class BernoulliConversions(AbstractNEFConversions):
     dist = Bernoulli
     def test_conv(self, N):
         return (t.rand(N),)
 
-class NatPoisson(NatExIdId):
+class PoissonConversions(AbstractNEFConversions):
     dist = Poisson
     def test_conv(self, N):
         return (t.randn(N).exp(),)
 
-class NatNormal(AbstractNat):
+class NormalConversions(AbstractConversions):
     dist = Normal
     sufficient_stats = (Ex, Ex2)
     def conv2mean(self, loc, scale):
@@ -133,7 +103,7 @@ class NatNormal(AbstractNat):
     def test_conv(self, N):
         return (t.randn(N), t.randn(N).exp())
 
-class NatExponential(AbstractNat):
+class ExponentialConversions(AbstractConversions):
     dist = Exponential
     sufficient_stats = (Ex, Ex2)
     def conv2mean(self, mean):
@@ -147,7 +117,7 @@ class NatExponential(AbstractNat):
     def test_conv(self, N):
         return (t.randn(N).exp(),)
 
-class NatDirichlet(AbstractNat):
+class DirichletConversions(AbstractConversions):
     dist = Dirichlet
     sufficient_stats = (Elogx,)
 
@@ -180,7 +150,7 @@ class NatDirichlet(AbstractNat):
     def test_conv(self, N):
         return (t.randn(N, 4).exp(),)
 
-class NatGamma(AbstractNat):
+class GammaConversions(AbstractConversions):
     dist = Gamma
     sufficient_stats = (Elogx, Ex)
 
@@ -216,9 +186,9 @@ class NatGamma(AbstractNat):
 
 if __name__ == "__main__":
     N = 10
-    NatBernoulli().test(N)
-    NatPoisson().test(N)
-    NatNormal().test(N)
-    NatExponential().test(N)
-    NatDirichlet().test(N)
-    NatGamma().test(N)
+    BernoulliConversions().test(N)
+    PoissonConversions().test(N)
+    NormalConversions().test(N)
+    ExponentialConversions().test(N)
+    DirichletConversions().test(N)
+    GammaConversions().test(N)

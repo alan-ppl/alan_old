@@ -77,6 +77,8 @@ Mixture models
 
 What is the right ESS?
 
+Masked Tensors / Nested Tensors with torchdims?
+
 Finally solve memory problems?
   Probably you only want to split over a plate.  This is nice because:
     It is easy for the user to reason about (they know about plates but not Ks).
