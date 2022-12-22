@@ -23,7 +23,7 @@ def P_int(tr):
 def P(tr):
     tr.sample('theta', tpp.Beta(1, 1))
     tr.sample('z',     tpp.Bernoulli(tr['theta']), plate="plate_1")
-    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['theta'] + pobs_z0*(1-tr['theta'])))
+    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['z'] + pobs_z0*(1-tr['z'])))
 
 Q_prior = lambda tr: None
 def Q_fac(tr):
@@ -41,7 +41,7 @@ test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001)
 def P(tr):
     tr.sample('theta', tpp.Beta(1, 1))
     tr.sample('z',     tpp.Bernoulli(tr['theta']), plate="plate_1", sum_discrete=True)
-    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['theta'] + pobs_z0*(1-tr['theta'])))
+    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['z'] + pobs_z0*(1-tr['z'])))
 
 Q_prior = lambda tr: None
 def Q_fac(tr):

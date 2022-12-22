@@ -22,28 +22,47 @@ class TraceSample(AbstractTrace):
     """
     Draws samples from P.  Usually just used to sample fake data from the model.
     sizes is a dict mapping platenames to plate sizes
+
+    If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, sizes=None):
+    def __init__(self, sizes, N):
         super().__init__()
         self.plates = insert_size_dict({}, sizes)
+        self.Ns = () if (N is None) else (Dim('N', N),)
+
         self.reparam = False
 
         self.data                 = {}
         self.samples              = {}
 
-    def sample(self, varname, dist, multi_samples=True, plate=None, T=None):
+    def sample(self, varname, dist, group=None, plate=None, T=None, sum_discrete=False):
         assert varname not in self.samples
 
         if T is not None:
             dist.set_Tdim(self.plates[T])
 
-        sample_dims = [] if plate is None else [self.plates[plate]]
+        sample_dims = [*self.Ns]
+        if plate is not None:
+            sample_dims.append(self.plates[plate])
         self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
-def sample(P, sizes=None, varnames=None):
+def sample(P, sizes=None, N=None, varnames=None):
+    """Draw samples from a generative model (with no data).
+    
+    Args:
+        P:        The generative model (a function taking a trace).
+        sizes:    A dict mapping platenames to the sizes of that plate.
+        N:        The number of samples to draw
+        varnames: An iterable of the variables to return
+
+    Returns:
+        A dictionary mapping from variable name to sampled value, 
+        represented as a named tensor (e.g. so that it is suitable 
+        for use as data).
+    """
     if sizes is None:
         sizes = {}
-    tr = TraceSample(sizes)
+    tr = TraceSample(sizes, N)
     P(tr)
 
     if varnames is None:

@@ -3,6 +3,10 @@ Papers:
   ML paper.
   MCMC paper.
 
+Error messages:
+  shape in data_all smaller than shape data_train
+  variable in Q not in P
+
 Tests:
   Predictive posteriors
   Q-Q plots: P(z) = \int P(x) P(z|x) 
@@ -67,6 +71,8 @@ Mixture models
   The right approach is to define a prior + approximate posterior over partitions.
   Approximate posterior should be written in terms of "affinities" (datapoint 4 wants to be with datapoint 3 but not datapoints 1 or 2).
   We can use the partition to define a dynamic plate (as we have independence across clusters).
+
+What is the right ESS?
 
 Finally solve memory problems?
   Probably you only want to split over a plate.  This is nice because:
