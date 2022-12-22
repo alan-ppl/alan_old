@@ -4,15 +4,12 @@ Papers:
   MCMC paper.
 
 Naming:
-  self.plates -> self.plate_dims
   Kdim etc.
 
 Error messages:
   shape in data_all smaller than shape data_train
   variable in P doesn't have same plates as that in Q
   plate names and var names don't overlap!
-
-When sampling, plates may be a tuple!  (Necessary for simple approximate posteriors).
 
 Tests:
   Predictive posteriors

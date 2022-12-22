@@ -16,7 +16,7 @@ obs_all[:N] = obs
 
 def P_int(tr):
     tr.sample('theta', tpp.Beta(1, 1))
-    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['theta'] + pobs_z0*(1-tr['theta'])))
+    tr.sample('obs',   tpp.Bernoulli(pobs_z1*tr['theta'] + pobs_z0*(1-tr['theta'])), plates="plate_1")
 
 #### Approximate posterior over z
 

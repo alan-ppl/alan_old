@@ -26,6 +26,10 @@ class AbstractTrace():
         assert not (in_data and in_sample)
         return in_data or in_sample
 
+    def filter_platedims(self, dims):
+        platedims = set(self.platedims.values())
+        return [dim for dim in dims if dim in platedims]
+
     def check_varname(self, key):
         if key in self.samples:
             raise Exception(f"Trying to sample named {key}, but we have already sampled a variable with this name")
@@ -268,8 +272,16 @@ class TraceP(AbstractTrace):
             #in the data, or because we sampled the variable in Q.
             if sum_discrete:
                 raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but we already have a sample of '{key}' drawn from Q.  If you're summing over a discrete latent variable, you shouldn't provide a proposal / approximate posterior for that variable.")
+             
             sample = self.trq[key]
             logq = self.trq.logq[key] if key in self.trq.samples else None
+
+            #Check that plates match for sample from Q previous and P here
+            Q_sample_plates = set(self.filter_platedims(generic_dims(sample)))
+            P_sample_plates = set(self.filter_platedims(dist.dims)).union(platenames2platedims(self.platedims, plates))
+            if Q_sample_plates != P_sample_plates:
+                raise Exception(f"The plates for P and Q don't match for variable '{key}'.  Specifically, P has plates {tuple(P_sample_plates)}, while Q has plates {tuple(Q_sample_plates)}")
+
         else:
             #We don't already have a value for the sample, and we're either
             #going to sample from the prior, or enumerate a discrete variable
