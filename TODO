@@ -3,6 +3,10 @@ Papers:
   ML paper.
   MCMC paper.
 
+Naming:
+  sizes -> plates
+  Kdim etc.
+
 Error messages:
   shape in data_all smaller than shape data_train
   variable in Q not in P

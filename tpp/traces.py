@@ -7,6 +7,14 @@ from functorch.dim import dims, Dim
 from .utils import *
 from .timeseries import Timeseries
 
+reserved_names = ("K", "N")
+reserved_prefix = ("K_", "E_")
+def check_not_reserved(x):
+    reserved = (x in reserved_names) or (x[:2] in reserved_prefix)
+    if reserved:
+        raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
+    
+
 class AbstractTrace():
     def __getitem__(self, key):
         assert key in self
@@ -18,9 +26,10 @@ class AbstractTrace():
         assert not (in_data and in_sample)
         return in_data or in_sample
 
-    def check_variable_not_present(self, key):
+    def check_varname(self, key):
         if key in self.samples:
             raise Exception(f"Trying to sample named {key}, but we have already sampled a variable with this name")
+        check_not_reserved(key)
 
     def check_plate_present(self, key, plate, T):
         if (plate is not None) and (plate not in self.plates):
@@ -29,7 +38,7 @@ class AbstractTrace():
             raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.plates.keys())}.")
 
     def check(self, key, plate, T):
-        self.check_variable_not_present(key)
+        self.check_varname(key)
         self.check_plate_present(key, plate, T)
 
 class TraceSample(AbstractTrace):
@@ -39,9 +48,9 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, sizes, N):
+    def __init__(self, size_dict, N):
         super().__init__()
-        self.plates = insert_size_dict({}, sizes)
+        self.plates = extend_plates_with_size_dict({}, size_dict)
         self.Ns = () if (N is None) else (Dim('N', N),)
 
         self.reparam = False
@@ -49,7 +58,7 @@ class TraceSample(AbstractTrace):
         self.data                 = {}
         self.samples              = {}
 
-    def sample(self, varname, dist, group=None, plate=None, T=None, sum_discrete=False):
+    def sample(self, key, dist, group=None, plate=None, T=None, sum_discrete=False):
         self.check(key, plate, T)
 
         if T is not None:
@@ -58,14 +67,14 @@ class TraceSample(AbstractTrace):
         sample_dims = [*self.Ns]
         if plate is not None:
             sample_dims.append(self.plates[plate])
-        self.samples[varname] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        self.samples[key] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
 
-def sample(P, sizes=None, N=None, varnames=None):
+def sample(P, plates=None, N=None, varnames=None):
     """Draw samples from a generative model (with no data).
     
     Args:
         P:        The generative model (a function taking a trace).
-        sizes:    A dict mapping platenames to the sizes of that plate.
+        plates:   A dict mapping platenames to integer sizes of that plate.
         N:        The number of samples to draw
         varnames: An iterable of the variables to return
 
@@ -74,9 +83,9 @@ def sample(P, sizes=None, N=None, varnames=None):
         represented as a named tensor (e.g. so that it is suitable 
         for use as data).
     """
-    if sizes is None:
-        sizes = {}
-    tr = TraceSample(sizes, N)
+    if plates is None:
+        plates = {}
+    tr = TraceSample(plates, N)
     P(tr)
 
     if varnames is None:
@@ -96,8 +105,8 @@ class TraceQ(AbstractTrace):
         super().__init__()
         self.Kdim = Dim("K", K)
 
-        #Converts data to torchdim tensors, and adds plate dims to plates
-        self.data, self.plates = named2dim_data(data, plates)
+        self.data = data
+        self.plates = plates
 
         self.reparam = reparam
 
@@ -342,9 +351,8 @@ class TracePred(AbstractTrace):
         if data_all  is None:
             data_all  = {}
 
-        self.plates_all = {}
-        self.plates_all = insert_size_dict({}, sizes_all)
-        self.plates_all = insert_named_tensors(self.plates_all, data_all.values())
+        self.plates_all = extend_plates_with_size_dict({}, sizes_all)
+        self.plates_all = extend_plates_with_named_tensors(self.plates_all, data_all.values())
         self.data_all   = named2dim_tensordict(self.plates_all, data_all)
 
         self.samples_all  = {}

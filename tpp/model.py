@@ -38,7 +38,7 @@ class Q(nn.Module):
         You may specify the plates either by providing a named tensor, or by 
         providing a dims argument, but not both!
         """
-        if (dims is not None) and any(name is not None in tensor.names):
+        if (dims is not None) and any(name is not None for name in tensor.names):
             raise Exception("Names should be provided either using a named tensor _or_ using the dims optional argument.  Names provided in a named tensor and in the dims optional argument.")
 
         #Save unnamed parameter
@@ -46,9 +46,8 @@ class Q(nn.Module):
 
         #Put everything into names, and generate names for each dim.
         if dims is not None:
-            assert tensor.names == tensor.ndim*(None,)
             tensor = tensor.rename(*dims, *((tensor.ndim - len(dims))*[None]))
-        self._plates = insert_named_tensor(self._plates, tensor)
+        self._plates = extend_plates_with_named_tensor(self._plates, tensor)
 
         tensor_dims = []
         for dimname in tensor.names:
@@ -86,14 +85,26 @@ class Model(nn.Module):
 
         if data is None:
             data = {}
-        plates = Q._plates if hasattr(Q, "_plates") else {}
-        self.data, self.plates = named2dim_data(data, plates)
+
+        #plate dimensions can come in through:
+        #  parameters in Q
+        #  non-minibatched data passed to the model.
+        #  minibatched data passed to e.g. model.elbo(...)
+        #here, we gather plate dimensions from the first two.
+        #in _sample, we gather plate dimensions from the last one.
+        Q_plates = Q._plates if hasattr(Q, "_plates") else {}
+        self.plates = extend_plates_with_named_tensors(Q_plates, data.values())
+        self.data   = named2dim_tensordict(self.plates, data)
 
     def _sample(self, K, reparam, data, memory_diagnostics=False):
         """
         Internal method that actually runs P and Q.
         """
-        data, plates = named2dim_data(data, self.plates)
+        if data is None:
+            data = {}
+        plates = extend_plates_with_named_tensors(self.plates, data.values())
+        data = named2dim_tensordict(plates, data)
+
         all_data = {**self.data, **data}
         if 0==len(all_data):
             raise Exception("No data provided either to the model or to the called method")

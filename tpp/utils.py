@@ -1,6 +1,8 @@
 import torch as t
 from functorch.dim import Tensor, Dim
 
+#### Utilities for working with torchdims
+
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
 
@@ -62,51 +64,6 @@ def partition_tensors(lps, dim):
 
     return has_dim, no_dim
 
-def max_dims(x, dims):
-    """
-    Note that this _keeps_ dims, and maxes over everything else, which
-    goes against the usual convention
-    """
-
-    #Ignore dims that aren't in the tensors
-    set_xdims = set(generic_dims(x))
-    dims = [dim for dim in dims if dim in set_xdims]
-
-    if 0==len(dims):
-        return x
-    else:
-        return generic_order(x, dims).flatten(0, len(dims)-1).max(0).values
-
-def torchdim_einsum(tensors, sum_dims):
-    #There shouldn't be any non-torchdim dimensions.
-    #Should eventually be able to implement this as a straight product-sum
-    for tensor in tensors:
-        assert tensor.shape == ()
-
-    set_sum_dims = set(sum_dims)
-
-    all_dims = unify_dims(tensors)
-    dim_to_idx = {dim: i for (i, dim) in enumerate(all_dims)}
-    out_dims = [dim for dim in all_dims if dim not in set_sum_dims]
-    out_idxs = [dim_to_idx[dim] for dim in out_dims]
-
-    undim_tensors = []
-    arg_idxs = []
-    for tensor in tensors:
-        dims = generic_dims(tensor)
-        arg_idxs.append([dim_to_idx[dim] for dim in dims])
-        undim_tensors.append(generic_order(tensor, dims))
-
-    assert all(not is_dimtensor(tensor) for tensor in undim_tensors)
-
-    einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
-
-    result = t.einsum(*einsum_args)
-    if 0 < len(out_dims):
-        result = result[out_dims]
-
-    return result
-
 
 def singleton_order(x, dims):
     """
@@ -135,10 +92,9 @@ def singleton_order(x, dims):
     assert not is_dimtensor(result)
     return result
 
-
 def dim2named_tensor(x, dims=None):
     """
-    Doesn't need side information.
+    Converts a torchdim to a named tensor.
     Will fail if duplicated dim names passed in
     """
     if dims is None:
@@ -146,9 +102,15 @@ def dim2named_tensor(x, dims=None):
     names = [repr(dim) for dim in dims]
     return generic_order(x, dims).rename(*names, ...)
 
+#### Utilities for working with dictionaries of plates
+
 def named2dim_tensor(d, x):
     """
-    Operates on dict mapping string (platename) to Dim (platedim)
+    Args:
+        d (dict): dictionary mapping plate name to torchdim Dim.
+        x (t.Tensor): named tensor.
+    Returns:
+        A torchdim tensor.        
     """
 
     if 0==x.ndim:
@@ -156,69 +118,63 @@ def named2dim_tensor(d, x):
 
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
 
-
     if all(x is None for x in x.names):
         return x
 
     return x.rename(None)[torchdims]
 
 def named2dim_tensordict(d, tensordict):
-    """
-    Converts a dict of named tensors to torchdim tensors, and records any plates
+    """Maps named2dim_tensor over a dict of tensors
+    Args:
+        d (dict): dictionary mapping plate name to torchdim Dim.
+        tensordict (dict): dictionary mapping variable name to named tensor.
+    Returns:
+        dictionary mapping variable name to torchdim tensor.
     """
     return {k: named2dim_tensor(d, tensor) for (k, tensor) in tensordict.items()}
 
 
-def insert_size_dict(d, size_dict):
-    """
-    Operates on dict mapping string (platename) to Dim (platedim)
+def extend_plates_with_size_dict(plates, size_dict):
+    """Extends a plate dict using a size dict.
+    Args:
+        d (plate dict): dictionary mapping plate name to torchdim Dim.
+        size_dict: dictionary mapping plate name to integer size.
+    Returns:
+        a plate dict extended with the sizes in size_dict.
     """
     new_dict = {}
     for (name, size) in size_dict.items():
-        if (name not in d):
+        if (name not in plates):
             new_dict[name] = Dim(name, size)
-        else:
-            assert size == d[name].size
-    return {**d, **new_dict}
+        elif size != plates[name].size:
+            raise Exception(f"Mismatch in sizes for plate '{name}'")
+    return {**plates, **new_dict}
 
-def insert_named_tensor(d, tensor):
+def extend_plates_with_named_tensor(plates, tensor):
+    """Extends a plate dict using any named dimensions in `tensor`.
+    Args:
+        d (plate dict): dictionary mapping plate name to torchdim Dim.
+        tensor: named tensor.
+    Returns:
+        a plate dict extended with the sizes of the named dimensions in `tensor`.
     """
-    Operates on dict mapping string (platename) to Dim (platedim)
-    """
-    return insert_size_dict(d, {name: tensor.size(name) for name in tensor.names if name is not None})
+    size_dict = {name: tensor.size(name) for name in tensor.names if name is not None}
+    return extend_plates_with_size_dict(plates, size_dict)
 
-def insert_named_tensors(d, tensors):
-    """
-    Operates on dict mapping string (platename) to Dim (platedim)
+def extend_plates_with_named_tensors(plates, tensors):
+    """Extends a plate dict using any named dimensions in `tensors`.
+    Args:
+        d (plate dict): dictionary mapping plate name to torchdim Dim.
+        tensors: an iterable of named tensor.
+    Returns:
+        a plate dict extended with the sizes of the named dimensions in `tensors`.
     """
     for tensor in tensors:
-        d = insert_named_tensor(d, tensor)
-    return d
+        plates = extend_plates_with_named_tensor(plates, tensor)
+    return plates
 
 
-
-def named2dim_data(named_data, plates):
-    """
-    Converts data named tensors to torchdim tensors, and records any plates
-    Arguments:
-      named_data: dict mapping varname to named tensor data
-      plates: dict mapping platename to plate dim
-    Returns:
-      dim_data: dict mapping varname to torchdim tensor data
-      plates: dict mapping platename to plate dim
-    """
-    #Data often defaults to None.
-    if named_data is None:
-        named_data = {}
-    if plates is None:
-        plates = {}
-
-    #Insert any dims in data tensors into plates
-    plates = insert_named_tensors(plates, named_data.values())
-
-    #Convert data named tensors to torchdim tensors
-    dim_data = {k: named2dim_tensor(plates, tensor) for (k, tensor) in named_data.items()}
-    return dim_data, plates
+#### Utilities for tensor reductions.
 
 def chain_reduce(f, ms, T, Kprev, Kcurr):
     ms = ms.order(T)
@@ -297,3 +253,48 @@ def reduce_Ks(tensors, Ks_to_sum):
     #if 0<len(Ks_to_sum):
     #    result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum().to(device=result.device)
     return sum([result, *maxes])
+
+def max_dims(x, dims):
+    """
+    Note that this _keeps_ dims, and maxes over everything else, which
+    goes against the usual convention
+    """
+
+    #Ignore dims that aren't in the tensors
+    set_xdims = set(generic_dims(x))
+    dims = [dim for dim in dims if dim in set_xdims]
+
+    if 0==len(dims):
+        return x
+    else:
+        return generic_order(x, dims).flatten(0, len(dims)-1).max(0).values
+
+def torchdim_einsum(tensors, sum_dims):
+    #There shouldn't be any non-torchdim dimensions.
+    #Should eventually be able to implement this as a straight product-sum
+    for tensor in tensors:
+        assert tensor.shape == ()
+
+    set_sum_dims = set(sum_dims)
+
+    all_dims = unify_dims(tensors)
+    dim_to_idx = {dim: i for (i, dim) in enumerate(all_dims)}
+    out_dims = [dim for dim in all_dims if dim not in set_sum_dims]
+    out_idxs = [dim_to_idx[dim] for dim in out_dims]
+
+    undim_tensors = []
+    arg_idxs = []
+    for tensor in tensors:
+        dims = generic_dims(tensor)
+        arg_idxs.append([dim_to_idx[dim] for dim in dims])
+        undim_tensors.append(generic_order(tensor, dims))
+
+    assert all(not is_dimtensor(tensor) for tensor in undim_tensors)
+
+    einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
+
+    result = t.einsum(*einsum_args)
+    if 0 < len(out_dims):
+        result = result[out_dims]
+
+    return result
