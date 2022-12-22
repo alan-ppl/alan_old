@@ -7,7 +7,6 @@ Naming:
   Kdim etc.
 
 Error messages:
-  post-hoc check platedims_all and platedims_train for sanity
   plate names and var names don't overlap!
 
 Tests:
