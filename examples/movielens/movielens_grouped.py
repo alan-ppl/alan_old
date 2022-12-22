@@ -53,7 +53,7 @@ def P(tr):
   tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)), group='local')
   tr.sample('psi_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)), group='local')
 
-  tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plate='plate_1')
+  tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
   tr.sample('obs', tpp.Bernoulli(logits = tr['z'] @ tr['x']))
 

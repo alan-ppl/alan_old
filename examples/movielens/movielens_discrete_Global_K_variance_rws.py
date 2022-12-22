@@ -58,7 +58,7 @@ class P(nn.Module):
         tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)), group='group_1')
         tr.sample('psi_z', tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)), group='group_1')
 
-        tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plate='plate_1')
+        tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
         tr.sample('obs', tpp.Bernoulli(logits = tr['z'] @ tr['x']))
 
 class Q(tpp.Q):

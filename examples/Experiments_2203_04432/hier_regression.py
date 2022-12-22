@@ -57,7 +57,7 @@ def P(tr):
   tr.sample('psi_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
   tr.sample('psi_y', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
 
-  tr.sample('z', tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plate='plate_1')
+  tr.sample('z', tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_1')
 
   tr.sample('obs', tpp.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 

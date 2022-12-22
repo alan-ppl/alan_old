@@ -21,7 +21,7 @@ def P(tr):
     Bayesian Gaussian Model
     '''
     tr.sample('mu',   tpp.MultivariateNormal(a, sigma_0))
-    tr.sample('obs',   tpp.MultivariateNormal(tr['mu'], sigma), plate='plate_1')
+    tr.sample('obs',   tpp.MultivariateNormal(tr['mu'], sigma), plates='plate_1')
 
 
 

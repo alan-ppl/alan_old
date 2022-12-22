@@ -14,7 +14,7 @@ def P(tr):
     alpha0 = t.tensor(10.0)
     beta0 = t.tensor(10.0)
     tr.sample('latent_fairness', tpp.Beta(alpha0, beta0))
-    tr.sample('obs', tpp.Bernoulli(tr['latent_fairness']), plate='plate_1')
+    tr.sample('obs', tpp.Bernoulli(tr['latent_fairness']), plates='plate_1')
 
 
 

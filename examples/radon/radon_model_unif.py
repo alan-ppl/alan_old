@@ -47,7 +47,7 @@ def P(tr):
   #state level
   tr.sample('sigma_beta', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
   tr.sample('mu_beta', tpp.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
-  tr.sample('beta', tpp.Normal(tr['mu_beta'], tr['sigma_beta']), plate = 'plate_state')
+  tr.sample('beta', tpp.Normal(tr['mu_beta'], tr['sigma_beta']), plates = 'plate_state')
 
   #county level
   tr.sample('gamma', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
@@ -57,7 +57,7 @@ def P(tr):
 
   #zipcode level
   tr.sample('sigma_omega', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('omega', tpp.Normal(tr['alpha'], tr['sigma_omega']), plate='plate_zipcode')
+  tr.sample('omega', tpp.Normal(tr['alpha'], tr['sigma_omega']), plates='plate_zipcode')
 
   #reading level
   tr.sample('sigma_obs', tpp.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
