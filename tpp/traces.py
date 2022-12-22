@@ -372,6 +372,30 @@ class TracePred(AbstractTrace):
 
         self.reparam      = False
 
+        #Check that any new dimensions exist in training, and are bigger than those in training
+        for platename, platedim_all in self.platedims_all.items():
+            if platename not in self.platedims_train:
+                raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data_all which isn't present in the training data.")
+            if platedim_all.size < self.platedims_train[platename].size:
+                raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data_all which is smaller than than the same plate in the training data (remember that the new data / plate sizes correspond to the training + test data)")
+
+        #If any random variables from data_train are missing in data_all, fill them in
+        for (rv, x) in self.data_train.items():
+            if rv not in self.data_all:
+                self.data_all[rv] = x
+        #If any plates from platedims_train are missing in platedims_all, fill them in
+        for (platename, platedim) in self.data_train.items():
+            if platename not in self.platedims_all:
+                self.platedims_all[platename] = platedim
+
+        #Check that _something_ is bigger:
+        data_bigger   = any(data_train[dataname].numel() < dat.numel() for (dataname, dat) in self.data_all.items())
+        plates_bigger = any(platedims_train[platename].size < plate.size for (platename, plate) in self.platedims_all.items())
+
+        if not (data_bigger or plates_bigger):
+            raise Exception(f"None of the data tensors or plate sizes provided for prediction is bigger than those at training time.  Remember that the data/plate sizes are the sizes of train + 'test'")
+            
+
     def __getitem__(self, key):
         in_data   = key in self.data_all
         in_sample = key in self.samples_all

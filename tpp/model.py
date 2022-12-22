@@ -182,13 +182,6 @@ class Model(nn.Module):
     def _predictive(self, K, N, data_all=None, platesizes_all=None):
         sample = self._sample(K, False, None)
 
-        if (data_all is not None):
-            if not any(sample.trp.data[dataname].numel() < dat.numel() for (dataname, dat) in data_all.items()):
-                raise Exception(f"None of the tensors provided data_all is bigger than those provided at training time, so it doesn't make sense to make predictions.  If you just want posterior samples, use model.importance_samples(...)")
-        if (platesizes_all is not None):
-            if not any(self.trp.trq.plates[platename] < size for (platename, size) in sizes_all.items()):
-                raise Exception("None of the sizes provided in sizes_all are bigger than those in the training data, so we can't make any predictions.  If you just want posterior samples, use model.importance_samples")
-
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
         tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all)
