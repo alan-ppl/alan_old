@@ -9,7 +9,11 @@ Naming:
 
 Error messages:
   shape in data_all smaller than shape data_train
-  variable in Q not in P
+  variable in P doesn't have same plates as that in Q
+
+When sampling, plates may be a tuple!  (Necessary for simple approximate posteriors).
+
+
 
 Tests:
   Predictive posteriors
@@ -21,6 +25,7 @@ Tests:
   Timeseries: 
     Moments from rolled vs unrolled models are the same.
     GP-distributed timeseries.
+  Unit tests for the reduction utilities.
 
 Multiple iterations of importance weighting 
 

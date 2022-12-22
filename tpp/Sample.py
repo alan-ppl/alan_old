@@ -24,7 +24,8 @@ class Sample():
 
         for (rv, lq) in trp.logq.items():
             #check that any rv in logqs is also in logps
-            assert rv in trp.logp
+            if rv not in trp.logp:
+                raise Exception(f"The latent variable '{rv}' is sampled in Q but not P.")
 
             lp = trp.logp[rv]
             lq = trp.logq[rv]
