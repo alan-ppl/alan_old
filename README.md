@@ -313,3 +313,16 @@ Also note that pred_lls can be calculated just with training data
 
 Timeseries
 ==========
+
+Tips for dealing with out of memory errors
+==========================================
+
+It is better for memory usage if your model looks like:
+
+![good_practice](./imgs/Good_practice.png)
+
+rather than:
+
+![bad_practice](./imgs/bad_practice.png)
+
+i.e Try not to have latent variables 'skip' plates.
