@@ -5,60 +5,25 @@ from .Sample import Sample
 from .utils import *
 
 class QModule(nn.Module):
-    """
-    A thin wrapper on nn.Module, which is only necessary if we want to
-    learn separate parameters for each latent variable in a plate. In that 
-    case, the learned parameters need to be torchdim tensors, and this class
-    allows that.
-
-    The only difference to a standard nn.Module is that if there are any plates
-    we provide them as names for the parameter,
-    ```
-    class Q(QModule):
-        def __init__(self):
-            super().__init__()
-            self.a = nn.Parameter(t.ones((3,4), names=("plate_1", None)))
-    ```
-
-    """
-    def __init__(self):
-        super().__init__()
-        self._platedims = {}
-
-    def register_parameter(self, name, tensor):
-        super().register_parameter(name, tensor)
-        self._platedims  = extend_plates_with_named_tensor(self._platedims, tensor)
-
-    def register_buffer(self, name, tensor):
-        super().register_buffer(name, tensor)
-        self._platedims  = extend_plates_with_named_tensor(self._platedims, tensor)
-
-    def __setattr__(self, name, mod):
-        super().__setattr__(name, mod)
-
-        if isinstance(mod, nn.Module):
-            for child in mod.modules(): #Iteration the module itself.
-                if isinstance(child, QModule):
-                    for key in child._platedims:
-                        if key in self._platedims:
-                            #if key in self, then the dim in child will be inconsistent
-                            #we replace the dim in child with the dim in self.
-                            child._platedims[key] = self._platedims[key]
-                        else:
-                            #if key not in self, then put it in self, so that we ensure
-                            #consistency with other modules.
-                            self._platedims[key] = child._platedims[key]
-
-    def __getattr__(self, name):
+    def get_named_tensor(self, name):
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in _parameters:
-                return named2dim_tensor(self._platedims, _parameters[name])
+                return _parameters[name]
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
-                return named2dim_tensor(self._platedims, _buffers[name])
-        return super().__getattr__(name)
+                return _buffers[name]
+        return None
+
+    def __getattr__(self, name):
+        tensor = self.get_named_tensor(name)
+        if tensor is not None:
+            if not hasattr(self, "_platedims"):
+                raise Exception("Cannot return parameter or buffer, as self._platedims is not set.  This happens when Q is given to Model")
+            return named2dim_tensor(self._platedims, tensor)
+        else:
+            return super().__getattr__(name)
 
 class Model(nn.Module):
     """Model class.
@@ -87,8 +52,17 @@ class Model(nn.Module):
         #  minibatched data passed to e.g. model.elbo(...)
         #here, we gather plate dimensions from the first two.
         #in _sample, we gather plate dimensions from the last one.
-        Q_plates = Q._platedims if isinstance(Q, QModule) else {}
-        self.platedims = extend_plates_with_named_tensors(Q_plates, data.values())
+        self.platedims = extend_plates_with_named_tensors({}, list(Q.parameters()) + list(Q.buffers()))
+        for mod in Q.modules():
+            if isinstance(mod, QModule):
+                assert not hasattr(mod, "_platedims")
+                mod._platedims = self.platedims
+            else:
+                for x in list(mod.parameters(recurse=False)) + list(mod.buffers(recurse=False)):
+                    if any(name is not None in x.names):
+                        raise Exception("Named parameter on an nn.Module.  To specify plates in approximate posteriors correctly, we need to use QModule in place of nn.Module")
+
+        self.platedims = extend_plates_with_named_tensors(self.platedims, data.values())
         self.data   = named2dim_tensordict(self.platedims, data)
 
     def _sample(self, K, reparam, data, memory_diagnostics=False):
