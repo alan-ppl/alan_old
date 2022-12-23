@@ -1,13 +1,7 @@
 import torch as t
 import torch.autograd.forward_ad as fwAD
 from .dist import *
-
-Ex     = lambda x: x
-Ex2    = lambda x: x**2
-Elogx  = lambda x: x.log()
-
-def identity(self, *args):
-    return args
+from .postproc import identity, square, log
 
 def grad_digamma(x):
     return t.special.polygamma(1, x)
@@ -59,29 +53,32 @@ class AbstractConversions():
         tuple_assert_allclose(nat,  self.mean2nat(*mean))
         tuple_assert_allclose(mean, self.nat2mean(*nat))
 
+
+def identity_conv(self, *args):
+    return args
 class AbstractNEFConversions(AbstractConversions):
     """
     For Natural Exponential Families, see:
     https://en.wikipedia.org/wiki/Natural_exponential_family
     """
-    sufficient_stats = (Ex,)
-    conv2nat  = identity
-    nat2conv  = identity
-    conv2mean = identity
-    mean2conv = identity
+    sufficient_stats = (identity,)
+    conv2nat  = identity_conv
+    nat2conv  = identity_conv
+    conv2mean = identity_conv
+    mean2conv = identity_conv
 class BernoulliConversions(AbstractNEFConversions):
-    dist = Bernoulli
+    dist = staticmethod(Bernoulli)
     def test_conv(self, N):
         return (t.rand(N),)
 
 class PoissonConversions(AbstractNEFConversions):
-    dist = Poisson
+    dist = staticmethod(Poisson)
     def test_conv(self, N):
         return (t.randn(N).exp(),)
 
 class NormalConversions(AbstractConversions):
-    dist = Normal
-    sufficient_stats = (Ex, Ex2)
+    dist = staticmethod(Normal)
+    sufficient_stats = (identity, square)
     def conv2mean(self, loc, scale):
         Ex  = loc
         Ex2 = loc**2 + scale**2
@@ -104,22 +101,22 @@ class NormalConversions(AbstractConversions):
         return (t.randn(N), t.randn(N).exp())
 
 class ExponentialConversions(AbstractConversions):
-    dist = Exponential
-    sufficient_stats = (Ex, Ex2)
+    dist = staticmethod(Exponential)
+    sufficient_stats = (identity,)
     def conv2mean(self, mean):
         return (t.reciprocal(mean),)
     def mean2conv(self, mean):
         return (t.reciprocal(mean),)
     
-    nat2conv = identity
-    conv2nat = identity
+    nat2conv = identity_conv
+    conv2nat = identity_conv
 
     def test_conv(self, N):
         return (t.randn(N).exp(),)
 
 class DirichletConversions(AbstractConversions):
-    dist = Dirichlet
-    sufficient_stats = (Elogx,)
+    dist = staticmethod(Dirichlet)
+    sufficient_stats = (log,)
 
     def nat2conv(self, nat):
         return ((nat+1),)
@@ -151,8 +148,8 @@ class DirichletConversions(AbstractConversions):
         return (t.randn(N, 4).exp(),)
 
 class GammaConversions(AbstractConversions):
-    dist = Gamma
-    sufficient_stats = (Elogx, Ex)
+    dist = staticmethod(Gamma)
+    sufficient_stats = (log, identity)
 
     def conv2nat(self, alpha, beta):
         return (alpha-1, -beta)

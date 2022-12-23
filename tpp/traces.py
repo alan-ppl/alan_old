@@ -28,7 +28,7 @@ class AbstractTrace():
 
     def filter_platedims(self, dims):
         platedims = set(self.platedims.values())
-        return [dim for dim in dims if dim in platedims]
+        return [dim for dim in dims if (dim in platedims)]
 
     def check_varname(self, key):
         if key in self.samples:

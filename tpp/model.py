@@ -4,66 +4,60 @@ from .traces import TraceQ, TraceP, TracePred
 from .Sample import Sample
 from .utils import *
 
-class Q(nn.Module):
+class QModule(nn.Module):
     """
     A thin wrapper on nn.Module, which is only necessary if we want to
     learn separate parameters for each latent variable in a plate. In that 
     case, the learned parameters need to be torchdim tensors, and this class
     allows that.
 
-    In particular, any parameter with a plate should be registered with 
+    The only difference to a standard nn.Module is that if there are any plates
+    we provide them as names for the parameter,
     ```
-    class MyQ(Q):
+    class Q(QModule):
         def __init__(self):
             super().__init__()
-            self.reg_param("a", t.ones(3,4), ("plate_1"))
+            self.a = nn.Parameter(t.ones((3,4), names=("plate_1", None)))
     ```
-    
-    The size of this plate will also feed into the inference of plate sizes
-    performed in `Model`.
+
     """
     def __init__(self):
         super().__init__()
-        self._plates = {}
-        self._params = nn.ParameterDict()
-        self._dims = {}
+        self._platedims = {}
 
-    def reg_param(self, name, tensor, dims=None):
-        """ Register a parameter with plate dimensions.
-        Args:
-            name (str):            the name of the parameter.
-            tensor (torch.Tensor): the tensor (may be named).
-            dims:                  the dimension names, starting from dimension 0.
+    def register_parameter(self, name, tensor):
+        super().register_parameter(name, tensor)
+        self._platedims  = extend_plates_with_named_tensor(self._platedims, tensor)
 
-        You may specify the plates either by providing a named tensor, or by 
-        providing a dims argument, but not both!
-        """
-        if (dims is not None) and any(name is not None for name in tensor.names):
-            raise Exception("Names should be provided either using a named tensor _or_ using the dims optional argument.  Names provided in a named tensor and in the dims optional argument.")
+    def register_buffer(self, name, tensor):
+        super().register_buffer(name, tensor)
+        self._platedims  = extend_plates_with_named_tensor(self._platedims, tensor)
 
-        #Save unnamed parameter
-        self._params[name] = nn.Parameter(tensor.rename(None))
+    def register_module(self, name, mod):
+        super().register_mod(name, mod)
 
-        #Put everything into names, and generate names for each dim.
-        if dims is not None:
-            tensor = tensor.rename(*dims, *((tensor.ndim - len(dims))*[None]))
-        self._plates = extend_plates_with_named_tensor(self._plates, tensor)
-
-        tensor_dims = []
-        for dimname in tensor.names:
-            if dimname is None:
-                tensor_dims.append(slice(None))
-            else:
-                tensor_dims.append(self._plates[dimname])
-        if 0==tensor.ndim:
-            tensor_dims.append(Ellipsis)
-        self._dims[name] = tensor_dims
+        for child in mod.modules(): #Iteration the module itself.
+            if isinstance(child, Q):
+                for key in child._platedims:
+                    if key in self._platedims:
+                        #if key in self, then the dim in child will be inconsistent
+                        #we replace the dim in child with the dim in self.
+                        child._platedims[key] = self._platedims[key]
+                    else:
+                        #if key not in self, then put it in self, so that we ensure
+                        #consistency with other modules.
+                        self._platedims[key] = child._platedims[key]
 
     def __getattr__(self, name):
-        if name == "_params":
-            return self.__dict__["_modules"]["_params"]
-        else:
-            return self._params[name][self._dims[name]]
+        if '_parameters' in self.__dict__:
+            _parameters = self.__dict__['_parameters']
+            if name in _parameters:
+                return named2dim_tensor(self._platedims, _parameters[name])
+        if '_buffers' in self.__dict__:
+            _buffers = self.__dict__['_buffers']
+            if name in _buffers:
+                return named2dim_tensor(self._platedims, _buffers[name])
+        return super().__getattr__(name)
 
 class Model(nn.Module):
     """Model class.
@@ -92,7 +86,7 @@ class Model(nn.Module):
         #  minibatched data passed to e.g. model.elbo(...)
         #here, we gather plate dimensions from the first two.
         #in _sample, we gather plate dimensions from the last one.
-        Q_plates = Q._plates if hasattr(Q, "_plates") else {}
+        Q_plates = Q._platedims if isinstance(Q, QModule) else {}
         self.platedims = extend_plates_with_named_tensors(Q_plates, data.values())
         self.data   = named2dim_tensordict(self.platedims, data)
 

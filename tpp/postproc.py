@@ -53,12 +53,13 @@ def mean(sample_and_opt_weights):
     if isinstance(sample_and_opt_weights, tuple):
         assert 2==len(sample_and_opt_weights)
         w = sample_and_opt_weights[1]
-        sample = sample_and_opt_weights[0]
+        sample = sample_and_opt_weights[0].align_as(w)
+        dim = 'K'
     else:
         sample = sample_and_opt_weights
-        w = 1/sample.size('N')
-    dim = 'N' if (w is None) else 'K'
-    return (w.align_as(sample) * sample).sum(dim)
+        dim = 'N'
+        w = 1/sample.size(dim)
+    return (w * sample).sum(dim)
 
 @map_or_apply
 def var(x):

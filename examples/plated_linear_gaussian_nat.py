@@ -14,14 +14,18 @@ def P(tr):
     tr.sample('d',   tpp.Normal(tr['c'], 1), plates='plate_2')
     tr.sample('obs', tpp.Normal(tr['d'], 1), plates='plate_3')
 
-data = tpp.sample(P, platesizes=platesizes, N=100, varnames=('obs',))
+data = tpp.sample(P, platesizes=platesizes, varnames=('obs',))
 prior_samples = tpp.sample(P, platesizes=platesizes, N=100)
 
 dists = {'a': tpp.Normal, 'b': tpp.Normal, 'c': tpp.Normal, 'd': tpp.Normal}
 Q = tpp.NatQ(prior_samples, dists, data=data)
 
-#model = tpp.Model(P, Q(), {'obs': data['obs']})
-#
-#
-#K=10
-#for i in range(20000):
+model = tpp.Model(P, Q, {'obs': data['obs']})
+
+K=10
+for i in range(20):
+    p_obj, q_obj = model.rws(K)
+    q_obj.backward()
+    print(q_obj.item())
+    Q.update(0.1)
+    Q.zero_grad()

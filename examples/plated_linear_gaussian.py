@@ -20,23 +20,23 @@ def P(tr):
 #    tr.sample('c',   tpp.Normal(tr['b'], 1), plate='plate_1')
 #    tr.sample('d',   tpp.Normal(tr['c'], 1), plate='plate_2')
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param("m_a", t.zeros(()))
-        self.reg_param("w_b", t.zeros(()))
-        self.reg_param("b_b", t.zeros(()))
+        self.m_a = nn.Parameter(t.zeros(()))
+        self.w_b = nn.Parameter(t.zeros(()))
+        self.b_b = nn.Parameter(t.zeros(()))
 
-        self.reg_param("w_c", t.zeros((J,)), ['plate_1'])
-        self.reg_param("b_c", t.zeros((J,)), ['plate_1'])
+        self.w_c = nn.Parameter(t.zeros((J,), names=('plate_1',)))
+        self.b_c = nn.Parameter(t.zeros((J,), names=('plate_1',)))
 
-        self.reg_param("w_d", t.zeros((M, J)), ['plate_2','plate_1'])
-        self.reg_param("b_d", t.zeros((M, J)), ['plate_2','plate_1'])
+        self.w_d = nn.Parameter(t.zeros((M, J), names=('plate_2','plate_1')))
+        self.b_d = nn.Parameter(t.zeros((M, J), names=('plate_2','plate_1')))
 
-        self.reg_param("log_s_a", t.zeros(()))
-        self.reg_param("log_s_b", t.zeros(()))
-        self.reg_param("log_s_c", t.zeros((J,)), ['plate_1'])
-        self.reg_param("log_s_d", t.zeros((M,J)), ['plate_2','plate_1'])
+        self.log_s_a = nn.Parameter(t.zeros(()))
+        self.log_s_b = nn.Parameter(t.zeros(()))
+        self.log_s_c = nn.Parameter(t.zeros((J,), names=('plate_1',)))
+        self.log_s_d = nn.Parameter(t.zeros((M,J), names=('plate_2','plate_1')))
 
 
     def forward(self, tr):

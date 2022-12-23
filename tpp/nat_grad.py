@@ -1,13 +1,23 @@
 import torch as t
 import torch.nn as nn
-from .model import Q
+from .model import QModule
 from .exp_fam_conversions import conv_dict
+from .postproc import mean
 
-class NatParam():
+class NatParam(QModule):
     def __init__(self, dist, sample):
+        super().__init__()
         self.conv = conv_dict[dist]
-        means = tuple(f(sample) for f in self.conv.sufficient_stats)
-        self.nats = conv.mean2nat(*means)
+        means = tuple(mean(f(sample)) for f in self.conv.sufficient_stats)
+        nats = self.conv.mean2nat(*means)
+
+        self.varnames = tuple(f'n{i}' for i in range(len(means)))
+        for (varname, nat) in zip(self.varnames, nats):
+            self.reg_param(varname, nat)
+
+    @property
+    def nats(self):
+        return [getattr(self, varname) for varname in self.varnames]
 
     def dist(self):
         return self.conv.dist(*self.conv.nat2conv(*self.nats))
@@ -18,12 +28,15 @@ class NatParam():
             old_means = self.conv.nat2mean(*old_nats) #This is the efficient direction.
             new_means = [mean + lr * nat.grad for (nat, mean) in zip(old_nats, old_means)]
             new_nats  = self.conv.mean2nat(*old_nats)
-            self.nats = [nat.detach().requires_grad_() for nat in new_nats]
-            for nat in self.nats:
-                nat.retain_grad()
+            for (varname, new_nat) in zip(self.varnames, new_nats):
+                getattr(self, varname).data.copy_(new_nat)
+
+    def zero_grad(self):
+        for nat in self.nats:
+            nat.zero_grad()
             
 
-class NatQ():
+class NatQ(QModule):
     def __init__(self, samples, dists, data={}):
         """
         Args:
@@ -35,6 +48,7 @@ class NatQ():
         natural parameters to the optimizer.  That said, the parameters
         do get gradients.  
         """
+        super().__init__()
 
         #Remove any samples in the data.
         samples = {key: value for (key, value) in samples.items() if key not in data}
@@ -49,12 +63,16 @@ class NatQ():
 
         self.natparams = {key: NatParam(dists[key], samples[key]) for key in dists}
         
-    def forward(self, tr):
+    def __call__(self, tr):
         for key, natparam in self.natparams.items():
-            tr[key] = sample
+            tr.sample(key, natparam.dist())
 
     def update(self, lr):
         for natparam in self.natparams.values():
             natparam.update(lr)
+
+    def zero_grad(self):
+        for natparam in self.natparams.values():
+            natparam.zero_grad()
 
   
