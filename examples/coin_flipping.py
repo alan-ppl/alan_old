@@ -18,11 +18,11 @@ def P(tr):
 
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param("alphaq", t.tensor(1.2))
-        self.reg_param("betaq", t.tensor(1.2))
+        self.alphaq = nn.Parameter(t.tensor(1.2))
+        self.betaq = nn.Parameter(t.tensor(1.2))
 
     def forward(self, tr):
         tr.sample('latent_fairness', tpp.Beta(self.alphaq, self.betaq))

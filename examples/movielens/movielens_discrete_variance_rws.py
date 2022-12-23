@@ -61,18 +61,18 @@ class P(nn.Module):
         tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
         tr.sample('obs', tpp.Bernoulli(logits = tr['z'] @ tr['x']))
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
         #mu_z
-        self.reg_param("m_mu_z", t.zeros((d_z,)))
-        self.reg_param("log_theta_mu_z", t.zeros((d_z,)))
+        self.m_mu_z = nn.Parameter(t.zeros((d_z,)))
+        self.log_theta_mu_z = nn.Parameter(t.zeros((d_z,)))
         #psi_z
-        self.reg_param('psi_z_logits', t.randn(5))
+        self.psi_z_logits = nn.Parameter(t.randn(5))
 
         #z
-        self.reg_param("mu", t.zeros((M,d_z)), ['plate_1'])
-        self.reg_param("log_sigma", t.zeros((M, d_z)), ['plate_1'])
+        self.mu = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
+        self.log_sigma = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
 
 
     def forward(self, tr):

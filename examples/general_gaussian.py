@@ -26,11 +26,11 @@ def P(tr):
 
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param("m_mu", t.zeros(5,))
-        self.reg_param("s_mu", t.eye(5))
+        self.m_mu = nn.Parameter(t.zeros(5,))
+        self.s_mu = nn.Parameter(t.eye(5))
 
     def forward(self, tr):
         sigma_nn = self.s_mu @ self.s_mu.mT

@@ -19,7 +19,7 @@ TODOs:
 - More rigorous testing workflow and cases. (e.g. Using unit test framework like pytest)
 - More examples for tpp. -->
 
-Probabilistic Programming with Massively Parallel Importance Weighting
+Alan: Probabilistic Programming with Massively Parallel Importance Weighting
 =====================================================
 
 This library showcases Massively Parallel Importance Weighting in the context of Variational Inference based probabilistic programming. Using Importance Weighted Autoencoder (IWAE) and Reweighted Wake Sleep (RWS) as inference methods, for a graphical model with $n$ latent variables we can obtain $K^n$ proposals where $K$ is determined by the user. This improves inference performance and allows for...
@@ -39,11 +39,11 @@ def P(tr):
   tr.sample('mu', tpp.Normal(a, t.ones(5)))
   tr.sample('obs', tpp.MultivariateNormal(tr['mu'], t.eye(5)))
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param('m_mu', t.zeros(5))
-        self.reg_param('log_s_mu', t.zeros(5))
+        self.m_mu = nn.Parameter(t.zeros(5,))
+        self.log_s_mu = nn.Parameter(t.zeros(5,))
 
     def forward(self, tr):
         tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp()))

@@ -66,43 +66,41 @@ def P(tr):
 
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
         #sigma_beta
-        self.reg_param("sigma_beta_low", t.tensor(0.00001).log())
-        self.reg_param("sigma_beta_high", t.tensor(9.9999).log())
+        self.sigma_beta_low = nn.Parameter(t.tensor(0.00001).log())
+        self.sigma_beta_high = nn.Parameter(t.tensor(9.9999).log())
         #mu_beta
-        self.reg_param("mu_beta_mean", t.zeros(()))
-        self.reg_param("log_mu_beta_sigma", t.zeros(()))
+        self.mu_beta_mean = nn.Parameter(t.zeros(()))
+        self.log_mu_beta_sigma = nn.Parameter(t.zeros(()))
         #beta
-        self.reg_param('beta_mu', t.zeros((M)), ['plate_state'])
-        self.reg_param("log_beta_sigma", t.zeros((M)), ['plate_state'])
+        self.beta_mu = nn.Parameter(t.zeros((M)), names=('plate_state'))
+        self.log_beta_sigma = nn.Parameter(t.zeros((M)), names=('plate_state'))
         #gamma
-        self.reg_param("gamma_low", t.tensor(0.00001).log())
-        self.reg_param("gamma_high", t.tensor(9.9999).log())
+        self.gamma_low = nn.Parameter(t.tensor(0.00001).log())
+        self.gamma_high = nn.Parameter(t.tensor(9.9999).log())
         #sigma_alpha
-        self.reg_param("sigma_alpha_low", t.tensor(0.00001).log())
-        self.reg_param("sigma_alpha_high", t.tensor(9.9999).log())
+        self.sigma_alpha_low = nn.Parameter(t.tensor(0.00001).log())
+        self.sigma_alpha_high = nn.Parameter(t.tensor(9.9999).log())
         #alpha
-        self.reg_param("alpha_mu", t.zeros((M,J)), ['plate_state', 'plate_county'])
-        self.reg_param("log_alpha_sigma", t.zeros((M,J)), ['plate_state', 'plate_county'])
-
+        self.alpha_mu = nn.Parameter(t.zeros((M,J)), names=('plate_state', 'plate_county'))
+        self.log_alpha_sigma = nn.Parameter(t.zeros((M,J)), names=('plate_state', 'plate_county'))
         #sigma_omega
-        self.reg_param("sigma_omega_low", t.tensor(0.00001).log())
-        self.reg_param("sigma_omega_high", t.tensor(9.9999).log())
-
+        self.sigma_omega_low = nn.Parameter(t.tensor(0.00001).log())
+        self.sigma_omega_high = nn.Parameter(t.tensor(9.9999).log())
         #omega
-        self.reg_param("omega_mu", t.zeros((M,J,I)), ['plate_state', 'plate_county', 'plate_zipcode'])
-        self.reg_param("log_omega_sigma", t.zeros((M,J,I)), ['plate_state', 'plate_county', 'plate_zipcode'])
+        self.omega_mu = nn.Parameter(t.zeros((M,J,I)), names=('plate_state', 'plate_county', 'plate_zipcode'))
+        self.log_omega_sigma = nn.Parameter(t.zeros((M,J,I)), names=('plate_state', 'plate_county', 'plate_zipcode'))
 
         #sigma_obs
-        self.reg_param("sigma_obs_low", t.tensor(0.00001).log())
-        self.reg_param("sigma_obs_high", t.tensor(9.9999).log())
+        self.sigma_obs_low = nn.Parameter(t.tensor(0.00001).log())
+        self.sigma_obs_high = nn.Parameter(t.tensor(9.9999).log())
 
         #beta_int
-        self.reg_param("psi_int_mu", t.zeros(()))
-        self.reg_param("log_psi_int_sigma", t.zeros(()))
+        self.psi_int_mu = nn.Parameter(t.zeros(()))
+        self.log_psi_int_sigma = nn.Parameter(t.zeros(()))
 
         self.high = t.tensor(10.0).to(device)
         self.low = t.tensor(0.0).to(device)

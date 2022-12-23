@@ -25,11 +25,11 @@ def P(tr):
 
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param("m_mu", t.zeros(2,))
-        self.reg_param("s_mu", t.rand(2,2))
+        self.m_mu = nn.Parameter(t.zeros(2,))
+        self.s_mu = nn.Parameter(t.rand(2,2))
 
 
 

@@ -13,11 +13,11 @@ def P(tr):
 
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param('m_mu', t.zeros(5,))
-        self.reg_param('log_s_mu', t.zeros(5,))
+        self.m_mu = nn.Parameter(t.zeros(5,))
+        self.log_s_mu = nn.Parameter(t.zeros(5,))
 
     def forward(self, tr):
         tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp())) #, plate="plate_1")

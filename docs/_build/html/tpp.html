@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tpp package &mdash; TPP  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Probabilistic Programming with Massively Parallel Importance Weighting" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> TPP
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">tpp package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.Sample">tpp.Sample module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.Sample.Sample"><code class="docutils literal notranslate"><span class="pre">Sample</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.elbo"><code class="docutils literal notranslate"><span class="pre">Sample.elbo()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.is_K"><code class="docutils literal notranslate"><span class="pre">Sample.is_K()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.is_plate"><code class="docutils literal notranslate"><span class="pre">Sample.is_plate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.reduce_Ks_to_keep"><code class="docutils literal notranslate"><span class="pre">Sample.reduce_Ks_to_keep()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.rws"><code class="docutils literal notranslate"><span class="pre">Sample.rws()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.sum_T"><code class="docutils literal notranslate"><span class="pre">Sample.sum_T()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.sum_plate"><code class="docutils literal notranslate"><span class="pre">Sample.sum_plate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.sum_plate_T"><code class="docutils literal notranslate"><span class="pre">Sample.sum_plate_T()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.tensor_product"><code class="docutils literal notranslate"><span class="pre">Sample.tensor_product()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.Sample.Sample.weights"><code class="docutils literal notranslate"><span class="pre">Sample.weights()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.Sample.sample_cond"><code class="docutils literal notranslate"><span class="pre">sample_cond()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.dist">tpp.dist module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Bernoulli"><code class="docutils literal notranslate"><span class="pre">Bernoulli()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Beta"><code class="docutils literal notranslate"><span class="pre">Beta()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Binomial"><code class="docutils literal notranslate"><span class="pre">Binomial()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Categorical"><code class="docutils literal notranslate"><span class="pre">Categorical()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Cauchy"><code class="docutils literal notranslate"><span class="pre">Cauchy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Chi2"><code class="docutils literal notranslate"><span class="pre">Chi2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.ContinuousBernoulli"><code class="docutils literal notranslate"><span class="pre">ContinuousBernoulli()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Dirichlet"><code class="docutils literal notranslate"><span class="pre">Dirichlet()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Exponential"><code class="docutils literal notranslate"><span class="pre">Exponential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.FisherSnedecor"><code class="docutils literal notranslate"><span class="pre">FisherSnedecor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Gamma"><code class="docutils literal notranslate"><span class="pre">Gamma()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Geometric"><code class="docutils literal notranslate"><span class="pre">Geometric()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Gumbel"><code class="docutils literal notranslate"><span class="pre">Gumbel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.HalfCauchy"><code class="docutils literal notranslate"><span class="pre">HalfCauchy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.HalfNormal"><code class="docutils literal notranslate"><span class="pre">HalfNormal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Kumaraswamy"><code class="docutils literal notranslate"><span class="pre">Kumaraswamy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.LKJCholesky"><code class="docutils literal notranslate"><span class="pre">LKJCholesky()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Laplace"><code class="docutils literal notranslate"><span class="pre">Laplace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.LogNormal"><code class="docutils literal notranslate"><span class="pre">LogNormal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.LogitRelaxedBernoulli"><code class="docutils literal notranslate"><span class="pre">LogitRelaxedBernoulli()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.LowRankMultivariateNormal"><code class="docutils literal notranslate"><span class="pre">LowRankMultivariateNormal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Multinomial"><code class="docutils literal notranslate"><span class="pre">Multinomial()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.MultivariateNormal"><code class="docutils literal notranslate"><span class="pre">MultivariateNormal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.NegativeBinomial"><code class="docutils literal notranslate"><span class="pre">NegativeBinomial()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Normal"><code class="docutils literal notranslate"><span class="pre">Normal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Pareto"><code class="docutils literal notranslate"><span class="pre">Pareto()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Poisson"><code class="docutils literal notranslate"><span class="pre">Poisson()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.RelaxedBernoulli"><code class="docutils literal notranslate"><span class="pre">RelaxedBernoulli()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.RelaxedOneHotCategorical"><code class="docutils literal notranslate"><span class="pre">RelaxedOneHotCategorical()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.StudentT"><code class="docutils literal notranslate"><span class="pre">StudentT()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.TorchDimDist"><code class="docutils literal notranslate"><span class="pre">TorchDimDist</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.dist.TorchDimDist.log_prob"><code class="docutils literal notranslate"><span class="pre">TorchDimDist.log_prob()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.dist.TorchDimDist.log_prob_P"><code class="docutils literal notranslate"><span class="pre">TorchDimDist.log_prob_P()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.dist.TorchDimDist.sample"><code class="docutils literal notranslate"><span class="pre">TorchDimDist.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Uniform"><code class="docutils literal notranslate"><span class="pre">Uniform()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.VonMises"><code class="docutils literal notranslate"><span class="pre">VonMises()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Weibull"><code class="docutils literal notranslate"><span class="pre">Weibull()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.Wishart"><code class="docutils literal notranslate"><span class="pre">Wishart()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.pad_nones"><code class="docutils literal notranslate"><span class="pre">pad_nones()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.set_dist"><code class="docutils literal notranslate"><span class="pre">set_dist()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.dist.univariate"><code class="docutils literal notranslate"><span class="pre">univariate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.model">tpp.model module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.model.Model"><code class="docutils literal notranslate"><span class="pre">Model</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.model.Model.elbo"><code class="docutils literal notranslate"><span class="pre">Model.elbo()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.model.Model.importance_samples"><code class="docutils literal notranslate"><span class="pre">Model.importance_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.model.Model.predictive_ll"><code class="docutils literal notranslate"><span class="pre">Model.predictive_ll()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.model.Model.predictive_samples"><code class="docutils literal notranslate"><span class="pre">Model.predictive_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.model.Model.rws"><code class="docutils literal notranslate"><span class="pre">Model.rws()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.model.Model.weights"><code class="docutils literal notranslate"><span class="pre">Model.weights()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.model.Q"><code class="docutils literal notranslate"><span class="pre">Q</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.model.Q.reg_param"><code class="docutils literal notranslate"><span class="pre">Q.reg_param()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.nat_q">tpp.nat_q module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.AbstractNat"><code class="docutils literal notranslate"><span class="pre">AbstractNat</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.AbstractNat.conv2mean"><code class="docutils literal notranslate"><span class="pre">AbstractNat.conv2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.AbstractNat.conv2nat"><code class="docutils literal notranslate"><span class="pre">AbstractNat.conv2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.AbstractNat.mean2conv"><code class="docutils literal notranslate"><span class="pre">AbstractNat.mean2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.AbstractNat.mean2nat"><code class="docutils literal notranslate"><span class="pre">AbstractNat.mean2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.AbstractNat.nat2conv"><code class="docutils literal notranslate"><span class="pre">AbstractNat.nat2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.AbstractNat.nat2mean"><code class="docutils literal notranslate"><span class="pre">AbstractNat.nat2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.AbstractNat.test"><code class="docutils literal notranslate"><span class="pre">AbstractNat.test()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.Elogx"><code class="docutils literal notranslate"><span class="pre">Elogx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.Ex"><code class="docutils literal notranslate"><span class="pre">Ex()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.Ex2"><code class="docutils literal notranslate"><span class="pre">Ex2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.NatBernoulli"><code class="docutils literal notranslate"><span class="pre">NatBernoulli</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatBernoulli.dist"><code class="docutils literal notranslate"><span class="pre">NatBernoulli.dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatBernoulli.test_conv"><code class="docutils literal notranslate"><span class="pre">NatBernoulli.test_conv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.NatDirichlet"><code class="docutils literal notranslate"><span class="pre">NatDirichlet</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatDirichlet.conv2mean"><code class="docutils literal notranslate"><span class="pre">NatDirichlet.conv2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatDirichlet.conv2nat"><code class="docutils literal notranslate"><span class="pre">NatDirichlet.conv2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatDirichlet.dist"><code class="docutils literal notranslate"><span class="pre">NatDirichlet.dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatDirichlet.mean2conv"><code class="docutils literal notranslate"><span class="pre">NatDirichlet.mean2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatDirichlet.nat2conv"><code class="docutils literal notranslate"><span class="pre">NatDirichlet.nat2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatDirichlet.sufficient_stats"><code class="docutils literal notranslate"><span class="pre">NatDirichlet.sufficient_stats</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatDirichlet.test_conv"><code class="docutils literal notranslate"><span class="pre">NatDirichlet.test_conv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.NatExIdId"><code class="docutils literal notranslate"><span class="pre">NatExIdId</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExIdId.conv2mean"><code class="docutils literal notranslate"><span class="pre">NatExIdId.conv2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExIdId.conv2nat"><code class="docutils literal notranslate"><span class="pre">NatExIdId.conv2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExIdId.mean2conv"><code class="docutils literal notranslate"><span class="pre">NatExIdId.mean2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExIdId.mean2nat"><code class="docutils literal notranslate"><span class="pre">NatExIdId.mean2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExIdId.nat2conv"><code class="docutils literal notranslate"><span class="pre">NatExIdId.nat2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExIdId.nat2mean"><code class="docutils literal notranslate"><span class="pre">NatExIdId.nat2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExIdId.sufficient_stats"><code class="docutils literal notranslate"><span class="pre">NatExIdId.sufficient_stats</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.NatExponential"><code class="docutils literal notranslate"><span class="pre">NatExponential</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExponential.conv2mean"><code class="docutils literal notranslate"><span class="pre">NatExponential.conv2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExponential.conv2nat"><code class="docutils literal notranslate"><span class="pre">NatExponential.conv2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExponential.dist"><code class="docutils literal notranslate"><span class="pre">NatExponential.dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExponential.mean2conv"><code class="docutils literal notranslate"><span class="pre">NatExponential.mean2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExponential.nat2conv"><code class="docutils literal notranslate"><span class="pre">NatExponential.nat2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExponential.sufficient_stats"><code class="docutils literal notranslate"><span class="pre">NatExponential.sufficient_stats</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatExponential.test_conv"><code class="docutils literal notranslate"><span class="pre">NatExponential.test_conv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.NatGamma"><code class="docutils literal notranslate"><span class="pre">NatGamma</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatGamma.conv2mean"><code class="docutils literal notranslate"><span class="pre">NatGamma.conv2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatGamma.conv2nat"><code class="docutils literal notranslate"><span class="pre">NatGamma.conv2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatGamma.dist"><code class="docutils literal notranslate"><span class="pre">NatGamma.dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatGamma.mean2conv"><code class="docutils literal notranslate"><span class="pre">NatGamma.mean2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatGamma.nat2conv"><code class="docutils literal notranslate"><span class="pre">NatGamma.nat2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatGamma.sufficient_stats"><code class="docutils literal notranslate"><span class="pre">NatGamma.sufficient_stats</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatGamma.test_conv"><code class="docutils literal notranslate"><span class="pre">NatGamma.test_conv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.NatNormal"><code class="docutils literal notranslate"><span class="pre">NatNormal</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatNormal.conv2mean"><code class="docutils literal notranslate"><span class="pre">NatNormal.conv2mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatNormal.conv2nat"><code class="docutils literal notranslate"><span class="pre">NatNormal.conv2nat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatNormal.dist"><code class="docutils literal notranslate"><span class="pre">NatNormal.dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatNormal.mean2conv"><code class="docutils literal notranslate"><span class="pre">NatNormal.mean2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatNormal.nat2conv"><code class="docutils literal notranslate"><span class="pre">NatNormal.nat2conv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatNormal.sufficient_stats"><code class="docutils literal notranslate"><span class="pre">NatNormal.sufficient_stats</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatNormal.test_conv"><code class="docutils literal notranslate"><span class="pre">NatNormal.test_conv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.NatPoisson"><code class="docutils literal notranslate"><span class="pre">NatPoisson</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatPoisson.dist"><code class="docutils literal notranslate"><span class="pre">NatPoisson.dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.nat_q.NatPoisson.test_conv"><code class="docutils literal notranslate"><span class="pre">NatPoisson.test_conv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.grad_digamma"><code class="docutils literal notranslate"><span class="pre">grad_digamma()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.identity"><code class="docutils literal notranslate"><span class="pre">identity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.inverse_digamma"><code class="docutils literal notranslate"><span class="pre">inverse_digamma()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.nat_q.tuple_assert_allclose"><code class="docutils literal notranslate"><span class="pre">tuple_assert_allclose()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.postproc">tpp.postproc module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.Ef"><code class="docutils literal notranslate"><span class="pre">Ef()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.Kname"><code class="docutils literal notranslate"><span class="pre">Kname()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.ess"><code class="docutils literal notranslate"><span class="pre">ess()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.map_or_apply"><code class="docutils literal notranslate"><span class="pre">map_or_apply()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.mean"><code class="docutils literal notranslate"><span class="pre">mean()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.mean2"><code class="docutils literal notranslate"><span class="pre">mean2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.mean2_raw"><code class="docutils literal notranslate"><span class="pre">mean2_raw()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.mean_raw"><code class="docutils literal notranslate"><span class="pre">mean_raw()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.p_higher"><code class="docutils literal notranslate"><span class="pre">p_higher()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.p_higher_raw"><code class="docutils literal notranslate"><span class="pre">p_higher_raw()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.p_lower"><code class="docutils literal notranslate"><span class="pre">p_lower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.p_lower_raw"><code class="docutils literal notranslate"><span class="pre">p_lower_raw()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.std"><code class="docutils literal notranslate"><span class="pre">std()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.stderr"><code class="docutils literal notranslate"><span class="pre">stderr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.stderr_mean"><code class="docutils literal notranslate"><span class="pre">stderr_mean()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.stderr_mean2"><code class="docutils literal notranslate"><span class="pre">stderr_mean2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.stderr_p_higher"><code class="docutils literal notranslate"><span class="pre">stderr_p_higher()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.stderr_p_lower"><code class="docutils literal notranslate"><span class="pre">stderr_p_lower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.postproc.var"><code class="docutils literal notranslate"><span class="pre">var()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.timeseries">tpp.timeseries module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.timeseries.Timeseries"><code class="docutils literal notranslate"><span class="pre">Timeseries</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.timeseries.Timeseries.input"><code class="docutils literal notranslate"><span class="pre">Timeseries.input()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.timeseries.Timeseries.log_prob"><code class="docutils literal notranslate"><span class="pre">Timeseries.log_prob()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.timeseries.Timeseries.log_prob_P"><code class="docutils literal notranslate"><span class="pre">Timeseries.log_prob_P()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.timeseries.Timeseries.sample"><code class="docutils literal notranslate"><span class="pre">Timeseries.sample()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.timeseries.Timeseries.set_Tdim"><code class="docutils literal notranslate"><span class="pre">Timeseries.set_Tdim()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.timeseries.TimeseriesLogP"><code class="docutils literal notranslate"><span class="pre">TimeseriesLogP</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.timeseries.TimeseriesLogP.similar"><code class="docutils literal notranslate"><span class="pre">TimeseriesLogP.similar()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.timeseries.TimeseriesLogP.to"><code class="docutils literal notranslate"><span class="pre">TimeseriesLogP.to()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.timeseries.flatten_tslp_list"><code class="docutils literal notranslate"><span class="pre">flatten_tslp_list()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.timeseries.tslp_to_tuple"><code class="docutils literal notranslate"><span class="pre">tslp_to_tuple()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.traces">tpp.traces module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.AbstractTrace"><code class="docutils literal notranslate"><span class="pre">AbstractTrace</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.AbstractTrace.check"><code class="docutils literal notranslate"><span class="pre">AbstractTrace.check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.AbstractTrace.check_plate_present"><code class="docutils literal notranslate"><span class="pre">AbstractTrace.check_plate_present()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.AbstractTrace.check_varname"><code class="docutils literal notranslate"><span class="pre">AbstractTrace.check_varname()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.AbstractTrace.filter_platedims"><code class="docutils literal notranslate"><span class="pre">AbstractTrace.filter_platedims()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.TraceP"><code class="docutils literal notranslate"><span class="pre">TraceP</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceP.data"><code class="docutils literal notranslate"><span class="pre">TraceP.data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceP.platedims"><code class="docutils literal notranslate"><span class="pre">TraceP.platedims</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceP.sample"><code class="docutils literal notranslate"><span class="pre">TraceP.sample()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceP.sample_logQ_prior"><code class="docutils literal notranslate"><span class="pre">TraceP.sample_logQ_prior()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceP.sum_discrete"><code class="docutils literal notranslate"><span class="pre">TraceP.sum_discrete()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.TracePred"><code class="docutils literal notranslate"><span class="pre">TracePred</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TracePred.corresponding_plates"><code class="docutils literal notranslate"><span class="pre">TracePred.corresponding_plates()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TracePred.sample"><code class="docutils literal notranslate"><span class="pre">TracePred.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.TraceQ"><code class="docutils literal notranslate"><span class="pre">TraceQ</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceQ.mean"><code class="docutils literal notranslate"><span class="pre">TraceQ.mean()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceQ.reduce_plate"><code class="docutils literal notranslate"><span class="pre">TraceQ.reduce_plate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceQ.sample"><code class="docutils literal notranslate"><span class="pre">TraceQ.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.TraceSample"><code class="docutils literal notranslate"><span class="pre">TraceSample</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tpp.traces.TraceSample.sample"><code class="docutils literal notranslate"><span class="pre">TraceSample.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.check_not_reserved"><code class="docutils literal notranslate"><span class="pre">check_not_reserved()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.sample"><code class="docutils literal notranslate"><span class="pre">sample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.traces.split_train_test"><code class="docutils literal notranslate"><span class="pre">split_train_test()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp.utils">tpp.utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.chain_logmmexp"><code class="docutils literal notranslate"><span class="pre">chain_logmmexp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.chain_reduce"><code class="docutils literal notranslate"><span class="pre">chain_reduce()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.dim2named_tensor"><code class="docutils literal notranslate"><span class="pre">dim2named_tensor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.extend_plates_with_named_tensor"><code class="docutils literal notranslate"><span class="pre">extend_plates_with_named_tensor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.extend_plates_with_named_tensors"><code class="docutils literal notranslate"><span class="pre">extend_plates_with_named_tensors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.extend_plates_with_sizes"><code class="docutils literal notranslate"><span class="pre">extend_plates_with_sizes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.generic_dims"><code class="docutils literal notranslate"><span class="pre">generic_dims()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.generic_ndim"><code class="docutils literal notranslate"><span class="pre">generic_ndim()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.generic_order"><code class="docutils literal notranslate"><span class="pre">generic_order()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.is_dimtensor"><code class="docutils literal notranslate"><span class="pre">is_dimtensor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.logmmexp"><code class="docutils literal notranslate"><span class="pre">logmmexp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.max_dims"><code class="docutils literal notranslate"><span class="pre">max_dims()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.named2dim_tensor"><code class="docutils literal notranslate"><span class="pre">named2dim_tensor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.named2dim_tensordict"><code class="docutils literal notranslate"><span class="pre">named2dim_tensordict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.ordered_unique"><code class="docutils literal notranslate"><span class="pre">ordered_unique()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.partition_tensors"><code class="docutils literal notranslate"><span class="pre">partition_tensors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.platenames2platedims"><code class="docutils literal notranslate"><span class="pre">platenames2platedims()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.reduce_Ks"><code class="docutils literal notranslate"><span class="pre">reduce_Ks()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.singleton_order"><code class="docutils literal notranslate"><span class="pre">singleton_order()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.td_matmul"><code class="docutils literal notranslate"><span class="pre">td_matmul()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.torchdim_einsum"><code class="docutils literal notranslate"><span class="pre">torchdim_einsum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tpp.utils.unify_dims"><code class="docutils literal notranslate"><span class="pre">unify_dims()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tpp">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TPP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a></li>
+      <li class="breadcrumb-item active">tpp package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/tpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tpp-package">
+<h1>tpp package<a class="headerlink" href="#tpp-package" title="Permalink to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading"></a></h2>
+</section>
+<section id="module-tpp.Sample">
+<span id="tpp-sample-module"></span><h2>tpp.Sample module<a class="headerlink" href="#module-tpp.Sample" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.Sample.Sample">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.Sample.</span></span><span class="sig-name descname"><span class="pre">Sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trp</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Does error checking on the log-ps, and does the tensor product.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.elbo">
+<span class="sig-name descname"><span class="pre">elbo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.elbo" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.is_K">
+<span class="sig-name descname"><span class="pre">is_K</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.is_K" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.is_plate">
+<span class="sig-name descname"><span class="pre">is_plate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.is_plate" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.reduce_Ks_to_keep">
+<span class="sig-name descname"><span class="pre">reduce_Ks_to_keep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ks_to_keep</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.reduce_Ks_to_keep" title="Permalink to this definition"></a></dt>
+<dd><p>Takes a list of log-probability tensors, and a list of dimension names to do the reductions,
+and does a numerically stable log-einsum-exp</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tensors</strong> – List of tensors within a plate</p></li>
+<li><p><strong>Ks_to_keep</strong> – List of K_dims to keep because they appear in higher-level plates.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Returns: a single log-probability tensor with all K’s appearing only in this plate summed out</p>
+<p>Same for timeseries and plate!</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.rws">
+<span class="sig-name descname"><span class="pre">rws</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.rws" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.sum_T">
+<span class="sig-name descname"><span class="pre">sum_T</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_ts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ks_to_keep</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.sum_T" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.sum_plate">
+<span class="sig-name descname"><span class="pre">sum_plate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lower_lps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plate_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ks_to_keep</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.sum_plate" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.sum_plate_T">
+<span class="sig-name descname"><span class="pre">sum_plate_T</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plate_dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.sum_plate_T" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.tensor_product">
+<span class="sig-name descname"><span class="pre">tensor_product</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detach_p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detach_q</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_log_factors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.tensor_product" title="Permalink to this definition"></a></dt>
+<dd><p>Sums over plates, starting at the lowest plate.
+The key exported method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.Sample.Sample.weights">
+<span class="sig-name descname"><span class="pre">weights</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.Sample.weights" title="Permalink to this definition"></a></dt>
+<dd><p>Produces normalized weights for each latent variable.</p>
+<p>Make a little function that converts all the aunnamed to dim tensors</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.Sample.sample_cond">
+<span class="sig-prename descclassname"><span class="pre">tpp.Sample.</span></span><span class="sig-name descname"><span class="pre">sample_cond</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">marg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">K_post_idxs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.Sample.sample_cond" title="Permalink to this definition"></a></dt>
+<dd><p>Takes the marginal probability (marg), and a dict of indices for the previous K’s (K_post_idxs)
+and returns N (torchdim Dim) samples of the current K (torchdim Dim).</p>
+</dd></dl>
+
+</section>
+<section id="module-tpp.dist">
+<span id="tpp-dist-module"></span><h2>tpp.dist module<a class="headerlink" href="#module-tpp.dist" title="Permalink to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Bernoulli">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Bernoulli</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Bernoulli" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Beta">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Beta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Beta" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Binomial">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Binomial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Binomial" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Categorical">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Categorical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Categorical" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Cauchy">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Cauchy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Cauchy" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Chi2">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Chi2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Chi2" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.ContinuousBernoulli">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">ContinuousBernoulli</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.ContinuousBernoulli" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Dirichlet">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Dirichlet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Dirichlet" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Exponential">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Exponential</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Exponential" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.FisherSnedecor">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">FisherSnedecor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.FisherSnedecor" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Gamma">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Gamma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Gamma" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Geometric">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Geometric</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Geometric" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Gumbel">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Gumbel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Gumbel" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.HalfCauchy">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">HalfCauchy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.HalfCauchy" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.HalfNormal">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">HalfNormal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.HalfNormal" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Kumaraswamy">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Kumaraswamy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Kumaraswamy" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.LKJCholesky">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">LKJCholesky</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.LKJCholesky" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Laplace">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Laplace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Laplace" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.LogNormal">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">LogNormal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.LogNormal" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.LogitRelaxedBernoulli">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">LogitRelaxedBernoulli</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.LogitRelaxedBernoulli" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.LowRankMultivariateNormal">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">LowRankMultivariateNormal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.LowRankMultivariateNormal" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Multinomial">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Multinomial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Multinomial" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.MultivariateNormal">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">MultivariateNormal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.MultivariateNormal" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.NegativeBinomial">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">NegativeBinomial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.NegativeBinomial" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Normal">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Normal" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Pareto">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Pareto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Pareto" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Poisson">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Poisson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Poisson" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.RelaxedBernoulli">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">RelaxedBernoulli</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.RelaxedBernoulli" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.RelaxedOneHotCategorical">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">RelaxedOneHotCategorical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.RelaxedOneHotCategorical" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.StudentT">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">StudentT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.StudentT" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.dist.TorchDimDist">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">TorchDimDist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.TorchDimDist" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>self.dist and self.dims are exposed!</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.dist.TorchDimDist.log_prob">
+<span class="sig-name descname"><span class="pre">log_prob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.TorchDimDist.log_prob" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.dist.TorchDimDist.log_prob_P">
+<span class="sig-name descname"><span class="pre">log_prob_P</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kdim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.TorchDimDist.log_prob_P" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.dist.TorchDimDist.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reparam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_dims</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.TorchDimDist.sample" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Uniform">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Uniform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Uniform" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.VonMises">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">VonMises</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.VonMises" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Weibull">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Weibull</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Weibull" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.Wishart">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">Wishart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.Wishart" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.pad_nones">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">pad_nones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.pad_nones" title="Permalink to this definition"></a></dt>
+<dd><p>Pad with as many unnamed dimensions as necessary to reach ndim
+Ignores torchdim dimensions</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.set_dist">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">set_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.set_dist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.dist.univariate">
+<span class="sig-prename descclassname"><span class="pre">tpp.dist.</span></span><span class="sig-name descname"><span class="pre">univariate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">names</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.dist.univariate" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-tpp.model">
+<span id="tpp-model-module"></span><h2>tpp.model module<a class="headerlink" href="#module-tpp.model" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.model.Model">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.model.</span></span><span class="sig-name descname"><span class="pre">Model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Q=&lt;function</span> <span class="pre">Model.&lt;lambda&gt;&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Model" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Model class.
+:param P: The generative model, written as a function that takes a trace.
+:param Q: The proposal / approximate posterior. Optional. If not provided,</p>
+<blockquote>
+<div><p>then we use the prior as Q.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> – Any non-minibatched data. This is usually used in statistics,
+where we have small-medium data that we can reason about as a
+block. This is a dictionary mapping variable name to named-tensors
+representing the data. We infer plate sizes from the sizes of
+the named dimensions in data (and from the sizes of any parameters
+in Q).</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.model.Model.elbo">
+<span class="sig-name descname"><span class="pre">elbo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reparam</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Model.elbo" title="Permalink to this definition"></a></dt>
+<dd><p>Compute the ELBO.
+:param K: the number of samples drawn for each latent variable.
+:param data: Any minibatched data.
+:param reparam: Whether to use the reparameterisation trick.  If you want to use the</p>
+<blockquote>
+<div><p>ELBO as an objective in VI, then this needs to be True (and it is
+true by default).  However, sampling with reparam=True will fail if
+you have discrete latent variables. Indeed, you can’t do standard VI
+with discrete latents. That said, if you have discrete latent
+variables, you may still want to compute a bound on the model
+evidence, and that’s probably the only case where reparam=False makes
+sense.</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.model.Model.importance_samples">
+<span class="sig-name descname"><span class="pre">importance_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Model.importance_samples" title="Permalink to this definition"></a></dt>
+<dd><p>Compute posterior samples
+:param K: the number of samples drawn for each latent variable.
+:param N: the number of importance samples returned.
+:param data: Any minibatched data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A dictionary mapping the variable name to the posterior sample.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>This is only really useful for prediction. If you’re looking
+for moments, you should use importance weights processed by
+tpp.postproc.  This will be more accurate…</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.model.Model.predictive_ll">
+<span class="sig-name descname"><span class="pre">predictive_ll</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_all</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Model.predictive_ll" title="Permalink to this definition"></a></dt>
+<dd><p>Run as (e.g. for plated_linear_gaussian.py)</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">obs</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">randn</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">names</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;plate_1&quot;</span><span class="p">,</span> <span class="s2">&quot;plate_2&quot;</span><span class="p">,</span> <span class="s2">&quot;plate_3&quot;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">predictive_ll</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">data_all</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;obs&quot;</span><span class="p">:</span> <span class="n">obs</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.model.Model.predictive_samples">
+<span class="sig-name descname"><span class="pre">predictive_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platesizes_all</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Model.predictive_samples" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.model.Model.rws">
+<span class="sig-name descname"><span class="pre">rws</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Model.rws" title="Permalink to this definition"></a></dt>
+<dd><p>Compute RWS objectives
+:param K: the number of samples drawn for each latent variable.
+:param data: Any minibatched data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Objective for the P update
+q_obj: Objective for the wake-phase Q update</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>p_obj</p>
+</dd>
+</dl>
+<p>RWS …</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.model.Model.weights">
+<span class="sig-name descname"><span class="pre">weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Model.weights" title="Permalink to this definition"></a></dt>
+<dd><p>Compute marginal importance weights
+:param K: the number of samples drawn for each latent variable.
+:param data: Any minibatched data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A dictionary mapping the variable name to a tuple of weights and samples.
+These weights and samples may be used directly, or may be processed to
+give e.g. moments, ESS etc. using the functions in tpp.postproc</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.model.Q">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.model.</span></span><span class="sig-name descname"><span class="pre">Q</span></span><a class="headerlink" href="#tpp.model.Q" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>A thin wrapper on nn.Module, which is only necessary if we want to
+learn separate parameters for each latent variable in a plate. In that
+case, the learned parameters need to be torchdim tensors, and this class
+allows that.</p>
+<p>In particular, any parameter with a plate should be registered with
+<a href="#id1"><span class="problematic" id="id2">``</span></a>`
+class MyQ(Q):</p>
+<blockquote>
+<div><dl class="simple">
+<dt>def __init__(self):</dt><dd><p>super().__init__()
+self.reg_param(“a”, t.ones(3,4), (“plate_1”))</p>
+</dd>
+</dl>
+</div></blockquote>
+<p><a href="#id3"><span class="problematic" id="id4">``</span></a><a href="#id5"><span class="problematic" id="id6">`</span></a></p>
+<p>The size of this plate will also feed into the inference of plate sizes
+performed in <cite>Model</cite>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.model.Q.reg_param">
+<span class="sig-name descname"><span class="pre">reg_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.model.Q.reg_param" title="Permalink to this definition"></a></dt>
+<dd><p>Register a parameter with plate dimensions.
+:param name: the name of the parameter.
+:type name: str
+:param tensor: the tensor (may be named).
+:type tensor: torch.Tensor
+:param dims: the dimension names, starting from dimension 0.</p>
+<p>You may specify the plates either by providing a named tensor, or by
+providing a dims argument, but not both!</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-tpp.nat_q">
+<span id="tpp-nat-q-module"></span><h2>tpp.nat_q module<a class="headerlink" href="#module-tpp.nat_q" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">AbstractNat</span></span><a class="headerlink" href="#tpp.nat_q.AbstractNat" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Need to interconvert between three sets of parameters:
+mean         (mean) parameters (exponential family)
+natural      (nat)  parameters (exponential family)
+conventional (conv) parameters (i.e. that go into the PyTorch distribution)</p>
+<p>We need interconversions between all of these:
+mean &lt;-&gt; nat for natural gradients
+conv -&gt; mean/nat for initialisation
+mean/nat -&gt; conv for initialisation</p>
+<p>We provide defaults which compute the desired parameters from the input
+parameters by going through the other parameter. This gives you all
+interchanges if you provide a subset.  In particular, you need:</p>
+<blockquote>
+<div><p>A cycle: mean -&gt; nat -&gt; conv -&gt; mean
+Two reversible interchanges, e.g. mean &lt;-&gt; nat and nat &lt;-&gt; conv</p>
+</div></blockquote>
+<p>Testing proceedure:
+Start with conv parameters.
+Convert to nat + mean parameters.
+Check all other conversions give expected quantities.</p>
+<p>mean &lt;-&gt; nat is always differentiable
+mean &lt;-&gt; nat is frequently non-differentiable</p>
+<p>Therefore, fundamentally work in terms of mean parameters.
+We update the mean parameters by taking grads wrt natural parameters
+(as this requires a differentiable mapping nat -&gt; conv)
+and apply the grad to the mean parameters.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat.conv2mean">
+<span class="sig-name descname"><span class="pre">conv2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">conv</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.AbstractNat.conv2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat.conv2nat">
+<span class="sig-name descname"><span class="pre">conv2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">conv</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.AbstractNat.conv2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat.mean2conv">
+<span class="sig-name descname"><span class="pre">mean2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">mean</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.AbstractNat.mean2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat.mean2nat">
+<span class="sig-name descname"><span class="pre">mean2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">mean</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.AbstractNat.mean2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat.nat2conv">
+<span class="sig-name descname"><span class="pre">nat2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">nat</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.AbstractNat.nat2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat.nat2mean">
+<span class="sig-name descname"><span class="pre">nat2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">nat</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.AbstractNat.nat2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.AbstractNat.test">
+<span class="sig-name descname"><span class="pre">test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.AbstractNat.test" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.nat_q.Elogx">
+<span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">Elogx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.Elogx" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.nat_q.Ex">
+<span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">Ex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.Ex" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.nat_q.Ex2">
+<span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">Ex2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.Ex2" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.NatBernoulli">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">NatBernoulli</span></span><a class="headerlink" href="#tpp.nat_q.NatBernoulli" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.nat_q.NatExIdId" title="tpp.nat_q.NatExIdId"><code class="xref py py-class docutils literal notranslate"><span class="pre">NatExIdId</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatBernoulli.dist">
+<span class="sig-name descname"><span class="pre">dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatBernoulli.dist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatBernoulli.test_conv">
+<span class="sig-name descname"><span class="pre">test_conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatBernoulli.test_conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">NatDirichlet</span></span><a class="headerlink" href="#tpp.nat_q.NatDirichlet" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.nat_q.AbstractNat" title="tpp.nat_q.AbstractNat"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractNat</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet.conv2mean">
+<span class="sig-name descname"><span class="pre">conv2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatDirichlet.conv2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet.conv2nat">
+<span class="sig-name descname"><span class="pre">conv2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatDirichlet.conv2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet.dist">
+<span class="sig-name descname"><span class="pre">dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatDirichlet.dist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet.mean2conv">
+<span class="sig-name descname"><span class="pre">mean2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logp</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatDirichlet.mean2conv" title="Permalink to this definition"></a></dt>
+<dd><p>Methods from <a class="reference external" href="https://tminka.github.io/papers/dirichlet/minka-dirichlet.pdf">https://tminka.github.io/papers/dirichlet/minka-dirichlet.pdf</a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet.nat2conv">
+<span class="sig-name descname"><span class="pre">nat2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nat</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatDirichlet.nat2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet.sufficient_stats">
+<span class="sig-name descname"><span class="pre">sufficient_stats</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;,)</span></em><a class="headerlink" href="#tpp.nat_q.NatDirichlet.sufficient_stats" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatDirichlet.test_conv">
+<span class="sig-name descname"><span class="pre">test_conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatDirichlet.test_conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">NatExIdId</span></span><a class="headerlink" href="#tpp.nat_q.NatExIdId" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.nat_q.AbstractNat" title="tpp.nat_q.AbstractNat"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractNat</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId.conv2mean">
+<span class="sig-name descname"><span class="pre">conv2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExIdId.conv2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId.conv2nat">
+<span class="sig-name descname"><span class="pre">conv2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExIdId.conv2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId.mean2conv">
+<span class="sig-name descname"><span class="pre">mean2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExIdId.mean2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId.mean2nat">
+<span class="sig-name descname"><span class="pre">mean2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExIdId.mean2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId.nat2conv">
+<span class="sig-name descname"><span class="pre">nat2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExIdId.nat2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId.nat2mean">
+<span class="sig-name descname"><span class="pre">nat2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExIdId.nat2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExIdId.sufficient_stats">
+<span class="sig-name descname"><span class="pre">sufficient_stats</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;,)</span></em><a class="headerlink" href="#tpp.nat_q.NatExIdId.sufficient_stats" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">NatExponential</span></span><a class="headerlink" href="#tpp.nat_q.NatExponential" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.nat_q.AbstractNat" title="tpp.nat_q.AbstractNat"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractNat</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential.conv2mean">
+<span class="sig-name descname"><span class="pre">conv2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mean</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExponential.conv2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential.conv2nat">
+<span class="sig-name descname"><span class="pre">conv2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExponential.conv2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential.dist">
+<span class="sig-name descname"><span class="pre">dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExponential.dist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential.mean2conv">
+<span class="sig-name descname"><span class="pre">mean2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mean</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExponential.mean2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential.nat2conv">
+<span class="sig-name descname"><span class="pre">nat2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExponential.nat2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential.sufficient_stats">
+<span class="sig-name descname"><span class="pre">sufficient_stats</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;,</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;)</span></em><a class="headerlink" href="#tpp.nat_q.NatExponential.sufficient_stats" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatExponential.test_conv">
+<span class="sig-name descname"><span class="pre">test_conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatExponential.test_conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">NatGamma</span></span><a class="headerlink" href="#tpp.nat_q.NatGamma" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.nat_q.AbstractNat" title="tpp.nat_q.AbstractNat"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractNat</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma.conv2mean">
+<span class="sig-name descname"><span class="pre">conv2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatGamma.conv2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma.conv2nat">
+<span class="sig-name descname"><span class="pre">conv2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatGamma.conv2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma.dist">
+<span class="sig-name descname"><span class="pre">dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatGamma.dist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma.mean2conv">
+<span class="sig-name descname"><span class="pre">mean2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Elogx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ex</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatGamma.mean2conv" title="Permalink to this definition"></a></dt>
+<dd><p>Generalised Newton’s method from Eq. 10 in <a class="reference external" href="https://tminka.github.io/papers/minka-gamma.pdf">https://tminka.github.io/papers/minka-gamma.pdf</a>
+Rewrite as:
+1/a^new = 1/a (1 + num / a (1/a + grad_digamma(a)))
+1/a^new = 1/a (1 + num / (1 + a grad_digamma(a)))
+a^new   = a / (1 + num / (1 + a grad_digamma(a)))</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma.nat2conv">
+<span class="sig-name descname"><span class="pre">nat2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatGamma.nat2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma.sufficient_stats">
+<span class="sig-name descname"><span class="pre">sufficient_stats</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;,</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;)</span></em><a class="headerlink" href="#tpp.nat_q.NatGamma.sufficient_stats" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatGamma.test_conv">
+<span class="sig-name descname"><span class="pre">test_conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatGamma.test_conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">NatNormal</span></span><a class="headerlink" href="#tpp.nat_q.NatNormal" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.nat_q.AbstractNat" title="tpp.nat_q.AbstractNat"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractNat</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal.conv2mean">
+<span class="sig-name descname"><span class="pre">conv2mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatNormal.conv2mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal.conv2nat">
+<span class="sig-name descname"><span class="pre">conv2nat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatNormal.conv2nat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal.dist">
+<span class="sig-name descname"><span class="pre">dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatNormal.dist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal.mean2conv">
+<span class="sig-name descname"><span class="pre">mean2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Ex</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ex2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatNormal.mean2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal.nat2conv">
+<span class="sig-name descname"><span class="pre">nat2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_prec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatNormal.nat2conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal.sufficient_stats">
+<span class="sig-name descname"><span class="pre">sufficient_stats</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;,</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;)</span></em><a class="headerlink" href="#tpp.nat_q.NatNormal.sufficient_stats" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatNormal.test_conv">
+<span class="sig-name descname"><span class="pre">test_conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatNormal.test_conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.nat_q.NatPoisson">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">NatPoisson</span></span><a class="headerlink" href="#tpp.nat_q.NatPoisson" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.nat_q.NatExIdId" title="tpp.nat_q.NatExIdId"><code class="xref py py-class docutils literal notranslate"><span class="pre">NatExIdId</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatPoisson.dist">
+<span class="sig-name descname"><span class="pre">dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatPoisson.dist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.nat_q.NatPoisson.test_conv">
+<span class="sig-name descname"><span class="pre">test_conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.NatPoisson.test_conv" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.nat_q.grad_digamma">
+<span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">grad_digamma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.grad_digamma" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.nat_q.identity">
+<span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.identity" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.nat_q.inverse_digamma">
+<span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">inverse_digamma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.inverse_digamma" title="Permalink to this definition"></a></dt>
+<dd><p>Solves y = digamma(x)
+or computes x = digamma^{-1}(y)
+Appendix C in <a class="reference external" href="https://tminka.github.io/papers/dirichlet/minka-dirichlet.pdf">https://tminka.github.io/papers/dirichlet/minka-dirichlet.pdf</a>
+Works very well assuming the x’s you start with are all positive</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.nat_q.tuple_assert_allclose">
+<span class="sig-prename descclassname"><span class="pre">tpp.nat_q.</span></span><span class="sig-name descname"><span class="pre">tuple_assert_allclose</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">xs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ys</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.nat_q.tuple_assert_allclose" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-tpp.postproc">
+<span id="tpp-postproc-module"></span><h2>tpp.postproc module<a class="headerlink" href="#module-tpp.postproc" title="Permalink to this heading"></a></h2>
+<p>A bunch of functions to do useful things with dicts of samples and weights.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.Ef">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">Ef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.Ef" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.Kname">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">Kname</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.Kname" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.ess">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">ess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.ess" title="Permalink to this definition"></a></dt>
+<dd><p>Standard errors (which only make sense for plain moments)
+Not subtracting 1 from the ESS?</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.map_or_apply">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">map_or_apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.map_or_apply" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.mean">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.mean2">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">mean2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.mean2" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.mean2_raw">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">mean2_raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.mean2_raw" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.mean_raw">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">mean_raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.mean_raw" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.p_higher">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">p_higher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.p_higher" title="Permalink to this definition"></a></dt>
+<dd><p>Relevant quantites that aren’t plain moments</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.p_higher_raw">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">p_higher_raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.p_higher_raw" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.p_lower">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">p_lower</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.p_lower" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.p_lower_raw">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">p_lower_raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.p_lower_raw" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.std">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">std</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.std" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.stderr">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">stderr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.stderr" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.stderr_mean">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">stderr_mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.stderr_mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.stderr_mean2">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">stderr_mean2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.stderr_mean2" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.stderr_p_higher">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">stderr_p_higher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.stderr_p_higher" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.stderr_p_lower">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">stderr_p_lower</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.stderr_p_lower" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.postproc.var">
+<span class="sig-prename descclassname"><span class="pre">tpp.postproc.</span></span><span class="sig-name descname"><span class="pre">var</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.postproc.var" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-tpp.timeseries">
+<span id="tpp-timeseries-module"></span><h2>tpp.timeseries module<a class="headerlink" href="#module-tpp.timeseries" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.timeseries.Timeseries">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.timeseries.</span></span><span class="sig-name descname"><span class="pre">Timeseries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">initial_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transition</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.Timeseries" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.timeseries.Timeseries.input">
+<span class="sig-name descname"><span class="pre">input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.Timeseries.input" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.timeseries.Timeseries.log_prob">
+<span class="sig-name descname"><span class="pre">log_prob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.Timeseries.log_prob" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.timeseries.Timeseries.log_prob_P">
+<span class="sig-name descname"><span class="pre">log_prob_P</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kdim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.Timeseries.log_prob_P" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.timeseries.Timeseries.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reparam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_dims</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.Timeseries.sample" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.timeseries.Timeseries.set_Tdim">
+<span class="sig-name descname"><span class="pre">set_Tdim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Tdim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.Timeseries.set_Tdim" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.timeseries.TimeseriesLogP">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.timeseries.</span></span><span class="sig-name descname"><span class="pre">TimeseriesLogP</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">first</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Tm1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kprev</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.TimeseriesLogP" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.timeseries.TimeseriesLogP.similar">
+<span class="sig-name descname"><span class="pre">similar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">first</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rest</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.TimeseriesLogP.similar" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.timeseries.TimeseriesLogP.to">
+<span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.TimeseriesLogP.to" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.timeseries.flatten_tslp_list">
+<span class="sig-prename descclassname"><span class="pre">tpp.timeseries.</span></span><span class="sig-name descname"><span class="pre">flatten_tslp_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ls</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.flatten_tslp_list" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.timeseries.tslp_to_tuple">
+<span class="sig-prename descclassname"><span class="pre">tpp.timeseries.</span></span><span class="sig-name descname"><span class="pre">tslp_to_tuple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tslp</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.timeseries.tslp_to_tuple" title="Permalink to this definition"></a></dt>
+<dd><p>Takes a TimeseriesLogP, and returns a tuple of first and rest, and a method for going backwards.</p>
+</dd></dl>
+
+</section>
+<section id="module-tpp.traces">
+<span id="tpp-traces-module"></span><h2>tpp.traces module<a class="headerlink" href="#module-tpp.traces" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.traces.AbstractTrace">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">AbstractTrace</span></span><a class="headerlink" href="#tpp.traces.AbstractTrace" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.AbstractTrace.check">
+<span class="sig-name descname"><span class="pre">check</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.AbstractTrace.check" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.AbstractTrace.check_plate_present">
+<span class="sig-name descname"><span class="pre">check_plate_present</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.AbstractTrace.check_plate_present" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.AbstractTrace.check_varname">
+<span class="sig-name descname"><span class="pre">check_varname</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.AbstractTrace.check_varname" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.AbstractTrace.filter_platedims">
+<span class="sig-name descname"><span class="pre">filter_platedims</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dims</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.AbstractTrace.filter_platedims" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.traces.TraceP">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">TraceP</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory_diagnostics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceP" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.traces.AbstractTrace" title="tpp.traces.AbstractTrace"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractTrace</span></code></a></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="tpp.traces.TraceP.data">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">data</span></span><a class="headerlink" href="#tpp.traces.TraceP.data" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="tpp.traces.TraceP.platedims">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">platedims</span></span><a class="headerlink" href="#tpp.traces.TraceP.platedims" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TraceP.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sum_discrete</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceP.sample" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TraceP.sample_logQ_prior">
+<span class="sig-name descname"><span class="pre">sample_logQ_prior</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kdim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceP.sample_logQ_prior" title="Permalink to this definition"></a></dt>
+<dd><p>When variables are omitted in TraceQ, we sample them from the prior.
+This only makes sense with multiple samples, which is nice as we no
+longer have the opportunity to set multi_sample=False in TraceQ.</p>
+<p>The basic strategy is to sample from the prior dist, then take the
+“diagonal” for all K’s.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TraceP.sum_discrete">
+<span class="sig-name descname"><span class="pre">sum_discrete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceP.sum_discrete" title="Permalink to this definition"></a></dt>
+<dd><p>Enumerates discrete variables.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.traces.TracePred">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">TracePred</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_all</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platedims_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platesizes_all</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TracePred" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.traces.AbstractTrace" title="tpp.traces.AbstractTrace"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractTrace</span></code></a></p>
+<p>Draws samples from P conditioned on samples from …
+Usually just used to sample fake data from the model.</p>
+<p>post_rvs is posterior samples of all latents + training data.</p>
+<dl class="simple">
+<dt>We can choose to provide data or sizes.</dt><dd><p>If we provide data, then we compute test_ll
+If we provide sizes, then we compute predictive samples</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TracePred.corresponding_plates">
+<span class="sig-name descname"><span class="pre">corresponding_plates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_all</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_train</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TracePred.corresponding_plates" title="Permalink to this definition"></a></dt>
+<dd><p>x_all and x_train are tensors with plates, but the all and training plates
+have different sizes.  This returns two lists of torchdims, representing the
+plates for x_all and x_train.  It also checks that x_all and x_train have
+the same plates.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TracePred.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">varname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sum_discrete</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TracePred.sample" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.traces.TraceQ">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">TraceQ</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platedims</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reparam</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceQ" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.traces.AbstractTrace" title="tpp.traces.AbstractTrace"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractTrace</span></code></a></p>
+<p>Samples a probabilistic program + evaluates log-probability.
+Usually used for sampling the approximate posterior.
+The latents may depend on the data (as in a VAE), but it doesn’t make sense to “sample” data.
+Can high-level latents depend on plated lower-layer latents?  (I think so?)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TraceQ.mean">
+<span class="sig-name descname"><span class="pre">mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceQ.mean" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TraceQ.reduce_plate">
+<span class="sig-name descname"><span class="pre">reduce_plate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceQ.reduce_plate" title="Permalink to this definition"></a></dt>
+<dd><p>We may want an approximate posterior that samples the low-level latents
+plates before the high-level parameters.  We may also want the approximate
+posterior for the parameters to depend on e.g. the sampled values of the
+low-level latents.  As the latents will have a plate dimension that doesn’t
+appear in the parameters, that means we’ll need to reduce along a plate.
+But the user can’t do that easily, because they don’t have access to the
+torchdim Dim for the plate, they only have a string.  The user therefore
+needs to use methods defined on this trace.</p>
+<p>Note that these do not exist on TraceP, because aggregating/mixing along
+a plate in the generative model will break things!</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TraceQ.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_sample</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceQ.sample" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tpp.traces.TraceSample">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">TraceSample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">platesizes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceSample" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tpp.traces.AbstractTrace" title="tpp.traces.AbstractTrace"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractTrace</span></code></a></p>
+<p>Draws samples from P.  Usually just used to sample fake data from the model.
+sizes is a dict mapping platenames to plate sizes</p>
+<p>If we want to draw multiple samples, we use samples.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tpp.traces.TraceSample.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sum_discrete</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.TraceSample.sample" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.traces.check_not_reserved">
+<span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">check_not_reserved</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.check_not_reserved" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.traces.sample">
+<span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platesizes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">varnames</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.sample" title="Permalink to this definition"></a></dt>
+<dd><p>Draw samples from a generative model (with no data).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>P</strong> – The generative model (a function taking a trace).</p></li>
+<li><p><strong>plates</strong> – A dict mapping platenames to integer sizes of that plate.</p></li>
+<li><p><strong>N</strong> – The number of samples to draw</p></li>
+<li><p><strong>varnames</strong> – An iterable of the variables to return</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A dictionary mapping from variable name to sampled value,
+represented as a named tensor (e.g. so that it is suitable
+for use as data).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.traces.split_train_test">
+<span class="sig-prename descclassname"><span class="pre">tpp.traces.</span></span><span class="sig-name descname"><span class="pre">split_train_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T_all</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T_test</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.traces.split_train_test" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-tpp.utils">
+<span id="tpp-utils-module"></span><h2>tpp.utils module<a class="headerlink" href="#module-tpp.utils" title="Permalink to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.chain_logmmexp">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">chain_logmmexp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kprev</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kcurr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.chain_logmmexp" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.chain_reduce">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">chain_reduce</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kprev</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kcurr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.chain_reduce" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.dim2named_tensor">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">dim2named_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.dim2named_tensor" title="Permalink to this definition"></a></dt>
+<dd><p>Converts a torchdim to a named tensor.
+Will fail if duplicated dim names passed in</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.extend_plates_with_named_tensor">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">extend_plates_with_named_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.extend_plates_with_named_tensor" title="Permalink to this definition"></a></dt>
+<dd><p>Extends a plate dict using any named dimensions in <cite>tensor</cite>.
+:param d: dictionary mapping plate name to torchdim Dim.
+:type d: plate dict
+:param tensor: named tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>a plate dict extended with the sizes of the named dimensions in <cite>tensor</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.extend_plates_with_named_tensors">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">extend_plates_with_named_tensors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensors</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.extend_plates_with_named_tensors" title="Permalink to this definition"></a></dt>
+<dd><p>Extends a plate dict using any named dimensions in <cite>tensors</cite>.
+:param d: dictionary mapping plate name to torchdim Dim.
+:type d: plate dict
+:param tensors: an iterable of named tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>a plate dict extended with the sizes of the named dimensions in <cite>tensors</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.extend_plates_with_sizes">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">extend_plates_with_sizes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.extend_plates_with_sizes" title="Permalink to this definition"></a></dt>
+<dd><p>Extends a plate dict using a size dict.
+:param d: dictionary mapping plate name to torchdim Dim.
+:type d: plate dict
+:param size_dict: dictionary mapping plate name to integer size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>a plate dict extended with the sizes in size_dict.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.generic_dims">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">generic_dims</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.generic_dims" title="Permalink to this definition"></a></dt>
+<dd><p>Implements x.dims, which is only defined for torchdim tensors</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.generic_ndim">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">generic_ndim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.generic_ndim" title="Permalink to this definition"></a></dt>
+<dd><p>Implements x.ndim, which is only defined for tensors</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.generic_order">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">generic_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dims</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.generic_order" title="Permalink to this definition"></a></dt>
+<dd><p>Implements x.order(dims), which is only defined for torchdim tensors</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.is_dimtensor">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">is_dimtensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.is_dimtensor" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.logmmexp">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">logmmexp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prev</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kmid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.logmmexp" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.max_dims">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">max_dims</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dims</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.max_dims" title="Permalink to this definition"></a></dt>
+<dd><p>Note that this _keeps_ dims, and maxes over everything else, which
+goes against the usual convention</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.named2dim_tensor">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">named2dim_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.named2dim_tensor" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>d</strong> (<em>dict</em>) – dictionary mapping plate name to torchdim Dim.</p></li>
+<li><p><strong>x</strong> (<em>t.Tensor</em>) – named tensor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A torchdim tensor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.named2dim_tensordict">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">named2dim_tensordict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensordict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.named2dim_tensordict" title="Permalink to this definition"></a></dt>
+<dd><p>Maps named2dim_tensor over a dict of tensors
+:param d: dictionary mapping plate name to torchdim Dim.
+:type d: dict
+:param tensordict: dictionary mapping variable name to named tensor.
+:type tensordict: dict</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>dictionary mapping variable name to torchdim tensor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.ordered_unique">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">ordered_unique</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ls</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.ordered_unique" title="Permalink to this definition"></a></dt>
+<dd><p>Exploits the fact that in Python 3.7&lt;, dict keys retain ordering</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ls</strong> – list with duplicate elements</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of unique elements, in the order they first appeared in ls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.partition_tensors">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">partition_tensors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.partition_tensors" title="Permalink to this definition"></a></dt>
+<dd><p>Partitions a list of tensors into two sets, one containing a given dim_name
+or only has interactions with tensors that have that dim name,
+one that doesn’t</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.platenames2platedims">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">platenames2platedims</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platenames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.platenames2platedims" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.reduce_Ks">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">reduce_Ks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ks_to_sum</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.reduce_Ks" title="Permalink to this definition"></a></dt>
+<dd><p>Fundamental method that sums over Ks</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.singleton_order">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">singleton_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dims</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.singleton_order" title="Permalink to this definition"></a></dt>
+<dd><p>Takes a torchdim tensor and returns a standard tensor.</p>
+<p>x[dims] fails if any dims aren’t present in x.
+This makes a new singleton dimension.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.td_matmul">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">td_matmul</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prev</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Kmid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.td_matmul" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.torchdim_einsum">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">torchdim_einsum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sum_dims</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.torchdim_einsum" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tpp.utils.unify_dims">
+<span class="sig-prename descclassname"><span class="pre">tpp.utils.</span></span><span class="sig-name descname"><span class="pre">unify_dims</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensors</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tpp.utils.unify_dims" title="Permalink to this definition"></a></dt>
+<dd><p>Returns unique ordered list of dims for tensors in args</p>
+</dd></dl>
+
+</section>
+<section id="module-tpp">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-tpp" title="Permalink to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Probabilistic Programming with Massively Parallel Importance Weighting" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="examples.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Laurence Aitchison, Thomas Heap.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

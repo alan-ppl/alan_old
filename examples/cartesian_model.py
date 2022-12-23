@@ -12,18 +12,18 @@ def P(tr):
     tr.sample('obs', tpp.Normal(tr['d'], 0.1))
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param('m_a', t.zeros(3,))
-        self.reg_param('m_b', t.zeros(3,))
-        self.reg_param('m_c', t.zeros(3,))
-        self.reg_param('m_d', t.zeros(3,))
+        self.m_a = nn.Parameter(t.zeros(3,))
+        self.m_b = nn.Parameter(t.zeros(3,))
+        self.m_c = nn.Parameter(t.zeros(3,))
+        self.m_d = nn.Parameter(t.zeros(3,))
 
-        self.reg_param('log_s_a', t.zeros(3,))
-        self.reg_param('log_s_b', t.zeros(3,))
-        self.reg_param('log_s_c', t.zeros(3,))
-        self.reg_param('log_s_d', t.zeros(3,))
+        self.log_s_a = nn.Parameter(t.zeros(3,))
+        self.log_s_b = nn.Parameter(t.zeros(3,))
+        self.log_s_c = nn.Parameter(t.zeros(3,))
+        self.log_s_d = nn.Parameter(t.zeros(3,))
 
 
     def forward(self, tr):

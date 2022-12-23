@@ -64,22 +64,23 @@ def P(tr):
 
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
         #mu_z
-        self.reg_param("m_mu_z", t.zeros(()))
-        self.reg_param("log_theta_mu_z", t.zeros(()))
+        self.m_mu_z = nn.Parameter(t.zeros(()))
+        self.log_theta_mu_z = nn.Parameter(t.zeros(()))
         #psi_z
-        self.reg_param("m_psi_z", t.zeros(()))
-        self.reg_param("log_theta_psi_z", t.zeros(()))
+        self.m_psi_z = nn.Parameter(t.zeros(()))
+        self.log_theta_psi_z = nn.Parameter(t.zeros(()))
         #psi_y
-        self.reg_param("m_psi_y", t.zeros(()))
-        self.reg_param("log_theta_psi_y", t.zeros(()))
+        self.m_psi_y = nn.Parameter(t.zeros(()))
+        self.log_theta_psi_y = nn.Parameter(t.zeros(()))
+
 
         #z
-        self.reg_param("mu", t.zeros((M,d_z)), ['plate_1'])
-        self.reg_param("log_sigma", t.zeros((M, d_z)), ['plate_1'])
+        self.mu = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
+        self.log_sigma = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
 
 
     def forward(self, tr):

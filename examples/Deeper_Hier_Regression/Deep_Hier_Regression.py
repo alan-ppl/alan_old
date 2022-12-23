@@ -65,31 +65,31 @@ def P(tr):
 
 
 
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
         #mu_z1
-        self.reg_param("m_mu_z1", t.zeros(()))
-        self.reg_param("log_theta_mu_z1", t.zeros(()))
+        self.m_mu_z1 = nn.Parameter(t.zeros(()))
+        self.log_theta_mu_z1 = nn.Parameter(t.zeros(()))
         #mu_z2
-        self.reg_param("m_mu_z2", t.zeros((2,)), ['plate_muz2'])
-        self.reg_param("log_theta_mu_z2", t.zeros((2,)), ['plate_muz2'])
+        self.m_mu_z2 = nn.Parameter(t.zeros((2,)), names=('plate_muz2'))
+        self.log_theta_mu_z2 = nn.Parameter(t.zeros((2,)), names=('plate_muz2'))
         #mu_z3
-        self.reg_param("m_mu_z3", t.zeros((2,2)), ['plate_muz2', 'plate_muz3'])
-        self.reg_param("log_theta_mu_z3", t.zeros((2,2)), ['plate_muz2', 'plate_muz3'])
+        self.m_mu_z3 = nn.Parameter(t.zeros((2,2)), names=('plate_muz2', 'plate_muz3'))
+        self.log_theta_mu_z3 = nn.Parameter(t.zeros((2,2)), names=('plate_muz2', 'plate_muz3'))
         #mu_z4
-        self.reg_param("m_mu_z4", t.zeros((2,2,2)), ['plate_muz2', 'plate_muz3', 'plate_muz4'])
-        self.reg_param("log_theta_mu_z4", t.zeros((2,2,2)), ['plate_muz2', 'plate_muz3', 'plate_muz4'])
+        self.m_mu_z4 = nn.Parameter(t.zeros((2,2,2)), names=('plate_muz2', 'plate_muz3', 'plate_muz4'))
+        self.log_theta_mu_z4 = nn.Parameter(t.zeros((2,2,2)), names=('plate_muz2', 'plate_muz3', 'plate_muz4'))
         #psi_z
-        self.reg_param("m_psi_z", t.zeros(()))
-        self.reg_param("log_theta_psi_z", t.zeros(()))
+        self.m_psi_z = nn.Parameter(t.zeros(()))
+        self.log_theta_psi_z = nn.Parameter(t.zeros(()))
         #psi_y
-        self.reg_param("m_psi_y", t.zeros(()))
-        self.reg_param("log_theta_psi_y", t.zeros(()))
+        self.m_psi_y = nn.Parameter(t.zeros(()))
+        self.log_theta_psi_y = nn.Parameter(t.zeros(()))
 
         #z
-        self.reg_param("mu", t.zeros((2, 2, 2, M,d_z)), ['plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z'])
-        self.reg_param("log_sigma", t.zeros((2, 2, 2, M, d_z)), ['plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z'])
+        self.mu = nn.Parameter(t.zeros((2, 2, 2, M,d_z)), names = ('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z'))
+        self.log_sigma = nn.Parameter(t.zeros((2, 2, 2, M,d_z)), names = ('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z'))
 
 
     def forward(self, tr):
