@@ -1,64 +1,78 @@
-"""
-A bunch of functions to do useful things with dicts of samples and weights.
-"""
 import torch as t
-from .utils import *
+
+def dictmap(f, d):
+    return {varname: f(val) for (varname, val) in d.items()}
 
 def map_or_apply(f):
-    def inner(sample_or_dict, w=None):
+    """
+    Converts a function that just takes a tensor/tuple to a function that could
+    take a tensor/tuple (and does the same thing) or could take a dict, and maps
+    the function over a dictionary.
+    """
+    def inner(sample_or_dict):
         if isinstance(sample_or_dict, dict):
-            assert w is None
-            return {varname: (f(*val) if isinstance(val, tuple) else f(val)) for (varname, val) in sample_or_dict.items()}
+            return dictmap(f, sample_or_dict)
         else:
-            return f(sample_or_dict, w)
+            return f(sample_or_dict)
     return inner
 
-def Ef(f):
-    def inner(sample, w=None):
-        assert isinstance(sample, t.Tensor)
-        if w is None:
-            w = 1/sample.size('N')
-        dim = 'N' if w is None else 'K'
-        return (w.align_as(sample) * f(sample)).sum(dim)
-    return map_or_apply(inner)
+def opt_weights(f):
+    """
+    Takes a function that applies only to a t.Tensor, and converts it to a function
+    that could take a t.Tensor (and does the same thing), or could take a two-element
+    tuple, and applies the function to the first element of the tuple (the sample)
+    while keeping the second element of the tuple (the weights) the same.
+    """
+    def inner(sample_and_opt_weights):
+        if isinstance(sample_and_opt_weights, tuple):
+            assert 2==len(sample_and_opt_weights)
+            w = sample_and_opt_weights[1]
+            sample = sample_and_opt_weights[0]
+            return (f(sample), w)
+        else:
+            return f(sample_and_opt_weights)
+    return inner
 
-mean_raw     = lambda x: x
-mean2_raw    = lambda x: x**2
-p_lower_raw  = lambda value: lambda x: (x < value).to(dtype=x.dtype)
-p_higher_raw = lambda value: lambda x: (x > value).to(dtype=x.dtype)
+def map_or_apply_opt_weights(f):
+    return map_or_apply(opt_weights(f))
 
-mean     = Ef(mean_raw)
-mean2    = Ef(mean2_raw)
-p_lower  = lambda value: Ef(p_lower_raw(value))
-p_higher = lambda value: Ef(p_higher_raw(value))
+@map_or_apply_opt_weights
+def identity(sample):
+    return sample
+@map_or_apply_opt_weights
+def square(sample):
+    return sample**2
+@map_or_apply_opt_weights
+def log(sample):
+    return t.log(sample)
+lower  = lambda value: map_or_apply_opt_weights(lambda x: (x < value).to(dtype=x.dtype))
+higher = lambda value: map_or_apply_opt_weights(lambda x: (x > value).to(dtype=x.dtype))
 
-
-
-
-"""
-Relevant quantites that aren't plain moments
-"""
 @map_or_apply
-def var(sample, w):
-    return mean2(sample, w) - mean(sample, w)**2
+def mean(sample_and_opt_weights):
+    if isinstance(sample_and_opt_weights, tuple):
+        assert 2==len(sample_and_opt_weights)
+        w = sample_and_opt_weights[1]
+        sample = sample_and_opt_weights[0]
+    else:
+        sample = sample_and_opt_weights
+        w = 1/sample.size('N')
+    dim = 'N' if (w is None) else 'K'
+    return (w.align_as(sample) * sample).sum(dim)
+
 @map_or_apply
-def std(sample, w): 
-    return var(sample, w).sqrt()
+def var(x):
+    return mean(square(x)) - square(mean(x))
 @map_or_apply
-def ess(sample, w=None):
-    assert isinstance(sample, t.Tensor)
-    if w is None:
-        raise Exception("ESS only makes sense for importance weights.  But here you're trying to compute ESS on just samples.")
+def std(x):
+    return var(x).sqrt()
+@map_or_apply
+def stderr(x):
+    return (var(x) / ess(x)).sqrt()
+
+@map_or_apply
+def ess(sample_and_opt_weights):
+    assert isinstance(sample_and_opt_weights, tuple)
+    assert 2==len(sample_and_opt_weights)
+    w = sample_and_opt_weights[1]
     return 1/((w**2).sum('K'))
-
-"""
-Standard errors (which only make sense for plain moments)
-Not subtracting 1 from the ESS?
-"""
-def stderr(f):
-    return map_or_apply(lambda sample, w: (var(f(sample), w) / ess(sample, w)).sqrt())
-
-stderr_mean     = stderr(mean_raw)
-stderr_mean2    = stderr(mean2_raw)
-stderr_p_lower  = lambda value: stderr(p_lower_raw(value))
-stderr_p_higher = lambda value: stderr(p_higher_raw(value))
