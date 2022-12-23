@@ -13,7 +13,7 @@ class NatParam(QModule):
 
         self.varnames = tuple(f'n{i}' for i in range(len(means)))
         for (varname, nat) in zip(self.varnames, nats):
-            self.reg_param(varname, nat)
+            self.register_buffer(varname, nat)
 
     @property
     def nats(self):
@@ -61,7 +61,7 @@ class NatQ(QModule):
         if 0!=len(keys_in_samples_but_not_dists):
             raise Exception("Some variables ({keys_in_samples_but_not_dists}) were given in samples but not dists.  Most likely, these variables will be sampled from the prior.")
 
-        self.natparams = {key: NatParam(dists[key], samples[key]) for key in dists}
+        self.natparams = nn.ModuleDict({key: NatParam(dists[key], samples[key]) for key in dists})
         
     def __call__(self, tr):
         for key, natparam in self.natparams.items():

@@ -33,20 +33,21 @@ class QModule(nn.Module):
         super().register_buffer(name, tensor)
         self._platedims  = extend_plates_with_named_tensor(self._platedims, tensor)
 
-    def register_module(self, name, mod):
-        super().register_mod(name, mod)
+    def __setattr__(self, name, mod):
+        super().__setattr__(name, mod)
 
-        for child in mod.modules(): #Iteration the module itself.
-            if isinstance(child, Q):
-                for key in child._platedims:
-                    if key in self._platedims:
-                        #if key in self, then the dim in child will be inconsistent
-                        #we replace the dim in child with the dim in self.
-                        child._platedims[key] = self._platedims[key]
-                    else:
-                        #if key not in self, then put it in self, so that we ensure
-                        #consistency with other modules.
-                        self._platedims[key] = child._platedims[key]
+        if isinstance(mod, nn.Module):
+            for child in mod.modules(): #Iteration the module itself.
+                if isinstance(child, QModule):
+                    for key in child._platedims:
+                        if key in self._platedims:
+                            #if key in self, then the dim in child will be inconsistent
+                            #we replace the dim in child with the dim in self.
+                            child._platedims[key] = self._platedims[key]
+                        else:
+                            #if key not in self, then put it in self, so that we ensure
+                            #consistency with other modules.
+                            self._platedims[key] = child._platedims[key]
 
     def __getattr__(self, name):
         if '_parameters' in self.__dict__:

@@ -8,6 +8,7 @@ Naming:
 
 Error messages:
   plate names and var names don't overlap!
+  dimensions that are neither plates nor Ks
 
 Tests:
   Predictive posteriors
