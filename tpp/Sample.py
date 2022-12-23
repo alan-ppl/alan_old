@@ -175,23 +175,17 @@ class Sample():
 
         result = {}
         for i in range(len(ws)):
-
-            #sample = dim2named_tensor(samples[i], dimss[i])
             sample = samples[i]
-
-
-            # w = ws[i].rename(*[repr(dim) for dim in dimss[i]])
             w = ws[i][dimss[i]]
 
-            #Replace arbitrary K with general K.
+            #Change sample, w from dim2named, replacing K_varname with 'K'
             K_dim = next(dim for dim in dimss[i] if self.is_K(dim))
             K_name = repr(K_dim)
-            K = dims(1)
-            # K_dict = {K_name: 'K'}
-            # sample = sample.rename(**K_dict)
-            # w      = w.rename(**K_dict)
-            sample = sample.order((K_dim,))[K]
-            w = w.order((K_dim,))[K]
+            replacement_dict = {K_name: 'K'}
+
+            sample = dim2named_tensor(sample).rename(**replacement_dict)
+            w      = dim2named_tensor(w).rename(**replacement_dict)
+
             result[var_names[i]] = (sample, w)
 
         return result

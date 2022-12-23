@@ -1,6 +1,6 @@
 import torch as t
 import torch.autograd.forward_ad as fwAD
-from tpp.dist import *
+import tpp
 
 Ex     = lambda x: x
 Ex2    = lambda x: x**2
@@ -70,17 +70,17 @@ class AbstractNEFConversions(AbstractConversions):
     conv2mean = identity
     mean2conv = identity
 class BernoulliConversions(AbstractNEFConversions):
-    dist = Bernoulli
+    dist = tpp.Bernoulli
     def test_conv(self, N):
         return (t.rand(N),)
 
 class PoissonConversions(AbstractNEFConversions):
-    dist = Poisson
+    dist = tpp.Poisson
     def test_conv(self, N):
         return (t.randn(N).exp(),)
 
 class NormalConversions(AbstractConversions):
-    dist = Normal
+    dist = tpp.Normal
     sufficient_stats = (Ex, Ex2)
     def conv2mean(self, loc, scale):
         Ex  = loc
@@ -104,7 +104,7 @@ class NormalConversions(AbstractConversions):
         return (t.randn(N), t.randn(N).exp())
 
 class ExponentialConversions(AbstractConversions):
-    dist = Exponential
+    dist = tpp.Exponential
     sufficient_stats = (Ex, Ex2)
     def conv2mean(self, mean):
         return (t.reciprocal(mean),)
@@ -118,7 +118,7 @@ class ExponentialConversions(AbstractConversions):
         return (t.randn(N).exp(),)
 
 class DirichletConversions(AbstractConversions):
-    dist = Dirichlet
+    dist = tpp.Dirichlet
     sufficient_stats = (Elogx,)
 
     def nat2conv(self, nat):
@@ -151,7 +151,7 @@ class DirichletConversions(AbstractConversions):
         return (t.randn(N, 4).exp(),)
 
 class GammaConversions(AbstractConversions):
-    dist = Gamma
+    dist = tpp.Gamma
     sufficient_stats = (Elogx, Ex)
 
     def conv2nat(self, alpha, beta):
@@ -183,6 +183,15 @@ class GammaConversions(AbstractConversions):
     def test_conv(self, N):
         return (t.randn(N).exp(),t.randn(N).exp())
 
+conv_dict = {
+    tpp.Bernoulli: BernoulliConversions(),
+    tpp.Poisson: PoissonConversions(),
+    tpp.Normal: NormalConversions(),
+    tpp.Exponential: ExponentialConversions(),
+    tpp.Dirichlet: DirichletConversions(),
+    tpp.Gamma: GammaConversions(),
+}
+    
 
 if __name__ == "__main__":
     N = 10
