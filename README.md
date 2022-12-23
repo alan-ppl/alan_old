@@ -124,11 +124,11 @@ We show in [Conditioning On Data](#using-pre-existing-data) how to load weights 
 The proposal $Q$ is defined as a class inheriting `tpp.Q`. The learnable parameters are defined in `__init__` and in `forward` we define how the latents are sampled and interact.
 
 ```py
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param('m_mu', t.zeros(5))
-        self.reg_param('log_s_mu', t.zeros(5))
+        self.m_mu = nn.Parameter(t.zeros(5))
+        self.log_s_mu = nn.Parameter(t.zeros(5))
 
     def forward(self, tr):
         tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp()))
@@ -137,14 +137,14 @@ as with $P$ the call to sample can take a plate argument, or the learnable param
 
 ```py
 sizes = {'plate_1':N, 'plate_2':M}
-class Q(tpp.Q):
+class Q(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.reg_param("m_mu", t.zeros(()))
-        self.reg_param("log_s_a", t.zeros(()))
+        self.m_mu = nn.Parameter(t.zeros(()))
+        self.log_s_mu = nn.Parameter(t.zeros(()))
 
-        self.reg_param("m_phi", t.zeros((N)), ['plate_1])
-        self.reg_param("log_s_phi", t.zeros((N)), ['plate_1])
+        self.m_phi = nn.Parameter(t.zeros((N)), names=('plate_1'))
+        self.log_s_phi = nn.Parameter(t.zeros((N)), names=('plate_1'))
 
     def forward(self, tr):
         tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp()))
