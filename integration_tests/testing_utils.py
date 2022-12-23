@@ -15,7 +15,7 @@ def test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001):
     int_weights = int_model.weights(1000)
     post_v  = pp.var(int_weights)['theta']
     post_m  = pp.mean(int_weights)['theta']
-    post_m2 = pp.mean2(int_weights)['theta']
+    post_m2 = pp.mean(pp.square(int_weights))['theta']
 
     ev = int_model.elbo(1000, reparam=False)
 
@@ -27,10 +27,10 @@ def test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001):
         weights = model.weights(K)
 
         iw_m  = pp.mean(weights)['theta']
-        iw_m2 = pp.mean2(weights)['theta']
+        iw_m2 = pp.mean(pp.square(weights))['theta']
 
-        se_m  = pp.stderr_mean(weights)['theta']
-        se_m2 = pp.stderr_mean2(weights)['theta']
+        se_m  = pp.stderr(weights)['theta']
+        se_m2 = pp.stderr(pp.square(weights))['theta']
 
         within_stderrs(post_m, iw_m, se_m)
         within_stderrs(post_m2, iw_m2, se_m2)
