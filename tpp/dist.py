@@ -62,8 +62,9 @@ class TorchDimDist():
     """
     self.dist and self.dims are exposed!
     """
-    def __init__(self, dist_name, *args, **kwargs):
+    def __init__(self, dist_name, *args, extra_log_factor=lambda x: 0, **kwargs):
         self.dist_name = dist_name
+        self.extra_log_factor = extra_log_factor
         param_ndim, self.result_ndim = param_event_ndim[dist_name]
         for kwarg in kwargs:
             if kwarg not in param_ndim:
@@ -117,7 +118,7 @@ class TorchDimDist():
         if self.unnamed_batch_dims > 0:
             log_prob = log_prob.sum()
 
-        return log_prob
+        return log_prob + self.extra_log_factor(x)
 
     def log_prob_P(self, x, Kdim):
         return self.log_prob(x)

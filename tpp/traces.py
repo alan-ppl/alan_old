@@ -62,8 +62,9 @@ class TraceSample(AbstractTrace):
 
         self.reparam = False
 
-        self.data                 = {}
-        self.samples              = {}
+        self.samples = {}
+        self.logp    = {}
+        self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
     def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
         self.check(key, plates, T)
@@ -72,7 +73,9 @@ class TraceSample(AbstractTrace):
             dist.set_Tdim(self.platedims[T])
 
         sample_dims = [*self.Ns, *platenames2platedims(self.platedims, plates)]
-        self.samples[key] = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        self.samples[key] = sample
+        self.logp[key] = dist.log_prob(sample)
 
 def sample(P, platesizes=None, N=None, varnames=None):
     """Draw samples from a generative model (with no data).

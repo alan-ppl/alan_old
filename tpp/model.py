@@ -3,27 +3,8 @@ import torch.nn as nn
 from .traces import TraceQ, TraceP, TracePred
 from .Sample import Sample
 from .utils import *
-
-class QModule(nn.Module):
-    def get_named_tensor(self, name):
-        if '_parameters' in self.__dict__:
-            _parameters = self.__dict__['_parameters']
-            if name in _parameters:
-                return _parameters[name]
-        if '_buffers' in self.__dict__:
-            _buffers = self.__dict__['_buffers']
-            if name in _buffers:
-                return _buffers[name]
-        return None
-
-    def __getattr__(self, name):
-        tensor = self.get_named_tensor(name)
-        if tensor is not None:
-            if not hasattr(self, "_platedims"):
-                raise Exception("Cannot return parameter or buffer, as self._platedims is not set.  To set self._platedims, you need to pass Q to a Model.")
-            return named2dim_tensor(self._platedims, tensor)
-        else:
-            return super().__getattr__(name)
+from .ml_updates2 import ML
+from .qmodule import QModule
 
 class Model(nn.Module):
     """Model class.
@@ -125,6 +106,14 @@ class Model(nn.Module):
         """
         return self._sample(K, False, data).rws()
 
+    def ml_update(self, K, lr, data=None):
+        elbo = self._sample(K, False, data).elbo()
+        elbo.backward()
+        for mod in self.Q.modules():
+            if isinstance(mod, ML):
+                mod.update(lr)
+        self.zero_grad()
+
     def weights(self, K, data=None):
         """Compute marginal importance weights
         Args:
@@ -215,3 +204,5 @@ class Model(nn.Module):
             result[varname] = (ll_all - ll_train).mean(N)
 
         return result
+
+
