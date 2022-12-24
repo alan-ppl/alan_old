@@ -20,7 +20,7 @@ class QModule(nn.Module):
         tensor = self.get_named_tensor(name)
         if tensor is not None:
             if not hasattr(self, "_platedims"):
-                raise Exception("Cannot return parameter or buffer, as self._platedims is not set.  This happens when Q is given to Model")
+                raise Exception("Cannot return parameter or buffer, as self._platedims is not set.  To set self._platedims, you need to pass Q to a Model.")
             return named2dim_tensor(self._platedims, tensor)
         else:
             return super().__getattr__(name)

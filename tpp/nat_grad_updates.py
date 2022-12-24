@@ -13,32 +13,28 @@ class NatParam(QModule):
 
         self.varnames = tuple(f'n{i}' for i in range(len(means)))
         for (varname, nat) in zip(self.varnames, nats):
-            self.register_buffer(varname, nat)
-
-        for varname in self.varnames:
-            self.get_named_tensor(varname).requires_grad_()
+            self.register_parameter(varname, nn.Parameter(nat))
 
     @property
-    def nats(self):
+    def dim_nats(self):
         return [getattr(self, varname) for varname in self.varnames]
 
+    @property
+    def named_nats(self):
+        return [self.get_named_tensor(varname) for varname in self.varnames]
+
     def dist(self):
-        return self.conv.dist(*self.conv.nat2conv(*self.nats))
+        return self.conv.dist(*self.conv.nat2conv(*self.dim_nats))
 
     def update(self, lr):
-        print(self.tensor_getattr('n0').shape)
         with t.no_grad():
-            old_nats  = self.nats
+            old_nats  = self.named_nats
             old_means = self.conv.nat2mean(*old_nats) #This is the efficient direction.
             new_means = [mean + lr * nat.grad for (nat, mean) in zip(old_nats, old_means)]
-            new_nats  = self.conv.mean2nat(*old_nats)
+            new_nats  = self.conv.mean2nat(*new_means)
             for (varname, new_nat) in zip(self.varnames, new_nats):
                 nat = self.get_named_tensor(varname)
-                nat.data.copy_(new_nat.align_as(nat))
-
-    def zero_grad(self):
-        for nat in self.nats:
-            nat.zero_grad()
+                nat.data.copy_(new_nat)
             
 
 class NatQ(QModule):

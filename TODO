@@ -3,6 +3,8 @@ Papers:
   ML paper.
   MCMC paper.
 
+torch.no_grad / detach e.g. for sampling
+
 Naming:
   Kdim etc.
 
