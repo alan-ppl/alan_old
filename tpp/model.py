@@ -137,6 +137,15 @@ class Model(nn.Module):
         """
         return self._sample(K, False, data).weights()
 
+    def moments(self, K, fs, data=None):
+        """Compute marginal importance weights
+        Args:
+            K:  the number of samples drawn for each latent variable.
+            fs: 
+        Returns:
+        """
+        return self._sample(K, False, data).moments(fs)
+
     def importance_samples(self, K, N, data=None):
         """Compute posterior samples
         Args:

@@ -1,3 +1,7 @@
+Flexible ML approximate posteriors:
+  distributions (e.g. tpp.Normal) take extra_log_factors which are just summed.
+    
+
 Papers:
   Stats paper.
   ML paper.

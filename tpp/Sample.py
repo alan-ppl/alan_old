@@ -152,6 +152,32 @@ class Sample():
         q_obj = self.tensor_product(detach_p=True)
         return p_obj, q_obj
 
+    def moments(self, fs):
+        """
+        fs: iterable containing (f, ["a", "b"]) pairs.
+        """
+        if callable(fs[0]):
+            fs = (fs,)
+
+        ms        = [(f(*[self.trp[v] for v in vs]) if isinstance(vs, tuple) else f(self.trp[vs])) for (f, vs) in fs]
+        #Keep only platedims.
+        dimss     = [[dim for dim in generic_dims(m) if dim in self.platedims] for m in ms]
+        sizess    = [[dim.size for dim in dims] for dims in dimss]
+        named_Js  = [t.zeros(sizes, dtype=m.dtype, device=m.device, requires_grad=True) for (m, sizes) in zip(ms, sizess)]
+        dimss     = [[*dims, Ellipsis] for dims in dimss]
+        dim_Js    = [J[dims] for (J, dims) in zip(named_Js, dimss)]
+        factors   = [m*J for (m, J) in zip(ms, dim_Js)]
+
+        #Compute result with torchdim Js
+        result = self.tensor_product(extra_log_factors=factors)
+        #But differentiate wrt non-torchdim Js
+        named_Es = list(t.autograd.grad(result, named_Js))
+
+        if callable(fs[0]):
+            named_Es = named_Es[0]
+
+        return named_Es
+
     def weights(self):
         """
         Produces normalized weights for each latent variable.
