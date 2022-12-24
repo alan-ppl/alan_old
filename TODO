@@ -1,6 +1,24 @@
-Flexible ML approximate posteriors:
-  distributions (e.g. tpp.Normal) take extra_log_factors which are just summed.
-    
+ML approximate posteriors:
+  There are a bunch (conditional) distributions that can be fitted using maximum likelihood from importance weighted samples (which are converted to mean parameters.
+  These include simple exponential family distributions, like the Normal.
+  But also e.g. linear / logistic regression.
+  It would be great if we could learn approximate posteriors based on importance weighted samples, as we can learn _very_ quickly.
+
+  Approach:
+    We want to avoid having to map variable names and MLModules.
+    Instead, compute importance weighted moments on MLModules using the log-determinant trick.
+    Problem: the moments required for the log-determinant trick are only available once we have the final sample, but the final sample is associated with a distribution, not an MLModule.
+    Solution: 
+      The distribution gets a function that takes the sample and computes the extra_log_factors (which also requires Js).
+      log_prob adds these extra_log_factors in (as their value is always zero).
+      Then we backprop, and the moments appear as gradients on the Js held by the MLModules.
+      This also automatically works if we use the same approximate posterior several times (though it is unclear why you would do this).
+    Problem: how to initialize with prior moments.
+    Solution: 
+      Sample from prior (need to add log_prob to TracePrior).
+      Define a new Trace that: 
+        takes as input prior samples and Q
+        computes the extra_log_factors associated with the prior samples, and adds them to logP
 
 Papers:
   Stats paper.
