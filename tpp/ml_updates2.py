@@ -28,6 +28,8 @@ class ML(QModule):
         for Jname in self.Jnames:
             self.register_parameter(Jname, nn.Parameter(t.zeros(shape).rename(*names)))
 
+        self.platenames = tuple(platesizes.keys())
+
     @property
     def dim_means(self):
         return [getattr(self, meanname) for meanname in self.meannames]
@@ -54,6 +56,9 @@ class ML(QModule):
         return self.dist(*self.mean2conv(*self.dim_means), extra_log_factor=self.extra_log_factor)
 
     def extra_log_factor(self, sample):
+        #Check the dimensions of sample are as expected.
+        if len(sample.dims) != len(self.platenames) + 1:
+            raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML proposals/approximate posteriors")
         #The factor comes in through log Q, so must be negated!
         return -sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
 
