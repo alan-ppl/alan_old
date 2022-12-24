@@ -3,6 +3,12 @@ from functorch.dim import Tensor, Dim
 
 #### Utilities for working with torchdims
 
+def sum_non_dim(x):
+    """
+    Sums over all non-torchdim dimensions.
+    """
+    return x.sum() if x.ndim > 0 else x
+    
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
 

@@ -2,6 +2,7 @@ import torch as t
 import torch.nn as nn
 from .exp_fam_conversions import conv_dict
 from .dist import *
+from .utils import *
 from .qmodule import QModule
 
 def identity(x):
@@ -54,7 +55,7 @@ class ML(QModule):
 
     def extra_log_factor(self, sample):
         #The factor comes in through log Q, so must be negated!
-        return -sum(J*f(sample) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
+        return -sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
 
     def init(self):
         with t.no_grad():
