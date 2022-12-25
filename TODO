@@ -1,6 +1,10 @@
 Compute objective
   KL(Q reweighted towards P| Q)
+
 Cleanup ML approximate posteriors
+  MLModules for P too?
+    Model sets a flag indicating we're in P and therefore we should use + (not -) extra_log_factor.
+    What happens if an MLModule turns up in both P and Q?
   Initialize ML approximate posteriors with prior 
     Solution: 
       Sample from prior.

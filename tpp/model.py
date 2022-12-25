@@ -3,7 +3,7 @@ import torch.nn as nn
 from .traces import TraceQ, TraceP, TracePred
 from .Sample import Sample
 from .utils import *
-from .ml_updates2 import ML
+from .ml_updates import ML
 from .qmodule import QModule
 
 class Model(nn.Module):

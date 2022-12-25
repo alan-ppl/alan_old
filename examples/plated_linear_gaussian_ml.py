@@ -14,16 +14,28 @@ def P(tr):
     tr.sample('d',   tpp.Normal(tr['c'], 1), plates='plate_2')
     tr.sample('obs', tpp.Normal(tr['d'], 0.01), plates='plate_3')
 
+class Q(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.Qa = tpp.MLNormal()
+        self.Qb = tpp.MLNormal()
+        self.Qc = tpp.MLNormal({'plate_1': J})
+        self.Qd = tpp.MLNormal({'plate_1': J, 'plate_2': M})
+
+    def forward(self, tr):
+        tr.sample('a', self.Qa())
+        tr.sample('b', self.Qb())
+        tr.sample('c', self.Qc())
+        tr.sample('d', self.Qd())
+
 data = tpp.sample(P, platesizes=platesizes, varnames=('obs',))
 prior_samples = tpp.sample(P, platesizes=platesizes, N=100)
 
-dists = {'a': tpp.Normal, 'b': tpp.Normal, 'c': tpp.Normal, 'd': tpp.Normal}
-Q = tpp.MLQ(prior_samples, dists, data=data)
+q = Q()
 
-model = tpp.Model(P, Q, {'obs': data['obs']})
+model = tpp.Model(P, q, {'obs': data['obs']})
 
 K=100
 for i in range(20):
     print(model.elbo(K).item())
-    w = model.weights(K)
-    Q.update(0.2, w)
+    model.ml_update(K, 0.2)
