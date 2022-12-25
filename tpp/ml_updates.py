@@ -8,6 +8,27 @@ from .qmodule import QModule
 def identity(x):
     return x
 
+def tuple_assert_allclose(xs, ys):
+    for (x, y) in zip(xs, ys):
+        assert t.allclose(x, y, atol=1E-5)
+
+def grad_digamma(x):
+    return t.special.polygamma(1, x)
+
+def inverse_digamma(y):
+    """
+    Solves y = digamma(x)
+    or computes x = digamma^{-1}(y)
+    Appendix C in https://tminka.github.io/papers/dirichlet/minka-dirichlet.pdf
+    Works very well assuming the x's you start with are all positive
+    """
+    x_init_for_big_y = y.exp()+0.5
+    x_init_for_small_y = -t.reciprocal(y-t.digamma(t.ones(())))
+    x = t.where(y>-2.22, x_init_for_big_y, x_init_for_small_y)
+    for _ in range(6):
+        x = x - (t.digamma(x) - y)/grad_digamma(x)
+    return x
+
 class ML(QModule):
     def __init__(self, platesizes=None, sample_shape=(), init_conv=None):
         super().__init__()
@@ -50,7 +71,7 @@ class ML(QModule):
 
     def check_J_zeros(self):
         if not all((J==0).all() for J in self.named_Js):
-            raise Exception("One of the Js is non-zero, presumably this is because ...")
+            raise Exception("One of the Js is non-zero. Presumably this is because one of the Js has been given to an optimizer as a parameter.  The solution is to use model.parameters() to extract parameters, as this avoids Js, rather than e.g. Q.parameters()")
 
     def forward(self):
         return self.dist(*self.mean2conv(*self.dim_means), extra_log_factor=self.extra_log_factor)
@@ -72,6 +93,12 @@ class ML(QModule):
         with t.no_grad():
             for (m, g) in zip(self.named_means, self.named_grads):
                 m.data.mul_(1-lr).add_(g.align_as(m), alpha=lr)
+
+    @classmethod
+    def test(cls, N):
+        conv = cls.test_conv(N)
+        mean = cls.conv2mean(*conv)
+        tuple_assert_allclose(conv, cls.mean2conv(*mean))
 
 class MLNormal(ML):
     dist = staticmethod(Normal)
@@ -103,13 +130,15 @@ class ML_NEF(ML):
     sufficient_stats = (identity,)
     conv2mean = identity_conv
     mean2conv = identity_conv
-class BernoulliConversions(ML_NEF):
+class MLBernoulli(ML_NEF):
     dist = staticmethod(Bernoulli)
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.rand(N),)
-class PoissonConversions(ML_NEF):
+class MLPoisson(ML_NEF):
     dist = staticmethod(Poisson)
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.randn(N).exp(),)
 
 class MLExponential(ML):

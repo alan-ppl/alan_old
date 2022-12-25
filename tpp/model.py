@@ -106,14 +106,6 @@ class Model(nn.Module):
         """
         return self._sample(K, False, data).rws()
 
-    def ml_update(self, K, lr, data=None):
-        elbo = self._sample(K, False, data).elbo()
-        elbo.backward()
-        for mod in self.Q.modules():
-            if isinstance(mod, ML):
-                mod.update(lr)
-        self.zero_grad()
-
     def weights(self, K, data=None):
         """Compute marginal importance weights
         Args:
@@ -205,4 +197,19 @@ class Model(nn.Module):
 
         return result
 
+    def ml_update(self, K, lr, data=None):
+        elbo = self._sample(K, False, data).elbo()
+        elbo.backward()
+        for mod in self.Q.modules():
+            if isinstance(mod, ML):
+                mod.update(lr)
+        self.zero_grad()
+
+    def parameters(self):
+        all_params = set(super().parameters())
+        Js = []
+        for mod in self.modules():
+            if isinstance(mod, ML):
+                Js = Js + mod.named_Js
+        return all_params.difference(Js)
 

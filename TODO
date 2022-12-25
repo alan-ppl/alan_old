@@ -2,18 +2,28 @@ Compute objective
   KL(Q reweighted towards P| Q)
 
 Cleanup ML approximate posteriors
+  Linear regression (GLM regression).
   MLModules for P too?
     Model sets a flag indicating we're in P and therefore we should use + (not -) extra_log_factor.
+    Asserts that no plates when you're using it as P.
     What happens if an MLModule turns up in both P and Q?
+  Test conv2mean by sampling
   Initialize ML approximate posteriors with prior 
     Solution: 
       Sample from prior.
       Define a new Trace that: 
         takes as input prior samples and Q
         computes the extra_log_factors associated with the prior samples, and adds them to logP
-  Model.parameters should not return Js
-  Other distributions in exp_fam_conversions.py
-  Linear regression (GLM regression).
+
+MCMC:
+  ...
+
+Stein:
+  Do Stein separately along each K.
+  We compute the marginal probability, summing over all the other particles.
+  These look alot like the marginal importance weights.
+  There is a key difference thought: marginal importance weights are normalized, which means there is implicitly a normalizer that depends on the chosen particles.
+  May need to remove this normalizer by adding log P_tmc back in.
 
 Think about tilted distributions.
 
