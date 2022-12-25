@@ -203,7 +203,14 @@ class Model(nn.Module):
         for mod in self.Q.modules():
             if isinstance(mod, ML):
                 mod.update(lr)
-        self.zero_grad()
+
+        #model.zero_grad() uses model.parameters(), and we have rewritten
+        #model.parameters() to not return Js.  In contrast, we need to 
+        #zero gradients on the Js.
+        if isinstance(self.P, nn.Module):
+            self.P.zero_grad()
+        if isinstance(self.Q, nn.Module):
+            self.Q.zero_grad()
 
     def parameters(self):
         all_params = set(super().parameters())
