@@ -254,3 +254,33 @@ class InverseGammaMixin(AbstractMixin):
     def test_conv(N):
         return (t.randn(N).exp(),t.randn(N).exp())
 
+def vec_square(x):
+    return x[:, None] @ x[None, :]
+class MvNormalMixin(AbstractMixin):
+    dist = staticmethod(Gamma)
+    sufficient_stats = (identity,vec_square)
+
+    @staticmethod
+    def conv2nat(mu, S):
+        P = t.inverse(S)
+        return (P@mu, -0.5*P)
+    @staticmethod
+    def nat2conv(Pmu, minus_half_P):
+        P = -2*minus_half_P
+        S = t.inverse(P)
+        return (S@Pmu, S)
+
+    @staticmethod
+    def conv2mean(mu, S):
+        return (mu, S + vec_square(mu))
+    @staticmethod
+    def mean2conv(Ex, Ex2):
+        return (Ex, Ex2 - vec_square(Ex))
+
+    @staticmethod
+    def test_conv(N):
+        mu = t.randn(N)
+        V = t.randn(N, N)
+        S = V @ V / N
+        return (mu, S)
+

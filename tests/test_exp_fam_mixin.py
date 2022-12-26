@@ -10,3 +10,4 @@ if __name__ == "__main__":
     BetaMixin.test(N)
     GammaMixin.test(N)
     InverseGammaMixin.test(N)
+    MvNormalMixin.test(N)
