@@ -1,7 +1,6 @@
 import torch as t
 import torch.autograd.forward_ad as fwAD
 from .dist import *
-from .postproc import identity, square, log
 
 def grad_digamma(x):
     return t.special.polygamma(1, x)
@@ -24,7 +23,7 @@ def tuple_assert_allclose(xs, ys):
     for (x, y) in zip(xs, ys):
         assert t.allclose(x, y, atol=1E-5)
 
-class AbstractConversions():
+class AbstractMixin():
     """
     Must provide methods interconvert natural <-> conventional <-> mean parameters, i.e.
     self.conv2nat(self, *conv)
@@ -37,26 +36,31 @@ class AbstractConversions():
     parameters
     """
     #Interchange mean and natural parameters by going through conventional parameters
-    def mean2nat(self, *mean):
-        return self.conv2nat(*self.mean2conv(*mean))
-    def nat2mean(self, *nat):
-        return self.conv2mean(*self.nat2conv(*nat))
+    @classmethod
+    def mean2nat(cls, *mean):
+        return cls.conv2nat(*cls.mean2conv(*mean))
+    @classmethod
+    def nat2mean(cls, *nat):
+        return cls.conv2mean(*cls.nat2conv(*nat))
 
-    def test(self, N):
-        conv = self.test_conv(N)
-        mean = self.conv2mean(*conv)
-        nat  = self.conv2nat(*conv)
+    @classmethod
+    def test(cls, N):
+        conv = cls.test_conv(N)
+        mean = cls.conv2mean(*conv)
+        nat  = cls.conv2nat(*conv)
 
-        tuple_assert_allclose(conv, self.mean2conv(*mean))
-        tuple_assert_allclose(conv, self.nat2conv(*nat))
+        tuple_assert_allclose(conv, cls.mean2conv(*mean))
+        tuple_assert_allclose(conv, cls.nat2conv(*nat))
 
-        tuple_assert_allclose(nat,  self.mean2nat(*mean))
-        tuple_assert_allclose(mean, self.nat2mean(*nat))
+        tuple_assert_allclose(nat,  cls.mean2nat(*mean))
+        tuple_assert_allclose(mean, cls.nat2mean(*nat))
 
-
-def identity_conv(self, *args):
+@staticmethod
+def identity_conv(*args):
     return args
-class AbstractNEFConversions(AbstractConversions):
+def identity(x):
+    return x
+class AbstractNEFMixin(AbstractMixin):
     """
     For Natural Exponential Families, see:
     https://en.wikipedia.org/wiki/Natural_exponential_family
@@ -66,66 +70,82 @@ class AbstractNEFConversions(AbstractConversions):
     nat2conv  = identity_conv
     conv2mean = identity_conv
     mean2conv = identity_conv
-class BernoulliConversions(AbstractNEFConversions):
+class BernoulliMixin(AbstractNEFMixin):
     dist = staticmethod(Bernoulli)
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.rand(N),)
 
-class PoissonConversions(AbstractNEFConversions):
+class PoissonMixin(AbstractNEFMixin):
     dist = staticmethod(Poisson)
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.randn(N).exp(),)
 
-class NormalConversions(AbstractConversions):
+class NormalMixin(AbstractMixin):
     dist = staticmethod(Normal)
-    sufficient_stats = (identity, square)
-    def conv2mean(self, loc, scale):
+    sufficient_stats = (identity, t.square)
+    default_init_conv = (0., 1.)
+    @staticmethod
+    def conv2mean(loc, scale):
         Ex  = loc
         Ex2 = loc**2 + scale**2
         return Ex, Ex2
-    def mean2conv(self, Ex, Ex2):
+    @staticmethod
+    def mean2conv(Ex, Ex2):
         loc   = Ex 
         scale = (Ex2 - loc**2).sqrt()
         return loc, scale
 
-    def conv2nat(self, loc, scale):
+    @staticmethod
+    def conv2nat(loc, scale):
         prec = 1/scale**2
         mu_prec = loc * prec
-        return prec, mu_prec
-    def nat2conv(self, prec, mu_prec):
+        return mu_prec, -0.5*prec
+    @staticmethod
+    def nat2conv(mu_prec, minus_half_prec):
+        prec = -2*minus_half_prec
         mu = mu_prec / prec
         scale = prec.rsqrt()
         return mu, scale
 
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.randn(N), t.randn(N).exp())
 
-class ExponentialConversions(AbstractConversions):
+class ExponentialMixin(AbstractMixin):
     dist = staticmethod(Exponential)
     sufficient_stats = (identity,)
-    def conv2mean(self, mean):
+    @staticmethod
+    def conv2mean(mean):
         return (t.reciprocal(mean),)
-    def mean2conv(self, mean):
+    @staticmethod
+    def mean2conv(mean):
         return (t.reciprocal(mean),)
     
     nat2conv = identity_conv
     conv2nat = identity_conv
 
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.randn(N).exp(),)
 
-class DirichletConversions(AbstractConversions):
+class DirichletMixin(AbstractMixin):
     dist = staticmethod(Dirichlet)
-    sufficient_stats = (log,)
+    sufficient_stats = (t.log,)
 
-    def nat2conv(self, nat):
+    @staticmethod
+    def nat2conv(nat):
         return ((nat+1),)
-    def conv2nat(self, alpha):
+    @staticmethod
+    def conv2nat(alpha):
         return ((alpha-1),)
 
-    def conv2mean(self, alpha):
+    @staticmethod
+    def conv2mean(alpha):
         return (t.digamma(alpha) - t.digamma(alpha.sum(-1, keepdim=True)),)
-    def mean2conv(self, logp):
+    @staticmethod
+    def mean2conv(logp):
         """
         Methods from https://tminka.github.io/papers/dirichlet/minka-dirichlet.pdf
         """
@@ -144,22 +164,27 @@ class DirichletConversions(AbstractConversions):
             alpha = alpha - (g - b)/q
         return (alpha,)
 
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.randn(N, 4).exp(),)
 
-class GammaConversions(AbstractConversions):
+class GammaMixin(AbstractMixin):
     dist = staticmethod(Gamma)
-    sufficient_stats = (log, identity)
+    sufficient_stats = (t.log, identity)
 
-    def conv2nat(self, alpha, beta):
+    @staticmethod
+    def conv2nat(alpha, beta):
         return (alpha-1, -beta)
-    def nat2conv(self, n1, n2):
+    @staticmethod
+    def nat2conv(n1, n2):
         return (n1+1, -n2)
 
-    def conv2mean(self, alpha, beta):
+    @staticmethod
+    def conv2mean(alpha, beta):
         #Tested by sampling
         return (-t.log(beta) + t.digamma(alpha), alpha/beta)
-    def mean2conv(self, Elogx, Ex):
+    @staticmethod
+    def mean2conv(Elogx, Ex):
         """
         Generalised Newton's method from Eq. 10 in https://tminka.github.io/papers/minka-gamma.pdf
         Rewrite as:
@@ -176,25 +201,6 @@ class GammaConversions(AbstractConversions):
             alpha = alpha * t.reciprocal(1 + num/denom)
         beta = alpha / Ex 
         return (alpha, beta)
-
-    def test_conv(self, N):
+    @staticmethod
+    def test_conv(N):
         return (t.randn(N).exp(),t.randn(N).exp())
-
-conv_dict = {
-    Bernoulli: BernoulliConversions(),
-    Poisson: PoissonConversions(),
-    Normal: NormalConversions(),
-    Exponential: ExponentialConversions(),
-    Dirichlet: DirichletConversions(),
-    Gamma: GammaConversions(),
-}
-    
-
-if __name__ == "__main__":
-    N = 10
-    BernoulliConversions().test(N)
-    PoissonConversions().test(N)
-    NormalConversions().test(N)
-    ExponentialConversions().test(N)
-    DirichletConversions().test(N)
-    GammaConversions().test(N)
