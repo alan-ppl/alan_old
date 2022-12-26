@@ -168,6 +168,32 @@ class DirichletMixin(AbstractMixin):
     def test_conv(N):
         return (t.randn(N, 4).exp(),)
 
+class BetaMixin(AbstractMixin):
+    dist = staticmethod(Beta)
+    sufficient_stats = (t.log, lambda x: t.log(1-x))
+    
+    @staticmethod
+    def conv2nat(alpha, beta):
+        return (alpha-1, beta-1)
+    @staticmethod
+    def nat2conv(nat_0, nat_1):
+        return (nat_0+1, nat_1+1)
+
+    @staticmethod
+    def conv2mean(alpha, beta):
+        norm = t.digamma(alpha + beta)
+        return (t.digamma(alpha) - norm, t.digamma(beta) - norm)
+    @staticmethod
+    def mean2conv(Elogx, Elog1mx):
+        logp = t.stack([Elogx, Elog1mx], -1)
+        alpha = DirichletMixin.mean2conv(logp)[0]
+        return alpha[..., 0], alpha[..., 1]
+    @staticmethod
+    def test_conv(N):
+        return (t.randn(N).exp(), t.randn(N).exp())
+
+    
+
 class GammaMixin(AbstractMixin):
     dist = staticmethod(Gamma)
     sufficient_stats = (t.log, identity)

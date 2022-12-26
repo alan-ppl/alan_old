@@ -7,4 +7,5 @@ if __name__ == "__main__":
     NormalMixin.test(N)
     ExponentialMixin.test(N)
     DirichletMixin.test(N)
+    BetaMixin.test(N)
     GammaMixin.test(N)
