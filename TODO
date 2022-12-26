@@ -1,3 +1,22 @@
+Optimization:
+  Merge first and rest in TimeseriesLogP if have same dimensions.
+
+To supported tilted + 
+
+Tilted distributions:
+  tr.sample("a", TiltedNormal(0, 1))
+  Problem: same line of code is run for both P and Q, returning the same distribution object.
+  That single distribution object must contain P and Q, which is kind-of painful.
+  Key trick: we only need Q in a very specific bit of tracing code (the bit where we use the prior as an approximate posterior in Trace P).
+  So we treat the distribution everywhere as P, except for in that little bit of code.
+  We include a link back to the tilting...
+
+GLMs:
+  Only use cannonical link (otherwise you need to map from mean to natural params, and differentiate back through that mapping).
+  Only really makes sense for Linear and Logistic Regression (and maybe Poisson).
+  Combine inputs (which the dist holds on to) (which the dist holds on to) with gradients of beta.
+   (which the dist holds on to)
+
 Compute objective
   KL(Q reweighted towards P| Q)
 
@@ -28,8 +47,6 @@ Stein:
   These look alot like the marginal importance weights.
   There is a key difference thought: marginal importance weights are normalized, which means there is implicitly a normalizer that depends on the chosen particles.
   May need to remove this normalizer by adding log P_tmc back in.
-
-Think about tilted distributions.
 
 Papers:
   Stats paper.
