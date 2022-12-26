@@ -4,6 +4,7 @@ from .traces import TraceQ, TraceP, TracePred
 from .Sample import Sample
 from .utils import *
 from .ml_updates import ML
+from .nat_grad import NG
 from .qmodule import QModule
 
 class Model(nn.Module):
@@ -212,11 +213,28 @@ class Model(nn.Module):
         if isinstance(self.Q, nn.Module):
             self.Q.zero_grad()
 
+    def ng_update(self, K, lr, data=None):
+        _, q_obj = self.rws(K, data)
+        (-q_obj).backward()
+        for mod in self.Q.modules():
+            if isinstance(mod, NG):
+                mod.update(lr)
+
+        #model.zero_grad() uses model.parameters(), and we have rewritten
+        #model.parameters() to not return Js.  In contrast, we need to 
+        #zero gradients on the Js.
+        if isinstance(self.P, nn.Module):
+            self.P.zero_grad()
+        if isinstance(self.Q, nn.Module):
+            self.Q.zero_grad()
+
     def parameters(self):
+        #Avoids returning Js so they don't get passed into an optimizer.
+        #This can cause problems if other methods (e.g. zero_grad) use
+        #self.parameters (e.g. see ml_update).
         all_params = set(super().parameters())
         Js = []
         for mod in self.modules():
-            if isinstance(mod, ML):
+            if isinstance(mod, (ML, NG)):
                 Js = Js + mod.named_Js
         return all_params.difference(Js)
-
