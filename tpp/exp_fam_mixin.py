@@ -230,3 +230,27 @@ class GammaMixin(AbstractMixin):
     @staticmethod
     def test_conv(N):
         return (t.randn(N).exp(),t.randn(N).exp())
+
+class InverseGammaMixin(AbstractMixin):
+    dist = staticmethod(Gamma)
+    sufficient_stats = (t.log, t.reciprocal)
+
+    @staticmethod
+    def conv2nat(alpha, beta):
+        return (-alpha-1, -beta)
+    @staticmethod
+    def nat2conv(nat0, nat1):
+        return (-nat0-1, -nat1)
+
+    @staticmethod
+    def conv2mean(alpha, beta):
+        #From Wikipedia (Inverse Gamma: Properties)
+        return (t.log(beta) - t.digamma(alpha), alpha/beta)
+    @staticmethod
+    def mean2conv(mean_0, mean_1):
+        return GammaMixin.mean2conv(-mean_0, mean_1)
+
+    @staticmethod
+    def test_conv(N):
+        return (t.randn(N).exp(),t.randn(N).exp())
+
