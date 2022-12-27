@@ -20,7 +20,7 @@ class NG(QModule):
         super().__init__()
         if init_conv is None:
             init_conv = self.default_init_conv
-        init_means = self.conv2mean(*init_conv)
+        init_means = self.conv2mean(**init_conv)
 
         if platesizes is None:
             platesizes = {}
@@ -53,7 +53,7 @@ class NG(QModule):
         return [self.get_named_tensor(natname) for natname in self.natnames]
 
     def forward(self):
-        return self.dist(*self.nat2conv(*self.dim_nats))
+        return self.dist(**self.nat2conv(*self.dim_nats))
 
     def update(self, lr):
         with t.no_grad():
@@ -82,6 +82,4 @@ class NGDirichlet(NG, DirichletMixin):
 class NGBeta(NG, BetaMixin):
     pass
 class NGGamma(NG, GammaMixin):
-    pass
-class NGInverseGamma(NG, InverseGammaMixin):
     pass

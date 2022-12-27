@@ -43,7 +43,7 @@ class Tilted(QModule):
         prior_convs = tuple(prior.all_args.values()) #Need to extract named dims!!!
         prior_nats = self.conv2nat(*prior_convs)
         post_nats = tuple(prior+post for (prior, post) in zip(prior_nats, self.dim_nats))
-        return self.dist(*self.nat2conv(*post_nats))
+        return self.dist(**self.nat2conv(*post_nats))
 
     def update(self, lr):
         with t.no_grad():
@@ -72,6 +72,4 @@ class TiltedDirichlet(Tilted, DirichletMixin):
 class TiltedBeta(Tilted, BetaMixin):
     pass
 class TiltedGamma(Tilted, GammaMixin):
-    pass
-class TiltedInverseGamma(Tilted, InverseGammaMixin):
     pass
