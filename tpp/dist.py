@@ -122,14 +122,8 @@ class TorchDimDist():
     def log_prob_P(self, x, Kdim):
         return self.log_prob(x)
 
-def set_dist(dist_name):
-    #def inner(*args, **kwargs):
-    #    return TorchDimDist(dist_name, *args, **kwargs)
-    #globals()[dist_name] = inner
-    globals()[dist_name] = type(dist_name, (TorchDimDist,), {'dist_name': dist_name, 'dist': getattr(td, dist_name)})
-
-for dist_name in param_event_ndim:
-    set_dist(dist_name)
+for dn in param_event_ndim:
+    globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': getattr(td, dn)})
 
 
 if __name__ == "__main__":
