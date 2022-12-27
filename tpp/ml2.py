@@ -5,7 +5,7 @@ from .utils import *
 from .qmodule import QModule
 from .exp_fam_mixin import *
 
-class ML(QModule):
+class ML2(QModule):
     def __init__(self, platesizes=None, sample_shape=(), init_conv=None):
         super().__init__()
         if init_conv is None:
@@ -55,7 +55,7 @@ class ML(QModule):
     def extra_log_factor(self, sample):
         #Check the dimensions of sample are as expected.
         if len(sample.dims) != len(self.platenames) + 1:
-            raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML proposals/approximate posteriors")
+            raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML2 proposals/approximate posteriors")
         #The factor comes in through log Q, so must be negated!
         return -sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
 
@@ -70,19 +70,19 @@ class ML(QModule):
             for (m, g) in zip(self.named_means, self.named_grads):
                 m.data.mul_(1-lr).add_(g.align_as(m), alpha=lr)
 
-class MLNormal(ML, NormalMixin):
+class ML2Normal(ML2, NormalMixin):
     pass
-class MLMvNormal(ML, MvNormalMixin):
+class ML2MvNormal(ML2, MvNormalMixin):
     pass
-class MLBernoulli(ML, BernoulliMixin):
+class ML2Bernoulli(ML2, BernoulliMixin):
     pass
-class MLPoisson(ML, PoissonMixin):
+class ML2Poisson(ML2, PoissonMixin):
     pass
-class MLExponential(ML, ExponentialMixin):
+class ML2Exponential(ML2, ExponentialMixin):
     pass
-class MLDirichlet(ML, DirichletMixin):
+class ML2Dirichlet(ML2, DirichletMixin):
     pass
-class MLBeta(ML, BetaMixin):
+class ML2Beta(ML2, BetaMixin):
     pass
-class MLGamma(ML, GammaMixin):
+class ML2Gamma(ML2, GammaMixin):
     pass

@@ -17,10 +17,10 @@ def P(tr):
 class Q(nn.Module):
     def __init__(self):
         super().__init__()
-        self.Qa = tpp.NGNormal()
-        self.Qb = tpp.NGNormal()
-        self.Qc = tpp.NGNormal({'plate_1': J})
-        self.Qd = tpp.NGNormal({'plate_1': J, 'plate_2': M})
+        self.Qa = tpp.ML2Normal()
+        self.Qb = tpp.ML2Normal()
+        self.Qc = tpp.ML2Normal({'plate_1': J})
+        self.Qd = tpp.ML2Normal({'plate_1': J, 'plate_2': M})
 
     def forward(self, tr):
         tr.sample('a', self.Qa())
@@ -38,4 +38,4 @@ model = tpp.Model(P, q, {'obs': data['obs']})
 K=100
 for i in range(40):
     print(model.elbo(K).item())
-    model.ng_update(K, 0.2)
+    model.ml_update(K, 0.2)

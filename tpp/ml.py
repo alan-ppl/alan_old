@@ -5,9 +5,9 @@ from .utils import *
 from .qmodule import QModule
 from .exp_fam_mixin import *
 
-class NG(QModule):
+class ML(QModule):
     """
-    Isn't quite NG...
+    Isn't quite ML...
     In particular, the RWS wake-phase Q update allows us to in effect compute,
     E_P[log Q]
     If we take Q to be exponential family,
@@ -67,19 +67,19 @@ class NG(QModule):
             for old_nat, new_nat in zip(self.named_nats, new_nats):
                 old_nat.data.copy_(new_nat.align_as(old_nat))
 
-class NGNormal(NG, NormalMixin):
+class MLNormal(ML, NormalMixin):
     pass
-class NGMvNormal(NG, MvNormalMixin):
+class MLMvNormal(ML, MvNormalMixin):
     pass
-class NGBernoulli(NG, BernoulliMixin):
+class MLBernoulli(ML, BernoulliMixin):
     pass
-class NGPoisson(NG, PoissonMixin):
+class MLPoisson(ML, PoissonMixin):
     pass
-class NGExponential(NG, ExponentialMixin):
+class MLExponential(ML, ExponentialMixin):
     pass
-class NGDirichlet(NG, DirichletMixin):
+class MLDirichlet(ML, DirichletMixin):
     pass
-class NGBeta(NG, BetaMixin):
+class MLBeta(ML, BetaMixin):
     pass
-class NGGamma(NG, GammaMixin):
+class MLGamma(ML, GammaMixin):
     pass

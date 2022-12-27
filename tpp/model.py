@@ -1,10 +1,10 @@
 from warnings import warn
-import torch.nn as nn
+import torch.nn as nn 
 from .traces import TraceQ, TraceP, TracePred
 from .Sample import Sample
 from .utils import *
-from .ml_updates import ML
-from .nat_grad import NG
+from .ml import ML
+from .ml2 import ML2
 from .tilted import Tilted
 from .qmodule import QModule
 
@@ -215,7 +215,7 @@ class Model(nn.Module):
         elbo = self._sample(K, False, data).elbo()
         elbo.backward()
         for mod in self.Q.modules():
-            if isinstance(mod, ML):
+            if isinstance(mod, ML2):
                 mod.update(lr)
         self.zero_grad()
 
@@ -223,7 +223,7 @@ class Model(nn.Module):
         _, q_obj = self.rws(K, data)
         (-q_obj).backward()
         for mod in self.modules():
-            if isinstance(mod, (NG, Tilted)):
+            if isinstance(mod, (ML, Tilted)):
                 mod.update(lr)
         self.zero_grad()
 
@@ -243,8 +243,8 @@ class Model(nn.Module):
         all_params = set(super().parameters())
         exclusions = []
         for mod in self.modules():
-            if isinstance(mod, ML):
+            if isinstance(mod, ML2):
                 exclusions = exclusions + mod.named_Js
-            if isinstance(mod, NG):
+            if isinstance(mod, ML):
                 exclusions = exclusions + mod.named_nats
         return all_params.difference(exclusions)
