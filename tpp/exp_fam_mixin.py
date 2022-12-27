@@ -60,27 +60,85 @@ def identity_conv(*args):
     return args
 def identity(x):
     return x
-class AbstractNEFMixin(AbstractMixin):
+@staticmethod
+def inverse_sigmoid(y):
     """
-    For Natural Exponential Families, see:
-    https://en.wikipedia.org/wiki/Natural_exponential_family
+    y = 1/(1+e^(-x))
+    1+e^(-x) = 1/y
+    e^(-x) = 1/y - 1
+    -x = log(1/y - 1)
+    x = -log(1/y - 1)
     """
-    sufficient_stats = (identity,)
-    conv2nat  = identity_conv
-    nat2conv  = identity_conv
-    conv2mean = identity_conv
-    mean2conv = identity_conv
-class BernoulliMixin(AbstractNEFMixin):
+    return (-t.log(1/y - 1),)
+@staticmethod
+def sigmoid(x):
+    return (t.sigmoid(x),)
+
+class BernoulliMixin(AbstractMixin):
+    """
+    P(x) = p^x (1-p)^(1-x)
+    log P(x) = x log p + (1-x) log (1-p)
+    log P(x) = log (1-p) + x log (p/(1-p))
+    log P(x) = log (1-p) + x logits
+
+    Thus, logits is the natural parameter.
+    However, we could choose to use logits or probs as the conventional parameter
+    """
     dist = staticmethod(Bernoulli)
+    sufficient_stats = (identity,)
+
     @staticmethod
     def test_conv(N):
         return (t.rand(N),)
 
-class PoissonMixin(AbstractNEFMixin):
+class BernoulliLogitsMixin(BernoulliMixin):
+    #Conventional and natural parameters are both logits
+    conv2nat  = identity_conv
+    nat2conv  = identity_conv
+
+    #Conv is logits, mean is probs
+    conv2mean = sigmoid
+    mean2conv = inverse_sigmoid
+
+    @staticmethod
+    def canonical_conv(self, probs=None, logits=None):
+        assert (probs is None) != (logits is None)
+        return inverse_sigmoid(probs) if probs is not None else (logits,)
+
+class BernoulliProbsMixin(BernoulliMixin):
+    #Conv is prob, nat is logits
+    conv2nat  = inverse_sigmoid
+    nat2conv  = sigmoid         
+
+    #Conventional and mean parameters are both prob
+    conv2mean = identity_conv
+    mean2conv = identity_conv
+
+    @staticmethod
+    def canonical_conv(self, probs=None, logits=None):
+        assert (probs is None) != (logits is None)
+        return sigmoid(logits) if (logits is not None) else (logits,)
+
+class PoissonMixin(AbstractMixin):
     dist = staticmethod(Poisson)
+    sufficient_stats = (identity,)
+    conv2mean = identity_conv
+    mean2conv = identity_conv
+
+    @staticmethod
+    def conv2nat(rate):
+        return (t.log(rate),)
+    @staticmethod
+    def nat2conv(log_rate):
+        return (t.exp(log_rate),)
+
     @staticmethod
     def test_conv(N):
         return (t.randn(N).exp(),)
+
+    #@staticmethod
+    #def canonical_conv(rate):
+    #    return {'rate': rate}
 
 class NormalMixin(AbstractMixin):
     dist = staticmethod(Normal)

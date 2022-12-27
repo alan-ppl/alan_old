@@ -1,4 +1,6 @@
 TODO:
+  Tilted distributions need to extract named parameters from dists.
+
   MvNormal exp_fam, tilting etc. is complicated because of the covariance!
   Wishart and Inverse Wishart Mixin.
   event_shape for Dirichlet + MvNormal Mixins
