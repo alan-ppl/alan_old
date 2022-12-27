@@ -66,7 +66,7 @@ class TraceSample(AbstractTrace):
         self.logp    = {}
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
-    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
+    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
         self.check(key, plates, T)
 
         if T is not None:
@@ -190,7 +190,7 @@ class TraceP(AbstractTrace):
     def platedims(self):
         return self.trq.platedims
 
-    def sample_logQ_prior(self, dist, plates, Kdim):
+    def sample_logQ_prior(self, dist, plates, Kdim, delayed_Q):
         """
         When variables are omitted in TraceQ, we sample them from the prior.
         This only makes sense with multiple samples, which is nice as we no
@@ -203,6 +203,9 @@ class TraceP(AbstractTrace):
         #Don't depend on any enumerated variables (in which case sampling
         #from the prior doesn't make sense).
         assert all((dim not in self.Es) for dim in dist.dims)
+
+        if delayed_Q is not None:
+            dist = delayed_Q(dist)
 
         sample_dims = platenames2platedims(self.platedims, plates)
 
@@ -252,7 +255,7 @@ class TraceP(AbstractTrace):
         values = values[plates]
         return values, Edim
 
-    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
+    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
         self.check(key, plates, T)
         assert key not in self.logp
         if T is not None:
@@ -275,6 +278,8 @@ class TraceP(AbstractTrace):
             #in the data, or because we sampled the variable in Q.
             if sum_discrete:
                 raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but we already have a sample of '{key}' drawn from Q.  If you're summing over a discrete latent variable, you shouldn't provide a proposal / approximate posterior for that variable.")
+            if delayed_Q is not None:
+                raise Exception("You have given a delayed_Q (which would allow us to use an approximate posterior that's a 'tilted' version of the prior, but we already have a sample of '{key}' drawn from Q.  We need one or the other!")
              
             sample = self.trq[key]
             logq = self.trq.logq[key] if key in self.trq.samples else None
@@ -298,7 +303,7 @@ class TraceP(AbstractTrace):
                 self.Es.add(Kdim)
             else:
                 #Sample from prior
-                sample, logq = self.sample_logQ_prior(dist, plates, self.trq.Kdim)
+                sample, logq = self.sample_logQ_prior(dist, plates, self.trq.Kdim, delayed_Q)
         
         dims_sample = set(generic_dims(sample))
 
@@ -427,7 +432,7 @@ class TracePred(AbstractTrace):
         dims_train.append(Ellipsis)
         return dims_all, dims_train
 
-    def sample(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False):
+    def sample(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train

@@ -34,8 +34,20 @@ class Model(nn.Module):
         #  minibatched data passed to e.g. model.elbo(...)
         #here, we gather plate dimensions from the first two.
         #in _sample, we gather plate dimensions from the last one.
-        self.platedims = extend_plates_with_named_tensors({}, list(Q.parameters()) + list(Q.buffers()))
-        for mod in Q.modules():
+        params = []
+        if isinstance(Q, nn.Module):
+            params = params + list(Q.parameters())
+        if isinstance(P, nn.Module):
+            params = params + list(P.parameters())
+        self.platedims = extend_plates_with_named_tensors({}, params)
+
+        mods = []
+        if isinstance(Q, nn.Module):
+            mods = mods + list(Q.modules())
+        if isinstance(P, nn.Module):
+            mods = mods + list(P.modules())
+
+        for mod in mods:
             if isinstance(mod, QModule):
                 assert not hasattr(mod, "_platedims")
                 mod._platedims = self.platedims

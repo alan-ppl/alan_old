@@ -2,6 +2,7 @@ TODO:
   tilted distributions
   Wishart and Inverse Wishart Mixin.
   event_shape for Dirichlet + MvNormal Mixins
+  note that Tilted etc. don't need to be of a module?
 
 
 Tilted distributions:

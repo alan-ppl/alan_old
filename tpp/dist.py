@@ -35,7 +35,7 @@ param_event_ndim = {
     "Pareto":                    univariate("scale", "alpha"),
     "Poisson":                   univariate("rate"),#
     "RelaxedBernoulli":          univariate("temperature", "probs", "logits"),
-    "LogitRelaxedBernoulli":     univariate("temperature", "probs", "logits"),
+    #"LogitRelaxedBernoulli":     univariate("temperature", "probs", "logits"),
     "RelaxedOneHotCategorical":  ({"temperature": 0, "probs": 1, "logits": 1}, 0),
     "StudentT":                  univariate("df", "loc", "scale"),
     "Uniform":                   univariate("low", "high"),
@@ -62,14 +62,13 @@ class TorchDimDist():
     """
     self.dist and self.dims are exposed!
     """
-    def __init__(self, dist_name, *args, extra_log_factor=lambda x: 0, **kwargs):
-        self.dist_name = dist_name
+    def __init__(self, *args, extra_log_factor=lambda x: 0, **kwargs):
         self.extra_log_factor = extra_log_factor
-        param_ndim, self.result_ndim = param_event_ndim[dist_name]
+        param_ndim, self.result_ndim = param_event_ndim[self.dist_name]
         for kwarg in kwargs:
             if kwarg not in param_ndim:
                 raise Exception(f'Unrecognised argument "{kwarg}" given to "{self.dist_name}" distribution.  "{self.dist_name}" only accepts {tuple(param_ndim.keys())}.')
-        self.dist = getattr(td, dist_name)
+        #self.dist = getattr(td, dist_name)
         #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
         arg_dict = {argname: args[i] for (i, argname) in enumerate(list(param_ndim.keys())[:len(args)])}
         #Merge args and kwargs into a unified kwarg dict
@@ -124,9 +123,10 @@ class TorchDimDist():
         return self.log_prob(x)
 
 def set_dist(dist_name):
-    def inner(*args, **kwargs):
-        return TorchDimDist(dist_name, *args, **kwargs)
-    globals()[dist_name] = inner
+    #def inner(*args, **kwargs):
+    #    return TorchDimDist(dist_name, *args, **kwargs)
+    #globals()[dist_name] = inner
+    globals()[dist_name] = type(dist_name, (TorchDimDist,), {'dist_name': dist_name, 'dist': getattr(td, dist_name)})
 
 for dist_name in param_event_ndim:
     set_dist(dist_name)
