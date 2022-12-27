@@ -204,14 +204,7 @@ class Model(nn.Module):
         for mod in self.Q.modules():
             if isinstance(mod, ML):
                 mod.update(lr)
-
-        #model.zero_grad() uses model.parameters(), and we have rewritten
-        #model.parameters() to not return Js.  In contrast, we need to 
-        #zero gradients on the Js.
-        if isinstance(self.P, nn.Module):
-            self.P.zero_grad()
-        if isinstance(self.Q, nn.Module):
-            self.Q.zero_grad()
+        self.zero_grad()
 
     def ng_update(self, K, lr, data=None):
         _, q_obj = self.rws(K, data)
@@ -219,7 +212,9 @@ class Model(nn.Module):
         for mod in self.Q.modules():
             if isinstance(mod, NG):
                 mod.update(lr)
+        self.zero_grad()
 
+    def zero_grad(self):
         #model.zero_grad() uses model.parameters(), and we have rewritten
         #model.parameters() to not return Js.  In contrast, we need to 
         #zero gradients on the Js.
@@ -233,8 +228,10 @@ class Model(nn.Module):
         #This can cause problems if other methods (e.g. zero_grad) use
         #self.parameters (e.g. see ml_update).
         all_params = set(super().parameters())
-        Js = []
+        exclusions = []
         for mod in self.modules():
-            if isinstance(mod, (ML, NG)):
-                Js = Js + mod.named_Js
+            if isinstance(mod, ML):
+                exclusions = exclusions + mod.named_Js
+            if isinstance(mod, NG):
+                exclusions = exclusions + mod.named_nats
         return all_params.difference(Js)

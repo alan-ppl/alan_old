@@ -1,6 +1,7 @@
 TODO:
   tilted distributions
   Wishart and Inverse Wishart Mixin.
+  event_shape for Dirichlet + MvNormal Mixins
 
 
 Tilted distributions:
