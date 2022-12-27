@@ -1,5 +1,5 @@
 TODO:
-  tilted distributions
+  MvNormal exp_fam, tilting etc. is complicated because of the covariance!
   Wishart and Inverse Wishart Mixin.
   event_shape for Dirichlet + MvNormal Mixins
   note that Tilted etc. don't need to be of a module?

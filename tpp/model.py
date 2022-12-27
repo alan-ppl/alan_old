@@ -5,6 +5,7 @@ from .Sample import Sample
 from .utils import *
 from .ml_updates import ML
 from .nat_grad import NG
+from .tilted import Tilted
 from .qmodule import QModule
 
 class Model(nn.Module):
@@ -222,7 +223,7 @@ class Model(nn.Module):
         _, q_obj = self.rws(K, data)
         (-q_obj).backward()
         for mod in self.Q.modules():
-            if isinstance(mod, NG):
+            if isinstance(mod, (NG, Tilted)):
                 mod.update(lr)
         self.zero_grad()
 

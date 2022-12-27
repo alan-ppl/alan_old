@@ -190,7 +190,7 @@ class TraceP(AbstractTrace):
     def platedims(self):
         return self.trq.platedims
 
-    def sample_logQ_prior(self, dist, plates, Kdim, delayed_Q):
+    def sample_logQ_prior(self, dist, plates, delayed_Q):
         """
         When variables are omitted in TraceQ, we sample them from the prior.
         This only makes sense with multiple samples, which is nice as we no
@@ -199,6 +199,7 @@ class TraceP(AbstractTrace):
         The basic strategy is to sample from the prior dist, then take the 
         "diagonal" for all K's.
         """
+        Kdim = self.trq.Kdim
 
         #Don't depend on any enumerated variables (in which case sampling
         #from the prior doesn't make sense).
@@ -303,7 +304,7 @@ class TraceP(AbstractTrace):
                 self.Es.add(Kdim)
             else:
                 #Sample from prior
-                sample, logq = self.sample_logQ_prior(dist, plates, self.trq.Kdim, delayed_Q)
+                sample, logq = self.sample_logQ_prior(dist, plates, delayed_Q)
         
         dims_sample = set(generic_dims(sample))
 
