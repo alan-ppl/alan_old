@@ -1,4 +1,8 @@
 TODO:
+  Naming: Tilted -> Adjusted?
+  Naming: ML -> MLMoments
+  Naming: NG -> ML
+
   Tilted distributions need to extract named parameters from dists.
 
   MvNormal exp_fam, tilting etc. is complicated because of the covariance!

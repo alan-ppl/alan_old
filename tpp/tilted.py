@@ -40,8 +40,8 @@ class Tilted(QModule):
     def forward(self, prior):
         if not isinstance(prior, self.dist):
             raise(f"{type(self)} can only be combined with {type(self.dist)} distributions")
-        prior_convs = tuple(prior.all_args.values()) #Need to extract named dims!!!
-        prior_nats = self.conv2nat(*prior_convs)
+        prior_convs = self.canonical_conv(**prior.dim_args)
+        prior_nats = self.conv2nat(**prior_convs)
         post_nats = tuple(prior+post for (prior, post) in zip(prior_nats, self.dim_nats))
         return self.dist(**self.nat2conv(*post_nats))
 

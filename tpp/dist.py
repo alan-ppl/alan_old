@@ -72,22 +72,22 @@ class TorchDimDist():
         #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
         arg_dict = {argname: args[i] for (i, argname) in enumerate(list(param_ndim.keys())[:len(args)])}
         #Merge args and kwargs into a unified kwarg dict
-        self.all_args = {**arg_dict, **kwargs}
+        self.dim_args = {**arg_dict, **kwargs}
         #Check for any positional arguments that are also given as a named argument.
-        assert len(self.all_args) == len(kwargs) + len(arg_dict)
+        assert len(self.dim_args) == len(kwargs) + len(arg_dict)
 
-        self.dims  = unify_dims(self.all_args.values())
+        self.dims  = unify_dims(self.dim_args.values())
 
         #Find out the number of unnamed dims over which we batch.
         unnamed_batch_dims = []
-        for (argname, arg) in self.all_args.items():
+        for (argname, arg) in self.dim_args.items():
             unnamed_batch_dims.append(generic_ndim(arg) - param_ndim[argname])
 
         assert all(0<=x for x in unnamed_batch_dims)
         self.unnamed_batch_dims = max(unnamed_batch_dims)
 
-
-        for (argname, arg) in self.all_args.items():
+        self.all_args = {}
+        for (argname, arg) in self.dim_args.items():
             #Pad all args up to the right lengths, so that unnamed batching works.
             arg = pad_nones(arg, self.unnamed_batch_dims+param_ndim[argname])
             #Convert torchdim arguments into aligned tensor arguments.

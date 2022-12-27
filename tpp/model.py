@@ -247,4 +247,4 @@ class Model(nn.Module):
                 exclusions = exclusions + mod.named_Js
             if isinstance(mod, NG):
                 exclusions = exclusions + mod.named_nats
-        return all_params.difference(Js)
+        return all_params.difference(exclusions)
