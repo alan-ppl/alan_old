@@ -3,7 +3,7 @@ TODO:
   Naming: ML -> MLMoments
   Naming: NG -> ML
 
-  Tilted distributions need to extract named parameters from dists.
+  How to fit tilted/adjusted distributions?
 
   MvNormal exp_fam, tilting etc. is complicated because of the covariance!
   Wishart and Inverse Wishart Mixin.

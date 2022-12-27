@@ -222,7 +222,7 @@ class Model(nn.Module):
     def ng_update(self, K, lr, data=None):
         _, q_obj = self.rws(K, data)
         (-q_obj).backward()
-        for mod in self.Q.modules():
+        for mod in self.modules():
             if isinstance(mod, (NG, Tilted)):
                 mod.update(lr)
         self.zero_grad()

@@ -29,6 +29,7 @@ class Tilted(QModule):
             self.register_parameter(natname, nn.Parameter(t.zeros(shape).rename(*names)))
 
         self.platenames = tuple(platesizes.keys())
+        self.post_nats = None
 
     @property
     def dim_nats(self):
@@ -42,20 +43,22 @@ class Tilted(QModule):
             raise(f"{type(self)} can only be combined with {type(self.dist)} distributions")
         prior_convs = self.canonical_conv(**prior.dim_args)
         prior_nats = self.conv2nat(**prior_convs)
-        post_nats = tuple(prior+post for (prior, post) in zip(prior_nats, self.dim_nats))
-        return self.dist(**self.nat2conv(*post_nats))
+        #assert self.post_nats is None
+        self.post_nats = tuple(prior+post for (prior, post) in zip(prior_nats, self.dim_nats))
+        return self.dist(**self.nat2conv(*self.post_nats))
 
     def update(self, lr):
         with t.no_grad():
             #Initialize means at old values
-            means = self.nat2mean(*self.named_nats)
+            means = self.nat2mean(*self.post_nats)
             #Update means to new values
             for (mean, nat) in zip(means, self.named_nats):
-                mean.data.add_(nat.grad.rename(*nat.names).align_as(mean), alpha=lr)
+                mean.add_(nat.grad.rename(*nat.names).align_as(mean), alpha=lr)
             new_nats = self.mean2nat(*means)
 
             for old_nat, new_nat in zip(self.named_nats, new_nats):
                 old_nat.data.copy_(new_nat.align_as(old_nat))
+        self.post_nats = None
 
 class TiltedNormal(Tilted, NormalMixin):
     pass
