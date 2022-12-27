@@ -72,6 +72,8 @@ class ML(QModule):
 
 class MLNormal(ML, NormalMixin):
     pass
+class MLMvNormal(ML, MvNormalMixin):
+    pass
 class MLBernoulli(ML, BernoulliMixin):
     pass
 class MLPoisson(ML, PoissonMixin):
@@ -80,6 +82,9 @@ class MLExponential(ML, ExponentialMixin):
     pass
 class MLDirichlet(ML, DirichletMixin):
     pass
+class MLBeta(ML, BetaMixin):
+    pass
 class MLGamma(ML, GammaMixin):
     pass
-
+class MLInverseGamma(ML, InverseGammaMixin):
+    pass

@@ -1,7 +1,7 @@
-Optimization:
-  Merge first and rest in TimeseriesLogP if have same dimensions.
+TODO:
+  tilted distributions
+  Wishart and Inverse Wishart Mixin.
 
-To supported tilted + 
 
 Tilted distributions:
   tr.sample("a", TiltedNormal(0, 1))

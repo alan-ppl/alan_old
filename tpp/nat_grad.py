@@ -70,6 +70,8 @@ class NG(QModule):
 
 class NGNormal(NG, NormalMixin):
     pass
+class NGMvNormal(NG, MvNormalMixin):
+    pass
 class NGBernoulli(NG, BernoulliMixin):
     pass
 class NGPoisson(NG, PoissonMixin):
@@ -78,5 +80,9 @@ class NGExponential(NG, ExponentialMixin):
     pass
 class NGDirichlet(NG, DirichletMixin):
     pass
+class NGBeta(NG, BetaMixin):
+    pass
 class NGGamma(NG, GammaMixin):
+    pass
+class NGInverseGamma(NG, InverseGammaMixin):
     pass
