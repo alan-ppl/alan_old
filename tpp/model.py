@@ -3,8 +3,9 @@ import torch.nn as nn
 from .traces import TraceQ, TraceP, TracePred
 from .Sample import Sample
 from .utils import *
-from .ml import ML
+from .ml  import ML
 from .ml2 import ML2
+from .ng  import NG
 from .tilted import Tilted
 from .qmodule import QModule
 
@@ -223,7 +224,7 @@ class Model(nn.Module):
         _, q_obj = self.rws(K, data)
         (-q_obj).backward()
         for mod in self.modules():
-            if isinstance(mod, (ML, Tilted)):
+            if isinstance(mod, (ML, Tilted, NG)):
                 mod.update(lr)
         self.zero_grad()
 

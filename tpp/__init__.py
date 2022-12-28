@@ -5,4 +5,5 @@ from .model import Model
 from .qmodule import QModule
 from .ml import *
 from .ml2 import *
+from .ng import *
 from .tilted import *
