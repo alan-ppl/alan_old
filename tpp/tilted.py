@@ -7,17 +7,27 @@ from .exp_fam_mixin import *
 
 class Tilted(QModule):
     """
-    Isn't quite NG...
-    In particular, the RWS wake-phase Q update allows us to in effect compute,
-    E_P[log Q]
-    If we take Q to be exponential family,
-    log Q = eta * T(x) - A(eta)
-    Then,
-    grad_eta E_P[log Q] = grad_eta [eta * m_0] - grad_eta A(eta)
-                        = m_0 - m
+    This really is NG, though is slightly different from the usual NG-VI setting.
+    In particular, in essence, we compute E_P[grad log Q], where P is our reweighted
+    posterior approximation.
+
+    In this case, we take the gradient wrt m, and for ease of understanding, we take
+    P(z) = g(z) exp(n_0 T(z) - A(n_0))
+    Q(z) = g(z) exp(n   T(z) - A(n))
+
+    grad_m E_P[log Q] = grad_m E_P[n T(z) - A(n)]
+                      = grad_m [n m_0 - A(n)]
+                      = grad_m [n] m_0 - grad_m[A(n)]
+                      = F^-1 (m_0 - m)
+    We apply this update to natural params, nn.
+    Only works when we can differentiate through e.g. mean2conv.
     """
-    def __init__(self, platesizes=None, sample_shape=()):
+
+    def __init__(self, platesizes=None, sample_shape=(), init_conv=None):
         super().__init__()
+        if init_conv is None:
+            init_conv = self.default_init_conv
+        init_nats = self.conv2nat(**init_conv)
 
         if platesizes is None:
             platesizes = {}
@@ -25,11 +35,21 @@ class Tilted(QModule):
         names = [*platesizes.keys(), *(len(sample_shape) * [None])]
 
         self.natnames = tuple(f'nat_{i}' for i in range(len(self.sufficient_stats)))
-        for natname in self.natnames:
-            self.register_parameter(natname, nn.Parameter(t.zeros(shape).rename(*names)))
+        for (natname, init_nat) in zip(self.natnames, init_nats):
+            self.register_buffer(natname, t.zeros(shape).rename(*names))
+
+        self.meannames = tuple(f'mean_{i}' for i in range(len(self.sufficient_stats)))
+        for meanname in self.meannames:
+            self.register_parameter(meanname, nn.Parameter(t.zeros(shape).rename(*names)))
 
         self.platenames = tuple(platesizes.keys())
-        self.post_nats = None
+
+    @property
+    def dim_means(self):
+        return [getattr(self, meanname) for meanname in self.meannames]
+    @property
+    def named_means(self):
+        return [self.get_named_tensor(meanname) for meanname in self.meannames]
 
     @property
     def dim_nats(self):
@@ -39,26 +59,24 @@ class Tilted(QModule):
         return [self.get_named_tensor(natname) for natname in self.natnames]
 
     def forward(self, prior):
-        if not isinstance(prior, self.dist):
-            raise(f"{type(self)} can only be combined with {type(self.dist)} distributions")
-        prior_convs = self.canonical_conv(**prior.dim_args)
-        prior_nats = self.conv2nat(**prior_convs)
-        #assert self.post_nats is None
-        self.post_nats = tuple(prior+post for (prior, post) in zip(prior_nats, self.dim_nats))
-        return self.dist(**self.nat2conv(*self.post_nats))
+        with t.no_grad():
+            if not isinstance(prior, self.dist):
+                raise(f"{type(self)} can only be combined with {type(self.dist)} distributions")
+            prior_convs = self.canonical_conv(**prior.dim_args)
+            prior_nats = self.conv2nat(**prior_convs)
+            #assert self.post_nats is None
+            post_nats = tuple(prior+post for (prior, post) in zip(prior_nats, self.dim_nats))
+            post_means = self.nat2mean(*post_nats)
+            
+        assert all((m==0).all() for m in self.named_means)
+        post_means = tuple(pm + m for (pm, m) in zip(post_means, self.dim_means))
+        return self.dist(**self.mean2conv(*post_means))
 
     def update(self, lr):
         with t.no_grad():
-            #Initialize means at old values
-            means = self.nat2mean(*self.post_nats)
-            #Update means to new values
-            for (mean, nat) in zip(means, self.named_nats):
-                mean.add_(nat.grad.rename(*nat.names).align_as(mean), alpha=lr)
-            new_nats = self.mean2nat(*means)
+            for (mean, nat) in zip(self.named_means, self.named_nats):
+                nat.add_(mean.grad.rename(*mean.names).align_as(nat), alpha=lr)
 
-            for old_nat, new_nat in zip(self.named_nats, new_nats):
-                old_nat.data.copy_(new_nat.align_as(old_nat))
-        self.post_nats = None
 
 class TiltedNormal(Tilted, NormalMixin):
     pass
@@ -69,10 +87,4 @@ class TiltedBernoulli(Tilted, BernoulliMixin):
 class TiltedPoisson(Tilted, PoissonMixin):
     pass
 class TiltedExponential(Tilted, ExponentialMixin):
-    pass
-class TiltedDirichlet(Tilted, DirichletMixin):
-    pass
-class TiltedBeta(Tilted, BetaMixin):
-    pass
-class TiltedGamma(Tilted, GammaMixin):
     pass

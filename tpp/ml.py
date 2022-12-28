@@ -52,7 +52,7 @@ class ML(QModule):
     def named_nats(self):
         return [self.get_named_tensor(natname) for natname in self.natnames]
 
-    def forward(self):
+    def forward(self, prior=None):
         return self.dist(**self.nat2conv(*self.dim_nats))
 
     def update(self, lr):
