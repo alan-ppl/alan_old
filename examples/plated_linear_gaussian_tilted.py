@@ -22,15 +22,6 @@ class P(tpp.QModule):
         tr.sample('d',   tpp.Normal(tr['c'], 1),    plates='plate_2', delayed_Q=self.Qd)
         tr.sample('obs', tpp.Normal(tr['d'], 0.01), plates='plate_3')
 p = P()
-#def q(tr):
-#    tr.sample('a',   tpp.Normal(t.zeros(()), 1),                )
-
-#def p(tr):
-#    tr.sample('a',   tpp.Normal(t.zeros(()), 1),                )
-#    tr.sample('b',   tpp.Normal(tr['a'], 1),                    )
-#    tr.sample('c',   tpp.Normal(tr['b'], 1),    plates='plate_1')
-#    tr.sample('d',   tpp.Normal(tr['c'], 1),    plates='plate_2')
-#    tr.sample('obs', tpp.Normal(tr['d'], 0.01), plates='plate_3')
 
 data = tpp.sample(p, platesizes=platesizes, varnames=('obs',))
 
