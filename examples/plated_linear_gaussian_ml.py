@@ -29,7 +29,6 @@ class Q(nn.Module):
         tr.sample('d', self.Qd())
 
 data = tpp.sample(P, platesizes=platesizes, varnames=('obs',))
-prior_samples = tpp.sample(P, platesizes=platesizes, N=100)
 
 q = Q()
 

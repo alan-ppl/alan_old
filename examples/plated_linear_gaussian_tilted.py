@@ -11,10 +11,10 @@ platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 class P(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.Qa = tpp.NGNormal()
-        self.Qb = tpp.NGNormal()
-        self.Qc = tpp.NGNormal({'plate_1': J})
-        self.Qd = tpp.NGNormal({'plate_1': J, 'plate_2': M})
+        self.Qa = tpp.MLNormal()
+        self.Qb = tpp.MLNormal()
+        self.Qc = tpp.MLNormal({'plate_1': J})
+        self.Qd = tpp.MLNormal({'plate_1': J, 'plate_2': M})
     def forward(self, tr):
         tr.sample('a',   tpp.Normal(t.zeros(()), 1),                  delayed_Q=self.Qa)
         tr.sample('b',   tpp.Normal(tr['a'], 1),                      delayed_Q=self.Qb)
