@@ -28,14 +28,36 @@ class Q(nn.Module):
         tr.sample('c', self.Qc())
         tr.sample('d', self.Qd())
 
+class PQ(tpp.QModule):
+    def __init__(self):
+        super().__init__()
+        self.Qa = tpp.NGNormal()
+        self.Qb = tpp.NGNormal()
+        self.Qc = tpp.NGNormal({'plate_1': J})
+        self.Qd = tpp.NGNormal({'plate_1': J, 'plate_2': M})
+    def forward(self, tr):
+        tr.sample('a',   tpp.Normal(t.zeros(()), 1),                  delayed_Q=self.Qa)
+        tr.sample('b',   tpp.Normal(tr['a'], 1),                      delayed_Q=self.Qb)
+        tr.sample('c',   tpp.Normal(tr['b'], 1),    plates='plate_1', delayed_Q=self.Qc)
+        tr.sample('d',   tpp.Normal(tr['c'], 1),    plates='plate_2', delayed_Q=self.Qd)
+        tr.sample('obs', tpp.Normal(tr['d'], 0.01), plates='plate_3')
+
 data = tpp.sample(P, platesizes=platesizes, varnames=('obs',))
-prior_samples = tpp.sample(P, platesizes=platesizes, N=100)
 
-q = Q()
+K = 100
+T = 20
+lr = 0.05
 
-model = tpp.Model(P, q, {'obs': data['obs']})
+t.manual_seed(0)
+m1 = tpp.Model(P, Q(), data={'obs': data['obs']})
+for i in range(T):
+    print(m1.elbo(K).item())
+    m1.update(K, lr)
 
-K=100
-for i in range(40):
-    print(model.elbo(K).item())
-    model.update(K, 0.2)
+print() 
+print()
+t.manual_seed(0)
+m2 = tpp.Model(PQ(), data={'obs': data['obs']})
+for i in range(T):
+    print(m2.elbo(K).item())
+    m2.update(K, lr)
