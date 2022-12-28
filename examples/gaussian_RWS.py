@@ -35,7 +35,7 @@ print("K={}".format(K))
 for i in range(5000):
     opt.zero_grad()
     wake_theta_loss, wake_phi_loss = model.rws(K=K)
-    (-wake_theta_loss + wake_phi_loss).backward()
+    (wake_theta_loss + wake_phi_loss).backward()
     opt.step()
 
     if 0 == i%1000:
