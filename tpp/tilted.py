@@ -7,27 +7,9 @@ from .exp_fam_mixin import *
 
 class Tilted(QModule):
     """
-    This really is NG, though is slightly different from the usual NG-VI setting.
-    In particular, in essence, we compute E_P[grad log Q], where P is our reweighted
-    posterior approximation.
-
-    In this case, we take the gradient wrt m, and for ease of understanding, we take
-    P(z) = g(z) exp(n_0 T(z) - A(n_0))
-    Q(z) = g(z) exp(n   T(z) - A(n))
-
-    grad_m E_P[log Q] = grad_m E_P[n T(z) - A(n)]
-                      = grad_m [n m_0 - A(n)]
-                      = grad_m [n] m_0 - grad_m[A(n)]
-                      = F^-1 (m_0 - m)
-    We apply this update to natural params, nn.
-    Only works when we can differentiate through e.g. mean2conv.
     """
-
-    def __init__(self, platesizes=None, sample_shape=(), init_conv=None):
+    def __init__(self, platesizes=None, sample_shape=()):
         super().__init__()
-        if init_conv is None:
-            init_conv = self.default_init_conv
-        init_nats = self.conv2nat(**init_conv)
 
         if platesizes is None:
             platesizes = {}
@@ -35,21 +17,16 @@ class Tilted(QModule):
         names = [*platesizes.keys(), *(len(sample_shape) * [None])]
 
         self.natnames = tuple(f'nat_{i}' for i in range(len(self.sufficient_stats)))
-        for (natname, init_nat) in zip(self.natnames, init_nats):
+        for natname in self.natnames:
             self.register_buffer(natname, t.zeros(shape).rename(*names))
 
-        self.meannames = tuple(f'mean_{i}' for i in range(len(self.sufficient_stats)))
-        for meanname in self.meannames:
-            self.register_parameter(meanname, nn.Parameter(t.zeros(shape).rename(*names)))
+        self.Jprior_names = tuple(f'Jprior_{i}' for i in range(len(self.sufficient_stats)))
+        self.Japprox_names = tuple(f'Japprox_{i}' for i in range(len(self.sufficient_stats)))
+        self.Jpost_names = tuple(f'Jpost_{i}' for i in range(len(self.sufficient_stats)))
+        for Jname in [*self.Jprior_names, *self.Japprox_names, *self.Jpost_names]:
+            self.register_parameter(Jname, nn.Parameter(t.zeros(shape).rename(*names)))
 
         self.platenames = tuple(platesizes.keys())
-
-    @property
-    def dim_means(self):
-        return [getattr(self, meanname) for meanname in self.meannames]
-    @property
-    def named_means(self):
-        return [self.get_named_tensor(meanname) for meanname in self.meannames]
 
     @property
     def dim_nats(self):
@@ -58,25 +35,60 @@ class Tilted(QModule):
     def named_nats(self):
         return [self.get_named_tensor(natname) for natname in self.natnames]
 
+    @property
+    def dim_Jpriors(self):
+        return [getattr(self, Jprior_name) for Jprior_name in self.Jprior_names]
+    @property
+    def named_Jpriors(self):
+        return [self.get_named_tensor(Jprior_name) for Jprior_name in self.Jprior_names]
+
+    @property
+    def dim_Japproxs(self):
+        return [getattr(self, Japprox_name) for Japprox_name in self.Japprox_names]
+    @property
+    def named_Japproxs(self):
+        return [self.get_named_tensor(Japprox_name) for Japprox_name in self.Japprox_names]
+
+    @property
+    def dim_Jposts(self):
+        return [getattr(self, Jpost_name) for Jpost_name in self.Jpost_names]
+    @property
+    def named_Jposts(self):
+        return [self.get_named_tensor(Jpost_name) for Jpost_name in self.Jpost_names]
+
     def forward(self, prior):
         with t.no_grad():
             if not isinstance(prior, self.dist):
                 raise(f"{type(self)} can only be combined with {type(self.dist)} distributions")
             prior_convs = self.canonical_conv(**prior.dim_args)
             prior_nats = self.conv2nat(**prior_convs)
-            #assert self.post_nats is None
-            post_nats = tuple(prior+post for (prior, post) in zip(prior_nats, self.dim_nats))
-            post_means = self.nat2mean(*post_nats)
-            
-        assert all((m==0).all() for m in self.named_means)
-        post_means = tuple(pm + m for (pm, m) in zip(post_means, self.dim_means))
-        return self.dist(**self.mean2conv(*post_means))
+
+        Q_nats = tuple(prior+dn for (prior, dn) in zip(prior_nats, self.dim_nats))
+        Q_means = self.nat2mean(*Q_nats)
+
+        def inner(sample):
+            #Check the dimensions of sample are as expected.
+            if len(sample.dims) != len(self.platenames) + 1:
+                raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML2 proposals/approximate posteriors")
+            J_posts  = sum(sum_non_dim(J*f(sample)) for (J, f)         in zip(self.dim_Jposts,   self.sufficient_stats))
+            J_approx = sum(sum_non_dim(J*Q_mean)    for (J, Q_mean)    in zip(self.dim_Japproxs, Q_means))
+            J_prior  = sum(sum_non_dim(J*prior_nat) for (J, prior_nat) in zip(self.dim_Jpriors,  prior_nats))
+            return - (J_posts + J_approx + J_prior)
+
+        return self.dist(**self.nat2conv(*Q_nats), extra_log_factor=inner)
 
     def update(self, lr):
         with t.no_grad():
-            for (mean, nat) in zip(self.named_means, self.named_nats):
-                nat.add_(mean.grad.rename(*mean.names).align_as(nat), alpha=lr)
+            post_ms   = tuple(J.grad for J in self.named_Jposts)
+            approx_ms = tuple(J.grad for J in self.named_Japproxs)
+            prior_ns  = tuple(J.grad for J in self.named_Jpriors)
+            new_ms    = tuple(lr*post_m + (1-lr)*approx_m for (post_m, approx_m) in zip(post_ms, approx_ms))
+            new_ns    = self.mean2nat(*new_ms)
+            old_ns    = self.mean2nat(*approx_ms)
+            dns       = tuple(new_n - old_n for (new_n, old_n) in zip(new_ns, old_ns))
 
+            for (n, dn) in zip(self.named_nats, dns):
+                n.data.add_(dn)
 
 class TiltedNormal(Tilted, NormalMixin):
     pass
@@ -87,4 +99,10 @@ class TiltedBernoulli(Tilted, BernoulliMixin):
 class TiltedPoisson(Tilted, PoissonMixin):
     pass
 class TiltedExponential(Tilted, ExponentialMixin):
+    pass
+class TiltedDirichlet(Tilted, DirichletMixin):
+    pass
+class TiltedBeta(Tilted, BetaMixin):
+    pass
+class TiltedGamma(Tilted, GammaMixin):
     pass

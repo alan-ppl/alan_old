@@ -11,10 +11,10 @@ platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 class P(tpp.QModule):
     def __init__(self):
         super().__init__()
-        self.Qa = tpp.NGNormal()
-        self.Qb = tpp.NGNormal()
-        self.Qc = tpp.NGNormal({'plate_1': J})
-        self.Qd = tpp.NGNormal({'plate_1': J, 'plate_2': M})
+        self.Qa = tpp.TiltedNormal()
+        self.Qb = tpp.TiltedNormal()
+        self.Qc = tpp.TiltedNormal({'plate_1': J})
+        self.Qd = tpp.TiltedNormal({'plate_1': J, 'plate_2': M})
     def forward(self, tr):
         tr.sample('a',   tpp.Normal(t.zeros(()), 1),                  delayed_Q=self.Qa)
         tr.sample('b',   tpp.Normal(tr['a'], 1),                      delayed_Q=self.Qb)
@@ -37,6 +37,6 @@ data = tpp.sample(p, platesizes=platesizes, varnames=('obs',))
 model = tpp.Model(p, data={'obs': data['obs']})
 
 K=100
-for i in range(40):
+for i in range(200):
     print(model.elbo(K).item())
-    model.update(K, 0.05)
+    model.ml_update(K, 0.2)

@@ -215,8 +215,8 @@ class Model(nn.Module):
     def ml_update(self, K, lr, data=None):
         elbo = self._sample(K, False, data).elbo()
         elbo.backward()
-        for mod in self.Q.modules():
-            if isinstance(mod, ML2):
+        for mod in self.modules():
+            if isinstance(mod, (ML2, Tilted)):
                 mod.update(lr)
         self.zero_grad()
 

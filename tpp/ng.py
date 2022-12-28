@@ -74,6 +74,16 @@ class NG(QModule):
             for old_mean, new_mean in zip(self.named_means, new_means):
                 old_mean.data.copy_(new_mean.align_as(old_mean))
 
+#Designed to mirror Tilted, for testing.
+#    def forward(self, prior=None):
+#        with t.no_grad():
+#            post_means = self.nat2mean(*self.dim_nats)
+#        post_means = tuple(pm.detach() + m for (pm, m) in zip(post_means, self.dim_means))
+#        return self.dist(**self.mean2conv(*post_means))
+#
+#    def reset_means(self):
+#        pass
+
 class NGNormal(NG, NormalMixin):
     pass
 class NGMvNormal(NG, MvNormalMixin):
