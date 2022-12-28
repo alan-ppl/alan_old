@@ -220,9 +220,9 @@ class Model(nn.Module):
                 mod.update(lr)
         self.zero_grad()
 
-    def ng_update(self, K, lr, data=None):
+    def update(self, K, lr, data=None):
         _, q_obj = self.rws(K, data)
-        (-q_obj).backward()
+        (q_obj).backward()
         for mod in self.modules():
             if isinstance(mod, (ML, Tilted, NG)):
                 mod.update(lr)
@@ -244,10 +244,10 @@ class Model(nn.Module):
         all_params = set(super().parameters())
         exclusions = []
         for mod in self.modules():
-            if isinstance(mod, ML2):
+            if   isinstance(mod, ML2):
                 exclusions = exclusions + mod.named_Js
-            if isinstance(mod, ML):
+            elif isinstance(mod, ML):
                 exclusions = exclusions + mod.named_nats
-            if isinstance(mod, (Tilted, NG)):
+            elif isinstance(mod, (Tilted, NG)):
                 exclusions = exclusions + mod.named_means
         return all_params.difference(exclusions)

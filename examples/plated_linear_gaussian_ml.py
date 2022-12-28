@@ -38,4 +38,4 @@ model = tpp.Model(P, q, {'obs': data['obs']})
 K=100
 for i in range(40):
     print(model.elbo(K).item())
-    model.ng_update(K, 0.2)
+    model.update(K, 0.2)

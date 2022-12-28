@@ -21,6 +21,8 @@ class Sample():
             else:
                 assert lp.shape == ()
 
+        for (rv, lp) in trp.logp.items():
+            assert (rv in trp.logq) or (rv in trp.data)
 
         for (rv, lq) in trp.logq.items():
             #check that any rv in logqs is also in logps
@@ -147,9 +149,9 @@ class Sample():
 
     def rws(self):
         # Wake-phase P update
-        p_obj = self.tensor_product(detach_q=True)
+        p_obj =   self.tensor_product(detach_q=True)
         # Wake-phase Q update
-        q_obj = self.tensor_product(detach_p=True)
+        q_obj = - self.tensor_product(detach_p=True)
         return p_obj, q_obj
 
     def moments(self, fs):
