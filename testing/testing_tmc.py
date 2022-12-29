@@ -1,8 +1,8 @@
 import torch as t
 import torch.nn as nn
-import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
+import alan
+from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+from alan.backend import vi
 import tqdm
 from functorch.dim import dims
 
@@ -25,13 +25,13 @@ def P(tr):
   '''
   Heirarchical Model
   '''
-  tr['theta'] = tpp.MultivariateNormal(theta_mean, t.diag(theta_sigma))
-  tr['z'] = tpp.MultivariateNormal(tr['theta'], t.diag(z_sigma), sample_dim=plate_1)
+  tr['theta'] = alan.MultivariateNormal(theta_mean, t.diag(theta_sigma))
+  tr['z'] = alan.MultivariateNormal(tr['theta'], t.diag(z_sigma), sample_dim=plate_1)
 
-  tr['obs'] = tpp.Normal((x @ tr['z']), obs_sigma)
+  tr['obs'] = alan.Normal((x @ tr['z']), obs_sigma)
 
 
-class Q(tpp.Q_module):
+class Q(alan.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param("theta_mu", t.zeros((theta_size,)))
@@ -51,19 +51,19 @@ class Q(tpp.Q_module):
         z_eye = eye * 0.001
         sigma_z = sigma_z + z_eye
 
-        tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
-        tr['z'] = tpp.MultivariateNormal(tr['theta']@self.A + self.mu, sigma_z)
+        tr['theta'] = alan.MultivariateNormal(self.theta_mu, sigma_theta)
+        tr['z'] = alan.MultivariateNormal(tr['theta']@self.A + self.mu, sigma_z)
 
-data = tpp.sample(P, "obs")
-test_data = tpp.sample(P, "obs")
+data = alan.sample(P, "obs")
+test_data = alan.sample(P, "obs")
 
 print(data)
-model = tpp.Model(P, Q(), data)
+model = alan.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=5
-dims = tpp.make_dims(P, K)
+dims = alan.make_dims(P, K)
 print("K={}".format(K))
 for i in range(10000):
     opt.zero_grad()
@@ -81,7 +81,7 @@ print(model.Q.m_mu)
 print("Approximate Covariance")
 print(model.Q.log_s_mu.exp()**2)
 
-b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),tpp.dename(data['obs']).reshape(-1,1))
+b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),alan.dename(data['obs']).reshape(-1,1))
 A_n = t.inverse(t.eye(5) + t.eye(5))
 
 print("True mu")

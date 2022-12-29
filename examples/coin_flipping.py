@@ -1,7 +1,7 @@
 ### Coin flipping Example
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 from torch.distributions import transforms
 
 
@@ -13,26 +13,26 @@ def P(tr):
     # define the hyperparameters that control the Beta prior
     alpha0 = t.tensor(10.0)
     beta0 = t.tensor(10.0)
-    tr.sample('latent_fairness', tpp.Beta(alpha0, beta0))
-    tr.sample('obs', tpp.Bernoulli(tr['latent_fairness']), plates='plate_1')
+    tr.sample('latent_fairness', alan.Beta(alpha0, beta0))
+    tr.sample('obs', alan.Bernoulli(tr['latent_fairness']), plates='plate_1')
 
 
 
-class Q(tpp.QModule):
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         self.alphaq = nn.Parameter(t.tensor(1.2))
         self.betaq = nn.Parameter(t.tensor(1.2))
 
     def forward(self, tr):
-        tr.sample('latent_fairness', tpp.Beta(self.alphaq, self.betaq))
+        tr.sample('latent_fairness', alan.Beta(self.alphaq, self.betaq))
 
 
 
 
 
-data = tpp.sample(P, sizes)
-model = tpp.Model(P, Q(), {'obs': data['obs']})
+data = alan.sample(P, sizes)
+model = alan.Model(P, Q(), {'obs': data['obs']})
 print(data)
 
 opt = t.optim.Adam(model.parameters(), lr=1e-3)

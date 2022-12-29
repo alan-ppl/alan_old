@@ -1,8 +1,8 @@
 import torch as t
 import torch.nn as nn
-import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
+import alan
+from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+from alan.backend import vi
 import tqdm
 from functorch.dim import dims
 import numpy as np
@@ -43,13 +43,13 @@ def P(tr):
   '''
   Heirarchical Model
   '''
-  tr['theta'] = tpp.MultivariateNormal(theta_mean, t.diag(theta_sigma))
-  tr['z'] = tpp.MultivariateNormal(tr['theta'], t.diag(z_sigma), sample_dim=plate_1)
+  tr['theta'] = alan.MultivariateNormal(theta_mean, t.diag(theta_sigma))
+  tr['z'] = alan.MultivariateNormal(tr['theta'], t.diag(z_sigma), sample_dim=plate_1)
 
-  tr['obs'] = tpp.Normal((x @ tr['z']), obs_sigma)
+  tr['obs'] = alan.Normal((x @ tr['z']), obs_sigma)
 
 
-class Q(tpp.Q_module):
+class Q(alan.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param("theta_mu", t.zeros((theta_size,)))
@@ -69,8 +69,8 @@ class Q(tpp.Q_module):
         z_eye = eye * 0.001
         sigma_z = sigma_z + z_eye
 
-        tr['theta'] = tpp.MultivariateNormal(self.theta_mu, sigma_theta)
-        tr['z'] = tpp.MultivariateNormal(tr['theta']@self.A + self.mu, sigma_z)
+        tr['theta'] = alan.MultivariateNormal(self.theta_mu, sigma_theta)
+        tr['z'] = alan.MultivariateNormal(tr['theta']@self.A + self.mu, sigma_z)
 
 
 
@@ -78,12 +78,12 @@ class Q(tpp.Q_module):
 
 
 
-data_y = tpp.sample(P,"obs")
+data_y = alan.sample(P,"obs")
 
 ## True log prob
 ##
 if N == 10:
-    diag = [(t.eye(n_i) + 2 * tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[i].t()) for i in range(N)]
+    diag = [(t.eye(n_i) + 2 * alan.dename(x).cpu()[i] @ alan.dename(x).cpu()[i].t()) for i in range(N)]
 
     bmatrix = [[[] for i in range(10)] for n in range (10)]
     for i in range(N):
@@ -91,27 +91,27 @@ if N == 10:
             if i == j:
                 bmatrix[i][i] = diag[i]
             elif j > i:
-                bmatrix[i][j] = tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[j].t()
-                bmatrix[j][i] = (tpp.dename(x).cpu()[i] @ tpp.dename(x).cpu()[j].t()).t()
+                bmatrix[i][j] = alan.dename(x).cpu()[i] @ alan.dename(x).cpu()[j].t()
+                bmatrix[j][i] = (alan.dename(x).cpu()[i] @ alan.dename(x).cpu()[j].t()).t()
 
 
 
 
     bmatrix = np.bmat(bmatrix)
     b_matrix = t.from_numpy(bmatrix)
-    log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(tpp.dename(data_y['obs'].cpu()).flatten())
+    log_prob = td.MultivariateNormal(t.zeros((b_matrix.shape[0])), b_matrix).log_prob(alan.dename(data_y['obs'].cpu()).flatten())
 
     print("Log prob: {}".format(log_prob))
     np.save('log_prob.npy', np.array(log_prob))
 
 
-model = tpp.Model(P, Q(), data_y)
+model = alan.Model(P, Q(), data_y)
 model.to(device)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=50000, gamma=0.1)
 K=args.K
-dim = tpp.make_dims(P, K, [plate_1])
+dim = alan.make_dims(P, K, [plate_1])
 print("K={}".format(K))
 # start = time.time()
 iters = 200000
@@ -130,8 +130,8 @@ for i in range(iters):
 
 x = x.to('cpu')
 #Theta posterior
-x_sum = sum([tpp.dename(x)[i].t() @ t.inverse(t.eye(n_i) + tpp.dename(x)[i] @ tpp.dename(x)[i].t()) @ tpp.dename(x)[i] for i in range(N)])
-y_sum = sum([tpp.dename(x)[i].t() @ t.inverse(t.eye(n_i) + tpp.dename(x)[i] @ tpp.dename(x)[i].t()) @ tpp.dename(data_y['obs'].to("cpu"))[i] for i in range(N)])
+x_sum = sum([alan.dename(x)[i].t() @ t.inverse(t.eye(n_i) + alan.dename(x)[i] @ alan.dename(x)[i].t()) @ alan.dename(x)[i] for i in range(N)])
+y_sum = sum([alan.dename(x)[i].t() @ t.inverse(t.eye(n_i) + alan.dename(x)[i] @ alan.dename(x)[i].t()) @ alan.dename(data_y['obs'].to("cpu"))[i] for i in range(N)])
 
 post_theta_cov = t.eye(theta_size) + x_sum
 post_theta_mean = t.inverse(post_theta_cov) @ y_sum

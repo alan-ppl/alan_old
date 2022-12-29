@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 
 import argparse
 import json
@@ -51,21 +51,21 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr.sample('mu_z1', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
-  tr.sample('mu_z2', tpp.Normal(tr['mu_z1'], t.ones(()).to(device)), plates='plate_muz2')
-  tr.sample('mu_z3', tpp.Normal(tr['mu_z2'], t.ones(()).to(device)), plates='plate_muz3')
-  tr.sample('mu_z4', tpp.Normal(tr['mu_z3'], t.ones(()).to(device)), plates='plate_muz4')
-  tr.sample('psi_y', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
-  tr.sample('psi_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('mu_z1', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('mu_z2', alan.Normal(tr['mu_z1'], t.ones(()).to(device)), plates='plate_muz2')
+  tr.sample('mu_z3', alan.Normal(tr['mu_z2'], t.ones(()).to(device)), plates='plate_muz3')
+  tr.sample('mu_z4', alan.Normal(tr['mu_z3'], t.ones(()).to(device)), plates='plate_muz4')
+  tr.sample('psi_y', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('psi_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
 
-  tr.sample('z', tpp.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_z')
-
-
-  tr.sample('obs', tpp.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
+  tr.sample('z', alan.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_z')
 
 
+  tr.sample('obs', alan.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
-class Q(tpp.QModule):
+
+
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         #mu_z1
@@ -93,15 +93,15 @@ class Q(tpp.QModule):
 
 
     def forward(self, tr):
-        tr.sample('mu_z1', tpp.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp()))
-        tr.sample('mu_z2', tpp.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp()))
-        tr.sample('mu_z3', tpp.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp()))
-        tr.sample('mu_z4', tpp.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp()))
-        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
-        tr.sample('psi_y', tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp()))
+        tr.sample('mu_z1', alan.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp()))
+        tr.sample('mu_z2', alan.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp()))
+        tr.sample('mu_z3', alan.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp()))
+        tr.sample('mu_z4', alan.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp()))
+        tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
+        tr.sample('psi_y', alan.Normal(self.m_psi_y, self.log_theta_psi_y.exp()))
 
 
-        tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
+        tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
 data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
 test_data_y = {'obs':t.load('test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
@@ -118,7 +118,7 @@ for K in Ks:
         start = time.time()
         seed_torch(i)
 
-        model = tpp.Model(P, Q(), data_y | x)
+        model = alan.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)

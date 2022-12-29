@@ -1,4 +1,4 @@
-from tpp.exp_fam_mixin import *
+from alan.exp_fam_mixin import *
 
 if __name__ == "__main__":
     N = 10

@@ -1,4 +1,4 @@
-from tpp.ml_updates import *
+from alan.ml_updates import *
 
 if __name__ == "__main__":
     N = 10

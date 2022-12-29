@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = "tpp",
+    name = "alan",
     version = "0.0.1",
     keywords = ("test", "xxx"),
     license = "MIT Licence",

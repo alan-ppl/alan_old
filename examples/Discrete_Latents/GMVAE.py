@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.datasets import MNIST
 from torchvision import transforms
-import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import reweighted_wake_sleep
+import alan
+from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+from alan.backend import reweighted_wake_sleep
 import tqdm
 from functorch.dim import dims
 import matplotlib.pyplot as plt
@@ -55,10 +55,10 @@ class P(nn.Module):
     def forward(self, tr):
         # print('P')
         # print(t.softmax(self.prob,0))
-        tr['y'] = tpp.Categorical(logits = self.prob)
-        tr['z'] = tpp.Normal(t.ones(10,), t.ones(10,))
+        tr['y'] = alan.Categorical(logits = self.prob)
+        tr['z'] = alan.Normal(t.ones(10,), t.ones(10,))
         obs_logits = self.z_obs(tr['z']) + self.y_obs(tr['y'].unsqueeze(0).type(t.FloatTensor))
-        tr['obs'] = tpp.ContinuousBernoulli(logits=obs_logits)
+        tr['obs'] = alan.ContinuousBernoulli(logits=obs_logits)
 
 
 
@@ -73,8 +73,8 @@ class Q(nn.Module):
 
 
     def forward(self, tr, data):
-        tr['y'] = tpp.Categorical(logits = self.prob)
-        tr['z'] = tpp.Normal(self.m_z, self.log_s_z.exp())
+        tr['y'] = alan.Categorical(logits = self.prob)
+        tr['z'] = alan.Normal(self.m_z, self.log_s_z.exp())
 
 
 class vae(nn.Module):
@@ -107,7 +107,7 @@ opt = t.optim.Adam(model.parameters(), lr=1e-3)
 
 K=5
 
-dim = tpp.make_dims(P, K)
+dim = alan.make_dims(P, K)
 print("K={}".format(K))
 
 counter = 0
@@ -122,6 +122,6 @@ for i in range(1):
             print(phi_loss.item())
         counter += 1
 
-images = tpp.sample(P, 'obs')
+images = alan.sample(P, 'obs')
 plt.imshow(images['obs'].detach().numpy().reshape(28,28), cmap="gray")
 plt.show()

@@ -1,7 +1,7 @@
 import torch as t
 import torch.nn as nn
-import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+import alan
+from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 import tqdm
 from functorch.dim import dims
 import argparse
@@ -42,16 +42,16 @@ for N in Ns:
           Heirarchical Model
           '''
 
-          tr['mu_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-          tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-          tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['mu_z'] = alan.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['psi_z'] = alan.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['psi_y'] = alan.Normal(t.zeros(()).to(device), t.ones(()).to(device))
 
-          tr['z'] = tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
+          tr['z'] = alan.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_1)
 
-          tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
+          tr['obs'] = alan.Normal((tr['z'] @ x), tr['psi_y'].exp())
 
 
-        data_y = tpp.sample(P,"obs")
+        data_y = alan.sample(P,"obs")
 
         t.save(data_y['obs'].order(*data_y['obs'].dims), 'data_y_{0}_{1}.pt'.format(N, M))
         t.save(x.order(*x.dims), 'weights_{0}_{1}.pt'.format(N,M))

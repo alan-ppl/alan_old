@@ -1,7 +1,7 @@
 import torch as t
 import torch.nn as nn
-import tpp
-from tpp.postproc import *
+import alan
+from alan.postproc import *
 t.manual_seed(0)
 
 def P(tr):
@@ -9,24 +9,24 @@ def P(tr):
   Bayesian Gaussian Model
   '''
   a = t.zeros(5)
-  tr.sample('mu', tpp.Normal(a, t.ones(5))) #, plate="plate_1")
-  tr.sample('obs', tpp.MultivariateNormal(tr['mu'], t.eye(5)))
+  tr.sample('mu', alan.Normal(a, t.ones(5))) #, plate="plate_1")
+  tr.sample('obs', alan.MultivariateNormal(tr['mu'], t.eye(5)))
 
 
 
-class Q(tpp.QModule):
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         self.m_mu = nn.Parameter(t.zeros(5,))
         self.log_s_mu = nn.Parameter(t.zeros(5,))
 
     def forward(self, tr):
-        tr.sample('mu', tpp.Normal(self.m_mu, self.log_s_mu.exp())) #, plate="plate_1")
+        tr.sample('mu', alan.Normal(self.m_mu, self.log_s_mu.exp())) #, plate="plate_1")
 
-data = tpp.sample(P, varnames=('obs',)) #, sizes={"plate_1": 2})
+data = alan.sample(P, varnames=('obs',)) #, sizes={"plate_1": 2})
 
 print(data)
-model = tpp.Model(P, Q(), data)
+model = alan.Model(P, Q(), data)
 
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)

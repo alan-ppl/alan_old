@@ -1,7 +1,7 @@
 import torch as t
 import torch.nn as nn
-import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+import alan
+from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
 import tqdm
 from functorch.dim import dims
 
@@ -21,19 +21,19 @@ def P(tr):
   '''
   Bayesian Heirarchical Gaussian Model
   '''
-  tr['mu'] = tpp.Normal(t.zeros(1,), t.ones(1,))
+  tr['mu'] = alan.Normal(t.zeros(1,), t.ones(1,))
 
-  tr['omega'] = tpp.Normal(t.zeros(1,), t.ones(1,))
-  tr['psi'] = tpp.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1)
+  tr['omega'] = alan.Normal(t.zeros(1,), t.ones(1,))
+  tr['psi'] = alan.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1)
 
-  tr['phi'] = tpp.Normal(tr['psi'], t.ones(1,), sample_dim=plate_2)
-
-
-  tr['obs'] = tpp.Normal(tr['phi'], tr['omega'].exp(), sample_dim=plate_3)
+  tr['phi'] = alan.Normal(tr['psi'], t.ones(1,), sample_dim=plate_2)
 
 
+  tr['obs'] = alan.Normal(tr['phi'], tr['omega'].exp(), sample_dim=plate_3)
 
-class Q(tpp.Q_module):
+
+
+class Q(alan.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param("m_mu", t.zeros((1,)))
@@ -51,10 +51,10 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Normal(self.m_mu, self.log_s_mu.exp())
-        tr['psi'] = tpp.Normal(self.m_psi, self.log_s_psi.exp())
-        tr['phi'] = tpp.Normal(self.m_phi, self.log_s_phi.exp())
-        tr['omega'] = tpp.Normal(self.m_omega, self.log_s_omega.exp())
+        tr['mu'] = alan.Normal(self.m_mu, self.log_s_mu.exp())
+        tr['psi'] = alan.Normal(self.m_psi, self.log_s_psi.exp())
+        tr['phi'] = alan.Normal(self.m_phi, self.log_s_phi.exp())
+        tr['omega'] = alan.Normal(self.m_omega, self.log_s_omega.exp())
 
 data = {'obs': t.tensor([[[[ 2.2161],
           [-1.1900],
@@ -92,7 +92,7 @@ data = {'obs': t.tensor([[[[ 2.2161],
           [ 0.9214]]]])[plate_3, plate_1, plate_2]}
 
 
-model = tpp.Model(P, Q(), data)
+model = alan.Model(P, Q(), data)
 print(data)
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 

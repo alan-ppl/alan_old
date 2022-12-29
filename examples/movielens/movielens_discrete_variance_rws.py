@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 
 import argparse
 import json
@@ -55,13 +55,13 @@ class P(nn.Module):
         Heirarchical Model
         '''
 
-        tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-        tr.sample('psi_z', tpp.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)))
+        tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+        tr.sample('psi_z', alan.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)))
 
-        tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
-        tr.sample('obs', tpp.Bernoulli(logits = tr['z'] @ tr['x']))
+        tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
+        tr.sample('obs', alan.Bernoulli(logits = tr['z'] @ tr['x']))
 
-class Q(tpp.QModule):
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         #mu_z
@@ -76,10 +76,10 @@ class Q(tpp.QModule):
 
 
     def forward(self, tr):
-        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
-        tr.sample('psi_z', tpp.Categorical(logits=self.psi_z_logits))
+        tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+        tr.sample('psi_z', alan.Categorical(logits=self.psi_z_logits))
 
-        tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
+        tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
 
 
@@ -101,7 +101,7 @@ for K in Ks:
         seed_torch(i)
         start = time.time()
 
-        model = tpp.Model(P(x_train), Q(), data_y | x_train)
+        model = alan.Model(P(x_train), Q(), data_y | x_train)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-4)
@@ -118,7 +118,7 @@ for K in Ks:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,wake_phi_loss.item()))
 
         times.append(time.time() - start)
-        # test_model = tpp.Model(P(x_test), model.Q, test_data_y | x_test)
+        # test_model = alan.Model(P(x_test), model.Q, test_data_y | x_test)
         pred_likelihood = model.predictive_ll(K = K, N = 1000, data_all=all_data | all_x)
         pred_liks.append(pred_likelihood['obs'].item())
     results_dict[N][M][K] = {'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks, 'avg_time':np.mean(times)}

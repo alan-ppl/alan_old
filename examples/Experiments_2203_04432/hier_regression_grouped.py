@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 
 import argparse
 import json
@@ -53,18 +53,18 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr.sample('mu_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
-  tr.sample('psi_z', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
-  tr.sample('psi_y', tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
+  tr.sample('mu_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
+  tr.sample('psi_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
+  tr.sample('psi_y', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local')
 
-  tr.sample('z', tpp.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_1')
+  tr.sample('z', alan.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_1')
 
-  tr.sample('obs', tpp.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
-
-
+  tr.sample('obs', alan.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
 
-class Q(tpp.QModule):
+
+
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         #mu_z
@@ -84,12 +84,12 @@ class Q(tpp.QModule):
 
 
     def forward(self, tr):
-        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
-        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
-        tr.sample('psi_y', tpp.Normal(self.m_psi_y, self.log_theta_psi_y.exp()))
+        tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+        tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
+        tr.sample('psi_y', alan.Normal(self.m_psi_y, self.log_theta_psi_y.exp()))
 
 
-        tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
+        tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
 data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 
@@ -108,7 +108,7 @@ for K in Ks:
         lr = []
         t.manual_seed(i)
 
-        model = tpp.Model(P, Q(), data_y | x)
+        model = alan.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)

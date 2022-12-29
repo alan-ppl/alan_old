@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 
 import argparse
 import json
@@ -50,16 +50,16 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr.sample('mu_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-  tr.sample('psi_z', tpp.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+  tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+  tr.sample('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
 
-  tr.sample('z', tpp.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
+  tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
-  tr.sample('obs', tpp.Bernoulli(logits = tr['z'] @ tr['x']))
+  tr.sample('obs', alan.Bernoulli(logits = tr['z'] @ tr['x']))
 
 
 
-class Q(tpp.QModule):
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         #mu_z
@@ -75,10 +75,10 @@ class Q(tpp.QModule):
 
 
     def forward(self, tr):
-        tr.sample('mu_z', tpp.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
-        tr.sample('psi_z', tpp.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
+        tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+        tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
 
-        tr.sample('z', tpp.Normal(self.mu, self.log_sigma.exp()))
+        tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
 
 
@@ -98,7 +98,7 @@ for K in Ks:
         seed_torch(i)
         start = time.time()
 
-        model = tpp.Model(P, Q(), data_y | x)
+        model = alan.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
@@ -117,6 +117,6 @@ for K in Ks:
         times.append(time.time() - start)
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'avg_time':np.mean(times)}
 
-file = 'results/movielens_results_tpp_N{0}_M{1}.json'.format(N,M)
+file = 'results/movielens_results_alan_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

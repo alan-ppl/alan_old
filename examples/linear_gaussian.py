@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 
 
 data_x = t.tensor([[0.4,1],
@@ -19,13 +19,13 @@ def P(tr):
   '''
   Bayesian Gaussian Linear Model
   '''
-  tr.sample('w',   tpp.Normal(w_0, sigma_w*t.ones(1,)))
-  tr.sample('obs',   tpp.Normal(tr['w'] @ data_x, sigma_y**(1/2)))
+  tr.sample('w',   alan.Normal(w_0, sigma_w*t.ones(1,)))
+  tr.sample('obs',   alan.Normal(tr['w'] @ data_x, sigma_y**(1/2)))
 
 
 
 
-class Q(tpp.QModule):
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         self.m_mu = nn.Parameter(t.zeros(2,))
@@ -37,13 +37,13 @@ class Q(tpp.QModule):
     def forward(self, tr):
         sigma_nn = self.s_mu @ self.s_mu.mT
         sigma_nn = sigma_nn + t.eye(2) * 1e-5
-        tr.sample('w',   tpp.MultivariateNormal(self.m_mu, sigma_nn))
+        tr.sample('w',   alan.MultivariateNormal(self.m_mu, sigma_nn))
 
 
-data_y = tpp.sample(P,varnames=('obs',))
+data_y = alan.sample(P,varnames=('obs',))
 print(data_y)
 
-model = tpp.Model(P, Q(), data_y)
+model = alan.Model(P, Q(), data_y)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 

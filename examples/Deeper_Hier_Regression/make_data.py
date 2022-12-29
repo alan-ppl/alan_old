@@ -1,8 +1,8 @@
 import torch as t
 import torch.nn as nn
-import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
+import alan
+from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+from alan.backend import vi
 import tqdm
 from functorch.dim import dims
 import argparse
@@ -36,21 +36,21 @@ for N in Ns:
           Heirarchical Model
           '''
 
-          tr['mu_z1'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-          tr['mu_z2'] = tpp.Normal(tr['mu_z1'], t.ones(()).to(device), sample_dim=plate_muz2)
-          tr['mu_z3'] = tpp.Normal(tr['mu_z2'], t.ones(()).to(device), sample_dim=plate_muz3)
-          tr['mu_z4'] = tpp.Normal(tr['mu_z3'], t.ones(()).to(device), sample_dim=plate_muz4)
-          tr['psi_z'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
-          tr['psi_y'] = tpp.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['mu_z1'] = alan.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['mu_z2'] = alan.Normal(tr['mu_z1'], t.ones(()).to(device), sample_dim=plate_muz2)
+          tr['mu_z3'] = alan.Normal(tr['mu_z2'], t.ones(()).to(device), sample_dim=plate_muz3)
+          tr['mu_z4'] = alan.Normal(tr['mu_z3'], t.ones(()).to(device), sample_dim=plate_muz4)
+          tr['psi_z'] = alan.Normal(t.zeros(()).to(device), t.ones(()).to(device))
+          tr['psi_y'] = alan.Normal(t.zeros(()).to(device), t.ones(()).to(device))
 
-          tr['z'] = tpp.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_z)
+          tr['z'] = alan.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp(), sample_dim=plate_z)
 
-          tr['obs'] = tpp.Normal((tr['z'] @ x), tr['psi_y'].exp())
+          tr['obs'] = alan.Normal((tr['z'] @ x), tr['psi_y'].exp())
 
 
 
-        data_y = tpp.sample(P,"obs")
-        test_data_y = tpp.sample(P,"obs")
+        data_y = alan.sample(P,"obs")
+        test_data_y = alan.sample(P,"obs")
         t.save(data_y['obs'].order(*data_y['obs'].dims), 'data_y_{0}_{1}.pt'.format(N, M))
         t.save(x.order(*x.dims), 'weights_{0}_{1}.pt'.format(N,M))
         t.save(test_data_y['obs'].order(*data_y['obs'].dims), 'test_data_y_{0}_{1}.pt'.format(N, M))

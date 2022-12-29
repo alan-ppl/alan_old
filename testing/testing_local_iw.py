@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 import tqdm
 from functorch.dim import dims
 
@@ -12,17 +12,17 @@ def P(tr):
   '''
   Bayesian Heirarchical Gaussian Model
   '''
-  tr['mu'] = tpp.Normal(t.zeros(1,), t.ones(1,))
+  tr['mu'] = alan.Normal(t.zeros(1,), t.ones(1,))
 
-  tr['psi'] = tpp.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1)
+  tr['psi'] = alan.Normal(tr['mu'], t.ones(1,), sample_dim=plate_1)
 
-  tr['phi'] = tpp.Normal(tr['psi'], t.ones(1,), sample_dim=plate_2)
+  tr['phi'] = alan.Normal(tr['psi'], t.ones(1,), sample_dim=plate_2)
 
-  tr['obs'] = tpp.Normal(tr['phi'], t.ones(5,), sample_dim=plate_3, group='local')
+  tr['obs'] = alan.Normal(tr['phi'], t.ones(5,), sample_dim=plate_3, group='local')
 
 
 
-class Q(tpp.Q_module):
+class Q(alan.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param("m_mu", t.zeros((1,)))
@@ -37,16 +37,16 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Normal(self.m_mu, self.log_s_mu.exp(), sample_K=False)
-        tr['psi'] = tpp.Normal(self.m_psi, self.log_s_psi.exp())
-        tr['phi'] = tpp.Normal(self.m_phi, self.log_s_phi.exp())
+        tr['mu'] = alan.Normal(self.m_mu, self.log_s_mu.exp(), sample_K=False)
+        tr['psi'] = alan.Normal(self.m_psi, self.log_s_psi.exp())
+        tr['phi'] = alan.Normal(self.m_phi, self.log_s_phi.exp())
 
-data = tpp.sample(P, 'obs')
-test_data = tpp.sample(P, 'obs')
-# print(tpp.sample(P))
+data = alan.sample(P, 'obs')
+test_data = alan.sample(P, 'obs')
+# print(alan.sample(P))
 
 
-model = tpp.Model(P, Q(), data)
+model = alan.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 

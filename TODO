@@ -1,44 +1,37 @@
-TODO:
-  Naming: Tilted -> Adjusted?
-  Naming: ML -> MLMoments
-  Naming: NG -> ML
+Papers:
+  ML:
+    Proof of validity of RWS and VI + superiority over TMC (requires TMC).
+  Stats:
+    log-derivatives for computing marginals + posterior samples
+  Fast proposals:
+    fast ML learning of factorised approximate posteriors
+    tilted / pseudo-likelihood based approximate posteriors + a fast learning mechanism
+  MCMC:
+    6)
 
-  How to fit tilted/adjusted distributions?
-
-  MvNormal exp_fam, tilting etc. is complicated because of the covariance!
+Tech TODOs:
+  TMC!  Need grouping, but not timeseries.
+  Global.
   Wishart and Inverse Wishart Mixin.
   event_shape for Dirichlet + MvNormal Mixins
-  note that Tilted etc. don't need to be of a module?
-
-
-Tilted distributions:
-  tr.sample("a", TiltedNormal(0, 1))
-  Problem: same line of code is run for both P and Q, returning the same distribution object.
-  That single distribution object must contain P and Q, which is kind-of painful.
-  Key trick: we only need Q in a very specific bit of tracing code (the bit where we use the prior as an approximate posterior in Trace P).
-  So we treat the distribution everywhere as P, except for in that little bit of code.
-  We include a link back to the tilting...
-
-GLMs:
-  Only use cannonical link (otherwise you need to map from mean to natural params, and differentiate back through that mapping).
-  Only really makes sense for Linear and Logistic Regression (and maybe Poisson).
-  Combine inputs (which the dist holds on to) (which the dist holds on to) with gradients of beta.
-   (which the dist holds on to)
-
-Compute objective
-  KL(Q reweighted towards P| Q)
-
-Cleanup ML approximate posteriors
-  Extra features:
-    Mixture model
-    Linear regression 
-    GLM regression
-    Modify natural parameters on prior
-  MLModules for P too?
-    Model sets a flag indicating we're in P and therefore we should use + (not -) extra_log_factor.
-    Asserts that no plates when you're using it as P.
-    What happens if an MLModule turns up in both P and Q?
+  Objective: KL(Q reweighted towards P| Q)
+  Cleanup objectives:
+    Objective for just learning Q.
+    Objective for computing moments (detach logps and logqs, but not extra_log_factors).
   Test conv2mean by sampling
+  GLMs
+    Only use cannonical link (otherwise you need to map from mean to natural params, and differentiate back through that mapping).
+    Only really makes sense for Linear and Logistic Regression (and maybe Poisson).
+    Combine inputs (which the dist holds on to) (which the dist holds on to) with gradients of beta.
+     (which the dist holds on to)
+  Good story about mixture models.
+  Masking.
+  GPs
+  Multiple iterations of importance weighting 
+  Memory problems!
+  
+
+
 
 MCMC:
   ...
@@ -50,10 +43,6 @@ Stein:
   There is a key difference thought: marginal importance weights are normalized, which means there is implicitly a normalizer that depends on the chosen particles.
   May need to remove this normalizer by adding log P_tmc back in.
 
-Papers:
-  Stats paper.
-  ML paper.
-  MCMC paper.
 
 torch.no_grad / detach e.g. for sampling
 Naming:
@@ -77,7 +66,6 @@ Tests:
     GP-distributed timeseries.
   Unit tests for the reduction utilities.
 
-Multiple iterations of importance weighting 
 
 torchdims
   Cleanup `==` vs `is` for dimension comparison.

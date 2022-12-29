@@ -1,7 +1,7 @@
 import torch as t
 import torch.distributions as td
 from functorch.dim import dims, Tensor
-from tpp.utils import *
+from alan.utils import *
 
 def univariate(*names):
     return ({name: 0 for name in names}, 0)

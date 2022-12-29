@@ -1,8 +1,8 @@
 import torch as t
 import torch.nn as nn
-import tpp
-from tpp.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from tpp.backend import vi
+import alan
+from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
+from alan.backend import vi
 import tqdm
 from functorch.dim import dims
 
@@ -12,8 +12,8 @@ def P(tr):
   Bayesian Gaussian Model
   '''
 
-  tr['mu'] = tpp.Normal(a, t.ones(5,))
-  tr['obs'] = tpp.Normal(tr['mu'], t.ones(5,))
+  tr['mu'] = alan.Normal(a, t.ones(5,))
+  tr['obs'] = alan.Normal(tr['mu'], t.ones(5,))
 
 
 
@@ -27,18 +27,18 @@ class Q(nn.Module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Normal(self.m_mu, self.log_s_mu.exp())
+        tr['mu'] = alan.Normal(self.m_mu, self.log_s_mu.exp())
 
-data = tpp.sample(P, "obs")
-test_data = tpp.sample(P, "obs")
+data = alan.sample(P, "obs")
+test_data = alan.sample(P, "obs")
 
 print(data)
-model = tpp.Model(P, Q(), data)
+model = alan.Model(P, Q(), data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=5
-dims = tpp.make_dims(P, K)
+dims = alan.make_dims(P, K)
 print("K={}".format(K))
 for i in range(10000):
     opt.zero_grad()
@@ -56,7 +56,7 @@ print(model.Q.m_mu)
 print("Approximate Covariance")
 print(model.Q.log_s_mu.exp()**2)
 
-b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),tpp.dename(data['obs']).reshape(-1,1))
+b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),alan.dename(data['obs']).reshape(-1,1))
 A_n = t.inverse(t.eye(5) + t.eye(5))
 
 print("True mu")
@@ -71,7 +71,7 @@ print('Test Data')
 print(test_data)
 pred_lik = model.pred_likelihood(test_data=test_data, num_samples=1000).sum()
 print(pred_lik)
-pred_dist = tpp.Normal(model.Q.m_mu, (model.Q.log_s_mu.exp()**2 + t.ones(5,))**(1/2))
+pred_dist = alan.Normal(model.Q.m_mu, (model.Q.log_s_mu.exp()**2 + t.ones(5,))**(1/2))
 true_pred_lik = pred_dist.log_prob(test_data['obs']).sum()
 print(true_pred_lik)
 

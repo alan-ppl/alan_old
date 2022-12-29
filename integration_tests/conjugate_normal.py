@@ -1,10 +1,10 @@
 import math
 import torch as t
 import torch.distributions as td
-import tpp
-import tpp.postproc as pp
+import alan
+import alan.postproc as pp
 from testing_utils import within_stderrs
-from tpp.utils import dim2named_tensor
+from alan.utils import dim2named_tensor
 
 s_theta = t.ones(())
 s_z     = t.ones(())
@@ -14,13 +14,13 @@ v_z     = s_z**2
 v_obs   = s_obs**2
 
 def P(tr):
-    tr.sample('theta', tpp.Normal(0, s_theta))
-    tr.sample('z',     tpp.Normal(tr['theta'], s_z), plate="plate_1")
-    tr.sample('obs',   tpp.Normal(tr['z'], s_obs))
+    tr.sample('theta', alan.Normal(0, s_theta))
+    tr.sample('z',     alan.Normal(tr['theta'], s_z), plate="plate_1")
+    tr.sample('obs',   alan.Normal(tr['z'], s_obs))
 
 def P_int(tr):
-    tr.sample('theta', tpp.Normal(0, s_theta))
-    tr.sample('obs',   tpp.Normal(tr['theta'], (v_z + v_obs).sqrt())
+    tr.sample('theta', alan.Normal(0, s_theta))
+    tr.sample('obs',   alan.Normal(tr['theta'], (v_z + v_obs).sqrt())
 
 N = 2
 obs = t.ones(N) + 0.1 * t.randn(N)
@@ -43,18 +43,18 @@ ev = logjoint - logpost
 
 Q_prior = lambda tr: None
 def Q_fac(tr):
-    tr.sample('theta', tpp.Normal(0, s_theta))
-    tr.sample('z',     tpp.Normal(0, (v_z+v_theta).sqrt()), plate="plate_1")
+    tr.sample('theta', alan.Normal(0, s_theta))
+    tr.sample('z',     alan.Normal(0, (v_z+v_theta).sqrt()), plate="plate_1")
 def Q_nonfac(tr):
-    tr.sample('theta', tpp.Normal(0, s_theta))
-    tr.sample('z',     tpp.Normal(tr['theta'], s_z), plate="plate_1")
+    tr.sample('theta', alan.Normal(0, s_theta))
+    tr.sample('z',     alan.Normal(tr['theta'], s_z), plate="plate_1")
 
 K = 1000
 N = 1001
 Qs = [Q_prior, Q_fac, Q_nonfac]
 for Q in Qs:
     #Model where we sample from prior
-    model = tpp.Model(P, Q, data={'obs':obs})
+    model = alan.Model(P, Q, data={'obs':obs})
 
     #Check E[theta] and E[theta**2] are within stderrs, using importance weighting
     weights = model.weights(K)

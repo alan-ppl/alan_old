@@ -1,9 +1,9 @@
 import math
 import torch as t
 
-import tpp
-import tpp.postproc as pp
-from tpp.utils import dim2named_tensor
+import alan
+import alan.postproc as pp
+from alan.utils import dim2named_tensor
 
 def within_stderrs(true_value, est, stderr):
     sigmas = 6
@@ -11,7 +11,7 @@ def within_stderrs(true_value, est, stderr):
 
 
 def test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001):
-    int_model = tpp.Model(P_int, data={'obs':obs})
+    int_model = alan.Model(P_int, data={'obs':obs})
     int_weights = int_model.weights(1000)
     post_v  = pp.var(int_weights)['theta']
     post_m  = pp.mean(int_weights)['theta']
@@ -21,7 +21,7 @@ def test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001):
 
     for Q in Qs:
         #Model where we sample from prior
-        model = tpp.Model(P, Q, data={'obs':obs})
+        model = alan.Model(P, Q, data={'obs':obs})
 
         #Check E[theta] and E[theta**2] are within stderrs, using importance weighting
         weights = model.weights(K)

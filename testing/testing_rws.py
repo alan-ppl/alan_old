@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 import tqdm
 from functorch.dim import dims
 
@@ -21,11 +21,11 @@ class P(nn.Module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Categorical(logits = self.prob_mu, sample_K=False)
-        tr['sigma'] = tpp.Categorical(logits = self.prob_sigma, sample_K=False)
-        tr['obs'] = tpp.Normal(t.ones(5,)*tr['mu'], t.ones(5,)*tr['sigma'].exp(), sample_dim=plate_1)
+        tr['mu'] = alan.Categorical(logits = self.prob_mu, sample_K=False)
+        tr['sigma'] = alan.Categorical(logits = self.prob_sigma, sample_K=False)
+        tr['obs'] = alan.Normal(t.ones(5,)*tr['mu'], t.ones(5,)*tr['sigma'].exp(), sample_dim=plate_1)
 
-class Q(tpp.Q_module):
+class Q(alan.Q_module):
     def __init__(self):
         super().__init__()
         self.reg_param('prob_sigma', t.randn(5))
@@ -33,10 +33,10 @@ class Q(tpp.Q_module):
 
 
     def forward(self, tr):
-        tr['mu'] = tpp.Categorical(logits = self.prob_mu, sample_K=False)
-        tr['sigma'] = tpp.Categorical(logits = self.prob_sigma, sample_K=False)
+        tr['mu'] = alan.Categorical(logits = self.prob_mu, sample_K=False)
+        tr['sigma'] = alan.Categorical(logits = self.prob_sigma, sample_K=False)
 
-#data = tpp.sample(P(), 'obs')
+#data = alan.sample(P(), 'obs')
 
 data ={'obs': t.tensor([[ 1.6145,  0.0647,  0.5294,  1.7702,  3.6971],
         [ 2.3284,  2.7149,  2.2479,  1.5902,  2.5105],
@@ -51,13 +51,13 @@ data ={'obs': t.tensor([[ 1.6145,  0.0647,  0.5294,  1.7702,  3.6971],
 
 
 
-model = tpp.Model(P(), Q(), data)
+model = alan.Model(P(), Q(), data)
 
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K = 5
-dim = tpp.make_dims(P(), K, exclude=['mu', 'sigma'])
+dim = alan.make_dims(P(), K, exclude=['mu', 'sigma'])
 
 for i in range(5):
     opt.zero_grad()

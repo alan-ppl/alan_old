@@ -1,4 +1,4 @@
-from tpp.nat_grad import *
+from alan.nat_grad import *
 
 if __name__ == "__main__":
     N = 10

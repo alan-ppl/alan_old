@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-import tpp
+import alan
 
 t.autograd.set_detect_anomaly(True)
 '''
@@ -20,13 +20,13 @@ def P(tr):
     '''
     Bayesian Gaussian Model
     '''
-    tr.sample('mu',   tpp.MultivariateNormal(a, sigma_0))
-    tr.sample('obs',   tpp.MultivariateNormal(tr['mu'], sigma), plates='plate_1')
+    tr.sample('mu',   alan.MultivariateNormal(a, sigma_0))
+    tr.sample('obs',   alan.MultivariateNormal(tr['mu'], sigma), plates='plate_1')
 
 
 
 
-class Q(tpp.QModule):
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         self.m_mu = nn.Parameter(t.zeros(5,))
@@ -36,10 +36,10 @@ class Q(tpp.QModule):
         sigma_nn = self.s_mu @ self.s_mu.mT
         sigma_nn = sigma_nn + t.eye(5) * 1e-5
 
-        tr.sample('mu',   tpp.MultivariateNormal(self.m_mu, sigma_nn))
+        tr.sample('mu',   alan.MultivariateNormal(self.m_mu, sigma_nn))
 
-data = tpp.sample(P, sizes)
-model = tpp.Model(P, Q(), {'obs': data['obs']})
+data = alan.sample(P, sizes)
+model = alan.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 

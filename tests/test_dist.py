@@ -2,10 +2,10 @@ import sys
 sys.path.append('..')
 
 import torch
-import tpp
+import alan
 import unittest
 
-from tpp.dist import *
+from alan.dist import *
 from functorch.dim import dims
 from torch.nn.functional import softmax
 import random

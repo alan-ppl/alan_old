@@ -129,7 +129,7 @@ class Model(nn.Module):
         Returns:
             A dictionary mapping the variable name to a tuple of weights and samples.
             These weights and samples may be used directly, or may be processed to
-            give e.g. moments, ESS etc. using the functions in tpp.postproc
+            give e.g. moments, ESS etc. using the functions in alan.postproc
         """
         return self._sample(K, False, data).weights()
 
@@ -154,7 +154,7 @@ class Model(nn.Module):
         Notes:
             * This is only really useful for prediction. If you're looking 
               for moments, you should use importance weights processed by 
-              tpp.postproc.  This will be more accurate...
+              alan.postproc.  This will be more accurate...
         """
         N = Dim('N', N)
         return self._sample(K, False, data)._importance_samples(N)

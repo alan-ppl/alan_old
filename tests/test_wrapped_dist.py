@@ -2,8 +2,8 @@ import sys
 sys.path.append('..')
 
 import torch
-import tpp
-from tpp.wrapped_distribution import Normal, Gumbel, Laplace
+import alan
+from alan.wrapped_distribution import Normal, Gumbel, Laplace
 import unittest
 
 from functorch.dim import dims
@@ -11,10 +11,10 @@ from functorch.dim import dims
 def get_asserter(target_shape, target_names):
     def inner(sample):
 
-        assert tpp.dename(sample).shape == target_shape
+        assert alan.dename(sample).shape == target_shape
 
         for i in range(len(target_names)):
-            assert tpp.tensor_utils.get_dims(sample)[i] is target_names[i]
+            assert alan.tensor_utils.get_dims(sample)[i] is target_names[i]
     return inner
 
 

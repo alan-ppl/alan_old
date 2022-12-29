@@ -1,10 +1,10 @@
 import torch as t
 import torch.nn as nn
-from tpp.torchdim_dist import *
-from tpp.traces import Trace, TraceLogP, TraceSampleLogQ, Q, sample, Model
+from alan.torchdim_dist import *
+from alan.traces import Trace, TraceLogP, TraceSampleLogQ, Q, sample, Model
 import tqdm
 from functorch.dim import dims
-from tpp.utils import *
+from alan.utils import *
 
 
 plate_1 = dims(1 , [5])
