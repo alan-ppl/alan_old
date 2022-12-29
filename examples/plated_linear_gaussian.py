@@ -14,12 +14,6 @@ def P(tr):
     tr.sample('d',   alan.Normal(tr['c'], 1), plates='plate_2')
     tr.sample('obs', alan.Normal(tr['d'], 1), plates='plate_3')
 
-#def Q(tr):
-#    tr.sample('a',   alan.Normal(t.zeros(()), 1))
-#    tr.sample('b',   alan.Normal(tr['a'], 1))
-#    tr.sample('c',   alan.Normal(tr['b'], 1), plate='plate_1')
-#    tr.sample('d',   alan.Normal(tr['c'], 1), plate='plate_2')
-
 class Q(alan.QModule):
     def __init__(self):
         super().__init__()
@@ -54,17 +48,7 @@ class Q(alan.QModule):
 
 
 
-data = alan.sample(P, platesizes)
-
-a = []
-bs = []
-cs = []
-ds = []
-obss = []
-for i in range(1000):
-    sample = alan.sample(P, platesizes)
-
-#model = alan.Model(P, lambda tr: None, {'obs': data['obs']})
+data = alan.sample(P, platesizes=platesizes, varnames=('obs',))
 model = alan.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)

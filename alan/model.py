@@ -1,10 +1,10 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import TraceQ, TraceP, TracePred
-from .Sample import Sample
+from .traces import TraceQ, TraceP, TracePred, TracePGlobal
+from .Sample import Sample, SampleGlobal
 from .utils import *
 from .ml  import ML
-from .ml2 import ML2
+from .ml2 import ML2 
 from .ng  import NG
 from .tilted import Tilted
 from .qmodule import QModule
@@ -90,6 +90,23 @@ class Model(nn.Module):
 
         return Sample(trp)
 
+    def _sample_global(self, K, reparam, data):
+        if data is None:
+            data = {}
+        platedims = extend_plates_with_named_tensors(self.platedims, data.values())
+        data = named2dim_tensordict(platedims, data)
+
+        all_data = {**self.data, **data}
+
+        #sample from approximate posterior
+        trq = TraceQ(K, all_data, platedims, reparam)
+        self.Q(trq)
+        #compute logP
+        trp = TracePGlobal(trq)
+        self.P(trp)
+
+        return SampleGlobal(trp)
+
     def elbo(self, K, data=None, reparam=True):
         """Compute the ELBO.
         Args:
@@ -107,6 +124,12 @@ class Model(nn.Module):
         if not reparam:
             warn("Evaluating the ELBO without reparameterising.  This can be valid, e.g. if you're just trying to compute a bound on the model evidence.  But it won't work if you try to train the generative model / approximate posterior using the non-reparameterised ELBO as the objective.")
         return self._sample(K, reparam, data).elbo()
+
+    def elbo_global(self, K, data=None, reparam=True):
+        return self._sample_global(K, reparam, data).elbo()
+
+    def rws_global(self, K, data=None):
+        return self._sample_global(K, False, data).rws()
 
     def rws(self, K, data=None):
         """Compute RWS objectives

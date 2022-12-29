@@ -1,3 +1,4 @@
+import math
 from .utils import *
 from .timeseries import TimeseriesLogP, flatten_tslp_list
 from .dist import Categorical
@@ -330,3 +331,36 @@ def sample_cond(marg, K, K_post_idxs, N):
     cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
     #Sample new K's
     return Categorical(cond).sample(False, sample_dims=(N,))
+
+class SampleGlobal(Sample):
+    def tensor_product(self, detach_p=False, detach_q=False):
+        """
+        Sums over plates, starting at the lowest plate.
+        The key exported method.
+        """
+        logps = self.trp.logp
+        logqs = self.trp.logq
+
+        if detach_p:
+            logps = {n:lp.detach() for (n,lp) in logps.items()}
+        if detach_q:
+            logqs = {n:lq.detach() for (n,lq) in logqs.items()}
+
+        tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
+
+        ## Convert tensors to Float64
+        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) - math.log(self.Kdim.size)
+        return lpqs.logsumexp(self.Kdim)
+
+    @property
+    def Kdim(self):
+        return self.trp.trq.Kdim
+        
+    def sum_not_K(self, x):
+        dims = set(x.dims)
+        assert self.Kdim in dims
+        dims.remove(self.Kdim)
+        dims = list(dims)
+        if 0<len(dims):
+            x = generic_order(x, dims).flatten(0, len(dims)-1).sum(0)
+        return x

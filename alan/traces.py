@@ -48,6 +48,7 @@ class AbstractTrace():
         self.check_varname(key)
         self.check_plate_present(key, plate, T)
 
+
 class TraceSample(AbstractTrace):
     """
     Draws samples from P.  Usually just used to sample fake data from the model.
@@ -340,6 +341,27 @@ class TraceP(AbstractTrace):
 
         #Timeseries needs to know the Kdim, but other distributions ignore it.
         self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_Q_K else None)) + minus_log_K
+
+class TracePGlobal(TraceP):
+    """
+    Incomplete method purely used for benchmarking.
+    e.g. doesn't do sampling from the prior.
+    """
+    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
+        self.check(key, plates, T)
+
+        if T is not None:
+            dist.set_Tdim(self.platedims[T])
+
+        assert key not in self.logp
+        assert key in self.trq
+
+        sample = self.trq[key]
+        if key not in self.data:
+            self.samples[key] = sample
+            self.logq[key] = self.trq.logq[key]
+
+        self.logp[key] = dist.log_prob(sample)
 
 
 class TracePred(AbstractTrace):
