@@ -57,7 +57,7 @@ K=10
 print("K={}".format(K))
 for i in range(20000):
     opt.zero_grad()
-    elbo = model.elbo(K)
+    elbo = model.elbo_tmc(K)
     (-elbo).backward()
     opt.step()
 

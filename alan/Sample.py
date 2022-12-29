@@ -360,7 +360,4 @@ class SampleGlobal(Sample):
         dims = set(x.dims)
         assert self.Kdim in dims
         dims.remove(self.Kdim)
-        dims = list(dims)
-        if 0<len(dims):
-            x = generic_order(x, dims).flatten(0, len(dims)-1).sum(0)
-        return x
+        return sum_dims(x, dims)

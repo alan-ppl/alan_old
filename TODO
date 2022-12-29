@@ -11,7 +11,6 @@ Papers:
 
 Tech TODOs:
   TMC!  Need grouping, but not timeseries.
-  Global.
   Wishart and Inverse Wishart Mixin.
   event_shape for Dirichlet + MvNormal Mixins
   Objective: KL(Q reweighted towards P| Q)
@@ -30,23 +29,6 @@ Tech TODOs:
   Multiple iterations of importance weighting 
   Memory problems!
   
-
-
-
-MCMC:
-  ...
-
-Stein:
-  Do Stein separately along each K.
-  We compute the marginal probability, summing over all the other particles.
-  These look alot like the marginal importance weights.
-  There is a key difference thought: marginal importance weights are normalized, which means there is implicitly a normalizer that depends on the chosen particles.
-  May need to remove this normalizer by adding log P_tmc back in.
-
-
-torch.no_grad / detach e.g. for sampling
-Naming:
-  Kdim etc.
 
 Error messages:
   plate names and var names don't overlap!

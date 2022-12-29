@@ -1,6 +1,6 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import TraceQ, TraceP, TracePred, TracePGlobal
+from .traces import TraceQ, TraceP, TracePred, TracePGlobal, TraceQTMC
 from .Sample import Sample, SampleGlobal
 from .utils import *
 from .ml  import ML
@@ -107,6 +107,23 @@ class Model(nn.Module):
 
         return SampleGlobal(trp)
 
+    def _sample_tmc(self, K, reparam, data):
+        if data is None:
+            data = {}
+        platedims = extend_plates_with_named_tensors(self.platedims, data.values())
+        data = named2dim_tensordict(platedims, data)
+
+        all_data = {**self.data, **data}
+
+        #sample from approximate posterior
+        trq = TraceQTMC(K, all_data, platedims, reparam)
+        self.Q(trq)
+        #compute logP
+        trp = TracePGlobal(trq)
+        self.P(trp)
+
+        return Sample(trp)
+
     def elbo(self, K, data=None, reparam=True):
         """Compute the ELBO.
         Args:
@@ -130,6 +147,12 @@ class Model(nn.Module):
 
     def rws_global(self, K, data=None):
         return self._sample_global(K, False, data).rws()
+
+    def elbo_tmc(self, K, data=None, reparam=True):
+        return self._sample_tmc(K, reparam, data).elbo()
+
+    def rws_tmc(self, K, data=None):
+        return self._sample_tmc(K, False, data).rws()
 
     def rws(self, K, data=None):
         """Compute RWS objectives

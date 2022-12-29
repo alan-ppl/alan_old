@@ -8,6 +8,22 @@ def sum_non_dim(x):
     Sums over all non-torchdim dimensions.
     """
     return x.sum() if x.ndim > 0 else x
+
+def sum_dims(x, dims):
+    """
+    """
+    dims = list(dims)
+    if 0<len(dims):
+        x = x.order(dims).sum(0)
+    return x
+
+def mean_dims(x, dims):
+    """
+    """
+    dims = list(dims)
+    if 0<len(dims):
+        x = x.order(dims).mean(0)
+    return x
     
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
