@@ -69,7 +69,7 @@ Installation from Source
 git clone git@github.com:ThomasHeap/tpp.git
 cd tpp
 git checkout main  # master is pinned to the latest release
-pip install . # pip install .[extras] for running some models in examples/
+pip install -e . # pip install .[extras] for running some models in examples/
 ```
 
 Defining Probabilistic Models
