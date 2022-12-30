@@ -70,8 +70,8 @@ class Q(alan.QModule):
         self.log_theta_psi_z = nn.Parameter(t.zeros((d_z,)))
 
         #z
-        self.mu = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
-        self.log_sigma = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
+        self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',)))
+        self.log_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',)))
 
 
     def forward(self, tr):

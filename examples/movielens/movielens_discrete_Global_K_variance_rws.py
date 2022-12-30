@@ -71,8 +71,8 @@ class Q(alan.QModule):
         self.psi_z_logits = nn.Parameter(t.randn(5))
 
         #z
-        self.mu = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
-        self.log_sigma = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
+        self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',)))
+        self.log_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',)))
 
 
     def forward(self, tr):
