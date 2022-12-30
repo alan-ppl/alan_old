@@ -45,23 +45,23 @@ def P(tr):
   '''
 
   #state level
-  tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state', group='local')
-  tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_state', group='local')
-  tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']), plates = 'plate_state')
+  tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state')
+  tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_state')
+  tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']))
 
   #county level
-  tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county', group='local')
-  tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county', group='local')
+  tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
+  tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
 
-  tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']), group='local')
+  tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']))
 
   #zipcode level
-  tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode', group='local')
-  tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']), plates='plate_zipcode')
+  tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode')
+  tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']))
 
   #reading level
-  tr.sample('sigma_obs', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_reading', group='local')
-  tr.sample('psi_int', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_reading', group='local')
+  tr.sample('sigma_obs', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_reading')
+  tr.sample('psi_int', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_reading')
   tr.sample('obs', alan.Normal(tr['omega'] + tr['psi_int']*tr['basement'], tr['sigma_obs']))
 
 
@@ -157,7 +157,7 @@ for K in Ks:
 
         for j in range(100000):
             opt.zero_grad()
-            elbo = model.elbo(K=K)
+            elbo = model.elbo_global(K=K)
             (-elbo).backward()
             opt.step()
             scheduler.step()
@@ -170,6 +170,6 @@ for K in Ks:
         times.append(time.time() - start)
     results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'avg_time':np.mean(times)}
 
-file = 'results/results_unif_LIW.json'
+file = 'results/results_unif.json'
 with open(file, 'w') as f:
     json.dump(results_dict, f)

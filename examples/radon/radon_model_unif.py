@@ -45,23 +45,23 @@ def P(tr):
   '''
 
   #state level
-  tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
-  tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']), plates = 'plate_state')
+  tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state')
+  tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_state')
+  tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']))
 
   #county level
-  tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+  tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
+  tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
 
   tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']))
 
   #zipcode level
-  tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']), plates='plate_zipcode')
+  tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode')
+  tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']))
 
   #reading level
-  tr.sample('sigma_obs', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-  tr.sample('psi_int', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('sigma_obs', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_reading')
+  tr.sample('psi_int', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_reading')
   tr.sample('obs', alan.Normal(tr['omega'] + tr['psi_int']*tr['basement'], tr['sigma_obs']))
 
 
@@ -70,37 +70,37 @@ class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         #sigma_beta
-        self.sigma_beta_low = nn.Parameter(t.tensor(0.00001).log())
-        self.sigma_beta_high = nn.Parameter(t.tensor(9.9999).log())
+        self.sigma_beta_low = nn.Parameter(t.tensor([0.00001] * M, names=('plate_state',)).log())
+        self.sigma_beta_high = nn.Parameter(t.tensor([9.9999] * M, names=('plate_state',)).log())
         #mu_beta
-        self.mu_beta_mean = nn.Parameter(t.zeros(()))
-        self.log_mu_beta_sigma = nn.Parameter(t.zeros(()))
+        self.mu_beta_mean = nn.Parameter(t.zeros((M,), names=('plate_state',)))
+        self.log_mu_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_state',)))
         #beta
-        self.beta_mu = nn.Parameter(t.zeros((M)), names=('plate_state'))
-        self.log_beta_sigma = nn.Parameter(t.zeros((M)), names=('plate_state'))
+        self.beta_mu = nn.Parameter(t.zeros((M,),names=('plate_state',)))
+        self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_state',)))
         #gamma
-        self.gamma_low = nn.Parameter(t.tensor(0.00001).log())
-        self.gamma_high = nn.Parameter(t.tensor(9.9999).log())
+        self.gamma_low = nn.Parameter(t.tensor([0.00001]*J, names=('plate_county',)).log())
+        self.gamma_high = nn.Parameter(t.tensor([9.9999]*J, names=('plate_county',)).log())
         #sigma_alpha
-        self.sigma_alpha_low = nn.Parameter(t.tensor(0.00001).log())
-        self.sigma_alpha_high = nn.Parameter(t.tensor(9.9999).log())
+        self.sigma_alpha_low = nn.Parameter(t.tensor([0.00001]*J, names=('plate_county',)).log())
+        self.sigma_alpha_high = nn.Parameter(t.tensor([9.9999]*J, names=('plate_county',)).log())
         #alpha
-        self.alpha_mu = nn.Parameter(t.zeros((M,J)), names=('plate_state', 'plate_county'))
-        self.log_alpha_sigma = nn.Parameter(t.zeros((M,J)), names=('plate_state', 'plate_county'))
+        self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_state', 'plate_county')))
+        self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_state', 'plate_county')))
         #sigma_omega
-        self.sigma_omega_low = nn.Parameter(t.tensor(0.00001).log())
-        self.sigma_omega_high = nn.Parameter(t.tensor(9.9999).log())
+        self.sigma_omega_low = nn.Parameter(t.tensor([0.00001] * I, names=('plate_zipcode',)).log())
+        self.sigma_omega_high = nn.Parameter(t.tensor([9.9999] * I, names=('plate_zipcode',)).log())
         #omega
-        self.omega_mu = nn.Parameter(t.zeros((M,J,I)), names=('plate_state', 'plate_county', 'plate_zipcode'))
-        self.log_omega_sigma = nn.Parameter(t.zeros((M,J,I)), names=('plate_state', 'plate_county', 'plate_zipcode'))
+        self.omega_mu = nn.Parameter(t.zeros((M,J,I), names=('plate_state', 'plate_county', 'plate_zipcode')))
+        self.log_omega_sigma = nn.Parameter(t.zeros((M,J,I), names=('plate_state', 'plate_county', 'plate_zipcode')))
 
         #sigma_obs
-        self.sigma_obs_low = nn.Parameter(t.tensor(0.00001).log())
-        self.sigma_obs_high = nn.Parameter(t.tensor(9.9999).log())
+        self.sigma_obs_low = nn.Parameter(t.tensor([0.00001] * N, names=('plate_reading',)).log())
+        self.sigma_obs_high = nn.Parameter(t.tensor([9.9999] * N, names=('plate_reading',)).log())
 
         #beta_int
-        self.psi_int_mu = nn.Parameter(t.zeros(()))
-        self.log_psi_int_sigma = nn.Parameter(t.zeros(()))
+        self.psi_int_mu = nn.Parameter(t.zeros((N), names=('plate_reading',)))
+        self.log_psi_int_sigma = nn.Parameter(t.zeros((N), names=('plate_reading',)))
 
         self.high = t.tensor(10.0).to(device)
         self.low = t.tensor(0.0).to(device)
