@@ -32,7 +32,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [5,10,15]
 
 
 np.random.seed(0)
@@ -42,22 +42,24 @@ N = args.N
 
 
 sizes = {'plate_1':M, 'plate_2':N}
-
-x = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+x_train = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+x_test = {'x':t.load('data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+all_x = {'x': t.vstack([x_train['x'],x_test['x']])}
 d_z = 18
-def P(tr):
-  '''
-  Heirarchical Model
-  '''
+class P(nn.Module):
+    def __init__(self, x):
+        super().__init__()
+        self.x = x
+    def forward(self, tr):
+        '''
+        Heirarchical Model
+        '''
 
-  tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-  tr.sample('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+        tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+        tr.sample('psi_z', alan.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)))
 
-  tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
-
-  tr.sample('obs', alan.Bernoulli(logits = tr['z'] @ tr['x']))
-
-
+        tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
+        tr.sample('obs', alan.Bernoulli(logits = tr['z'] @ tr['x']))
 
 class Q(alan.QModule):
     def __init__(self):
@@ -66,8 +68,7 @@ class Q(alan.QModule):
         self.m_mu_z = nn.Parameter(t.zeros((d_z,)))
         self.log_theta_mu_z = nn.Parameter(t.zeros((d_z,)))
         #psi_z
-        self.m_psi_z = nn.Parameter(t.zeros((d_z,)))
-        self.log_theta_psi_z = nn.Parameter(t.zeros((d_z,)))
+        self.psi_z_logits = nn.Parameter(t.randn(5))
 
         #z
         self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
@@ -76,7 +77,7 @@ class Q(alan.QModule):
 
     def forward(self, tr):
         tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
-        tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
+        tr.sample('psi_z', alan.Categorical(logits=self.psi_z_logits))
 
         tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
@@ -85,38 +86,43 @@ class Q(alan.QModule):
 
 
 data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
-
+test_data_y = {'obs':t.load('data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
+all_data = {'obs': t.vstack([data_y['obs'],test_data_y['obs']])}
 for K in Ks:
     print(K,M,N)
     results_dict[N] = results_dict.get(N, {})
     results_dict[N][M] = results_dict[N].get(M, {})
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
+    pred_liks = []
     times = []
     for i in range(5):
-        per_seed_elbos = []
         seed_torch(i)
         start = time.time()
 
-        model = alan.Model(P, Q(), data_y | x)
+        model = alan.Model(P(x_train), Q(), data_y | x_train)
         model.to(device)
 
-        opt = t.optim.Adam(model.parameters(), lr=1E-3)
+        opt = t.optim.Adam(model.parameters(), lr=1E-4)
+
 
 
         for i in range(50000):
             opt.zero_grad()
-            elbo = model.elbo_global(K=K)
-            (-elbo).backward()
+            wake_theta_loss, wake_phi_loss = model.rws_tmc(K=K)
+            (wake_theta_loss + wake_phi_loss).backward()
             opt.step()
-            per_seed_elbos.append(elbo.item())
+
             if 0 == i%1000:
-                print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
+                print("Iteration: {0}, ELBO: {1:.2f}".format(i,wake_phi_loss.item()))
 
-        elbos.append(np.mean(per_seed_elbos[-50:]))
         times.append(time.time() - start)
-    results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'avg_time':np.mean(times)}
+        # test_model = alan.Model(P(x_test), model.Q, test_data_y | x_test)
+        pred_likelihood = model.predictive_ll(K = K, N = 1000, data_all=all_data | all_x)
+        print(pred_likelihood)
+        pred_liks.append(pred_likelihood['obs'].item())
+    results_dict[N][M][K] = {'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks, 'avg_time':np.mean(times)}
 
-file = 'results/movielens_global_K_results_alan_N{0}_M{1}.json'.format(N,M)
+file = 'results/movielens_results_tmc_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

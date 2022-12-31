@@ -16,7 +16,6 @@ def seed_torch(seed=1029):
     t.cuda.manual_seed(seed)
 
 seed_torch(0)
-
 parser = argparse.ArgumentParser(description='Run the Heirarchical regression task.')
 
 parser.add_argument('N', type=int,
@@ -34,33 +33,29 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 results_dict = {}
 
 Ks = [1,5,10,15]
-# Ns = [10,30]
-# Ms = [10,50,100]
+
+
+np.random.seed(0)
 
 M = args.M
 N = args.N
 
 
 sizes = {'plate_1':M, 'plate_2':N}
-if N == 30:
-    d_z = 20
-else:
-    d_z = 5
-x = {'x':t.load('weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
 
+x = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+d_z = 18
 def P(tr):
   '''
   Heirarchical Model
   '''
 
-  tr.sample('mu_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
-  tr.sample('psi_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
-  tr.sample('psi_y', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+  tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+  tr.sample('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
 
-  tr.sample('z', alan.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_1')
+  tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
-  tr.sample('obs', alan.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
-
+  tr.sample('obs', alan.Bernoulli(logits = tr['z'] @ tr['x']))
 
 
 
@@ -68,15 +63,11 @@ class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         #mu_z
-        self.m_mu_z = nn.Parameter(t.zeros(()))
-        self.log_theta_mu_z = nn.Parameter(t.zeros(()))
+        self.m_mu_z = nn.Parameter(t.zeros((d_z,)))
+        self.log_theta_mu_z = nn.Parameter(t.zeros((d_z,)))
         #psi_z
-        self.m_psi_z = nn.Parameter(t.zeros(()))
-        self.log_theta_psi_z = nn.Parameter(t.zeros(()))
-        #psi_y
-        self.m_psi_y = nn.Parameter(t.zeros(()))
-        self.log_theta_psi_y = nn.Parameter(t.zeros(()))
-
+        self.m_psi_z = nn.Parameter(t.zeros((d_z,)))
+        self.log_theta_psi_z = nn.Parameter(t.zeros((d_z,)))
 
         #z
         self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
@@ -86,12 +77,14 @@ class Q(alan.QModule):
     def forward(self, tr):
         tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
         tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
-        tr.sample('psi_y', alan.Normal(self.m_psi_y, self.log_theta_psi_y.exp()))
-
 
         tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
+
+
+
+
+data_y = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 
 for K in Ks:
     print(K,M,N)
@@ -100,26 +93,22 @@ for K in Ks:
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
     elbos = []
     times = []
-    lrs = []
     for i in range(5):
         per_seed_elbos = []
         seed_torch(i)
         start = time.time()
-        lr = []
-        t.manual_seed(i)
 
         model = alan.Model(P, Q(), data_y | x)
         model.to(device)
 
         opt = t.optim.Adam(model.parameters(), lr=1E-3)
-        scheduler = t.optim.lr_scheduler.StepLR(opt, step_size=10000, gamma=0.1)
+
 
         for i in range(50000):
             opt.zero_grad()
-            elbo = model.elbo_global(K=K)
+            elbo = model.elbo_tmc(K=K)
             (-elbo).backward()
             opt.step()
-            scheduler.step()
             per_seed_elbos.append(elbo.item())
             if 0 == i%1000:
                 print("Iteration: {0}, ELBO: {1:.2f}".format(i,elbo.item()))
@@ -128,6 +117,6 @@ for K in Ks:
         times.append(time.time() - start)
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'avg_time':np.mean(times)}
 
-file = 'results/results_global_K_lr_N{0}_M{1}.json'.format(N,M)
+file = 'results/movielens_tmc_results_alan_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)
