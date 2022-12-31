@@ -24,7 +24,7 @@ def mean_dims(x, dims):
     if 0<len(dims):
         x = x.order(dims).mean(0)
     return x
-    
+
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
 
@@ -132,7 +132,7 @@ def named2dim_tensor(d, x):
         d (dict): dictionary mapping plate name to torchdim Dim.
         x (t.Tensor): named tensor.
     Returns:
-        A torchdim tensor.        
+        A torchdim tensor.
     """
 
     if 0==x.ndim:
@@ -169,7 +169,8 @@ def extend_plates_with_sizes(plates, size_dict):
         if (name not in plates):
             new_dict[name] = Dim(name, size)
         elif size != plates[name].size:
-            raise Exception(f"Mismatch in sizes for plate '{name}'")
+            raise Exception(f"""Mismatch in sizes for plate '{name}',
+             data has size '{size}' but model indicates size '{plates[name].size}'""")
     return {**plates, **new_dict}
 
 def extend_plates_with_named_tensor(plates, tensor):

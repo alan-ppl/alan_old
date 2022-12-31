@@ -62,7 +62,6 @@ def P(tr):
   tr.sample('z', alan.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_z')
 
 
-
   tr.sample('obs', alan.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
 
@@ -105,8 +104,8 @@ class Q(alan.QModule):
 
         tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
-test_data_y = {'obs':t.load('test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
+data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4','plate_obs', 'plate_z').to(device)}
+test_data_y = {'obs':t.load('test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_obs', 'plate_z').to(device)}
 for K in Ks:
     print(K,M,N)
     results_dict[N] = results_dict.get(N, {})
