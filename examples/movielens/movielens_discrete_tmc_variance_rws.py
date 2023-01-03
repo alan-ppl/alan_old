@@ -32,7 +32,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [5,10,15]
+Ks = [3,10,30]
 
 K_sims = [1,3,10,30]
 

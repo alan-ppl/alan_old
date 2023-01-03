@@ -33,7 +33,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [1,3,10,30]
 # Ns = [10,30]
 # Ms = [10,50,100]
 
