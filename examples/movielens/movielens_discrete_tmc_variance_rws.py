@@ -127,7 +127,6 @@ for K in Ks:
         results_dict[N][M][K][K_sim] = results_dict[N][M][K].get(K_sim, {})
         results_dict[N][M][K][K_sim] = {'pred_mean':np.mean(pred_liks[K_sim]), 'pred_std':np.std(pred_liks[K_sim]), 'preds':pred_liks[K_sim], 'avg_time':np.mean(times)}
 
-print(results_dict)
 file = 'results/movielens_results_tmc_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)
