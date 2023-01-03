@@ -34,6 +34,7 @@ results_dict = {}
 
 Ks = [5,10,15]
 
+K_sims = [1,3,10,30]
 
 np.random.seed(0)
 
@@ -93,8 +94,9 @@ for K in Ks:
     results_dict[N] = results_dict.get(N, {})
     results_dict[N][M] = results_dict[N].get(M, {})
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
+
     elbos = []
-    pred_liks = []
+    pred_liks = {K_sim:[] for K_sim in K_sims}
     times = []
     for i in range(5):
         seed_torch(i)
@@ -107,10 +109,10 @@ for K in Ks:
 
 
 
-        for i in range(50000):
+        for i in range(5000):
             opt.zero_grad()
             wake_theta_loss, wake_phi_loss = model.rws_tmc(K=K)
-            (wake_theta_loss + wake_phi_loss).backward()
+            (-(wake_theta_loss + wake_phi_loss)).backward()
             opt.step()
 
             if 0 == i%1000:
@@ -118,11 +120,14 @@ for K in Ks:
 
         times.append(time.time() - start)
         # test_model = alan.Model(P(x_test), model.Q, test_data_y | x_test)
-        pred_likelihood = model.predictive_ll(K = K, N = 1000, data_all=all_data | all_x)
-        print(pred_likelihood)
-        pred_liks.append(pred_likelihood['obs'].item())
-    results_dict[N][M][K] = {'pred_mean':np.mean(pred_liks), 'pred_std':np.std(pred_liks), 'preds':pred_liks, 'avg_time':np.mean(times)}
+        for K_sim in K_sims:
+            pred_likelihood = model.predictive_ll(K = K, N = 1000, data_all=all_data | all_x)
+            pred_liks[K_sim].append(pred_likelihood['obs'].item())
+    for K_sim in K_sims:
+        results_dict[N][M][K][K_sim] = results_dict[N][M][K].get(K_sim, {})
+        results_dict[N][M][K][K_sim] = {'pred_mean':np.mean(pred_liks[K_sim]), 'pred_std':np.std(pred_liks[K_sim]), 'preds':pred_liks[K_sim], 'avg_time':np.mean(times)}
 
+print(results_dict)
 file = 'results/movielens_results_tmc_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

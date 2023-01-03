@@ -355,7 +355,7 @@ class SampleGlobal(Sample):
     @property
     def Kdim(self):
         return self.trp.trq.Kdim
-        
+
     def sum_not_K(self, x):
         dims = set(x.dims)
         assert self.Kdim in dims
