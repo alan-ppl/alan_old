@@ -13,9 +13,10 @@ setup(
     ],
     extras_requires=[
     'numpy',
-    'pandas'
-    'scipy'
-    'tqdm'
+    'pandas',
+    'scipy',
+    'tqdm',
+    'hydra',
     ],
     include_package_data = True,
     platforms = "any",

@@ -153,7 +153,7 @@ class Sample():
         p_obj =   self.tensor_product(detach_q=True)
         # Wake-phase Q update
         q_obj = - self.tensor_product(detach_p=True)
-        return p_obj, q_obj
+        return p_obj + q_obj
 
     def moments(self, fs):
         """

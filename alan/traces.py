@@ -14,18 +14,19 @@ def check_not_reserved(x):
     reserved = (x in reserved_names) or (x[:2] in reserved_prefix)
     if reserved:
         raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
-    
+
 
 class AbstractTrace():
     def __getitem__(self, key):
         assert key in self
-        return self.samples[key] if (key in self.samples) else self.data[key]
+        return self.samples[key] if (key in self.samples) else {**self.covariates, **self.data}[key]
 
     def __contains__(self, key):
         in_data   = key in self.data
+        in_covariates = key in self.covariates
         in_sample = key in self.samples
-        assert not (in_data and in_sample)
-        return in_data or in_sample
+        assert not (in_data and in_sample) or (in_covariates and in_sample)
+        return in_data or in_sample or in_covariates
 
     def filter_platedims(self, dims):
         platedims = set(self.platedims.values())
@@ -58,7 +59,7 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, platesizes, N):
+    def __init__(self, platesizes, N, covariates):
         super().__init__()
         self.platedims = extend_plates_with_sizes({}, platesizes)
         self.Ns = () if (N is None) else (Dim('N', N),)
@@ -68,6 +69,7 @@ class TraceSample(AbstractTrace):
         self.samples = {}
         self.logp    = {}
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
+        self.covariates = named2dim_tensordict(self.platedims, covariates)
 
     def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
         self.check(key, plates, T)
@@ -80,9 +82,9 @@ class TraceSample(AbstractTrace):
         self.samples[key] = sample
         self.logp[key] = dist.log_prob(sample)
 
-def sample(P, platesizes=None, N=None, varnames=None):
+def sample(P, platesizes=None, N=None, varnames=None, covariates=None):
     """Draw samples from a generative model (with no data).
-    
+
     Args:
         P:        The generative model (a function taking a trace).
         plates:   A dict mapping platenames to integer sizes of that plate.
@@ -90,13 +92,13 @@ def sample(P, platesizes=None, N=None, varnames=None):
         varnames: An iterable of the variables to return
 
     Returns:
-        A dictionary mapping from variable name to sampled value, 
-        represented as a named tensor (e.g. so that it is suitable 
+        A dictionary mapping from variable name to sampled value,
+        represented as a named tensor (e.g. so that it is suitable
         for use as data).
     """
     if platesizes is None:
         platesizes = {}
-    tr = TraceSample(platesizes, N)
+    tr = TraceSample(platesizes, N, covariates=covariates)
     P(tr)
 
     if varnames is None:
@@ -112,11 +114,12 @@ class TraceQ(AbstractTrace):
     The latents may depend on the data (as in a VAE), but it doesn't make sense to "sample" data.
     Can high-level latents depend on plated lower-layer latents?  (I think so?)
     """
-    def __init__(self, K, data, platedims, reparam):
+    def __init__(self, K, data, covariates, platedims, reparam):
         super().__init__()
         self.Kdim = Dim("K", K)
 
         self.data = data
+        self.covariates = covariates
         self.platedims = platedims
 
         self.reparam = reparam
@@ -169,11 +172,12 @@ class TraceQ(AbstractTrace):
         return reduce_plate(t.mean, x, plate)
 
 class TraceQTMC(AbstractTrace):
-    def __init__(self, K, data, platedims, reparam):
+    def __init__(self, K, data, covariates, platedims, reparam):
         super().__init__()
         self.K = K
 
         self.data = data
+        self.covariates = covariates
         self.platedims = platedims
 
         self.reparam = reparam
@@ -244,6 +248,10 @@ class TraceP(AbstractTrace):
         return self.trq.data
 
     @property
+    def covariates(self):
+        return self.trq.covariates
+
+    @property
     def platedims(self):
         return self.trq.platedims
 
@@ -253,7 +261,7 @@ class TraceP(AbstractTrace):
         This only makes sense with multiple samples, which is nice as we no
         longer have the opportunity to set multi_sample=False in TraceQ.
 
-        The basic strategy is to sample from the prior dist, then take the 
+        The basic strategy is to sample from the prior dist, then take the
         "diagonal" for all K's.
         """
         Kdim = self.trq.Kdim
@@ -302,7 +310,7 @@ class TraceP(AbstractTrace):
         Edim = Dim(f'E_{key}', values.shape[0])
         values = values[Edim]
         #values is now just all a vector containing values in the support.
-        
+
         #Add a bunch of 1 dimensions.
         idxs = (len(plates)*[None])
         idxs.append(Ellipsis)
@@ -332,13 +340,13 @@ class TraceP(AbstractTrace):
                 raise Exception(f"Timeseries '{key}' is grouped with another variable which is sampled first. Timeseries can be grouped, but must be sampled first")
 
         if (key in self.trq):
-            #We already have a value for the sample, either because it is 
+            #We already have a value for the sample, either because it is
             #in the data, or because we sampled the variable in Q.
             if sum_discrete:
                 raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but we already have a sample of '{key}' drawn from Q.  If you're summing over a discrete latent variable, you shouldn't provide a proposal / approximate posterior for that variable.")
             if delayed_Q is not None:
                 raise Exception("You have given a delayed_Q (which would allow us to use an approximate posterior that's a 'tilted' version of the prior, but we already have a sample of '{key}' drawn from Q.  We need one or the other!")
-             
+
             sample = self.trq[key]
             logq = self.trq.logq[key] if key in self.trq.samples else None
 
@@ -362,7 +370,7 @@ class TraceP(AbstractTrace):
             else:
                 #Sample from prior
                 sample, logq = self.sample_logQ_prior(dist, plates, delayed_Q)
-        
+
         dims_sample = set(generic_dims(sample))
 
         minus_log_K = 0.
@@ -438,23 +446,27 @@ class TracePred(AbstractTrace):
 
 
     """
-    def __init__(self, N, samples_train, data_train, data_all, platedims_train, platesizes_all):
+    def __init__(self, N, samples_train, data_train, data_all, covariates_train, covariates_all, platedims_train, platesizes_all):
         super().__init__()
         self.N = N
 
         self.samples_train = samples_train
         self.data_train = data_train
+        self.covariates_train = covariates_train
         self.platedims_train = platedims_train
 
         #Either data_all or platesizes_all is not None, but not both.
         assert (data_all is None) != (platesizes_all is None)
- 
+
         if platesizes_all is not None:
             self.platedims_all = extend_plates_with_sizes({}, platesizes_all)
             self.data_all      = {}
         elif data_all is not None:
             self.platedims_all = extend_plates_with_named_tensors({}, data_all.values())
             self.data_all      = named2dim_tensordict(self.platedims_all, data_all)
+        elif covariates_all is not None:
+            self.platedims_all = extend_plates_with_named_tensors(self.platedims_all, covariates_all.values())
+            self.covariates_all      = named2dim_tensordict(self.platedims_all, covariates_all)
         else:
             assert False
 
@@ -476,7 +488,7 @@ class TracePred(AbstractTrace):
             if rv not in self.data_all:
                 self.data_all[rv] = x
         #If any plates from platedims_train are missing in platedims_all, fill them in
-        for (platename, platedim) in self.data_train.items():
+        for (platename, platedim) in self.platedims_train.items():
             if platename not in self.platedims_all:
                 self.platedims_all[platename] = platedim
 
@@ -486,14 +498,15 @@ class TracePred(AbstractTrace):
 
         if not (data_bigger or plates_bigger):
             raise Exception(f"None of the data tensors or plate sizes provided for prediction is bigger than those at training time.  Remember that the data/plate sizes are the sizes of train + 'test'")
-            
+
 
     def __getitem__(self, key):
         in_data   = key in self.data_all
+        in_covariates = key in self.covariates_all
         in_sample = key in self.samples_all
-        assert in_data or in_sample
-        assert not (in_data and in_sample)
-        return self.samples_all[key] if in_sample else self.data_all[key]
+        assert in_data or in_sample or in_covariates
+        assert not (in_data and in_sample) or (in_covariates and in_sample)
+        return self.samples_all[key] if in_sample else {**self.data_all, **self.covariates_all}[key]
 
     def corresponding_plates(self, x_all, x_train):
         """
