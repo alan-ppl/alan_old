@@ -3,6 +3,10 @@ import torch.nn as nn
 import alan
 
 def generate_model(N,M,local,device):
+    M = 2
+    J = 2
+    I = 4
+    N = 4
     sizes = {'plate_state': M, 'plate_county':J, 'plate_zipcode':I, 'plate_reading':N}
 
     def P(tr):
@@ -102,10 +106,10 @@ def generate_model(N,M,local,device):
             tr.sample('sigma_obs', alan.Uniform(sigma_obs_low, sigma_obs_high))
             tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))
 
-    covariates = {'basement': t.load('data/basement.pt').rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...).to(device),
-        'county_uranium':t.load('data/county_uranium.pt').rename('plate_state', 'plate_county').to(device)}
+    covariates = {'basement': t.load('radon/data/basement.pt').rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...).to(device),
+        'county_uranium':t.load('radon/data/county_uranium.pt').rename('plate_state', 'plate_county').to(device)}
 
-    data = {'obs':t.load('data/radon.pt').rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...).to(device)}
+    data = {'obs':t.load('radon/data/radon.pt').rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...).to(device)}
 
 
     return P, Q, data, covariates, {}, {}

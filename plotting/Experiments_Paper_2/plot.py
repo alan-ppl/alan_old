@@ -30,8 +30,8 @@ with plt.rc_context(bundles.icml2022()):
             with open('results/results_global_K_lr_N{0}_M{1}.json'.format(N,M)) as f:
                 results_global_K = json.load(f)
 
-            with open('results/results_tmc_lr_N{0}_M{1}.json'.format(N,M)) as f:
-                results_tmc = json.load(f)
+            # with open('results/results_tmc_lr_N{0}_M{1}.json'.format(N,M)) as f:
+            #     results_tmc = json.load(f)
 
 
             elbos_tpp = [results[N][M][k]['lower_bound'] for k in Ks]
@@ -43,14 +43,14 @@ with plt.rc_context(bundles.icml2022()):
             elbos_global_K = [results_global_K[N][M][k]['lower_bound'] for k in Ks]
             stds_global_K = [results_global_K[N][M][k]['std']/np.sqrt(5) for k in Ks]
 
-            elbos_tmc = [results_tmc[N][M][k]['lower_bound'] for k in Ks]
-            stds_tmc = [results_tmc[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            # elbos_tmc = [results_tmc[N][M][k]['lower_bound'] for k in Ks]
+            # stds_tmc = [results_tmc[N][M][k]['std']/np.sqrt(5) for k in Ks]
 
 
             ax[i,j].errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
             ax[i,j].errorbar(Ks,elbos_tpp, yerr=stds_tpp, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TPP')
             ax[i,j].errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Global K')
-            ax[i,j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC')
+            # ax[i,j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC')
             # plt.title('Groups: {0}, Observations per group: {1}, with one standard deviation'.format(M, N))
             # ax.set_ylabel('Final Lower Bound')
             # ax.set_xlabel('K')

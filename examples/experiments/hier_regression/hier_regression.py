@@ -53,12 +53,12 @@ def generate_model(N,M,local,device):
 
             tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
-    covariates = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
-    test_covariates = {'x':t.load('data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+    covariates = {'x':t.load('hier_regression/data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+    test_covariates = {'x':t.load('hier_regression/data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
     all_covariates = {'x': t.vstack([covariates['x'],test_covariates['x']])}
 
-    data = {'obs':t.load('data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
-    test_data = {'obs':t.load('data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
+    data = {'obs':t.load('hier_regression/data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
+    test_data = {'obs':t.load('hier_regression/data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
     all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
 
     return P, Q, data, covariates, all_data, all_covariates

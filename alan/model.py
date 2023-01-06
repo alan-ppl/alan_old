@@ -59,7 +59,7 @@ class Model(nn.Module):
                         raise Exception("Named parameter on an nn.Module.  To specify plates in approximate posteriors correctly, we need to use QModule in place of nn.Module")
 
         self.platedims = extend_plates_with_named_tensors(self.platedims, data.values())
-        self.covariates = named2dim_tensordict(self.platedims, data)
+        self.covariates = named2dim_tensordict(self.platedims, covariates)
         self.data   = named2dim_tensordict(self.platedims, data)
 
     def _sample(self, K, reparam, data, covariates, memory_diagnostics=False):
@@ -68,6 +68,8 @@ class Model(nn.Module):
         """
         if data is None:
             data = {}
+        if covariates is None:
+            covariates = {}
         platedims = extend_plates_with_named_tensors(self.platedims, data.values())
         data = named2dim_tensordict(platedims, data)
         covariates = named2dim_tensordict(platedims, covariates)
@@ -106,6 +108,8 @@ class Model(nn.Module):
     def _sample_global(self, K, reparam, data, covariates):
         if data is None:
             data = {}
+        if covariates is None:
+            covariates = {}
         platedims = extend_plates_with_named_tensors(self.platedims, data.values())
         data = named2dim_tensordict(platedims, data)
         covariates = named2dim_tensordict(platedims, covariates)
@@ -126,6 +130,8 @@ class Model(nn.Module):
     def _sample_tmc(self, K, reparam, data, covariates):
         if data is None:
             data = {}
+        if covariates is None:
+            covariates = {}
         platedims = extend_plates_with_named_tensors(self.platedims, data.values())
         data = named2dim_tensordict(platedims, data)
         covariates = named2dim_tensordict(platedims, covariates)
@@ -225,7 +231,7 @@ class Model(nn.Module):
         return self._sample(K, False, data, covariates)._importance_samples(N)
 
     def _predictive(self, K, N, data_all=None, covariates_all=None, platesizes_all=None):
-        sample = self._sample(K, False, None)
+        sample = self._sample(K, False, None, None)
 
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)

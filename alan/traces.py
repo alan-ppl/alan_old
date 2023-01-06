@@ -461,10 +461,10 @@ class TracePred(AbstractTrace):
         if platesizes_all is not None:
             self.platedims_all = extend_plates_with_sizes({}, platesizes_all)
             self.data_all      = {}
-        elif data_all is not None:
+        if data_all is not None:
             self.platedims_all = extend_plates_with_named_tensors({}, data_all.values())
             self.data_all      = named2dim_tensordict(self.platedims_all, data_all)
-        elif covariates_all is not None:
+        if covariates_all is not None:
             self.platedims_all = extend_plates_with_named_tensors(self.platedims_all, covariates_all.values())
             self.covariates_all      = named2dim_tensordict(self.platedims_all, covariates_all)
         else:
@@ -487,6 +487,12 @@ class TracePred(AbstractTrace):
         for (rv, x) in self.data_train.items():
             if rv not in self.data_all:
                 self.data_all[rv] = x
+
+        #If any covariates from data_train are missing in data_all, fill them in
+        for (rv, x) in self.covariates_train.items():
+            if rv not in self.covariates_all:
+                self.covariates_all[rv] = x
+
         #If any plates from platedims_train are missing in platedims_all, fill them in
         for (platename, platedim) in self.platedims_train.items():
             if platename not in self.platedims_all:

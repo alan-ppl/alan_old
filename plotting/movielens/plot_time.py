@@ -34,23 +34,19 @@ with plt.rc_context(bundles.icml2022()):
                 results_global_K = json.load(f)
 
 
-            elbos_tpp = [results[N][M][k]['lower_bound'] for k in Ks]
-            stds_tpp = [results[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            elbos_tpp = [results[N][M][k]['avg_time']/50000 for k in Ks]
 
-            elbos_IW = [results_local_IW[N][M][k]['lower_bound'] for k in Ks]
-            stds_IW = [results_local_IW[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            elbos_IW = [results_local_IW[N][M][k]['avg_time']/50000 for k in Ks]
 
-            elbos_global_K = [results_global_K[N][M][k]['lower_bound'] for k in Ks]
-            stds_global_K = [results_global_K[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            elbos_global_K = [results_global_K[N][M][k]['avg_time']/50000 for k in Ks]
 
-            # elbos_tmc = [results_tmc[N][M][k]['lower_bound'] for k in Ks]
-            # stds_tmc = [results_tmc[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            # elbos_tmc = [results_tmc[N][M][k]['avg_time']/50000 for k in Ks]
 
 
-            ax[i,j].errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
-            ax[i,j].errorbar(Ks,elbos_tpp, yerr=stds_tpp, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TPP')
-            ax[i,j].errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Global K')
-            # ax[i,j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC')
+            ax[i,j].errorbar(Ks,elbos_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
+            ax[i,j].errorbar(Ks,elbos_tpp, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TPP')
+            ax[i,j].errorbar(Ks,elbos_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Global K')
+            # ax[i,j].errorbar(Ks,elbos_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC')
             #
             # ax.set_ylabel('Final Lower Bound')
             # ax.set_xlabel('K')
@@ -61,8 +57,8 @@ with plt.rc_context(bundles.icml2022()):
     ax[0,1].set_title('Groups = 50')
     ax[0,2].set_title('Groups = 100')
 
-    ax[0,0].set_ylabel('Obs per group = 30 \n Final Lower Bound')
-    ax[1,0].set_ylabel('Obs per group = 200 \n Final Lower Bound')
+    ax[0,0].set_ylabel('Obs per group = 30 \n Average time per iteration')
+    ax[1,0].set_ylabel('Obs per group = 200 \n Average time per iteration')
 
     ax[1,0].sharex(ax[0,0])
     ax[1,0].set_xlabel('K')
@@ -72,5 +68,5 @@ with plt.rc_context(bundles.icml2022()):
     ax[1,2].set_xlabel('K')
     # fig.tight_layout()
     plt.legend()
-    plt.savefig('charts/chart_movielens.png'.format(N, M))
-    plt.savefig('charts/chart_movielens.pdf'.format(N, M))
+    plt.savefig('charts/chart_time_movielens.png'.format(N, M))
+    plt.savefig('charts/chart_time_movielens.pdf'.format(N, M))
