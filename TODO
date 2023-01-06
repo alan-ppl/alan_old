@@ -29,7 +29,12 @@ Tech TODOs:
   Multiple iterations of importance weighting 
   Memory problems!
   
-
+Saving Q modules:
+  Because Q_modules can have named parameters, the usual
+  t.save(model.state_dict(), ...) thing doesn't work,
+  will need to overwrite the state_dict() method and do something to
+  rename the params when loading 
+  
 Error messages:
   plate names and var names don't overlap!
   check all dimensions that are either plates or Ks
