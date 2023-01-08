@@ -51,7 +51,7 @@ lr = 0.2
 t.manual_seed(0)
 m1 = alan.Model(P, Q(), data={'obs': data['obs']})
 for i in range(T):
-    print(m1.elbo(K).item())
+    print(m1.kl(K).item())
     m1.update(K, lr)
 
 print() 
@@ -59,5 +59,5 @@ print()
 t.manual_seed(0)
 m2 = alan.Model(PQ(), data={'obs': data['obs']})
 for i in range(T):
-    print(m2.elbo(K).item())
+    print(m2.kl(K).item())
     m2.update(K, lr)

@@ -1,16 +1,20 @@
 Papers:
-  ML:
+  ML (ICML):
     Proof of validity of RWS and VI + superiority over TMC (requires TMC).
-  Stats:
+  Stats (UAI?)
     log-derivatives for computing marginals + posterior samples
-  Fast proposals:
+  Fast proposals (UAI?):
     fast ML learning of factorised approximate posteriors
     tilted / pseudo-likelihood based approximate posteriors + a fast learning mechanism
   MCMC:
     6)
+  Alan:
+    Overview of interacting components + description of story around predictions.
+  GP
 
 Tech TODOs:
-  TMC!  Need grouping, but not timeseries.
+  Constrain tilted natural params to be bigger than 0?
+  Big scary warnings for Global and TMC
   Wishart and Inverse Wishart Mixin.
   event_shape for Dirichlet + MvNormal Mixins
   Objective: KL(Q reweighted towards P| Q)

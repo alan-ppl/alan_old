@@ -181,6 +181,27 @@ class Sample():
 
         return named_Es
 
+    def Elogq(self): 
+        """
+        Uses importance weighting to approximate E_{P(z|x)}[log Q(z)].
+        Could also implement using importance weights?
+        """
+        ms = list(self.trp.logq.values())
+        #Keep only platedims.
+        dimss     = [[dim for dim in generic_dims(m) if dim in self.platedims] for m in ms]
+        sizess    = [[dim.size for dim in dims] for dims in dimss]
+        named_Js  = [t.zeros(sizes, dtype=m.dtype, device=m.device, requires_grad=True) for (m, sizes) in zip(ms, sizess)]
+        dimss     = [[*dims, Ellipsis] for dims in dimss]
+        dim_Js    = [J[dims] for (J, dims) in zip(named_Js, dimss)]
+        factors   = [m*J for (m, J) in zip(ms, dim_Js)]
+
+        #Compute result with torchdim Js
+        result = self.tensor_product(extra_log_factors=factors)
+        #But differentiate wrt non-torchdim Js
+        Es = list(t.autograd.grad(result, named_Js))
+
+        return sum(E.sum() for E in Es)
+
     def weights(self):
         """
         Produces normalized weights for each latent variable.
