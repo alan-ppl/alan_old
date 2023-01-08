@@ -33,7 +33,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [1,3,10,30]
 # Ns = [10,30]
 # Ms = [10,50,100]
 
@@ -79,8 +79,8 @@ class Q(alan.QModule):
 
 
         #z
-        self.mu = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
-        self.log_sigma = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
+        self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
+        self.log_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
 
 
     def forward(self, tr):

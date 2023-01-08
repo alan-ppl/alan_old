@@ -32,7 +32,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [1,3,10,30]
 
 
 np.random.seed(0)
@@ -70,8 +70,8 @@ class Q(alan.QModule):
         self.log_theta_psi_z = nn.Parameter(t.zeros((d_z,)))
 
         #z
-        self.mu = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
-        self.log_sigma = nn.Parameter(t.zeros((M,d_z)), names=('plate_1'))
+        self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
+        self.log_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
 
 
     def forward(self, tr):

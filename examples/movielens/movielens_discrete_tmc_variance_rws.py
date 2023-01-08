@@ -33,6 +33,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 results_dict = {}
 
 Ks = [3,10,30]
+
 K_sims = [1,3,10,30]
 
 np.random.seed(0)
@@ -93,6 +94,7 @@ for K in Ks:
     results_dict[N] = results_dict.get(N, {})
     results_dict[N][M] = results_dict[N].get(M, {})
     results_dict[N][M][K] = results_dict[N][M].get(K, {})
+
     elbos = []
     pred_liks = {K_sim:[] for K_sim in K_sims}
     times = []
@@ -107,9 +109,9 @@ for K in Ks:
 
 
 
-        for i in range(50000):
+        for i in range(5000):
             opt.zero_grad()
-            wake_theta_loss, wake_phi_loss = model.rws_global(K=K)
+            wake_theta_loss, wake_phi_loss = model.rws_tmc(K=K)
             (-(wake_theta_loss + wake_phi_loss)).backward()
             opt.step()
 
@@ -125,6 +127,6 @@ for K in Ks:
         results_dict[N][M][K][K_sim] = results_dict[N][M][K].get(K_sim, {})
         results_dict[N][M][K][K_sim] = {'pred_mean':np.mean(pred_liks[K_sim]), 'pred_std':np.std(pred_liks[K_sim]), 'preds':pred_liks[K_sim], 'avg_time':np.mean(times)}
 
-file = 'results/movielens_results_global_K_rws_N{0}_M{1}.json'.format(N,M)
+file = 'results/movielens_results_tmc_rws_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

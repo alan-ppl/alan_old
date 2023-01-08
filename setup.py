@@ -14,6 +14,8 @@ setup(
     extras_requires=[
     'numpy',
     'pandas'
+    'scipy'
+    'tqdm'
     ],
     include_package_data = True,
     platforms = "any",

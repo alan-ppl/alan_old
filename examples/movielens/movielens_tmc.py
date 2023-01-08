@@ -50,8 +50,8 @@ def P(tr):
   Heirarchical Model
   '''
 
-  tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)), group='local')
-  tr.sample('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)), group='local')
+  tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+  tr.sample('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
 
   tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
@@ -106,7 +106,7 @@ for K in Ks:
 
         for i in range(50000):
             opt.zero_grad()
-            elbo = model.elbo(K=K)
+            elbo = model.elbo_tmc(K=K)
             (-elbo).backward()
             opt.step()
             per_seed_elbos.append(elbo.item())
@@ -117,6 +117,6 @@ for K in Ks:
         times.append(time.time() - start)
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'avg_time':np.mean(times)}
 
-file = 'results/movielens_results_local_IW_N{0}_M{1}.json'.format(N,M)
+file = 'results/movielens_tmc_results_alan_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

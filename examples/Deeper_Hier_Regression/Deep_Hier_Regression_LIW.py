@@ -33,7 +33,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 results_dict = {}
 
-Ks = [1,5,10,15]
+Ks = [1,3,10,30]
 # Ns = [10,30]
 # Ms = [10,50,100]
 
@@ -62,7 +62,6 @@ def P(tr):
   tr.sample('z', alan.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_z')
 
 
-
   tr.sample('obs', alan.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
 
@@ -74,14 +73,14 @@ class Q(alan.QModule):
         self.m_mu_z1 = nn.Parameter(t.zeros(()))
         self.log_theta_mu_z1 = nn.Parameter(t.zeros(()))
         #mu_z2
-        self.m_mu_z2 = nn.Parameter(t.zeros((2,)), names=('plate_muz2'))
-        self.log_theta_mu_z2 = nn.Parameter(t.zeros((2,)), names=('plate_muz2'))
+        self.m_mu_z2 = nn.Parameter(t.zeros((2,), names=('plate_muz2',)))
+        self.log_theta_mu_z2 = nn.Parameter(t.zeros((2,), names=('plate_muz2',)))
         #mu_z3
-        self.m_mu_z3 = nn.Parameter(t.zeros((2,2)), names=('plate_muz2', 'plate_muz3'))
-        self.log_theta_mu_z3 = nn.Parameter(t.zeros((2,2)), names=('plate_muz2', 'plate_muz3'))
+        self.m_mu_z3 = nn.Parameter(t.zeros((2,2), names=('plate_muz2', 'plate_muz3')))
+        self.log_theta_mu_z3 = nn.Parameter(t.zeros((2,2), names=('plate_muz2', 'plate_muz3')))
         #mu_z4
-        self.m_mu_z4 = nn.Parameter(t.zeros((2,2,2)), names=('plate_muz2', 'plate_muz3', 'plate_muz4'))
-        self.log_theta_mu_z4 = nn.Parameter(t.zeros((2,2,2)), names=('plate_muz2', 'plate_muz3', 'plate_muz4'))
+        self.m_mu_z4 = nn.Parameter(t.zeros((2,2,2), names=('plate_muz2', 'plate_muz3', 'plate_muz4')))
+        self.log_theta_mu_z4 = nn.Parameter(t.zeros((2,2,2), names=('plate_muz2', 'plate_muz3', 'plate_muz4')))
         #psi_z
         self.m_psi_z = nn.Parameter(t.zeros(()))
         self.log_theta_psi_z = nn.Parameter(t.zeros(()))
@@ -90,8 +89,8 @@ class Q(alan.QModule):
         self.log_theta_psi_y = nn.Parameter(t.zeros(()))
 
         #z
-        self.mu = nn.Parameter(t.zeros((2, 2, 2, M,d_z)), names = ('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z'))
-        self.log_sigma = nn.Parameter(t.zeros((2, 2, 2, M,d_z)), names = ('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z'))
+        self.mu = nn.Parameter(t.zeros((2, 2, 2, M,d_z), names = ('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', None)))
+        self.log_sigma = nn.Parameter(t.zeros((2, 2, 2, M,d_z), names = ('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', None)))
 
 
     def forward(self, tr):
@@ -105,8 +104,8 @@ class Q(alan.QModule):
 
         tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
-test_data_y = {'obs':t.load('test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
+data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4','plate_obs', 'plate_z').to(device)}
+test_data_y = {'obs':t.load('test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_obs', 'plate_z').to(device)}
 for K in Ks:
     print(K,M,N)
     results_dict[N] = results_dict.get(N, {})

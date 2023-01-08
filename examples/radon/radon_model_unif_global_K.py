@@ -157,7 +157,7 @@ for K in Ks:
 
         for j in range(100000):
             opt.zero_grad()
-            elbo = model.elbo(K=K)
+            elbo = model.elbo_global(K=K)
             (-elbo).backward()
             opt.step()
             scheduler.step()
@@ -170,6 +170,6 @@ for K in Ks:
         times.append(time.time() - start)
     results_dict[K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'avg_time':np.mean(times)}
 
-file = 'results/results_unif.json'
+file = 'results/results_global_K_unif.json'
 with open(file, 'w') as f:
     json.dump(results_dict, f)

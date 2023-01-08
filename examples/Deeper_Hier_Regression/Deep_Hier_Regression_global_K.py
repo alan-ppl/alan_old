@@ -127,7 +127,7 @@ for K in Ks:
 
         for j in range(50000):
             opt.zero_grad()
-            elbo = model.elbo(K=K)
+            elbo = model.elbo_global(K=K)
             (-elbo).backward()
             opt.step()
             scheduler.step()
@@ -140,6 +140,6 @@ for K in Ks:
         # test_log_likelihoods.append(model.test_log_like(dims=dim, test_data=test_data_y))
     results_dict[N][M][K] = {'lower_bound':np.mean(elbos),'std':np.std(elbos), 'elbos': elbos, 'avg_time':np.mean(times)}
 
-file = 'results/results_N{0}_M{1}.json'.format(N,M)
+file = 'results/results_global_K_N{0}_M{1}.json'.format(N,M)
 with open(file, 'w') as f:
     json.dump(results_dict, f)

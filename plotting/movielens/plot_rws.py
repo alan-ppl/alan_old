@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import json
 from tueplots import axes, bundles
 
-Ks = ['5','10','15']
+Ks = ['3','10','30']
 Ns = ['30','200']
 Ms = ['10','50','100']
 # with open('results.json') as f:
@@ -21,12 +21,15 @@ with plt.rc_context(bundles.icml2022()):
         for j in range(len(Ms)):
             N = Ns[i]
             M = Ms[j]
+
             with open('results/movielens_results_discrete_variance_rws_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws = json.load(f)
 
             with open('results/movielens_results_global_K_rws_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws_global_k = json.load(f)
 
+            with open('results/movielens_results_tmc_rws_N{0}_M{1}.json'.format(N,M)) as f:
+                results_rws_tmc = json.load(f)
 
 
 
@@ -37,12 +40,14 @@ with plt.rc_context(bundles.icml2022()):
             elbos_rws_global_k = [results_rws_global_k[N][M][k]['pred_mean'] for k in Ks]
             stds_rws_global_k = [results_rws_global_k[N][M][k]['pred_std']/np.sqrt(5) for k in Ks]
 
+            elbos_rws_tmc = [results_rws_tmc[N][M][k]['pred_mean'] for k in Ks]
+            stds_rws_tmc = [results_rws_tmc[N][M][k]['pred_std']/np.sqrt(5) for k in Ks]
             #
             # print(elbos_rws)
             # print(elbos_rws_global_k)
             ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Global K RWS')
             ax[i,j].errorbar(Ks,elbos_rws, yerr=stds_rws, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TPP RWS')
-
+            ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='TMC RWS')
             # ax.set_ylabel('Final Lower Bound')
             # ax.set_xlabel('K')
             # ax[i,j].label_outer()
