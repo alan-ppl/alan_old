@@ -86,7 +86,7 @@ def run_experiment(cfg):
 
             objs.append(np.mean(per_seed_obj[-50:]))
             times.append((time.time() - start)/cfg.training.num_iters)
-            if cfg.training.pred_ll.do_pred_ll:
+            if cfg.training.pred_ll.do_pred_ll and not cfg.local:
                 pred_likelihood = model.predictive_ll(K = K, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, covariates_all = all_covariates)
                 pred_liks.append(pred_likelihood['obs'].item())
             else:
