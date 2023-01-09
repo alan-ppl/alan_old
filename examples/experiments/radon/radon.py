@@ -17,7 +17,7 @@ def generate_model(N,M,local,device):
       #state level
       tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state')
       tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_state')
-      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']), group='local' if local else None)
+      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']))
 
       #county level
       tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
