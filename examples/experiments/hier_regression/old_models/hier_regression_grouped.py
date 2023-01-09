@@ -46,7 +46,7 @@ if N == 30:
     d_z = 20
 else:
     d_z = 5
-x = {'x':t.load('weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
+x = {'x':t.load('../data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
 
 def P(tr):
   '''
@@ -91,7 +91,7 @@ class Q(alan.QModule):
 
         tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
-data_y = {'obs':t.load('data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
+data_y = {'obs':t.load('../data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
 
 for K in Ks:
     print(K,M,N)

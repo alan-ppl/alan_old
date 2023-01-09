@@ -44,9 +44,7 @@ def run_experiment(cfg):
     M = cfg.training.M
     N = cfg.training.N
 
-    print(cfg.model + '/' + cfg.model + '.py')
     spec = importlib.util.spec_from_file_location(cfg.model, cfg.dataset + '/' + cfg.model + '.py')
-    print(spec)
     foo = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = foo
     spec.loader.exec_module(foo)

@@ -21,27 +21,27 @@ with plt.rc_context(bundles.icml2022()):
         for j in range(len(Ms)):
             N = Ns[i]
             M = Ms[j]
-            with open('results/results_lr_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/elbo_N{0}_M{1}.json'.format(N,M)) as f:
                 results = json.load(f)
 
-            with open('results/results_lr_local_IW_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/elbo_LIW_N{0}_M{1}.json'.format(N,M)) as f:
                 results_local_IW = json.load(f)
 
-            with open('results/results_global_K_lr_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/elbo_global_N{0}_M{1}.json'.format(N,M)) as f:
                 results_global_K = json.load(f)
 
             # with open('results/results_tmc_lr_N{0}_M{1}.json'.format(N,M)) as f:
             #     results_tmc = json.load(f)
 
 
-            elbos_tpp = [results[N][M][k]['lower_bound'] for k in Ks]
-            stds_tpp = [results[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            elbos_tpp = [results[N][M][k]['final_obj'] for k in Ks]
+            stds_tpp = [results[N][M][k]['final_obj_std'] for k in Ks]
 
-            elbos_IW = [results_local_IW[N][M][k]['lower_bound'] for k in Ks]
-            stds_IW = [results_local_IW[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            elbos_IW = [results_local_IW[N][M][k]['final_obj'] for k in Ks]
+            stds_IW = [results_local_IW[N][M][k]['final_obj_std'] for k in Ks]
 
-            elbos_global_K = [results_global_K[N][M][k]['lower_bound'] for k in Ks]
-            stds_global_K = [results_global_K[N][M][k]['std']/np.sqrt(5) for k in Ks]
+            elbos_global_K = [results_global_K[N][M][k]['final_obj'] for k in Ks]
+            stds_global_K = [results_global_K[N][M][k]['final_obj_std'] for k in Ks]
 
             # elbos_tmc = [results_tmc[N][M][k]['lower_bound'] for k in Ks]
             # stds_tmc = [results_tmc[N][M][k]['std']/np.sqrt(5) for k in Ks]

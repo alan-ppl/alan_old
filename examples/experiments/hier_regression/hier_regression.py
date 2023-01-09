@@ -9,15 +9,14 @@ def generate_model(N,M,local,device):
     else:
         d_z = 5
 
-
     def P(tr):
       '''
       Heirarchical Model
       '''
 
-      tr.sample('mu_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local' if local else None)
-      tr.sample('psi_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local' if local else None)
-      tr.sample('psi_y', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), group='local' if local else None)
+      tr.sample('mu_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+      tr.sample('psi_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
+      tr.sample('psi_y', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
 
       tr.sample('z', alan.Normal(tr['mu_z'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_1')
 
@@ -46,9 +45,9 @@ def generate_model(N,M,local,device):
 
 
         def forward(self, tr):
-            tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
-            tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
-            tr.sample('psi_y', alan.Normal(self.m_psi_y, self.log_theta_psi_y.exp()))
+            tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()), multi_sample=False if local else None)
+            tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_sample=False if local else None)
+            tr.sample('psi_y', alan.Normal(self.m_psi_y, self.log_theta_psi_y.exp()), multi_sample=False if local else None)
 
 
             tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))

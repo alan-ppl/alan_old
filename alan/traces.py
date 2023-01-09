@@ -59,7 +59,7 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, platesizes, N, covariates):
+    def __init__(self, platesizes, N, covariates={}):
         super().__init__()
         self.platedims = extend_plates_with_sizes({}, platesizes)
         self.Ns = () if (N is None) else (Dim('N', N),)
@@ -69,6 +69,7 @@ class TraceSample(AbstractTrace):
         self.samples = {}
         self.logp    = {}
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
+
         self.covariates = named2dim_tensordict(self.platedims, covariates)
 
     def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
@@ -82,7 +83,7 @@ class TraceSample(AbstractTrace):
         self.samples[key] = sample
         self.logp[key] = dist.log_prob(sample)
 
-def sample(P, platesizes=None, N=None, varnames=None, covariates=None):
+def sample(P, platesizes=None, N=None, varnames=None, covariates={}):
     """Draw samples from a generative model (with no data).
 
     Args:

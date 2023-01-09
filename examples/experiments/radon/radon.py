@@ -15,18 +15,18 @@ def generate_model(N,M,local,device):
       '''
 
       #state level
-      tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state', group='local' if local else None)
-      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_state', group='local' if local else None)
-      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']), group='local' if local else None)
+      tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
+      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']))
 
       #county level
-      tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county', group='local' if local else None)
-      tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county', group='local' if local else None)
+      tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+      tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
 
-      tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']), group='local' if local else None)
+      tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']))
 
       #zipcode level
-      tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode', group='local' if local else None)
+      tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
       tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']))
 
       #reading level
@@ -80,9 +80,9 @@ def generate_model(N,M,local,device):
             sigma_beta_low = t.max(self.low, self.sigma_beta_low.exp())
             sigma_beta_high = t.min(self.high, self.sigma_beta_high.exp())
 
-            tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high))
-            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()))
-            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()))
+            tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high), multi_sample=False if local else None)
+            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else None)
+            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()), multi_sample=False if local else None)
 
             #county level
             gamma_low = t.max(self.low, self.gamma_low.exp())
@@ -90,14 +90,14 @@ def generate_model(N,M,local,device):
 
             sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
             sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
-            tr.sample('gamma', alan.Uniform(gamma_low, gamma_high))
-            tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high))
-            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))
+            tr.sample('gamma', alan.Uniform(gamma_low, gamma_high), multi_sample=False if local else None)
+            tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high), multi_sample=False if local else None)
+            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()), multi_sample=False if local else None)
 
             #zipcode level
             sigma_omega_low = t.max(self.low, self.sigma_omega_low.exp())
             sigma_omega_high = t.min(self.high, self.sigma_omega_high.exp())
-            tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high))
+            tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high), multi_sample=False if local else None)
             tr.sample('omega', alan.Normal(self.omega_mu, self.log_omega_sigma.exp()))
 
             #reading level

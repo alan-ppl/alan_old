@@ -29,7 +29,8 @@ class Model(nn.Module):
 
         if data is None:
             data = {}
-
+        if covariates is None:
+            covariates = {}
         #plate dimensions can come in through:
         #  parameters in Q
         #  non-minibatched data passed to the model.
