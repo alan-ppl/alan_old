@@ -17,5 +17,5 @@ Running scripts
 
 RWS:
 ```sh
-python runner.py dataset=bus_breakdown model=bus_breakdown training.inference_method=rws training.N=N training.M=M training.pred_ll.do_pred_ll=False
+python runner.py dataset=bus_breakdown model=bus_breakdown training.inference_method=rws training.pred_ll.do_pred_ll=False
 ```
