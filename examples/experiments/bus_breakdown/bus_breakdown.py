@@ -8,6 +8,18 @@ def generate_model(N,M,local,device):
     I = 10
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
+    covariates = {'run_type': t.load('bus_breakdown/data/run_type_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
+        'bus_company_name': t.load('bus_breakdown/data/bus_company_name_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
+    test_covariates = {'run_type': t.load('bus_breakdown/data/run_type_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
+        'bus_company_name': t.load('bus_breakdown/data/bus_company_name_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
+    all_covariates = {'run_type': t.vstack([covariates['run_type'],test_covariates['run_type']]),
+        'bus_company_name': t.vstack([covariates['bus_company_name'],test_covariates['bus_company_name']])}
+
+    data = {'obs':t.load('bus_breakdown/data/delay_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
+    test_data = {'obs':t.load('bus_breakdown/data/delay_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
+    all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
+
+    bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     def P(tr):
       '''
       Hierarchical Model
@@ -25,7 +37,7 @@ def generate_model(N,M,local,device):
       #ID level
       tr.sample('log_sigma_phi_psi', alan.Categorical(t.tensor([0.1,0.4,0.5,0.05,0.05]).to(device)), plates = 'plate_ID')
       tr.sample('psi', alan.Normal(t.zeros((5,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
-      tr.sample('phi', alan.Normal(t.zeros((23,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
+      tr.sample('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       tr.sample('obs', alan.Binomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))
 
 
@@ -55,8 +67,8 @@ def generate_model(N,M,local,device):
             self.psi_mean = nn.Parameter(t.zeros((I,5), names=('plate_ID',None)))
             self.log_psi_sigma = nn.Parameter(t.zeros((I,5), names=('plate_ID',None)))
             #phi
-            self.phi_mean = nn.Parameter(t.zeros((I,23), names=('plate_ID',None)))
-            self.log_phi_sigma = nn.Parameter(t.zeros((I,23), names=('plate_ID',None)))
+            self.phi_mean = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
+            self.log_phi_sigma = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
 
             self.high = t.tensor(10.0).to(device)
             self.low = t.tensor(0.0).to(device)
@@ -82,15 +94,6 @@ def generate_model(N,M,local,device):
 
 
 
-    covariates = {'run_type': t.load('bus_breakdown/data/run_type_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
-        'bus_company_name': t.load('bus_breakdown/data/bus_company_name_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
-    test_covariates = {'run_type': t.load('bus_breakdown/data/run_type_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
-        'bus_company_name': t.load('bus_breakdown/data/bus_company_name_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
-    all_covariates = {'run_type': t.vstack([covariates['run_type'],test_covariates['run_type']]),
-        'bus_company_name': t.vstack([covariates['bus_company_name'],test_covariates['bus_company_name']])}
 
-    data = {'obs':t.load('bus_breakdown/data/delay_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
-    test_data = {'obs':t.load('bus_breakdown/data/delay_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
-    all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
 
     return P, Q, data, covariates, all_data, all_covariates
