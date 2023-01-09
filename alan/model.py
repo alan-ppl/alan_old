@@ -1,6 +1,6 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import TraceQ, TraceP, TracePred, TracePGlobal, TraceQTMC
+from .traces import Trace, TracePred
 from .Sample import Sample, SampleGlobal
 from .utils import *
 from .ml  import ML
@@ -22,10 +22,9 @@ class Model(nn.Module):
               the named dimensions in data (and from the sizes of any parameters
               in Q).
     """
-    def __init__(self, P, Q=lambda tr: None, data=None):
+    def __init__(self, pq, data=None):
         super().__init__()
-        self.P = P
-        self.Q = Q
+        self.pq = pq
 
         if data is None:
             data = {}
@@ -37,17 +36,13 @@ class Model(nn.Module):
         #here, we gather plate dimensions from the first two.
         #in _sample, we gather plate dimensions from the last one.
         params = []
-        if isinstance(Q, nn.Module):
-            params = params + list(Q.parameters())
-        if isinstance(P, nn.Module):
-            params = params + list(P.parameters())
+        if isinstance(pq, nn.Module):
+            params = params + list(pq.parameters())
         self.platedims = extend_plates_with_named_tensors({}, params)
 
         mods = []
-        if isinstance(Q, nn.Module):
-            mods = mods + list(Q.modules())
-        if isinstance(P, nn.Module):
-            mods = mods + list(P.modules())
+        if isinstance(pq, nn.Module):
+            mods = mods + list(pq.modules())
 
         for mod in mods:
             if isinstance(mod, QModule):
@@ -82,13 +77,10 @@ class Model(nn.Module):
             warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = TraceQ(K, all_data, platedims, reparam)
-        self.Q(trq)
-        #compute logP
-        trp = TraceP(trq, memory_diagnostics=memory_diagnostics)
-        self.P(trp)
+        tr = Trace(K, all_data, platedims, reparam)
+        self.pq(tr)
 
-        return Sample(trp)
+        return Sample(tr)
 
     def _sample_global(self, K, reparam, data):
         if data is None:

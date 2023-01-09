@@ -13,6 +13,9 @@ Papers:
   GP
 
 Tech TODOs:
+  Tilted:
+    delayed_Q => Q
+    explicitly form the prior dist, and pass it to the tilted distribution.
   Constrain tilted natural params to be bigger than 0?
   Big scary warnings for Global and TMC
   Wishart and Inverse Wishart Mixin.

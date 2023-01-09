@@ -13,25 +13,25 @@ class Sample():
       Check that data appears in logps but not logqs
       Check that all dims are something (plate, timeseries, K)
     """
-    def __init__(self, trp):
-        self.trp = trp
+    def __init__(self, tr):
+        self.tr = tr
 
-        for lp in [*trp.logp.values(), *trp.logq.values()]:
+        for lp in [*tr.logps.values(), *tr.logqs.values()]:
             if isinstance(lp, TimeseriesLogP):
                 assert lp.first.shape == () and lp.rest.shape == ()
             else:
                 assert lp.shape == ()
 
-        for (rv, lp) in trp.logp.items():
-            assert (rv in trp.logq) or (rv in trp.data)
+        for (rv, lp) in tr.logps.items():
+            assert (rv in tr.logqs) or (rv in tr.data)
 
-        for (rv, lq) in trp.logq.items():
+        for (rv, lq) in tr.logqs.items():
             #check that any rv in logqs is also in logps
-            if rv not in trp.logp:
+            if rv not in tr.logps:
                 raise Exception(f"The latent variable '{rv}' is sampled in Q but not P.")
 
-            lp = trp.logp[rv]
-            lq = trp.logq[rv]
+            lp = tr.logps[rv]
+            lq = tr.logqs[rv]
 
             # check same plates/timeseries appear in lp and lq
             lp_notK = [dim for dim in generic_dims(lp) if not self.is_K(dim)]
@@ -40,23 +40,23 @@ class Sample():
 
 
         #Assumes that self.lps come in ordered
-        self.platedims = set(trp.trq.platedims.values())
-        self.ordered_plate_dims = [dim for dim in unify_dims(trp.logp.values()) if self.is_plate(dim)]
+        self.platedims = set(tr.platedims.values())
+        self.ordered_plate_dims = [dim for dim in unify_dims(tr.logps.values()) if self.is_plate(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
 
     def is_plate(self, dim):
         return dim in self.platedims
 
     def is_K(self, dim):
-        return dim in self.trp.Ks
+        return dim in self.tr.Ks
 
     def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):
         """
         Sums over plates, starting at the lowest plate.
         The key exported method.
         """
-        logps = self.trp.logp
-        logqs = self.trp.logq
+        logps = self.tr.logps
+        logqs = self.tr.logqs
 
         if detach_p:
             logps = {n:lp.detach() for (n,lp) in logps.items()}
