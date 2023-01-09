@@ -35,13 +35,13 @@ with plt.rc_context(bundles.icml2022()):
 
 
             elbos_tpp = [results[N][M][k]['final_obj'] for k in Ks]
-            stds_tpp = [results[N][M][k]['final_obj_std'] for k in Ks]
+            stds_tpp = [results[N][M][k]['final_obj_std']/np.sqrt(5) for k in Ks]
 
             elbos_IW = [results_local_IW[N][M][k]['final_obj'] for k in Ks]
-            stds_IW = [results_local_IW[N][M][k]['final_obj_std'] for k in Ks]
+            stds_IW = [results_local_IW[N][M][k]['final_obj_std']/np.sqrt(5) for k in Ks]
 
             elbos_global_K = [results_global_K[N][M][k]['final_obj'] for k in Ks]
-            stds_global_K = [results_global_K[N][M][k]['final_obj_std'] for k in Ks]
+            stds_global_K = [results_global_K[N][M][k]['final_obj_std']/np.sqrt(5) for k in Ks]
 
             # elbos_tmc = [results_tmc[N][M][k]['lower_bound'] for k in Ks]
             # stds_tmc = [results_tmc[N][M][k]['std']/np.sqrt(5) for k in Ks]

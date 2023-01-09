@@ -31,7 +31,7 @@ def generate_model(N,M,local,device):
       tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()))
 
       #Borough level
-      tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_Borough')
+      tr.sample('sigma_alpha', alan.Categorical(t.tensor([0.1,0.4,0.05,0.5,0.05]).to(device)), plates = 'plate_Borough')
       tr.sample('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
 
       #ID level
@@ -56,8 +56,7 @@ def generate_model(N,M,local,device):
             self.beta_mu = nn.Parameter(t.zeros((M,),names=('plate_Year',)))
             self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
             #sigma_alpha
-            self.sigma_alpha_low = nn.Parameter(t.tensor([0.00001]*J, names=('plate_Borough',)).log())
-            self.sigma_alpha_high = nn.Parameter(t.tensor([9.9999]*J, names=('plate_Borough',)).log())
+            self.sigma_alpha_logits = nn.Parameter(t.randn((J,5), names=('plate_Borough',None)))
             #alpha
             self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
@@ -81,9 +80,7 @@ def generate_model(N,M,local,device):
             tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()))
 
             #Borough level
-            sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
-            sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
-            tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high))
+            tr.sample('sigma_alpha', alan.Categorical(logits=self.sigma_alpha_logits))
             tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))
 
             #ID level
