@@ -13,9 +13,9 @@ def generate_model(N,M,local,device):
     def P(tr):
 
       tr.sample('mu_z1', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
-      tr.sample('mu_z2', alan.Normal(tr['mu_z1'], t.ones(()).to(device)))
-      tr.sample('mu_z3', alan.Normal(tr['mu_z2'], t.ones(()).to(device)))
-      tr.sample('mu_z4', alan.Normal(tr['mu_z3'], t.ones(()).to(device)))
+      tr.sample('mu_z2', alan.Normal(tr['mu_z1'], t.ones(()).to(device)), plates='plate_muz2')
+      tr.sample('mu_z3', alan.Normal(tr['mu_z2'], t.ones(()).to(device)), plates='plate_muz3')
+      tr.sample('mu_z4', alan.Normal(tr['mu_z3'], t.ones(()).to(device)), plates='plate_muz4')
       tr.sample('psi_y', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
       tr.sample('psi_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
 
@@ -68,8 +68,8 @@ def generate_model(N,M,local,device):
     test_covariates = {'x':t.load('deep_hier_regression/data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs', ...).to(device)}
     all_covariates = {'x': t.vstack([covariates['x'],test_covariates['x']])}
 
-    data = {'obs':t.load('deep_hier_regression/data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4','plate_obs', 'plate_z').to(device)}
-    test_data = {'obs':t.load('deep_hier_regression/data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_obs', 'plate_z').to(device)}
+    data = {'obs':t.load('deep_hier_regression/data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4','plate_z', 'plate_obs').to(device)}
+    test_data = {'obs':t.load('deep_hier_regression/data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
     all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
 
     return P, Q, data, covariates, all_data, all_covariates

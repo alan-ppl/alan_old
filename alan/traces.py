@@ -238,7 +238,7 @@ class TraceP(AbstractTrace):
         self.logq = {}
 
         self.groupname2dim = {}
-
+        self.group2plates = {}
         #All Ks, including sum_discrete
         self.Ks     = set()
         #Only sum_discrete
@@ -327,6 +327,12 @@ class TraceP(AbstractTrace):
         assert key not in self.logp
         if T is not None:
             dist.set_Tdim(self.platedims[T])
+
+        if plates != () and group is not None:
+            if self.group2plates.get(group, None) is None or self.group2plates.get(group, None) == plates:
+                self.group2plates[group] = plates
+            else:
+                raise Exception(f"Groups should not cross plates, '{group}' already sits in '{self.group2plates[group]}' so it cannot also sit in '{plates}'")
 
         if isinstance(dist, Timeseries) and (dist._inputs is not None):
             warn("Generative models with timeseries with inputs are likely to be highly inefficient; if possible, try to rewrite the model so that timeseries doesn't have inputs.  For instance, you could marginalise the inputs and include them as noise in the transitions.")

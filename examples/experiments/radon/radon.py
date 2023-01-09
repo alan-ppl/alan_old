@@ -15,18 +15,18 @@ def generate_model(N,M,local,device):
       '''
 
       #state level
-      tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
-      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']))
+      tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state')
+      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_state')
+      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']), group='local' if local else None)
 
       #county level
-      tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-      tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+      tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
+      tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
 
       tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']))
 
       #zipcode level
-      tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+      tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode')
       tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']))
 
       #reading level
