@@ -17,22 +17,18 @@ Running scripts
 
 VI:
 ```sh
-python movielens_tpp.py N M
+python runner.py dataset=movielens model=movielens training.inference_method=elbo training.N=N training.M=M
 ```
 
-VI with grouped latents:
+Locally importance weighted VI:
 ```sh
-python movielens_grouped.py N M
+python runner.py local=True dataset=movielens model=movielens training.inference_method=elbo training.N=N training.M=M
 ```
 
 RWS:
 ```sh
-python movielens_discrete_variance_rws.py N M
+python runner.py dataset=movielens model=movielens_discrete training.inference_method=rws training.N=N training.M=M
 ```
 
-VI with all latents grouped:
-```sh
-python movielens_discrete_Global_K_variance_rws.py N M
-```
 
 With $N \in \lbrace 30,200 \rbrace$, $M \in \lbrace 10,50,100 \rbrace$
