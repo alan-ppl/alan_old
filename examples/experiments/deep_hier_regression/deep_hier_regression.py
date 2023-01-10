@@ -54,12 +54,12 @@ def generate_model(N,M,local,device):
 
 
         def forward(self, tr):
-            tr.sample('mu_z1', alan.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp()), multi_sample=False if local else None)
-            tr.sample('mu_z2', alan.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp()), multi_sample=False if local else None)
-            tr.sample('mu_z3', alan.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp()), multi_sample=False if local else None)
-            tr.sample('mu_z4', alan.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp()), multi_sample=False if local else None)
-            tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_sample=False if local else None)
-            tr.sample('psi_y', alan.Normal(self.m_psi_y, self.log_theta_psi_y.exp()), multi_sample=False if local else None)
+            tr.sample('mu_z1', alan.Normal(self.m_mu_z1, self.log_theta_mu_z1.exp()), multi_sample=False if local else True)
+            tr.sample('mu_z2', alan.Normal(self.m_mu_z2, self.log_theta_mu_z2.exp()), multi_sample=False if local else True)
+            tr.sample('mu_z3', alan.Normal(self.m_mu_z3, self.log_theta_mu_z3.exp()), multi_sample=False if local else True)
+            tr.sample('mu_z4', alan.Normal(self.m_mu_z4, self.log_theta_mu_z4.exp()), multi_sample=False if local else True)
+            tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_sample=False if local else True)
+            tr.sample('psi_y', alan.Normal(self.m_psi_y, self.log_theta_psi_y.exp()), multi_sample=False if local else True)
 
 
             tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))

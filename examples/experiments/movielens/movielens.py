@@ -35,8 +35,8 @@ def generate_model(N,M,local,device):
 
 
         def forward(self, tr):
-            tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()), multi_sample=False if local else None)
-            tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_sample=False if local else None)
+            tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()), multi_sample=False if local else True)
+            tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()), multi_sample=False if local else True)
 
             tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 

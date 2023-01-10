@@ -357,7 +357,7 @@ class SampleGlobal(Sample):
         return self.trp.trq.Kdim
 
     def sum_not_K(self, x):
-        dims = set(x.dims)
+        dims = set(generic_dims(x))
         assert self.Kdim in dims
         dims.remove(self.Kdim)
         return sum_dims(x, dims)

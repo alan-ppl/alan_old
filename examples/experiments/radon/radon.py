@@ -80,9 +80,9 @@ def generate_model(N,M,local,device):
             sigma_beta_low = t.max(self.low, self.sigma_beta_low.exp())
             sigma_beta_high = t.min(self.high, self.sigma_beta_high.exp())
 
-            tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high), multi_sample=False if local else None)
-            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else None)
-            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()), multi_sample=False if local else None)
+            tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high), multi_sample=False if local else True)
+            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else True)
+            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()), multi_sample=False if local else True)
 
             #county level
             gamma_low = t.max(self.low, self.gamma_low.exp())
@@ -90,14 +90,14 @@ def generate_model(N,M,local,device):
 
             sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
             sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
-            tr.sample('gamma', alan.Uniform(gamma_low, gamma_high), multi_sample=False if local else None)
-            tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high), multi_sample=False if local else None)
-            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()), multi_sample=False if local else None)
+            tr.sample('gamma', alan.Uniform(gamma_low, gamma_high), multi_sample=False if local else True)
+            tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high), multi_sample=False if local else True)
+            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()), multi_sample=False if local else True)
 
             #zipcode level
             sigma_omega_low = t.max(self.low, self.sigma_omega_low.exp())
             sigma_omega_high = t.min(self.high, self.sigma_omega_high.exp())
-            tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high), multi_sample=False if local else None)
+            tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high), multi_sample=False if local else True)
             tr.sample('omega', alan.Normal(self.omega_mu, self.log_omega_sigma.exp()))
 
             #reading level
