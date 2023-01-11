@@ -1,11 +1,11 @@
 import torch as t
 import torch.nn as nn
 from .dist import *
+from .traces import AbstractTrace, PQ
 from .utils import *
-from .qmodule import QModule
 from .exp_fam_mixin import *
 
-class Tilted(QModule):
+class Tilted(PQ):
     """
     Based on computing:
     Delta m = E_P[f(x)] - E_Q[f(x)]
@@ -70,6 +70,13 @@ class Tilted(QModule):
             return - (J_posts + J_approx)
 
         return self.dist(**self.nat2conv(*Q_nats), extra_log_factor=inner)
+
+    def forward(self, tr, *args, group=None, plates=None, **kwargs):
+        assert isinstance(tr, AbstractTrace)
+        dist = self.dist(*args, **kwargs)
+
+        tr.Q(self.tilt(dist), group=group, plates=plates)
+        tr.P(dist, plates=plates)
 
     def update(self, lr):
         with t.no_grad():

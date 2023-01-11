@@ -8,6 +8,7 @@ from .utils import *
 from .timeseries import Timeseries
 from .dist import Categorical
 from .tensors import NullTraceTensor, ValuedTraceTensor
+from .qmodule import QModule, reconcile_platedims
 
 reserved_names = ("K", "N")
 reserved_prefix = ("K_", "E_")
@@ -16,7 +17,23 @@ def check_not_reserved(x):
     if reserved:
         raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
     
-
+class PQ(QModule):
+    """
+    You need to subclass this, providing a forward method and an (optional) __init__ method.
+    self.forward(self, tr, *args, **kwargs)    
+    """
+    def __call__(self, *args, **kwargs):
+        """
+        Two calling conventions.  
+        * Can call as self(tr, *args, **kwargs), from within model (we keep this
+          calling convention to ensure that plain functions can be passed in to Model).
+        * Can also be called as tr('a', pq(*args, **kwargs)) from within another 
+          model.
+        """
+        if 0<len(args) and isinstance(args[0], AbstractTrace):
+            super().__call__(*args, **kwargs)
+        else:
+            return PQInputs(self, args, kwargs)
 
 class PQInputs():
     def __init__(self, model, args, kwargs):
@@ -25,14 +42,14 @@ class PQInputs():
         self.kwargs = kwargs
 
     def __call__(self, tr):
-        self.model._forward(tr, *self.args, **self.kwargs)
+        self.model(tr, *self.args, **self.kwargs)
 
 class AbstractTrace():
     def __init__(self):
         self.stack = []
 
     def push_stack(self, name):
-        self.stack.push(name)
+        self.stack.append(name)
 
     def pop_stack(self):
         self.stack.pop()
@@ -136,10 +153,10 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, platesizes, N):
+    def __init__(self, platedims, N):
         super().__init__()
         self.Ns = () if (N is None) else (Dim('N', N),)
-        self.platedims = extend_plates_with_sizes({}, platesizes)
+        self.platedims = platedims
 
         self.reparam = False
 
@@ -179,7 +196,11 @@ def sample_P(pq, platesizes=None, N=None, varnames=None):
     """
     if platesizes is None:
         platesizes = {}
-    tr = TraceSample(platesizes, N)
+
+    platedims = reconcile_platedims(pq)
+    platedims = extend_plates_with_sizes(platedims, platesizes)
+    
+    tr = TraceSample(platedims, N)
     pq(tr)
 
     if varnames is None:

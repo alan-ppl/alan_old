@@ -5,6 +5,7 @@ self.forward(trace, name, *covariates):
   implies name is None, and we use name.
 
 Merged:
+  Need to incrementally build up platedims in QModule
   check name is None works in nested models
   save self.Ps, not self.logps
   expose MPSamples, TMCSamples, GlobalSamples

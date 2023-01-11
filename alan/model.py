@@ -1,31 +1,13 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import TraceMP, TracePred, TraceSample, PQInputs, AbstractTrace
+from .traces import TraceMP, TracePred, TraceSample, AbstractTrace, PQ
 from .Sample import SampleMP, SampleGlobal
 from .utils import *
 from .ml  import ML
 from .ml2 import ML2 
 from .ng  import NG
 from .tilted import Tilted
-from .qmodule import QModule
-
-class PQ(QModule):
-    """
-    You need to subclass this, providing a forward method and an (optional) __init__ method.
-    self._forward(self, tr, *args, **kwargs)    
-    """
-    def __call__(self, *args, **kwargs):
-        """
-        Two calling conventions.  
-        * Can call as self(tr, *args, **kwargs), from within model (we keep this
-          calling convention to ensure that plain functions can be passed in to Model).
-        * Can also be called as tr('a', pq(*args, **kwargs)) from within another 
-          model.
-        """
-        if 0<len(args) and isinstance(args[0], AbstractTrace):
-            super().__call__(*args, **kwargs)
-        else:
-            return PQInputs(self, args, kwargs)
+from .qmodule import QModule, reconcile_platedims
 
 class Model(nn.Module):
     """Model class.  Binds PQ with data, inputs etc.
@@ -59,17 +41,9 @@ class Model(nn.Module):
         #  minibatched data passed to e.g. model.elbo(...)
         #here, we gather plate dimensions from the first two.
         #in _sample, we gather plate dimensions from the last one.
-        self.platedims = extend_plates_with_sizes({}, platesizes)
-        self.platedims = extend_plates_with_named_tensors(self.platedims, [*self.parameters(), *data.values(), *inputs.values()])
-
-        for mod in self.modules():
-            if isinstance(mod, QModule):
-                assert not hasattr(mod, "_platedims")
-                mod._platedims = self.platedims
-            else:
-                for x in list(mod.parameters(recurse=False)) + list(mod.buffers(recurse=False)):
-                    if any(name is not None in x.names):
-                        raise Exception("Named parameter on an nn.Module.  To specify plates in approximate posteriors correctly, we need to use QModule in place of nn.Module")
+        self.platedims = reconcile_platedims(pq)
+        self.platedims = extend_plates_with_sizes(self.platedims, platesizes)
+        self.platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
 
         self.data   = named2dim_tensordict(self.platedims, data)
         self.inputs = named2dim_tensordict(self.platedims, inputs)
