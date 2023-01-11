@@ -365,12 +365,6 @@ class SampleGlobal(Sample):
         #ordered in the order of generating under P
         var_names           = list(self.trp.samples.keys())
         samples             = list(self.trp.samples.values())
-        # logps_u             = [self.trp.logp[var_name] for var_name in var_names]
-        # #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
-        # #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
-        # logps_f, unflatten  = flatten_tslp_list(logps_u)
-        # dimss               = [lp.dims for lp in logps_f]
-        # undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps_f, dimss)]
 
         #Start with Js with no dimensions (like NN parameters)
         undim_Js = [t.zeros((self.Kdim.size,),requires_grad=True)]
@@ -384,7 +378,7 @@ class SampleGlobal(Sample):
         marginal = t.autograd.grad(result, undim_Js)[0]
         #Sample new K's
         sampled_Ks = Categorical(marginal).sample(False, sample_dims=(N,))
-        
+
         post_samples = {}
         for i in range(len(var_names)):
             post_samples[var_names[i]] = samples[i].order(self.Kdim)[sampled_Ks]
