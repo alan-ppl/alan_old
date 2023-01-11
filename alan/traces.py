@@ -189,7 +189,7 @@ def sample_P(pq, platesizes=None, N=None, varnames=None):
 
 
 
-class Trace(AbstractTrace):
+class TraceMP(AbstractTrace):
     def __init__(self, K, data, platedims, reparam):
         super().__init__()
         self.Ksize = K

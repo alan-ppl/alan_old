@@ -1,6 +1,3 @@
-model.forward binds covariates to the model in a ModelCovariates.
-Then, we give it a trace and a name.
-
 self.forward(trace, name, *covariates):
   No name:
   tr.P(Normal(0, 1))

@@ -1,6 +1,6 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import Trace, TracePred, TraceSample, PQInputs, AbstractTrace
+from .traces import TraceMP, TracePred, TraceSample, PQInputs, AbstractTrace
 from .Sample import SampleMP, SampleGlobal
 from .utils import *
 from .ml  import ML
@@ -101,7 +101,7 @@ class Model(nn.Module):
             warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        tr = Trace(K, all_data, platedims, reparam)
+        tr = TraceMP(K, all_data, platedims, reparam)
         self.pq(tr, **all_inputs)
 
         return SampleMP(tr, reparam)
