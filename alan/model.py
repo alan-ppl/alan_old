@@ -231,9 +231,35 @@ class Model(nn.Module):
         N = Dim('N', N)
         return self._sample(K, False, data, covariates)._importance_samples(N)
 
+    # def importance_samples(self, K, N, data=None, covariates=None):
+    #     """Compute posterior samples
+    #     Args:
+    #         K:       the number of samples drawn for each latent variable.
+    #         N:       the number of importance samples returned.
+    #         data:    Any minibatched data.
+    #     Returns:
+    #         A dictionary mapping the variable name to the posterior sample.
+    #
+    #     Notes:
+    #         * This is only really useful for prediction. If you're looking
+    #           for moments, you should use importance weights processed by
+    #           alan.postproc.  This will be more accurate...
+    #     """
+    #     N = Dim('N', N)
+    #     return self._sample_global(K, False, data, covariates)._importance_samples(N)
+
     def _predictive(self, K, N, data_all=None, covariates_all=None, platesizes_all=None):
         sample = self._sample(K, False, None, None)
 
+        N = Dim('N', N)
+        post_samples = sample._importance_samples(N)
+        tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.covariates, covariates_all, sample.trp.platedims, platesizes_all)
+        self.P(tr)
+        return tr, N
+
+    def _predictive_global(self, K, N, data_all=None, covariates_all=None, platesizes_all=None):
+        sample = self._sample_global(K, False, None, None)
+        
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
         tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.covariates, covariates_all, sample.trp.platedims, platesizes_all)
@@ -249,15 +275,17 @@ class Model(nn.Module):
         #Convert everything to named
         return trace_pred.samples_all
 
-    def predictive_ll(self, K, N, data_all, covariates_all):
+    def predictive_ll(self, K, N, data_all, covariates_all={}, global_k=False):
         """
         Run as (e.g. for plated_linear_gaussian.py)
 
         >>> obs = t.randn((4, 6, 8), names=("plate_1", "plate_2", "plate_3"))
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
         """
-
-        trace_pred, N = self._predictive(K, N, data_all, covariates_all, None)
+        if global_k:
+            trace_pred, N = self._predictive_global(K, N, data_all, covariates_all, None)
+        else:
+            trace_pred, N = self._predictive(K, N, data_all, covariates_all, None)
         lls_all   = trace_pred.ll_all
         lls_train = trace_pred.ll_train
         assert set(lls_all.keys()) == set(lls_train.keys())

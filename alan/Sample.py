@@ -305,8 +305,10 @@ class Sample():
 
             #the sample should only have one K, so pick it out and index into it.
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
+
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
         return post_samples
+
 
 def sample_cond(marg, K, K_post_idxs, N):
     """
@@ -333,7 +335,7 @@ def sample_cond(marg, K, K_post_idxs, N):
     return Categorical(cond).sample(False, sample_dims=(N,))
 
 class SampleGlobal(Sample):
-    def tensor_product(self, detach_p=False, detach_q=False):
+    def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):
         """
         Sums over plates, starting at the lowest plate.
         The key exported method.
@@ -346,15 +348,55 @@ class SampleGlobal(Sample):
         if detach_q:
             logqs = {n:lq.detach() for (n,lq) in logqs.items()}
 
-        tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
-
+        #tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
+        tensors = [*logps.values(), *[-lq for lq in logqs.values()], *extra_log_factors]
         ## Convert tensors to Float64
         lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) - math.log(self.Kdim.size)
         return lpqs.logsumexp(self.Kdim)
 
+    def _importance_samples(self, N):
+        """
+        Returns torchdim tensors, so not for external use.
+        Divided into two parts: computing the marginals over K, and actually sampling
+        The marginals are computed using the derivative of log Z again.
+        We sample forward, following the generative model.
+        """
+        #### Computing the marginals
+        #ordered in the order of generating under P
+        var_names           = list(self.trp.samples.keys())
+        samples             = list(self.trp.samples.values())
+        # logps_u             = [self.trp.logp[var_name] for var_name in var_names]
+        # #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
+        # #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
+        # logps_f, unflatten  = flatten_tslp_list(logps_u)
+        # dimss               = [lp.dims for lp in logps_f]
+        # undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps_f, dimss)]
+
+        #Start with Js with no dimensions (like NN parameters)
+        undim_Js = [t.zeros((self.Kdim.size,),requires_grad=True)]
+        #Put torchdims back in.
+        dim_Js = [undim_Js[0][self.Kdim]]
+
+
+        #Compute result with torchdim Js
+        result = self.tensor_product(extra_log_factors=dim_Js)
+        #But differentiate wrt non-torchdim Js
+        marginal = t.autograd.grad(result, undim_Js)[0]
+        #Sample new K's
+        sampled_Ks = Categorical(marginal).sample(False, sample_dims=(N,))
+        
+        post_samples = {}
+        for i in range(len(var_names)):
+            post_samples[var_names[i]] = samples[i].order(self.Kdim)[sampled_Ks]
+
+        return post_samples
+
     @property
     def Kdim(self):
         return self.trp.trq.Kdim
+
+    def is_Kdim(self, dim):
+        return dim is self.trp.trq.Kdim
 
     def sum_not_K(self, x):
         dims = set(generic_dims(x))

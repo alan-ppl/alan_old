@@ -35,6 +35,7 @@ print('...', flush=True)
 # print(config_name)
 @hydra.main(version_base=None, config_path='config', config_name='conf')
 def run_experiment(cfg):
+    print(cfg)
     device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
     results_dict = {}
