@@ -371,13 +371,13 @@ class SampleGlobal(Sample):
         #Put torchdims back in.
         dim_Js = [undim_Js[0][self.Kdim]]
 
+        logps = self.trp.logp
+        logqs = self.trp.logq
+        tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
+        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) - math.log(self.Kdim.size)
+        weights = lpqs.softmax(self.Kdim)
 
-        #Compute result with torchdim Js
-        result = self.tensor_product(extra_log_factors=dim_Js)
-        #But differentiate wrt non-torchdim Js
-        marginal = t.autograd.grad(result, undim_Js)[0]
-        #Sample new K's
-        sampled_Ks = Categorical(marginal).sample(False, sample_dims=(N,))
+        sampled_Ks = Categorical(weights.order(self.Kdim)).sample(False, sample_dims=(N,))
 
         post_samples = {}
         for i in range(len(var_names)):

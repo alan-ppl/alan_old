@@ -6,39 +6,36 @@ from alan.backend import vi
 import tqdm
 from functorch.dim import dims
 
-a = t.zeros(5,)
 def P(tr):
   '''
   Bayesian Gaussian Model
   '''
+  a = t.zeros(5)
+  tr.sample('mu', alan.Normal(a, t.ones(5))) #, plate="plate_1")
+  tr.sample('obs', alan.MultivariateNormal(tr['mu'], t.eye(5)))
 
-  tr['mu'] = alan.Normal(a, t.ones(5,))
-  tr['obs'] = alan.Normal(tr['mu'], t.ones(5,))
 
 
-
-class Q(nn.Module):
+class Q(alan.QModule):
     def __init__(self):
         super().__init__()
         self.m_mu = nn.Parameter(t.zeros(5,))
-
         self.log_s_mu = nn.Parameter(t.zeros(5,))
 
-
-
     def forward(self, tr):
-        tr['mu'] = alan.Normal(self.m_mu, self.log_s_mu.exp())
+        tr.sample('mu', alan.Normal(self.m_mu, self.log_s_mu.exp())) #, plate="plate_1")
 
-data = alan.sample(P, "obs")
-test_data = alan.sample(P, "obs")
+data = alan.sample(P, varnames=('obs',)) #, sizes={"plate_1": 2})
+test_data = alan.sample(P, varnames=('obs',))
 
-print(data)
-model = alan.Model(P, Q(), data)
+all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
+
+model = alan.Model(P, Q(), {'obs': data['obs']})
+
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=5
-dims = alan.make_dims(P, K)
 print("K={}".format(K))
 for i in range(10000):
     opt.zero_grad()
@@ -69,7 +66,7 @@ print(t.diag(A_n))
 
 print('Test Data')
 print(test_data)
-pred_lik = model.pred_likelihood(test_data=test_data, num_samples=1000).sum()
+pred_lik = model.predictive_ll(K, 1000, data_all=all_data)
 print(pred_lik)
 pred_dist = alan.Normal(model.Q.m_mu, (model.Q.log_s_mu.exp()**2 + t.ones(5,))**(1/2))
 true_pred_lik = pred_dist.log_prob(test_data['obs']).sum()
