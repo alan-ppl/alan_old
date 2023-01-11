@@ -1,7 +1,7 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import Trace, TracePred
-from .Sample import Sample, SampleGlobal
+from .traces import Trace, TracePred, TraceSample, PQInputs, AbstractTrace
+from .Sample import SampleMP, SampleGlobal
 from .utils import *
 from .ml  import ML
 from .ml2 import ML2 
@@ -9,25 +9,49 @@ from .ng  import NG
 from .tilted import Tilted
 from .qmodule import QModule
 
-class Model(nn.Module):
-    """Model class.
-    Args:
-        P:    The generative model, written as a function that takes a trace.
-        Q:    The proposal / approximate posterior. Optional. If not provided,
-              then we use the prior as Q.
-        data: Any non-minibatched data. This is usually used in statistics,
-              where we have small-medium data that we can reason about as a 
-              block. This is a dictionary mapping variable name to named-tensors
-              representing the data. We infer plate sizes from the sizes of 
-              the named dimensions in data (and from the sizes of any parameters
-              in Q).
+class PQ(QModule):
     """
-    def __init__(self, pq, data=None):
+    You need to subclass this, providing a forward method and an (optional) __init__ method.
+    self._forward(self, tr, *args, **kwargs)    
+    """
+    def __call__(self, *args, **kwargs):
+        """
+        Two calling conventions.  
+        * Can call as self(tr, *args, **kwargs), from within model (we keep this
+          calling convention to ensure that plain functions can be passed in to Model).
+        * Can also be called as tr('a', pq(*args, **kwargs)) from within another 
+          model.
+        """
+        if 0<len(args) and isinstance(args[0], AbstractTrace):
+            super().__call__(*args, **kwargs)
+        else:
+            return PQInputs(self, args, kwargs)
+
+class Model(nn.Module):
+    """Model class.  Binds PQ with data, inputs etc.
+    Args:
+        pq:         A function containing the ...
+        platesizes: 
+        data:       Any non-minibatched data. This is usually used in statistics,
+                    where we have small-medium data that we can reason about as a 
+                    block. This is a dictionary mapping variable name to named-tensors
+                    representing the data. We infer plate sizes from the sizes of 
+                    the named dimensions in data (and from the sizes of any parameters
+                    in Q).
+        inputs:     Inputs / covariates.  i.e. not data we condition on.  Passed in to
+                    pq as arguments (i.e. pq(tr, **inputs))
+    """
+
+    def __init__(self, pq, platesizes=None, data=None, inputs=None):
         super().__init__()
         self.pq = pq
 
+        if platesizes is None:
+            platesizes = {}
         if data is None:
             data = {}
+        if inputs is None:
+            inputs = {}
 
         #plate dimensions can come in through:
         #  parameters in Q
@@ -35,16 +59,10 @@ class Model(nn.Module):
         #  minibatched data passed to e.g. model.elbo(...)
         #here, we gather plate dimensions from the first two.
         #in _sample, we gather plate dimensions from the last one.
-        params = []
-        if isinstance(pq, nn.Module):
-            params = params + list(pq.parameters())
-        self.platedims = extend_plates_with_named_tensors({}, params)
+        self.platedims = extend_plates_with_sizes({}, platesizes)
+        self.platedims = extend_plates_with_named_tensors(self.platedims, [*self.parameters(), *data.values(), *inputs.values()])
 
-        mods = []
-        if isinstance(pq, nn.Module):
-            mods = mods + list(pq.modules())
-
-        for mod in mods:
+        for mod in self.modules():
             if isinstance(mod, QModule):
                 assert not hasattr(mod, "_platedims")
                 mod._platedims = self.platedims
@@ -53,19 +71,25 @@ class Model(nn.Module):
                     if any(name is not None in x.names):
                         raise Exception("Named parameter on an nn.Module.  To specify plates in approximate posteriors correctly, we need to use QModule in place of nn.Module")
 
-        self.platedims = extend_plates_with_named_tensors(self.platedims, data.values())
         self.data   = named2dim_tensordict(self.platedims, data)
+        self.inputs = named2dim_tensordict(self.platedims, inputs)
 
-    def _sample(self, K, reparam, data, memory_diagnostics=False):
+    def SampleMP(self, K, reparam, data=None, inputs=None):
         """
         Internal method that actually runs P and Q.
         """
         if data is None:
             data = {}
-        platedims = extend_plates_with_named_tensors(self.platedims, data.values())
-        data = named2dim_tensordict(platedims, data)
+        if inputs is None:
+            inputs = {}
+        platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
+        data   = named2dim_tensordict(platedims, data)
+        inputs = named2dim_tensordict(platedims, inputs)
 
         all_data = {**self.data, **data}
+        assert len(all_data) == len(self.data) + len(data)
+        all_inputs = {**self.inputs, **inputs}
+        assert len(all_inputs) == len(self.inputs) + len(inputs)
 
         if 0==len(all_data):
             raise Exception("No data provided either to the Model(...) or to e.g. model.elbo(...)")
@@ -78,9 +102,9 @@ class Model(nn.Module):
 
         #sample from approximate posterior
         tr = Trace(K, all_data, platedims, reparam)
-        self.pq(tr)
+        self.pq(tr, **all_inputs)
 
-        return Sample(tr)
+        return SampleMP(tr, reparam)
 
     def _sample_global(self, K, reparam, data):
         if data is None:
@@ -116,7 +140,7 @@ class Model(nn.Module):
 
         return Sample(trp)
 
-    def elbo(self, K, data=None, reparam=True):
+    def elbo(self, K, data=None, covariates=None, reparam=True):
         """Compute the ELBO.
         Args:
             K:       the number of samples drawn for each latent variable.
@@ -284,11 +308,11 @@ class Model(nn.Module):
         if isinstance(self.Q, nn.Module):
             self.Q.zero_grad()
 
-    def parameters(self):
+    def parameters(self, recurse=True):
         #Avoids returning Js so they don't get passed into an optimizer.
         #This can cause problems if other methods (e.g. zero_grad) use
         #self.parameters (e.g. see ml_update).
-        all_params = set(super().parameters())
+        all_params = set(super().parameters(recurse=recurse))
         exclusions = []
         for mod in self.modules():
             if   isinstance(mod, ML2):

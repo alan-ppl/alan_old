@@ -51,7 +51,7 @@ class Tilted(QModule):
     def named_Jposts(self):
         return [self.get_named_tensor(Jpost_name) for Jpost_name in self.Jpost_names]
 
-    def forward(self, prior):
+    def tilt(self, prior):
         with t.no_grad():
             if not isinstance(prior, self.dist):
                 raise(f"{type(self)} can only be combined with {type(self.dist)} distributions")

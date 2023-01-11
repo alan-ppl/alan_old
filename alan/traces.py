@@ -7,6 +7,7 @@ from functorch.dim import dims, Dim
 from .utils import *
 from .timeseries import Timeseries
 from .dist import Categorical
+from .tensors import NullTraceTensor, ValuedTraceTensor
 
 reserved_names = ("K", "N")
 reserved_prefix = ("K_", "E_")
@@ -16,8 +17,33 @@ def check_not_reserved(x):
         raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
     
 
+
+class PQInputs():
+    def __init__(self, model, args, kwargs):
+        self.model = model
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, tr):
+        self.model._forward(tr, *self.args, **self.kwargs)
+
 class AbstractTrace():
+    def __init__(self):
+        self.stack = []
+
+    def push_stack(self, name):
+        self.stack.push(name)
+
+    def pop_stack(self):
+        self.stack.pop()
+
     def __getitem__(self, key):
+        key = self.stack_key(key)
+        assert key in self
+        tensor = self.samples[key] if (key in self.samples) else self.data[key]
+        return NullTraceTensor(key) if (tensor is None) else ValuedTraceTensor(tensor)
+
+    def raw_getitem(self, key):
         assert key in self
         return self.samples[key] if (key in self.samples) else self.data[key]
 
@@ -40,12 +66,67 @@ class AbstractTrace():
         if (T is not None) and (T not in self.platedims):
             raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
 
-    def PQ(self, key, dist, plates=(), T=None, multi_sample=True, group=None):
+    def stack_key(self, key=None):
+        result = '/'.join(self.stack)
+        if key is not None:
+            result = result + '/' + key
+        return result
+
+    @staticmethod
+    def key_dist(key, dist):
+        if dist is None:
+            key, dist = dist, key
+        return key, dist
+
+    """
+    Allows nested models and no key.
+    """
+    def P(self, key, dist=None, plates=(), T=None, sum_discrete=False):
+        key, dist = self.key_dist(key, dist)
+
+        if isinstance(dist, PQInputs):
+            assert key is not None
+            self.push_stack(key)
+            assert self.stack_key() in self
+            dist(self)
+            self.pop_stack(key)
+        else:
+            stack_key = self.stack_key(key)
+            self._P(stack_key, dist, plates=plates, T=T, sum_discrete=sum_discrete)
+
+    def Q(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None):
+        key, dist = self.key_dist(key, dist)
+        key = self.stack_key(key)
+
+        assert not isinstance(dist, PQInputs)
+        self._Q(key, dist, plates=plates, T=T, multi_sample=multi_sample, group=group)
+
+    def PQ(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None):
         """
         Used when the prior and approximate posterior are the same distribution.
         """
-        self.Q(key, dist, plates=plates, T=T, multi_sample=multi_sample, group=group)
-        self.P(key, dist, plates=plates, T=T)
+        key, dist = self.key_dist(key, dist)
+
+        if isinstance(dist, PQInputs):
+            assert key is not None
+            self.push_stack(key)
+            assert self.stack_key() not in self
+            dist(self)
+            assert self.stack_key() in self
+            self.pop_stack(key)
+        else:
+            stack_key = self.stack_key(key)
+            self._Q(stack_key, dist, plates=plates, T=T, multi_sample=multi_sample, group=group)
+            self._P(stack_key, dist, plates=plates, T=T)
+
+    def zeros(self, shape):
+        return ValuedTraceTensor(t.zeros(shape))
+
+    def ones(self, shape):
+        return ValuedTraceTensor(t.ones(shape))
+
+    #def P(self, key, dist, plates(), T=None, multi_sample=True, group=None):
+    #    ...
 
 
 class TraceSample(AbstractTrace):
@@ -57,8 +138,8 @@ class TraceSample(AbstractTrace):
     """
     def __init__(self, platesizes, N):
         super().__init__()
-        self.platedims = extend_plates_with_sizes({}, platesizes)
         self.Ns = () if (N is None) else (Dim('N', N),)
+        self.platedims = extend_plates_with_sizes({}, platesizes)
 
         self.reparam = False
 
@@ -66,8 +147,10 @@ class TraceSample(AbstractTrace):
         self.logp    = {}
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
-    def P(self, key, dist, plates=(), T=None):
+    def _P(self, key, dist, plates=(), T=None, sum_discrete=False):
         self.check_plates(key, plates, T)
+        if dist.null:
+            raise Exception(f"Trying to generate {key} in P, but it depends on a random variable that has only been sampled from Q")
 
         if T is not None:
             dist.set_Tdim(self.platedims[T])
@@ -77,8 +160,33 @@ class TraceSample(AbstractTrace):
         self.samples[key] = sample
         self.logp[key] = dist.log_prob(sample)
 
-    def Q(self, key, dist, plates=(), T=None, multi_sample=True, group=None):
-        pass
+    def _Q(self, key, dist, plates=(), T=None, multi_sample=True, group=None):
+        self.samples[key] = None
+
+def sample_P(pq, platesizes=None, N=None, varnames=None):
+    """Draw samples from a generative model (with no data).
+    
+    Args:
+        P:        The generative model (a function taking a trace).
+        plates:   A dict mapping platenames to integer sizes of that plate.
+        N:        The number of samples to draw
+        varnames: An iterable of the variables to return
+
+    Returns:
+        A dictionary mapping from variable name to sampled value, 
+        represented as a named tensor (e.g. so that it is suitable 
+        for use as data).
+    """
+    if platesizes is None:
+        platesizes = {}
+    tr = TraceSample(platesizes, N)
+    pq(tr)
+
+    if varnames is None:
+        varnames = tr.samples.keys()
+
+    return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
+
 
 
 class Trace(AbstractTrace):
@@ -98,7 +206,7 @@ class Trace(AbstractTrace):
         self.groupname2dim = {}
         self.var2K  = {}
 
-    def Q(self, key, dist, plates=(), T=None, multi_sample=True, group=None):
+    def _Q(self, key, dist, plates=(), T=None, multi_sample=True, group=None):
         """
         Sets self.samples, self.logqs
         """
@@ -158,16 +266,49 @@ class Trace(AbstractTrace):
             if 0 < len(Ks):
                 idxs = len(Ks) * [range(Kdim.size)]
                 diag_args[k] = generic_order(v, Ks)[idxs][Kdim]
+        diag_args = {k: ValuedTraceTensor(v) for (k, v) in diag_args.items()}
         diag_dist = type(dist)(**diag_args)
 
         sample = diag_dist.sample(self.reparam, sample_dims)
         self.samples[key] = sample
         self.logqs[key] = diag_dist.log_prob(sample) + plus_log_K
 
-    def P(self, key, dist, plates=(), T=None):
+    def sum_discrete(self, key, dist, plates, T):
+        if dist.dist_name not in ["Bernoulli", "Categorical"]:
+            raise Exception(f'Can only sum over discrete random variables with a Bernoulli or Categorical distribution.  Trying to sum over a "{dist.dist_name}" distribution.')
+
+        dist_plates    = set(dim for dim in dist.dims if (dim in self.platedims))
+        sample_plates = platenames2platedims(self.platedims, plates)
+        plates = list(dist_plates.union(sample_plates))
+
+        torch_dist = dist.dist(**dist.all_args)
+
+        values = torch_dist.enumerate_support(expand=False)
+        values = values.view(-1)
+        assert 1 == values.ndim
+        Edim = Dim(f'E_{key}', values.shape[0])
+        values = values[Edim]
+        #values is now just all a vector containing values in the support.
+        
+        #Add a bunch of 1 dimensions.
+        idxs = (len(plates)*[None])
+        idxs.append(Ellipsis)
+        values = values[idxs]
+        #Expand them to full size
+        values = values.expand(*[plate.size for plate in plates])
+        #And name them
+        values = values[plates]
+        self.samples[key] = values
+        self.Ks.add(Edim)
+        self.Es.add(Edim)
+
+    def _P(self, key, dist, plates=(), T=None, sum_discrete=False):
         self.check_plates(key, plates, T)
         if T is not None:
             dist.set_Tdim(self.platedims[T])
+
+        if sum_discrete:
+            self.sum_discrete(key, dist, plates, T)
 
         if isinstance(dist, Timeseries) and (dist._inputs is not None):
             warn("Generative models with timeseries with inputs are likely to be highly inefficient; if possible, try to rewrite the model so that timeseries doesn't have inputs.  For instance, you could marginalise the inputs and include them as noise in the transitions.")
@@ -185,7 +326,7 @@ class Trace(AbstractTrace):
         if not ((key in self.data) or (key in self.samples)):
              raise Exception(f"{key} must either be data, or have sum_discrete=True, or we have already sampled it in Q.")
         else:
-             sample = self[key]
+             sample = self.raw_getitem(key)
              #Check that plates match for sample from Q previous and P here
              Q_sample_plates = set(self.filter_platedims(generic_dims(sample)))
              P_sample_plates = set(self.filter_platedims(dist.dims)).union(platenames2platedims(self.platedims, plates))
@@ -195,31 +336,6 @@ class Trace(AbstractTrace):
         #Think for sum_discrete!
         Kdim = self.var2K[key] if (key in self.samples) else None
         self.logps[key] = dist.log_prob_P(sample, Kdim=Kdim)
-
-
-def sample(pq, platesizes=None, N=None, varnames=None):
-    """Draw samples from a generative model (with no data).
-    
-    Args:
-        P:        The generative model (a function taking a trace).
-        plates:   A dict mapping platenames to integer sizes of that plate.
-        N:        The number of samples to draw
-        varnames: An iterable of the variables to return
-
-    Returns:
-        A dictionary mapping from variable name to sampled value, 
-        represented as a named tensor (e.g. so that it is suitable 
-        for use as data).
-    """
-    if platesizes is None:
-        platesizes = {}
-    tr = TraceSample(platesizes, N)
-    pq(tr)
-
-    if varnames is None:
-        varnames = tr.samples.keys()
-
-    return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
 
 

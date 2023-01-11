@@ -4,7 +4,7 @@ from .timeseries import TimeseriesLogP, flatten_tslp_list
 from .dist import Categorical
 from functorch.dim import dims, Tensor
 
-class Sample():
+class SampleMP():
     """
     Does error checking on the log-ps, and does the tensor product.
 
@@ -13,8 +13,9 @@ class Sample():
       Check that data appears in logps but not logqs
       Check that all dims are something (plate, timeseries, K)
     """
-    def __init__(self, tr):
+    def __init__(self, tr, reparam):
         self.tr = tr
+        self.reparam = reparam
 
         for lp in [*tr.logps.values(), *tr.logqs.values()]:
             if isinstance(lp, TimeseriesLogP):
@@ -353,7 +354,7 @@ def sample_cond(marg, K, K_post_idxs, N):
     #Sample new K's
     return Categorical(cond).sample(False, sample_dims=(N,))
 
-class SampleGlobal(Sample):
+class SampleGlobal(SampleMP):
     def tensor_product(self, detach_p=False, detach_q=False):
         """
         Sums over plates, starting at the lowest plate.

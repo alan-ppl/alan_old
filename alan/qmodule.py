@@ -1,5 +1,6 @@
 import torch.nn as nn
 from .utils import named2dim_tensor
+from .tensors import ValuedTraceTensor
 
 class QModule(nn.Module):
     def get_named_tensor(self, name):
@@ -18,7 +19,6 @@ class QModule(nn.Module):
         if tensor is not None:
             if not hasattr(self, "_platedims"):
                 raise Exception("Cannot return parameter or buffer, as self._platedims is not set.  To set self._platedims, you need to pass Q to a Model.")
-            return named2dim_tensor(self._platedims, tensor)
+            return ValuedTraceTensor(named2dim_tensor(self._platedims, tensor))
         else:
             return super().__getattr__(name)
-

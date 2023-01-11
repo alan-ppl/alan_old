@@ -1,7 +1,8 @@
 import torch as t
 import torch.distributions as td
-from functorch.dim import dims, Tensor
+from .pytree import Tensor
 from alan.utils import *
+from .tensors import TraceTensor, ValuedTraceTensor, NullTraceTensor, unwrap_trace_tensor
 
 def univariate(*names):
     return ({name: 0 for name in names}, 0)
@@ -76,26 +77,33 @@ class TorchDimDist():
         #Check for any positional arguments that are also given as a named argument.
         assert len(self.dim_args) == len(kwargs) + len(arg_dict)
 
-        self.dims  = unify_dims(self.dim_args.values())
+        assert all(isinstance(x, TraceTensor) for x in self.dim_args.values() if isinstance(x, Tensor))
+        self.null = any(isinstance(x, NullTraceTensor) for x in self.dim_args.values())
+        if not self.null:
+            self.dim_args = {k: unwrap_trace_tensor(v) for (k, v) in self.dim_args.items()}
 
-        #Find out the number of unnamed dims over which we batch.
-        unnamed_batch_dims = []
-        for (argname, arg) in self.dim_args.items():
-            unnamed_batch_dims.append(generic_ndim(arg) - param_ndim[argname])
+            self.dims  = unify_dims(self.dim_args.values())
 
-        assert all(0<=x for x in unnamed_batch_dims)
-        self.unnamed_batch_dims = max(unnamed_batch_dims)
+            #Find out the number of unnamed dims over which we batch.
+            unnamed_batch_dims = []
+            for (argname, arg) in self.dim_args.items():
+                unnamed_batch_dims.append(generic_ndim(arg) - param_ndim[argname])
 
-        self.all_args = {}
-        for (argname, arg) in self.dim_args.items():
-            #Pad all args up to the right lengths, so that unnamed batching works.
-            arg = pad_nones(arg, self.unnamed_batch_dims+param_ndim[argname])
-            #Convert torchdim arguments into aligned tensor arguments.
-            arg = singleton_order(arg, self.dims)
-            assert not is_dimtensor(arg)
-            self.all_args[argname] = arg
+            assert all(0<=x for x in unnamed_batch_dims)
+            self.unnamed_batch_dims = max(unnamed_batch_dims)
+
+            self.all_args = {}
+            for (argname, arg) in self.dim_args.items():
+                #Pad all args up to the right lengths, so that unnamed batching works.
+                arg = pad_nones(arg, self.unnamed_batch_dims+param_ndim[argname])
+                #Convert torchdim arguments into aligned tensor arguments.
+                arg = singleton_order(arg, self.dims)
+                assert not is_dimtensor(arg)
+                self.all_args[argname] = arg
 
     def sample(self, reparam, sample_dims):
+        assert not self.null
+
         torch_dist = self.dist(**self.all_args)
         if reparam and not torch_dist.has_rsample:
             raise Exception(f'Trying to do reparameterised sampling of {self.dist_name}, which is not implemented by PyTorch (likely because {self.dist_name} is a distribution over discrete random variables).')
@@ -107,6 +115,8 @@ class TorchDimDist():
         return sample[dims]
 
     def log_prob(self, x):
+        assert not self.null
+
         #Same number of unnamed batch dims
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):

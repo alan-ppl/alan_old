@@ -1,3 +1,26 @@
+model.forward binds covariates to the model in a ModelCovariates.
+Then, we give it a trace and a name.
+
+self.forward(trace, name, *covariates):
+  No name:
+  tr.P(Normal(0, 1))
+  tr.Q(Normal(0, 1))
+  implies name is None, and we use name.
+
+Merged:
+  check name is None works in nested models
+  save self.Ps, not self.logps
+  expose MPSamples, TMCSamples, GlobalSamples
+  inputs
+  sum_discrete 
+  nat_grad
+  ml
+  device
+  
+  
+  
+  
+
 Papers:
   ML (ICML):
     Proof of validity of RWS and VI + superiority over TMC (requires TMC).
