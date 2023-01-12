@@ -1,3 +1,10 @@
+* If only P provided, then Q=P
+* tr.sample("a", ...), where ... is not a dist...
+* Abstract trace stack
+* error if you try to do prior sample an nn.Module (won't have reconciled plates)
+* store dist rather than ... 
+* covariates
+
 Papers:
   ML (ICML):
     Proof of validity of RWS and VI + superiority over TMC (requires TMC).
