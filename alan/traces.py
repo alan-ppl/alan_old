@@ -325,42 +325,6 @@ class TraceP(AbstractTraceP):
     def platedims(self):
         return self.trq.platedims
 
-#    def sample_logQ_prior(self, dist, plates, delayed_Q):
-#        """
-#        When variables are omitted in TraceQ, we sample them from the prior.
-#        This only makes sense with multiple samples, which is nice as we no
-#        longer have the opportunity to set multi_sample=False in TraceQ.
-#
-#        The basic strategy is to sample from the prior dist, then take the 
-#        "diagonal" for all K's.
-#        """
-#        Kdim = self.trq.Kdim
-#
-#        #Don't depend on any enumerated variables (in which case sampling
-#        #from the prior doesn't make sense).
-#        assert all((dim not in self.Es) for dim in dist.dims)
-#
-#        if delayed_Q is not None:
-#            dist = delayed_Q(dist)
-#
-#        sample_dims = platenames2platedims(self.platedims, plates)
-#
-#        all_Ks = set(self.Ks)
-#        if 0 == sum(dim in self.Ks for dim in dist.dims):
-#            #If there aren't any K's in the dist, then add a K.
-#            sample_dims.append(Kdim)
-#            all_Ks.add(Kdim)
-#
-#        sample_all = dist.sample(self.trq.reparam, sample_dims)
-#        logq_all   = dist.log_prob(sample_all)
-#
-#        Ks = [dim for dim in generic_dims(sample_all) if dim in all_Ks]
-#        idxs = len(Ks) * [range(Kdim.size)]
-#
-#        sample = generic_order(sample_all, Ks)[idxs][Kdim]
-#        logq   = generic_order(logq_all,   Ks)[idxs][Kdim]
-#        return sample, logq
-
     def sum_discrete(self, key, dist, plates):
         """
         Enumerates discrete variables.
@@ -427,19 +391,14 @@ class TraceP(AbstractTraceP):
                 raise Exception(f"The plates for P and Q don't match for variable '{key}'.  Specifically, P has plates {tuple(P_sample_plates)}, while Q has plates {tuple(Q_sample_plates)}")
 
         else:
-            #We don't already have a value for the sample, and we're either
-            #going to sample from the prior, or enumerate a discrete variable
-            if sum_discrete:
-                #Analytically sum out a discrete latent
-                if group is not None:
-                    raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but you have also provided a group.  This doesn't make sense.  Only variables sampled from Q can be grouped.")
-                sample, Kdim = self.sum_discrete(key, dist, plates)
-                logq = t.zeros_like(sample)
-                self.Ks.add(Kdim)
-                self.Es.add(Kdim)
-            else:
-                #Sample from prior
-                sample, logq = self.sample_logQ_prior(dist, plates, delayed_Q)
+            assert sum_discrete
+            #Analytically sum out a discrete latent
+            if group is not None:
+                raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but you have also provided a group.  This doesn't make sense.  Only variables sampled from Q can be grouped.")
+            sample, Kdim = self.sum_discrete(key, dist, plates)
+            logq = t.zeros_like(sample)
+            self.Ks.add(Kdim)
+            self.Es.add(Kdim)
         
         dims_sample = set(generic_dims(sample))
 
