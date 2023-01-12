@@ -1,9 +1,12 @@
-* If only P provided, then Q=P
-* tr.sample("a", ...), where ... is not a dist...
-* Abstract trace stack
-* error if you try to do prior sample an nn.Module (won't have reconciled plates)
-* store dist rather than ... 
-* covariates
+* store Ps rather than logps
+* simplify trp / trq
+* names "/a/b" => "a.b"
+* saving QModules (named parameters break saving)
+Errors:
+* P shouldn't have any QModules (QModules would imply a plated Parameter, and we really shouldn't have a plated parameter in P)
+* optional args (multi_sample etc.) differ between P and Q
+* check all dimensions are either plates or Ks.
+* check we don't have different dimensions with the same names
 
 Papers:
   ML (ICML):
@@ -39,18 +42,6 @@ Tech TODOs:
   GPs
   Multiple iterations of importance weighting 
   Memory problems!
-  
-Saving Q modules:
-  Because Q_modules can have named parameters, the usual
-  t.save(model.state_dict(), ...) thing doesn't work,
-  will need to overwrite the state_dict() method and do something to
-  rename the params when loading 
-  
-Error messages:
-  plate names and var names don't overlap!
-  check all dimensions that are either plates or Ks
-  Error if model.P has any QModules
-  
 
 Tests:
   Predictive posteriors
