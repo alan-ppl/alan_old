@@ -3,7 +3,7 @@ import torch.nn as nn
 import alan
 
 def generate_model(N,M,local,device):
-
+    print(M, N)
     sizes = {'plate_muz2':2, 'plate_muz3':2, 'plate_muz4':2, 'plate_z':M, 'plate_obs':N}
     if N == 30:
         d_z = 20
@@ -20,7 +20,6 @@ def generate_model(N,M,local,device):
       tr.sample('psi_z', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
 
       tr.sample('z', alan.Normal(tr['mu_z4'] * t.ones((d_z)).to(device), tr['psi_z'].exp()), plates='plate_z')
-
 
       tr.sample('obs', alan.Normal((tr['z'] @ tr['x']), tr['psi_y'].exp()))
 
@@ -64,12 +63,16 @@ def generate_model(N,M,local,device):
 
             tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
-    covariates = {'x':t.load('deep_hier_regression/data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs', ...).to(device)}
-    test_covariates = {'x':t.load('deep_hier_regression/data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs', ...).to(device)}
-    all_covariates = {'x': t.vstack([covariates['x'],test_covariates['x']])}
+    covariates = {'x':t.load('deep_hier_regression/data/weights_{0}_{1}.pt'.format(N,M)).to(device)}
+    test_covariates = {'x':t.load('deep_hier_regression/data/test_weights_{0}_{1}.pt'.format(N,M)).to(device)}
 
-    data = {'obs':t.load('deep_hier_regression/data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4','plate_z', 'plate_obs').to(device)}
-    test_data = {'obs':t.load('deep_hier_regression/data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs').to(device)}
-    all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
+    all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']], dim=-2).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs', ...)}
+    covariates['x'] = covariates['x'].rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs', ...)
+
+    data = {'obs':t.load('deep_hier_regression/data/data_y_{0}_{1}.pt'.format(N, M)).to(device)}
+    test_data = {'obs':t.load('deep_hier_regression/data/test_data_y_{0}_{1}.pt'.format(N, M)).to(device)}
+
+    all_data = {'obs': t.cat([data['obs'],test_data['obs']], dim=-1).rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs')}
+    data['obs'] = data['obs'].rename('plate_muz2', 'plate_muz3', 'plate_muz4', 'plate_z', 'plate_obs')
 
     return P, Q, data, covariates, all_data, all_covariates

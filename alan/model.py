@@ -253,13 +253,14 @@ class Model(nn.Module):
 
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
+
         tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.covariates, covariates_all, sample.trp.platedims, platesizes_all)
         self.P(tr)
         return tr, N
 
     def _predictive_global(self, K, N, data_all=None, covariates_all=None, platesizes_all=None):
         sample = self._sample_global(K, False, None, None)
-        
+
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
         tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.covariates, covariates_all, sample.trp.platedims, platesizes_all)
@@ -269,6 +270,7 @@ class Model(nn.Module):
     def predictive_samples(self, K, N, platesizes_all=None):
         if platesizes_all is None:
             platesizes_all = {}
+
         trace_pred, N = self._predictive(K, N, None, platesizes_all)
         #Convert everything to named
         #Return a dict mapping

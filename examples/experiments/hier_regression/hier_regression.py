@@ -52,12 +52,13 @@ def generate_model(N,M,local,device):
 
             tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
-    covariates = {'x':t.load('hier_regression/data/weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
-    test_covariates = {'x':t.load('hier_regression/data/test_weights_{0}_{1}.pt'.format(N,M)).rename('plate_1','plate_2',...).to(device)}
-    all_covariates = {'x': t.vstack([covariates['x'],test_covariates['x']])}
+    covariates = {'x':t.load('hier_regression/data/weights_{0}_{1}.pt'.format(N,M)).to(device)}
+    test_covariates = {'x':t.load('hier_regression/data/test_weights_{0}_{1}.pt'.format(N,M)).to(device)}
+    all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']],-2).rename('plate_1','plate_2',...)}
+    covariates['x'] = covariates['x'].rename('plate_1','plate_2',...)
 
-    data = {'obs':t.load('hier_regression/data/data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
-    test_data = {'obs':t.load('hier_regression/data/test_data_y_{0}_{1}.pt'.format(N, M)).rename('plate_1','plate_2').to(device)}
-    all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
-
+    data = {'obs':t.load('hier_regression/data/data_y_{0}_{1}.pt'.format(N, M)).to(device)}
+    test_data = {'obs':t.load('hier_regression/data/test_data_y_{0}_{1}.pt'.format(N, M)).to(device)}
+    all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
+    data['obs'] = data['obs'].rename('plate_1','plate_2')
     return P, Q, data, covariates, all_data, all_covariates

@@ -108,6 +108,9 @@ class TorchDimDist():
 
     def log_prob(self, x):
         #Same number of unnamed batch dims
+        # print(x)
+        # print(x.shape)
+        # print(self.all_args)
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):
         #    breakpoint()

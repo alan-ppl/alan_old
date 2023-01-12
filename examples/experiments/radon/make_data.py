@@ -6,7 +6,7 @@ import torch as t
 M = 2
 J = 2
 I = 4
-N = 4
+N = 6
 
 df_srrs2 = pd.read_csv('data/srrs2.dat')
 df_cty = pd.read_csv('data/cty.dat')
@@ -117,10 +117,14 @@ print(df)
 basement = df['basement'].to_numpy()
 radon = df['log_radon'].to_numpy()
 county_uranium = df['log_u'].unique().reshape(M,J)
-basement = basement.reshape(M, J, I, N)
-radon = radon.reshape(M, J, I, N)
+train_basement = basement.reshape(M, J, I, N)[:,:,:,:int(0.75*N)]
+train_radon = radon.reshape(M, J, I, N)[:,:,:,:int(0.75*N)]
 
-print(county_uranium)
+test_basement = basement.reshape(M, J, I, N)[:,:,:,int(0.75*N):]
+test_radon = radon.reshape(M, J, I, N)[:,:,:,int(0.75*N):]
+
 t.save(t.from_numpy(county_uranium), 'data/county_uranium.pt')
-t.save(t.from_numpy(basement), 'data/basement.pt')
-t.save(t.from_numpy(radon), 'data/radon.pt')
+t.save(t.from_numpy(train_basement), 'data/train_basement.pt')
+t.save(t.from_numpy(train_radon), 'data/train_radon.pt')
+t.save(t.from_numpy(test_basement), 'data/test_basement.pt')
+t.save(t.from_numpy(test_radon), 'data/test_radon.pt')

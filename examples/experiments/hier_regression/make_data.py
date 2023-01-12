@@ -45,9 +45,9 @@ for N in Ns:
 
         data_y = alan.sample(P, sizes, varnames=('obs',), covariates=x)
 
-        x_test = {'x': t.randn(M,N,d_z).rename('plate_1', 'plate_2', ...).to(device)}
+        x_test = {'x': t.randn(M,N//2,d_z).rename('plate_1', 'plate_2', ...).to(device)}
 
-        test_data_y = alan.sample(P, sizes, varnames=('obs',), covariates=x_test)
+        test_data_y = alan.sample(P, {'plate_1':M, 'plate_2':N//2}, varnames=('obs',), covariates=x_test)
 
 
         t.save(x['x'].rename(None), 'data/weights_{0}_{1}.pt'.format(N,M))

@@ -512,6 +512,10 @@ class TracePred(AbstractTrace):
         if not (data_bigger or plates_bigger):
             raise Exception(f"None of the data tensors or plate sizes provided for prediction is bigger than those at training time.  Remember that the data/plate sizes are the sizes of train + 'test'")
 
+        if (self.platedims_all == {}):
+            keys = ', '.join(list(self.data_all.keys()))
+            raise Exception(f"This method only works if the latents in 'data_all' are plated (could be plated with plate_size=1), in this case {keys} should be plated.")
+
 
     def __getitem__(self, key):
         in_data   = key in self.data_all
@@ -528,8 +532,11 @@ class TracePred(AbstractTrace):
         plates for x_all and x_train.  It also checks that x_all and x_train have
         the same plates.
         """
-        dims_all   = set(x_all.dims)   #Includes N!
-        dims_train = set(x_train.dims) #Includes N!
+        dims_all   = set(generic_dims(x_all))   #Includes N!
+        dims_train = set(generic_dims(x_train)) #Includes N!
+
+
+
         dimnames_all   = [name for (name, dim) in self.platedims_all.items()   if dim in dims_all]
         dimnames_train = [name for (name, dim) in self.platedims_train.items() if dim in dims_train]
         assert set(dimnames_all) == set(dimnames_train)
@@ -606,7 +613,6 @@ class TracePred(AbstractTrace):
     def _sample_logp(self, varname, dist, plates):
         sample_all   = self.data_all[varname]
         sample_train = self.data_train[varname]
-
         dims_all, dims_train = self.corresponding_plates(sample_all, sample_train)
 
         sample_all_ordered   = generic_order(sample_all,   dims_all)
@@ -617,9 +623,12 @@ class TracePred(AbstractTrace):
 
         # Check that data_all matches data_train
         #assert t.allclose(sample_all_ordered[idxs], sample_train_ordered)
-
         ll_all                 = dist.log_prob(sample_all)
         self.ll_all[varname]   = ll_all
+
+        # if self.N is not dims_all[0]:
+        #     dims_all = [self.N] + dims_all
+
         self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
 
 def split_train_test(x, T_all, T_train, T_test):
