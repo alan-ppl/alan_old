@@ -86,13 +86,17 @@ class AbstractTrace():
 class AbstractTraceP(AbstractTrace):
     def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
         key, dist = self.key_dist(key, dist)
+        #Setup that's common between AbstractTraceP and AbstractTraceQ 
+        if isinstance(plates, str):
+            plates = (plates,)
+        if T is not None:
+            dist.set_Tdim(self.platedims[T])
 
         kwargs = {'plates':plates, 'T':T, 'group':group, 'sum_discrete':sum_discrete}
-
         if isinstance(dist, ModelInputs):
             assert key is not None
+
             self.push_stack(key)
-            assert key in self
             dist.P(self, **kwargs)
             self.pop_stack(key)
         else:
@@ -101,18 +105,19 @@ class AbstractTraceP(AbstractTrace):
 
 class AbstractTraceQ(AbstractTrace):
     def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
+        #We don't need a Q if sum_discrete=True
         if not sum_discrete:
-            #We don't need a Q if sum_discrete=True
+            #Setup that's common between AbstractTraceP and AbstractTraceQ 
             key, dist = self.key_dist(key, dist)
+            if isinstance(plates, str):
+                plates = (plates,)
 
             kwargs = {'plates':plates, 'T':T, 'multi_sample':multi_sample}
-
             if isinstance(dist, ModelInputs):
                 assert key is not None
+
                 self.push_stack(key)
-                assert key not in self
                 dist.Q(self, plates=plates, T=T, multi_sample=multi_sample)
-                assert key in self
                 self.pop_stack(key)
             else:
                 stack_key = self.stack_key(key)
@@ -127,10 +132,10 @@ class TraceSample(AbstractTraceP):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, platesizes, N):
+    def __init__(self, platedims, N):
         super().__init__()
-        self.platedims = extend_plates_with_sizes({}, platesizes)
         self.Ns = () if (N is None) else (Dim('N', N),)
+        self.platedims = platedims
 
         self.reparam = False
 
@@ -138,18 +143,15 @@ class TraceSample(AbstractTraceP):
         self.logp    = {}
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
-    def _sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
+    def _sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
         self.check(key, plates, T)
 
-        if T is not None:
-            dist.set_Tdim(self.platedims[T])
-
-        sample_dims = [*self.Ns, *platenames2platedims(self.platedims, plates)]
+        sample_dims = [*self.Ns, *(self.platedims[plate] for plate in plates)]
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         self.samples[key] = sample
         self.logp[key] = dist.log_prob(sample)
 
-def sample(P, platesizes=None, N=None, varnames=None):
+def sample(P, platesizes=None, N=None, varnames=None, inputs=None):
     """Draw samples from a generative model (with no data).
     
     Args:
@@ -165,8 +167,15 @@ def sample(P, platesizes=None, N=None, varnames=None):
     """
     if platesizes is None:
         platesizes = {}
-    tr = TraceSample(platesizes, N)
-    P(tr)
+    if inputs is None:
+        inputs = {}
+
+    platedims = extend_plates_with_named_tensors({}, inputs.values())
+    inputs = named2dim_tensordict(platedims, inputs)
+    platedims = extend_plates_with_sizes(platedims, platesizes)
+    with t.no_grad():
+        tr = TraceSample(platedims, N)
+        P(tr, **inputs)
 
     if varnames is None:
         varnames = tr.samples.keys()
@@ -293,10 +302,9 @@ class TraceQTMC(AbstractTrace):
         self.logq[key] = logq + plus_log_K
 
 class TraceP(AbstractTraceP):
-    def __init__(self, trq, memory_diagnostics=False):
+    def __init__(self, trq):
         super().__init__()
         self.trq = trq
-        self.memory_diagnostics=memory_diagnostics
 
         self.samples = {}
         self.logp = {}
@@ -317,41 +325,41 @@ class TraceP(AbstractTraceP):
     def platedims(self):
         return self.trq.platedims
 
-    def sample_logQ_prior(self, dist, plates, delayed_Q):
-        """
-        When variables are omitted in TraceQ, we sample them from the prior.
-        This only makes sense with multiple samples, which is nice as we no
-        longer have the opportunity to set multi_sample=False in TraceQ.
-
-        The basic strategy is to sample from the prior dist, then take the 
-        "diagonal" for all K's.
-        """
-        Kdim = self.trq.Kdim
-
-        #Don't depend on any enumerated variables (in which case sampling
-        #from the prior doesn't make sense).
-        assert all((dim not in self.Es) for dim in dist.dims)
-
-        if delayed_Q is not None:
-            dist = delayed_Q(dist)
-
-        sample_dims = platenames2platedims(self.platedims, plates)
-
-        all_Ks = set(self.Ks)
-        if 0 == sum(dim in self.Ks for dim in dist.dims):
-            #If there aren't any K's in the dist, then add a K.
-            sample_dims.append(Kdim)
-            all_Ks.add(Kdim)
-
-        sample_all = dist.sample(self.trq.reparam, sample_dims)
-        logq_all   = dist.log_prob(sample_all)
-
-        Ks = [dim for dim in generic_dims(sample_all) if dim in all_Ks]
-        idxs = len(Ks) * [range(Kdim.size)]
-
-        sample = generic_order(sample_all, Ks)[idxs][Kdim]
-        logq   = generic_order(logq_all,   Ks)[idxs][Kdim]
-        return sample, logq
+#    def sample_logQ_prior(self, dist, plates, delayed_Q):
+#        """
+#        When variables are omitted in TraceQ, we sample them from the prior.
+#        This only makes sense with multiple samples, which is nice as we no
+#        longer have the opportunity to set multi_sample=False in TraceQ.
+#
+#        The basic strategy is to sample from the prior dist, then take the 
+#        "diagonal" for all K's.
+#        """
+#        Kdim = self.trq.Kdim
+#
+#        #Don't depend on any enumerated variables (in which case sampling
+#        #from the prior doesn't make sense).
+#        assert all((dim not in self.Es) for dim in dist.dims)
+#
+#        if delayed_Q is not None:
+#            dist = delayed_Q(dist)
+#
+#        sample_dims = platenames2platedims(self.platedims, plates)
+#
+#        all_Ks = set(self.Ks)
+#        if 0 == sum(dim in self.Ks for dim in dist.dims):
+#            #If there aren't any K's in the dist, then add a K.
+#            sample_dims.append(Kdim)
+#            all_Ks.add(Kdim)
+#
+#        sample_all = dist.sample(self.trq.reparam, sample_dims)
+#        logq_all   = dist.log_prob(sample_all)
+#
+#        Ks = [dim for dim in generic_dims(sample_all) if dim in all_Ks]
+#        idxs = len(Ks) * [range(Kdim.size)]
+#
+#        sample = generic_order(sample_all, Ks)[idxs][Kdim]
+#        logq   = generic_order(logq_all,   Ks)[idxs][Kdim]
+#        return sample, logq
 
     def sum_discrete(self, key, dist, plates):
         """
@@ -401,7 +409,7 @@ class TraceP(AbstractTraceP):
             if group in self.groupname2dim:
                 raise Exception(f"Timeseries '{key}' is grouped with another variable which is sampled first. Timeseries can be grouped, but must be sampled first")
 
-        if self.contains_stack_key(key):
+        if self.trq.contains_stack_key(key):
             #We already have a value for the sample, either because it is 
             #in the data, or because we sampled the variable in Q.
             if sum_discrete:
@@ -409,7 +417,7 @@ class TraceP(AbstractTraceP):
             if delayed_Q is not None:
                 raise Exception("You have given a delayed_Q (which would allow us to use an approximate posterior that's a 'tilted' version of the prior, but we already have a sample of '{key}' drawn from Q.  We need one or the other!")
              
-            sample = self.get_stack_key(key)
+            sample = self.trq.get_stack_key(key)
             logq = self.trq.logq[key] if key in self.trq.samples else None
 
             #Check that plates match for sample from Q previous and P here

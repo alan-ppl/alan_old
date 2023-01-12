@@ -72,32 +72,37 @@ class Model(nn.Module):
         """
         return ModelInputs(self, args, kwargs)
 
-    def _sample(self, K, reparam, data, memory_diagnostics=False):
+    def _sample(self, K, reparam, data=None, inputs=None):
         """
         Internal method that actually runs P and Q.
         """
         if data is None:
             data = {}
-        platedims = extend_plates_with_named_tensors(self.platedims, data.values())
-        data = named2dim_tensordict(platedims, data)
+        if inputs is None:
+            inputs = {}
+        platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
+        data   = named2dim_tensordict(platedims, data)
+        inputs = named2dim_tensordict(platedims, inputs)
 
-        all_data = {**self.data, **data}
+        all_data   = {**self.data,   **data}
+        all_inputs = {**self.inputs, **inputs}
+        assert len(all_data)   == len(self.data)   + len(data)
+        assert len(all_inputs) == len(self.inputs) + len(inputs)
 
-        if 0==len(all_data):
-            raise Exception("No data provided either to the Model(...) or to e.g. model.elbo(...)")
-        for dataname in self.data:
-            if dataname in data:
-                raise Exception(f"Data named '{dataname}' were provided to Model(...) and e.g. model.elbo(...).  You should provide data only once.  You should usually provide data to Model(...), unless you're minibatching, in which case it needs to be provided to e.g. model.elbo(...)")
-        assert len(all_data) == len(self.data) + len(data)
-        if 0 != len(self.data) and 0 != len(data):
-            warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
+        #if 0==len(all_data):
+        #    raise Exception("No data provided either to the Model(...) or to e.g. model.elbo(...)")
+        #for dataname in self.data:
+        #    if dataname in data:
+        #        raise Exception(f"Data named '{dataname}' were provided to Model(...) and e.g. model.elbo(...).  You should provide data only once.  You should usually provide data to Model(...), unless you're minibatching, in which case it needs to be provided to e.g. model.elbo(...)")
+        #if 0 != len(self.data) and 0 != len(data):
+        #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
         trq = TraceQ(K, all_data, platedims, reparam)
-        self.Q(trq)
+        self.Q(trq, **all_inputs)
         #compute logP
-        trp = TraceP(trq, memory_diagnostics=memory_diagnostics)
-        self.P(trp)
+        trp = TraceP(trq)
+        self.P(trp, **all_inputs)
 
         return Sample(trp)
 
