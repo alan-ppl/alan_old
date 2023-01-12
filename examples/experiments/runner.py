@@ -93,7 +93,7 @@ def run_experiment(cfg):
                 pred_liks.append(pred_likelihood['obs'].item())
             else:
                 pred_liks.append(0)
-                
+
             ###
             # SAVING MODELS DOESN'T WORK YET
             ###
@@ -104,7 +104,7 @@ def run_experiment(cfg):
 
         results_dict[N][M][K] = {'final_obj':np.mean(objs),'final_obj_std':np.std(objs), 'pred_likelihood':np.mean(pred_liks), 'pred_likelihood_std':np.std(pred_liks), 'objs': objs, 'pred_liks':pred_liks, 'avg_time':np.mean(times), 'std_time':np.std(times)}
 
-    file = cfg.dataset + '/results/' + cfg.training.inference_method + ('_LIW_' if cfg.local else '_') + 'N{0}_M{1}.json'.format(N,M)
+    file = cfg.model + '/results/' + cfg.training.inference_method + ('_LIW_' if cfg.local else '_') + 'N{0}_M{1}.json'.format(N,M)
     with open(file, 'w') as f:
         json.dump(results_dict, f)
 
