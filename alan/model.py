@@ -9,6 +9,15 @@ from .ng  import NG
 from .tilted import Tilted
 from .qmodule import QModule
 
+class ModelInputs():
+    def __init__(self, model, args, kwargs):
+        self.model = model
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, tr):
+        self.model(tr, *self.args, **self.kwargs)
+
 class Model(nn.Module):
     """Model class.
     Args:
@@ -22,13 +31,17 @@ class Model(nn.Module):
               the named dimensions in data (and from the sizes of any parameters
               in Q).
     """
-    def __init__(self, P, Q=lambda tr: None, data=None):
+    def __init__(self, P, Q=None, data=None, inputs=None):
         super().__init__()
         self.P = P
+        if Q is None:
+            Q = P
         self.Q = Q
 
         if data is None:
             data = {}
+        if inputs is None:
+            inputs = {}
 
         #plate dimensions can come in through:
         #  parameters in Q
@@ -58,8 +71,9 @@ class Model(nn.Module):
                     if any(name is not None in x.names):
                         raise Exception("Named parameter on an nn.Module.  To specify plates in approximate posteriors correctly, we need to use QModule in place of nn.Module")
 
-        self.platedims = extend_plates_with_named_tensors(self.platedims, data.values())
-        self.data   = named2dim_tensordict(self.platedims, data)
+        self.platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
+        self.data      = named2dim_tensordict(self.platedims, data)
+        self.inputs    = named2dim_tensordict(self.platedims, inputs)
 
     def _sample(self, K, reparam, data, memory_diagnostics=False):
         """

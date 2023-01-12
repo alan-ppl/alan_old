@@ -17,6 +17,27 @@ def check_not_reserved(x):
     
 
 class AbstractTrace():
+    def __init__(self):
+        self.stack = []
+
+    def push_stack(self, name):
+        self.stack.append(name)
+
+    def pop_stack(self):
+        self.stack.pop()
+
+    def stack_key(self, key=None):
+        result = '/'.join(self.stack)
+        if key is not None:
+            result = result + '/' + key
+        return result
+
+    @staticmethod
+    def key_dist(key, dist):
+        if dist is None:
+            key, dist = dist, key
+        return key, dist
+
     def __getitem__(self, key):
         assert key in self
         return self.samples[key] if (key in self.samples) else self.data[key]
@@ -31,6 +52,8 @@ class AbstractTrace():
         platedims = set(self.platedims.values())
         return [dim for dim in dims if (dim in platedims)]
 
+    def check(self, key, plates, T):
+        self.check_plate_present(key, plates, T)
 
     def check_varname(self, key):
         if key in self.samples:
@@ -46,12 +69,38 @@ class AbstractTrace():
         if (T is not None) and (T not in self.platedims):
             raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
 
-    def check(self, key, plate, T):
-        self.check_varname(key)
-        self.check_plate_present(key, plate, T)
+class AbstractTraceP(AbstractTrace):
+    def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
+        key, dist = self.key_dist(key, dist)
+
+        if isinstance(dist, ModelInputs):
+            assert key is not None
+            self.push_stack(key)
+            assert self.stack_key() in self
+            dist.P(self, plates=plates, T=T, multi_sample=multi_sample, group=group, sum_discrete=sum_discrete)
+            self.pop_stack(key)
+        else:
+            stack_key = self.stack_key(key)
+            self._sample(stack_key, dist, plates=plates, T=T, sum_discrete=sum_discrete)
+
+class AbstractTraceQ(AbstractTrace):
+    def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None):
+        key, dist = self.key_dist(key, dist)
+
+        if isinstance(dist, ModelInputs):
+            assert key is not None
+            self.push_stack(key)
+            assert self.stack_key() not in self
+            dist.Q(self, plates=plates, T=T, multi_sample=multi_sample, group=group, sum_discrete=sum_discrete)
+            assert self.stack_key() in self
+            self.pop_stack(key)
+        else:
+            stack_key = self.stack_key(key)
+            self._sample(stack_key, dist, plates=plates, T=T, sum_discrete=sum_discrete)
 
 
-class TraceSample(AbstractTrace):
+
+class TraceSample(AbstractTraceP):
     """
     Draws samples from P.  Usually just used to sample fake data from the model.
     sizes is a dict mapping platenames to plate sizes
@@ -105,7 +154,7 @@ def sample(P, platesizes=None, N=None, varnames=None):
     return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
 
-class TraceQ(AbstractTrace):
+class TraceQ(AbstractTraceQ):
     """
     Samples a probabilistic program + evaluates log-probability.
     Usually used for sampling the approximate posterior.
@@ -223,7 +272,7 @@ class TraceQTMC(AbstractTrace):
         self.samples[key] = sample
         self.logq[key] = logq + plus_log_K
 
-class TraceP(AbstractTrace):
+class TraceP(AbstractTraceP):
     def __init__(self, trq, memory_diagnostics=False):
         self.trq = trq
         self.memory_diagnostics=memory_diagnostics
