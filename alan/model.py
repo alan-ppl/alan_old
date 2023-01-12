@@ -1,6 +1,6 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import TraceQ, TraceP, TracePred, TracePGlobal, TraceQTMC
+from .traces import TraceQ, TraceP, TracePred, TracePGlobal, TraceQTMC, ModelInputs, AbstractTrace, AbstractTraceP, AbstractTraceQ
 from .Sample import Sample, SampleGlobal
 from .utils import *
 from .ml  import ML
@@ -8,15 +8,6 @@ from .ml2 import ML2
 from .ng  import NG
 from .tilted import Tilted
 from .qmodule import QModule
-
-class ModelInputs():
-    def __init__(self, model, args, kwargs):
-        self.model = model
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, tr):
-        self.model(tr, *self.args, **self.kwargs)
 
 class Model(nn.Module):
     """Model class.
@@ -74,6 +65,12 @@ class Model(nn.Module):
         self.platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
         self.data      = named2dim_tensordict(self.platedims, data)
         self.inputs    = named2dim_tensordict(self.platedims, inputs)
+
+    def forward(self, *args, **kwargs):
+        """
+        Can be called as tr('a', model(*args, **kwargs)) from within another model.
+        """
+        return ModelInputs(self, args, kwargs)
 
     def _sample(self, K, reparam, data, memory_diagnostics=False):
         """

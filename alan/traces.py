@@ -15,6 +15,14 @@ def check_not_reserved(x):
     if reserved:
         raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
     
+class ModelInputs():
+    def __init__(self, model, args, kwargs):
+        self.model = model
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, tr):
+        self.model(tr, *self.args, **self.kwargs)
 
 class AbstractTrace():
     def __init__(self):
@@ -39,14 +47,20 @@ class AbstractTrace():
         return key, dist
 
     def __getitem__(self, key):
-        assert key in self
-        return self.samples[key] if (key in self.samples) else self.data[key]
+        return self.get_stack_key(self.stack_key(key))
 
     def __contains__(self, key):
-        in_data   = key in self.data
-        in_sample = key in self.samples
+        return self.contains_stack_key(self.stack_key(key))
+
+    def contains_stack_key(self, stack_key):
+        in_data   = stack_key in self.data
+        in_sample = stack_key in self.samples
         assert not (in_data and in_sample)
         return in_data or in_sample
+
+    def get_stack_key(self, stack_key):
+        assert self.contains_stack_key(stack_key)
+        return self.samples[stack_key] if (stack_key in self.samples) else self.data[stack_key]
 
     def filter_platedims(self, dims):
         platedims = set(self.platedims.values())
@@ -73,30 +87,36 @@ class AbstractTraceP(AbstractTrace):
     def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
         key, dist = self.key_dist(key, dist)
 
+        kwargs = {'plates':plates, 'T':T, 'group':group, 'sum_discrete':sum_discrete}
+
         if isinstance(dist, ModelInputs):
             assert key is not None
             self.push_stack(key)
-            assert self.stack_key() in self
-            dist.P(self, plates=plates, T=T, multi_sample=multi_sample, group=group, sum_discrete=sum_discrete)
+            assert key in self
+            dist.P(self, **kwargs)
             self.pop_stack(key)
         else:
             stack_key = self.stack_key(key)
-            self._sample(stack_key, dist, plates=plates, T=T, sum_discrete=sum_discrete)
+            self._sample(stack_key, dist, **kwargs)
 
 class AbstractTraceQ(AbstractTrace):
-    def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None):
-        key, dist = self.key_dist(key, dist)
+    def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
+        if not sum_discrete:
+            #We don't need a Q if sum_discrete=True
+            key, dist = self.key_dist(key, dist)
 
-        if isinstance(dist, ModelInputs):
-            assert key is not None
-            self.push_stack(key)
-            assert self.stack_key() not in self
-            dist.Q(self, plates=plates, T=T, multi_sample=multi_sample, group=group, sum_discrete=sum_discrete)
-            assert self.stack_key() in self
-            self.pop_stack(key)
-        else:
-            stack_key = self.stack_key(key)
-            self._sample(stack_key, dist, plates=plates, T=T, sum_discrete=sum_discrete)
+            kwargs = {'plates':plates, 'T':T, 'multi_sample':multi_sample}
+
+            if isinstance(dist, ModelInputs):
+                assert key is not None
+                self.push_stack(key)
+                assert key not in self
+                dist.Q(self, plates=plates, T=T, multi_sample=multi_sample)
+                assert key in self
+                self.pop_stack(key)
+            else:
+                stack_key = self.stack_key(key)
+                self._sample(stack_key, dist, plates=plates, T=T, multi_sample=multi_sample)
 
 
 
@@ -118,7 +138,7 @@ class TraceSample(AbstractTraceP):
         self.logp    = {}
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
-    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
+    def _sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
         self.check(key, plates, T)
 
         if T is not None:
@@ -173,7 +193,7 @@ class TraceQ(AbstractTraceQ):
         self.samples = {}
         self.logq = {}
 
-    def sample(self, key, dist, multi_sample=True, plates=(), T=None):
+    def _sample(self, key, dist, multi_sample=True, plates=(), T=None):
         self.check(key, plates, T)
         if key in self.data:
             raise Exception(f"Q acts as a proposal / approximate posterior for latent variables, so we should only sample latent variables in Q.  However, we are sampling '{key}', which is data.")
@@ -234,7 +254,7 @@ class TraceQTMC(AbstractTrace):
         self.Ks     = set()
 
 
-    def sample(self, key, dist, group=None, plates=(), T=None):
+    def _sample(self, key, dist, group=None, plates=(), T=None):
         if T is not None:
             dist.set_Tdim(self.platedims[T])
 
@@ -274,6 +294,7 @@ class TraceQTMC(AbstractTrace):
 
 class TraceP(AbstractTraceP):
     def __init__(self, trq, memory_diagnostics=False):
+        super().__init__()
         self.trq = trq
         self.memory_diagnostics=memory_diagnostics
 
@@ -362,7 +383,7 @@ class TraceP(AbstractTraceP):
         values = values[plates]
         return values, Edim
 
-    def sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
+    def _sample(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
         self.check(key, plates, T)
         assert key not in self.logp
         if T is not None:
@@ -380,7 +401,7 @@ class TraceP(AbstractTraceP):
             if group in self.groupname2dim:
                 raise Exception(f"Timeseries '{key}' is grouped with another variable which is sampled first. Timeseries can be grouped, but must be sampled first")
 
-        if (key in self.trq):
+        if self.contains_stack_key(key):
             #We already have a value for the sample, either because it is 
             #in the data, or because we sampled the variable in Q.
             if sum_discrete:
@@ -388,7 +409,7 @@ class TraceP(AbstractTraceP):
             if delayed_Q is not None:
                 raise Exception("You have given a delayed_Q (which would allow us to use an approximate posterior that's a 'tilted' version of the prior, but we already have a sample of '{key}' drawn from Q.  We need one or the other!")
              
-            sample = self.trq[key]
+            sample = self.get_stack_key(key)
             logq = self.trq.logq[key] if key in self.trq.samples else None
 
             #Check that plates match for sample from Q previous and P here
@@ -457,7 +478,7 @@ class TracePGlobal(TraceP):
         if isinstance(trq, TraceQTMC):
             self.Ks = trq.Ks
 
-    def sample(self, key, dist, group=None, plates=(), T=None):
+    def _sample(self, key, dist, group=None, plates=(), T=None):
         self.check(key, plates, T)
 
         if T is not None:
@@ -565,7 +586,7 @@ class TracePred(AbstractTrace):
         dims_train.append(Ellipsis)
         return dims_all, dims_train
 
-    def sample(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
+    def _sample(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train

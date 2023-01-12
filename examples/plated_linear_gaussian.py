@@ -45,8 +45,8 @@ class Q(alan.QModule):
         mean_d = self.w_d * tr['c'] + self.b_d
         tr.sample('d', alan.Normal(mean_d, self.log_s_d.exp()))
 
-data = alan.sample(P, platesizes=platesizes, varnames=('obs',))
-model = alan.Model(P, Q(), {'obs': data['obs']})
+data = alan.sample(P, platesizes=platesizes, varnames=('/obs',))
+model = alan.Model(P, Q(), {'/obs': data['/obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
