@@ -3,10 +3,10 @@ import numpy as np
 import torch as t
 
 
-M = 2
-J = 2
+M = 4
+J = 4
 I = 4
-N = 6
+N = 4
 
 df_srrs2 = pd.read_csv('data/srrs2.dat')
 df_cty = pd.read_csv('data/cty.dat')
@@ -117,14 +117,26 @@ print(df)
 basement = df['basement'].to_numpy()
 radon = df['log_radon'].to_numpy()
 county_uranium = df['log_u'].unique().reshape(M,J)
-train_basement = basement.reshape(M, J, I, N)[:,:,:,:int(0.75*N)]
-train_radon = radon.reshape(M, J, I, N)[:,:,:,:int(0.75*N)]
-
-test_basement = basement.reshape(M, J, I, N)[:,:,:,int(0.75*N):]
-test_radon = radon.reshape(M, J, I, N)[:,:,:,int(0.75*N):]
-
 t.save(t.from_numpy(county_uranium), 'data/county_uranium.pt')
-t.save(t.from_numpy(train_basement), 'data/train_basement.pt')
-t.save(t.from_numpy(train_radon), 'data/train_radon.pt')
-t.save(t.from_numpy(test_basement), 'data/test_basement.pt')
-t.save(t.from_numpy(test_radon), 'data/test_radon.pt')
+
+train_basement_alongreadings = basement.reshape(M, J, I, N)[:,:,:,:N//2]
+train_radon_alongreadings = radon.reshape(M, J, I, N)[:,:,:,:N//2]
+
+test_basement_alongreadings = basement.reshape(M, J, I, N)[:,:,:,N//2:]
+test_radon_alongreadings = radon.reshape(M, J, I, N)[:,:,:,N//2:]
+
+t.save(t.from_numpy(train_basement_alongreadings), 'data/train_basement_alongreadings.pt')
+t.save(t.from_numpy(train_radon_alongreadings), 'data/train_radon_alongreadings.pt')
+t.save(t.from_numpy(test_basement_alongreadings), 'data/test_basement_alongreadings.pt')
+t.save(t.from_numpy(test_radon_alongreadings), 'data/test_radon_alongreadings.pt')
+
+train_basement_alongzipcodes = basement.reshape(M, J, I, N)[:,:,I//2:,:]
+train_radon_alongzipcodes = radon.reshape(M, J, I, N)[:,:,I//2:,:]
+
+test_basement_alongzipcodes = basement.reshape(M, J, I, N)[:,:,:I//2,:]
+test_radon_alongzipcodes = radon.reshape(M, J, I, N)[:,:,:I//2,:]
+
+t.save(t.from_numpy(train_basement_alongzipcodes), 'data/train_basement_alongzipcodes.pt')
+t.save(t.from_numpy(train_radon_alongzipcodes), 'data/train_radon_alongzipcodes.pt')
+t.save(t.from_numpy(test_basement_alongzipcodes), 'data/test_basement_alongzipcodes.pt')
+t.save(t.from_numpy(test_radon_alongzipcodes), 'data/test_radon_alongzipcodes.pt')

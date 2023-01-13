@@ -53,12 +53,12 @@ with plt.rc_context(bundles.icml2022()):
             # ax[i,j].label_outer()
             count =+ 1
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
-    ax[0,0].set_title('Groups = 10')
-    ax[0,1].set_title('Groups = 50')
-    ax[0,2].set_title('Groups = 100')
+    ax[0,0].set_title('Number of users = 10')
+    ax[0,1].set_title('Number of users = 50')
+    ax[0,2].set_title('Number of users = 100')
 
-    ax[0,0].set_ylabel('Obs per group = 30 \n Predictive Log Likelihood')
-    ax[1,0].set_ylabel('Obs per group = 200 \n Predictive Log Likelihood')
+    ax[0,0].set_ylabel('Films per user = 30 \n Predictive Log Likelihood')
+    ax[1,0].set_ylabel('Films per user = 200 \n Predictive Log Likelihood')
 
     ax[1,0].sharex(ax[0,0])
     ax[1,0].set_xlabel('K')

@@ -3,9 +3,9 @@ import torch.nn as nn
 import alan
 
 def generate_model(N,M,local,device):
-    M = 2
-    J = 2
-    I = 4
+    M = 4
+    J = 4
+    I = 2
     N = 4
     sizes = {'plate_state': M, 'plate_county':J, 'plate_zipcode':I, 'plate_reading':N}
 

@@ -22,13 +22,13 @@ with plt.rc_context(bundles.icml2022()):
         for j in range(len(Ms)):
             N = Ns[i]
             M = Ms[j]
-            with open('results/elbo_LIW_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/deep_hier_regression/elbo_LIW_N{0}_M{1}.json'.format(N,M)) as f:
                 results_local_IW = json.load(f)
 
-            with open('results/elbo_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/deep_hier_regression/elbo_N{0}_M{1}.json'.format(N,M)) as f:
                 results = json.load(f)
 
-            with open('results/elbo_global_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/deep_hier_regression/elbo_global_N{0}_M{1}.json'.format(N,M)) as f:
                 results_global_K = json.load(f)
 
             # with open('results/results_tmc_N{0}_M{1}.json'.format(N,M)) as f:

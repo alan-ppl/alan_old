@@ -512,10 +512,6 @@ class TracePred(AbstractTrace):
         if not (data_bigger or plates_bigger):
             raise Exception(f"None of the data tensors or plate sizes provided for prediction is bigger than those at training time.  Remember that the data/plate sizes are the sizes of train + 'test'")
 
-        if (self.platedims_all == {}):
-            keys = ', '.join(list(self.data_all.keys()))
-            raise Exception(f"This method only works if the latents in 'data_all' are plated (could be plated with plate_size=1), in this case {keys} should be plated.")
-
 
     def __getitem__(self, key):
         in_data   = key in self.data_all

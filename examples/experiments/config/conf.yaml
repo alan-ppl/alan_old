@@ -3,7 +3,7 @@
   model: ???
   local: False
   training:
-    num_iters: 50000
+    num_iters: 25000
     inference_method: elbo
     N: 2
     M: 2
