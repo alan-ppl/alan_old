@@ -7,7 +7,7 @@ from functorch.dim import dims, Dim
 from .utils import *
 from .timeseries import Timeseries
 from .dist import Categorical
-from .import model
+from . import model
 
 reserved_names = ("K", "N")
 reserved_prefix = ("K_", "E_")
@@ -94,7 +94,7 @@ class AbstractTraceP(AbstractTrace):
     kwarg_keys = ['plates', 'T', 'group', 'sum_discrete']
 
     def sample_(self, key, dist, kwargs):
-        if isinstance(dist, (model.ModelInputs, model.Model)):
+        if isinstance(dist, (model.NestedModel, model.Model)):
             assert key is not None
 
             self.push_stack(key, kwargs)
@@ -111,7 +111,7 @@ class AbstractTraceQ(AbstractTrace):
         #We don't need a Q if sum_discrete=True
         sum_discrete = self.all_kwargs(kwargs)['sum_discrete']
         if not sum_discrete:
-            if isinstance(dist, (model.ModelInputs, model.Model)):
+            if isinstance(dist, (model.NestedModel, model.Model)):
                 assert key is not None
 
                 self.push_stack(key, kwargs)

@@ -1,3 +1,9 @@
+External calling conventions:
+  Anything with a .P(tr, *args, **kwargs) and .Q(tr, *args, **kwargs) is a Model
+  Models all have .sample_mp, .sample_global, .sample_prior, .sample_tmc methods
+  Those methods all take `data` and `inputs` kwargs
+  Additionally, we can bind Model to data + inputs using model.bind(data=, inputs=), gives a BoundModel
+
 * internal call of module without arguments
 * store Ps rather than logps
 * simplify trp / trq

@@ -46,15 +46,16 @@ class Q(alan.QModule):
         tr.sample('d', alan.Normal(mean_d, self.log_s_d.exp()))
 
 data = alan.sample(P, platesizes=platesizes, varnames=('/obs',))
-model = alan.Model(P, Q(), {'/obs': data['/obs']})
 
-opt = t.optim.Adam(model.parameters(), lr=1E-3)
+bound_model = alan.Model(P, Q()).bind(data={'/obs': data['/obs']})
+
+opt = t.optim.Adam(bound_model.parameters(), lr=1E-3)
 
 K=10
 print("K={}".format(K))
 for i in range(20000):
     opt.zero_grad()
-    elbo = model.elbo(K)
+    elbo = bound_model.sample_mp(K, True).elbo()
     (-elbo).backward()
     opt.step()
 
