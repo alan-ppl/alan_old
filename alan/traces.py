@@ -7,6 +7,7 @@ from functorch.dim import dims, Dim
 from .utils import *
 from .timeseries import Timeseries
 from .dist import Categorical
+from .import model
 
 reserved_names = ("K", "N")
 reserved_prefix = ("K_", "E_")
@@ -15,51 +16,47 @@ def check_not_reserved(x):
     if reserved:
         raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
     
-class ModelInputs():
-    def __init__(self, model, args, kwargs):
-        self.model = model
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, tr):
-        self.model(tr, *self.args, **self.kwargs)
-
 class AbstractTrace():
     def __init__(self):
-        self.stack = []
-        self.kwargs = {}
+        self.stack_names = []
+        self.stack_kwargs = [{'plates':(), 'T':None, 'multi_sample':True, 'group':None, 'sum_discrete':False}]
 
-    def sample(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
-        #Can call as sample(dist), in which case, sample(key=dist, dist=None)
+    def sample(self, key, dist=None, **kwargs): #plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
+        #Can call as tr.sample(dist), in which case, tr.sample(key=dist, dist=None)
         if dist is None:
             key, dist = dist, key
 
         #plates can be called with just a string
-        if isinstance(plates, str):
-            plates = (plates,)
+        if ('plates' in kwargs) and isinstance(kwargs['plates'], str):
+            kwargs['plates'] = (kwargs['plates'],)
 
         #Save kwargs (to make sure these are the same between P and Q).
         stack_key = self.stack_key(key)
-        self.kwargs[stack_key] = (multi_sample, group, sum_discrete)
+        #self.var_kwargs[stack_key] = (multi_sample, group, sum_discrete)
 
         if stack_key in self.samples:
             raise Exception(f"Trying to sample named {key}, but we have already have sampled a variable with this name.")
-        for plate in plates:
-            if plate not in self.platedims:
-                raise Exception(f"Plate '{plate}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
-        if (T is not None) and (T not in self.platedims):
-            raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
+        if 'plates' in kwargs:
+            for plate in kwargs['plates']:
+                if plate not in self.platedims:
+                    raise Exception(f"Plate '{plate}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
+        if ('T' in kwargs):
+            T = kwargs['T']
+            if (T is not None) and (T not in self.platedims):
+                raise Exception(f"Timeseries T '{T}' on variable '{key}' not present.  Instead, we only have {tuple(self.platedims.keys())}.")
 
-        self.sample_(key, dist, plates=plates, T=T, multi_sample=multi_sample, group=group, sum_discrete=sum_discrete)
+        self.sample_(key, dist, kwargs)
 
-    def push_stack(self, name):
-        self.stack.append(name)
+    def push_stack(self, name, kwargs):
+        self.stack_names.append(name)
+        self.stack_kwargs.append(kwargs)
 
     def pop_stack(self):
-        self.stack.pop()
+        self.stack_names.pop()
+        self.stack_kwargs.pop()
 
     def stack_key(self, key=None):
-        result = '/'.join(self.stack)
+        result = '/'.join(self.stack_names)
         if key is not None:
             result = result + '/' + key
         return result
@@ -84,35 +81,45 @@ class AbstractTrace():
         platedims = set(self.platedims.values())
         return [dim for dim in dims if (dim in platedims)]
 
-class AbstractTraceP(AbstractTrace):
-    def sample_(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
+    def all_kwargs(self, kwargs=None):
+        stack_kwargs = [*self.stack_kwargs]
+        if kwargs is not None:
+            stack_kwargs.append(kwargs)
+        return {k: v for kvs in stack_kwargs for (k, v) in kvs.items()}
 
-        kwargs = {'plates':plates, 'T':T, 'group':group, 'sum_discrete':sum_discrete}
-        if isinstance(dist, ModelInputs):
+    def kwargs(self, kwargs=None):
+        return {k: v for (k, v) in self.all_kwargs(kwargs).items() if k in self.kwarg_keys}
+
+class AbstractTraceP(AbstractTrace):
+    kwarg_keys = ['plates', 'T', 'group', 'sum_discrete']
+
+    def sample_(self, key, dist, kwargs):
+        if isinstance(dist, (model.ModelInputs, model.Model)):
             assert key is not None
 
-            self.push_stack(key)
-            dist.P(self, **kwargs)
-            self.pop_stack(key)
+            self.push_stack(key, kwargs)
+            dist.P(self)
+            self.pop_stack(key, kwargs)
         else:
             stack_key = self.stack_key(key)
-            self.sample__(stack_key, dist, **kwargs)
+            self.sample__(stack_key, dist, **self.kwargs(kwargs))
 
 class AbstractTraceQ(AbstractTrace):
-    def sample_(self, key, dist=None, plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
-        #We don't need a Q if sum_discrete=True
-        if not sum_discrete:
+    kwarg_keys = ['plates', 'T', 'multi_sample']
 
-            kwargs = {'plates':plates, 'T':T, 'multi_sample':multi_sample}
-            if isinstance(dist, ModelInputs):
+    def sample_(self, key, dist, kwargs):
+        #We don't need a Q if sum_discrete=True
+        sum_discrete = self.all_kwargs(kwargs)['sum_discrete']
+        if not sum_discrete:
+            if isinstance(dist, (model.ModelInputs, model.Model)):
                 assert key is not None
 
-                self.push_stack(key)
-                dist.Q(self, **kwargs)
-                self.pop_stack(key)
+                self.push_stack(key, kwargs)
+                dist.Q(self)
+                self.pop_stack(key, kwargs)
             else:
                 stack_key = self.stack_key(key)
-                self.sample__(stack_key, dist, **kwargs)
+                self.sample__(stack_key, dist, **self.kwargs(kwargs))
 
 
 

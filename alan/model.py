@@ -1,6 +1,7 @@
 from warnings import warn
 import torch.nn as nn 
-from .traces import TraceQ, TraceP, TracePred, TracePGlobal, TraceQTMC, ModelInputs, AbstractTrace, AbstractTraceP, AbstractTraceQ
+#from .traces import traces.TraceQ, traces.TraceP, traces.TracePred, traces.TracePGlobal, traces.TraceQTMC, ModelInputs, Abstracttraces.Trace, Abstracttraces.TraceP, Abstracttraces.TraceQ
+from . import traces
 from .Sample import Sample, SampleGlobal
 from .utils import *
 from .ml  import ML
@@ -8,6 +9,18 @@ from .ml2 import ML2
 from .ng  import NG
 from .tilted import Tilted
 from .qmodule import QModule
+
+class ModelInputs():
+    def __init__(self, model, args, kwargs):
+        self.model = model
+        self.args = args
+        self.kwargs = kwargs
+
+    def P(self, tr):
+        self.model.P(tr, *args, **kwargs)
+    def Q(self, tr):
+        self.model.Q(tr, *args, **kwargs)
+
 
 class Model(nn.Module):
     """Model class.
@@ -98,10 +111,10 @@ class Model(nn.Module):
         #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = TraceQ(K, all_data, platedims, reparam)
+        trq = traces.TraceQ(K, all_data, platedims, reparam)
         self.Q(trq, **all_inputs)
         #compute logP
-        trp = TraceP(trq)
+        trp = traces.TraceP(trq)
         self.P(trp, **all_inputs)
 
         return Sample(trp)
@@ -115,10 +128,10 @@ class Model(nn.Module):
         all_data = {**self.data, **data}
 
         #sample from approximate posterior
-        trq = TraceQ(K, all_data, platedims, reparam)
+        trq = traces.TraceQ(K, all_data, platedims, reparam)
         self.Q(trq)
         #compute logP
-        trp = TracePGlobal(trq)
+        trp = traces.TracePGlobal(trq)
         self.P(trp)
 
         return SampleGlobal(trp)
@@ -132,10 +145,10 @@ class Model(nn.Module):
         all_data = {**self.data, **data}
 
         #sample from approximate posterior
-        trq = TraceQTMC(K, all_data, platedims, reparam)
+        trq = traces.TraceQTMC(K, all_data, platedims, reparam)
         self.Q(trq)
         #compute logP
-        trp = TracePGlobal(trq)
+        trp = traces.TracePGlobal(trq)
         self.P(trp)
 
         return Sample(trp)
@@ -235,7 +248,7 @@ class Model(nn.Module):
 
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
-        tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all)
+        tr = traces.TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all)
         self.P(tr)
         return tr, N
 

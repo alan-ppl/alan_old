@@ -51,10 +51,9 @@ class Tilted(QModule):
     def named_Jposts(self):
         return [self.get_named_tensor(Jpost_name) for Jpost_name in self.Jpost_names]
 
-    def forward(self, prior):
+    def tilted(self, prior):
         with t.no_grad():
-            if not isinstance(prior, self.dist):
-                raise(f"{type(self)} can only be combined with {type(self.dist)} distributions")
+            prior = self.dist(*args, **kwargs)
             prior_convs = self.canonical_conv(**prior.dim_args)
             prior_nats = self.conv2nat(**prior_convs)
 
@@ -70,6 +69,11 @@ class Tilted(QModule):
             return - (J_posts + J_approx)
 
         return self.dist(**self.nat2conv(*Q_nats), extra_log_factor=inner)
+
+    def P(self, tr, *args, **kwargs):
+        tr(self.dist(*args, **kwargs))
+    def Q(self, tr, *args, **kwargs):
+        tr(self.tilted(*args, **kwargs))
 
     def update(self, lr):
         with t.no_grad():

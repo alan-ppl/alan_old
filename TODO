@@ -1,7 +1,11 @@
+* internal call of module without arguments
 * store Ps rather than logps
 * simplify trp / trq
 * names "/a/b" => "a.b"
 * saving QModules (named parameters break saving)
+* new tilted distributions
+* can we put set_T_dist into AbstractTrace?  (Problems with TracePred)
+* can we put multi_sample etc. for nested distributions in Trace?  (Rather than passing them as kwargs).
 Errors:
 * P shouldn't have any QModules (QModules would imply a plated Parameter, and we really shouldn't have a plated parameter in P)
 * optional args (multi_sample etc.) differ between P and Q
@@ -21,6 +25,16 @@ Papers:
   Alan:
     Overview of interacting components + description of story around predictions.
   GP
+
+Memory issues:
+  LazyTensor class that records operation + arguments.
+  When we evaluate a LazyTensor, we provide a list of torchdims.
+    Reductions (sums) over those dimensions are a for-loop.
+  Gradients:
+    Can we write a torch.autograd.Function to capture the gradients?  If so, we can compute the gradients as a for-loop.
+    Can we use gradient checkpointing?
+    Can we write our own backprop for these operations?
+    
 
 Tech TODOs:
   Constrain tilted natural params to be bigger than 0?
