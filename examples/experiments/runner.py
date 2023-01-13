@@ -97,14 +97,14 @@ def run_experiment(cfg):
             ###
             # SAVING MODELS DOESN'T WORK YET
             ###
-            if not os.path.exists(cfg.dataset + '/' + 'results/'):
-                os.makedirs(cfg.dataset + '/' + 'results/')
+            if not os.path.exists(cfg.dataset + '/' + 'results/' + cfg.model + '/'):
+                os.makedirs(cfg.dataset + '/' + 'results/' + cfg.model + '/')
             #
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
 
         results_dict[N][M][K] = {'final_obj':np.mean(objs),'final_obj_std':np.std(objs), 'pred_likelihood':np.mean(pred_liks), 'pred_likelihood_std':np.std(pred_liks), 'objs': objs, 'pred_liks':pred_liks, 'avg_time':np.mean(times), 'std_time':np.std(times)}
 
-    file = cfg.model + '/results/' + cfg.training.inference_method + ('_LIW_' if cfg.local else '_') + 'N{0}_M{1}.json'.format(N,M)
+    file = cfg.dataset + '/results/' + cfg.model + '/' + cfg.training.inference_method + ('_LIW_' if cfg.local else '_') + 'N{0}_M{1}.json'.format(N,M)
     with open(file, 'w') as f:
         json.dump(results_dict, f)
 
