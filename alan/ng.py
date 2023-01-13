@@ -2,10 +2,10 @@ import torch as t
 import torch.nn as nn
 from .dist import *
 from .utils import *
-from .qmodule import QModule
+from .alan_module import AlanModule
 from .exp_fam_mixin import *
 
-class NG(QModule):
+class NG(AlanModule):
     """
     This really is NG, though is slightly different from the usual NG-VI setting.
     In particular, in essence, we compute E_P[grad log Q], where P is our reweighted

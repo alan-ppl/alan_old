@@ -14,7 +14,7 @@ def P(tr):
     tr.sample('d',   alan.Normal(tr['c'], 1), plates='plate_2')
     tr.sample('obs', alan.Normal(tr['d'], 1), plates='plate_3')
 
-class Q(alan.QModule):
+class Q(alan.AlanModule):
     def __init__(self):
         super().__init__()
         self.m_a = nn.Parameter(t.zeros(()))

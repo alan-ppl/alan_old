@@ -2,10 +2,10 @@ import torch as t
 import torch.nn as nn
 from .dist import *
 from .utils import *
-from .qmodule import QModule
+from .alan_module import AlanModule
 from .exp_fam_mixin import *
 
-class Tilted(QModule):
+class Tilted(AlanModule):
     """
     Based on computing:
     Delta m = E_P[f(x)] - E_Q[f(x)]

@@ -10,7 +10,7 @@ from . import ml, ml2, ng, tilted
 #from .ml2 import ML2 
 #from .ng  import NG
 #from .tilted import Tilted
-from .qmodule import QModule
+from .alan_module import AlanModule
 
 #    def __init__(self, P, Q=None, data=None, inputs=None):
 #        super().__init__()
@@ -348,7 +348,7 @@ class BoundModel(nn.Module, SampleMixin):
     def Q(self, tr, *args, **kwargs):
         self.model.Q(tr, *args, **kwargs)
 
-class Model(SampleMixin, QModule):
+class Model(SampleMixin, AlanModule):
     """Model class.
     Args:
         P:    The generative model, written as a function that takes a trace.

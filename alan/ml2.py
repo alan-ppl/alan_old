@@ -2,10 +2,10 @@ import torch as t
 import torch.nn as nn
 from .dist import *
 from .utils import *
-from .qmodule import QModule
+from .alan_module import AlanModule
 from .exp_fam_mixin import *
 
-class ML2(QModule):
+class ML2(AlanModule):
     def __init__(self, platesizes=None, sample_shape=(), init_conv=None):
         super().__init__()
         if init_conv is None:

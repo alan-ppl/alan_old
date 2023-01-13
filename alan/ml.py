@@ -2,10 +2,10 @@ import torch as t
 import torch.nn as nn
 from .dist import *
 from .utils import *
-from .qmodule import QModule
+from .alan_module import AlanModule
 from .exp_fam_mixin import *
 
-class ML(QModule):
+class ML(AlanModule):
     """
     Isn't quite ML...
     In particular, the RWS wake-phase Q update allows us to in effect compute,
