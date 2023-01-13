@@ -76,11 +76,11 @@ class SampleMixin():
         inputs = named2dim_tensordict(platedims, inputs)
         return platedims, data, inputs
 
-    def sample_mp(self, K, reparam=True, data=None, inputs=None):
+    def sample_mp(self, K, reparam=True, data=None, inputs=None, platesizes=None):
         """
         Internal method that actually runs P and Q.
         """
-        platedims, data, inputs = self.dims_data_inputs(data, inputs)
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes)
 
         #if 0==len(all_data):
         #    raise Exception("No data provided either to the Model(...) or to e.g. model.elbo(...)")
@@ -99,8 +99,8 @@ class SampleMixin():
 
         return Sample(trp)
 
-    def sample_global(self, K, reparam=True, data=None, inputs=None):
-        platedims, data, inputs = self.dims_data_inputs(data, inputs)
+    def sample_global(self, K, reparam=True, data=None, inputs=None, platesizes=None):
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes)
 
         #sample from approximate posterior
         trq = traces.TraceQ(K, data, platedims, reparam)
@@ -111,8 +111,8 @@ class SampleMixin():
 
         return SampleGlobal(trp)
 
-    def sample_tmc(self, K, reparam=True, data=None, inputs=None):
-        platedims, data, inputs = self.dims_data_inputs(data, inputs)
+    def sample_tmc(self, K, reparam=True, data=None, inputs=None, platesizes=None):
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes)
 
         #sample from approximate posterior
         trq = traces.TraceQTMC(K, data, platedims, reparam)
@@ -341,6 +341,12 @@ class BoundModel(nn.Module, SampleMixin):
         self.platedims = extend_plates_with_sizes(model.platedims, platesizes)
         tensors = [*self.data.values(), *self.inputs.values()]
         self.platedims = extend_plates_with_named_tensors(self.platedims, tensors)
+
+    def P(self, tr, *args, **kwargs):
+        self.model.P(tr, *args, **kwargs)
+
+    def Q(self, tr, *args, **kwargs):
+        self.model.Q(tr, *args, **kwargs)
 
 class Model(SampleMixin, QModule):
     """Model class.

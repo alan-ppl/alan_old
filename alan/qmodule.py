@@ -60,7 +60,7 @@ class QModule(nn.Module):
             if isinstance(mod, QModule):
                 mod.platedims = platedims
 
-        return super().add_module(name, mod)
+        return super().add_module(name, child)
 
     def __setattr__(self, name, tensor_module):
         if isinstance(tensor_module, t.Tensor):
