@@ -67,7 +67,7 @@ class Tilted(model.Model):
                 raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML2 proposals/approximate posteriors")
             J_posts  = sum(sum_non_dim(J*f(sample)) for (J, f)         in zip(self.dim_Jposts,   self.sufficient_stats))
             J_approx = sum(sum_non_dim(J*Q_mean)    for (J, Q_mean)    in zip(self.dim_Japproxs, Q_means))
-            return - (J_posts + J_approx)
+            return (J_posts + J_approx)
 
         return self.dist(**self.nat2conv(*Q_nats), extra_log_factor=inner)
 
@@ -78,8 +78,10 @@ class Tilted(model.Model):
 
     def _update(self, lr):
         with t.no_grad():
-            post_ms   = tuple(J.grad for J in self.named_Jposts)
-            approx_ms = tuple(J.grad for J in self.named_Japproxs)
+            #post_ms   = tuple(J.grad for J in self.named_Jposts)
+            #approx_ms = tuple(J.grad for J in self.named_Japproxs)
+            post_ms   = tuple(self.get_named_grad(name) for name in self.Jpost_names)
+            approx_ms = tuple(self.get_named_grad(name) for name in self.Japprox_names)
             new_ms    = tuple(lr*post_m + (1-lr)*approx_m for (post_m, approx_m) in zip(post_ms, approx_ms))
             new_ns    = self.mean2nat(*new_ms)
             old_ns    = self.mean2nat(*approx_ms)

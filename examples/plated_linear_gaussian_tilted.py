@@ -24,13 +24,13 @@ class P(alan.AlanModule):
         tr('obs', alan.Normal(tr['d'], 0.01), plates='plate_3')
 p = P()
 
-data = alan.sample(p, platesizes=platesizes, varnames=('/obs',))
+data = alan.sample(p, platesizes=platesizes, varnames=('obs',))
 
-cond_model = alan.Model(p).condition(data={'/obs': data['/obs']})
+cond_model = alan.Model(p).condition(data={'obs': data['obs']})
 
 K=100
 print(cond_model.sample_mp(K).elbo())
-for i in range(200):
-    sample = cond_model.sample_mp(K)
+for i in range(40):
+    sample = cond_model.sample_mp(K, reparam=False)
     print(sample.elbo().item())
     cond_model.update(0.1, sample)
