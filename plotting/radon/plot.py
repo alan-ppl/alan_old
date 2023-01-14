@@ -4,7 +4,7 @@ import json
 from tueplots import axes, bundles
 
 Ks = ['1','3','10','30']
-Ns = ['2']
+Ns = ['4']
 Ms = ['2']
 # with open('results.json') as f:
 #     results = json.load(f)
@@ -21,13 +21,13 @@ with plt.rc_context(bundles.icml2022()):
         for j in range(len(Ms)):
             N = Ns[i]
             M = Ms[j]
-            with open('results/elbo_LIW_N2_M2.json') as f:
+            with open('results/radon_alongreadings/elbo_LIW_N4_M2.json') as f:
                 results_local_IW = json.load(f)
 
-            with open('results/elbo_N2_M2.json') as f:
+            with open('results/radon_alongreadings/elbo_N4_M2.json') as f:
                 results = json.load(f)
 
-            with open('results/elbo_global_N2_M2.json') as f:
+            with open('results/radon_alongreadings/elbo_global_N4_M2.json') as f:
                 results_global_K = json.load(f)
 
 
