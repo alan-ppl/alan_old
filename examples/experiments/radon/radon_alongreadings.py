@@ -106,18 +106,18 @@ def generate_model(N,M,local,device):
             tr.sample('sigma_obs', alan.Uniform(sigma_obs_low, sigma_obs_high))
             tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))
 
-    covariates = {'basement': t.load('radon/data/train_basement.pt').to(device),
+    covariates = {'basement': t.load('radon/data/train_basement_alongreadings.pt').to(device),
         'county_uranium':t.load('radon/data/county_uranium.pt').rename('plate_state', 'plate_county').to(device)}
-    test_covariates = {'basement': t.load('radon/data/test_basement.pt').to(device),
+    test_covariates = {'basement': t.load('radon/data/test_basement_alongreadings.pt').to(device),
         'county_uranium':t.load('radon/data/county_uranium.pt').rename('plate_state', 'plate_county').to(device)}
 
     all_covariates = {'basement': t.cat([covariates['basement'],test_covariates['basement']], -1).rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...),
     'county_uranium':t.load('radon/data/county_uranium.pt').rename('plate_state', 'plate_county').to(device)}
     covariates['basement'] = covariates['basement'].rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...)
 
-    data = {'obs':t.load('radon/data/train_radon.pt').to(device)}
+    data = {'obs':t.load('radon/data/train_radon_alongreadings.pt').to(device)}
 
-    test_data = {'obs':t.load('radon/data/test_radon.pt').to(device)}
+    test_data = {'obs':t.load('radon/data/test_radon_alongreadings.pt').to(device)}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...)}
     data['obs'] = data['obs'].rename('plate_state', 'plate_county', 'plate_zipcode', 'plate_reading',...)
 
