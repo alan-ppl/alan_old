@@ -264,6 +264,7 @@ class SampleMixin():
         """
         Will call update on 
         """
+        assert not sample.reparam
         _, q_obj = sample.rws()
         (q_obj).backward()
         for mod in self.modules():

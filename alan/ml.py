@@ -52,11 +52,14 @@ class ML(Model):
     @property
     def named_nats(self):
         return [self.get_named_tensor(natname) for natname in self.natnames]
+    @property
+    def named_grads(self):
+        return [self.get_named_grad(natname) for natname in self.natnames]
 
     def _update(self, lr):
         with t.no_grad():
-            for (mean, nat) in zip(self.named_means, self.named_nats):
-                mean.data.add_(nat.grad.rename(*nat.names).align_as(mean), alpha=lr)
+            for (mean, grad) in zip(self.named_means, self.named_grads):
+                mean.data.add_(grad.align_as(mean), alpha=lr)
         self.reset_nats()
 
     def reset_nats(self):
