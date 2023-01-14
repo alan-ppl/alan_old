@@ -2,10 +2,10 @@ import torch as t
 import torch.nn as nn
 from .dist import *
 from .utils import *
-from .alan_module import AlanModule
+from .model import Model
 from .exp_fam_mixin import *
 
-class NG(AlanModule):
+class NG(Model):
     """
     This really is NG, though is slightly different from the usual NG-VI setting.
     In particular, in essence, we compute E_P[grad log Q], where P is our reweighted
@@ -51,6 +51,9 @@ class NG(AlanModule):
     @property
     def named_means(self):
         return [self.get_named_tensor(meanname) for meanname in self.meannames]
+    @property
+    def named_grads(self):
+        return [self.get_named_grad(meanname) for meanname in self.meannames]
 
     @property
     def dim_nats(self):
@@ -59,13 +62,15 @@ class NG(AlanModule):
     def named_nats(self):
         return [self.get_named_tensor(natname) for natname in self.natnames]
 
-    def forward(self, prior=None):
-        return self.dist(**self.mean2conv(*self.dim_means))
+    def P(self, tr, *args, **kwargs):
+        tr(self.dist(*args, **kwargs))
+    def Q(self, tr, *args, **kwargs):
+        tr(self.dist(**self.mean2conv(*self.dim_means)))
 
     def _ng_update(self, lr):
         with t.no_grad():
-            for (mean, nat) in zip(self.named_means, self.named_nats):
-                nat.data.add_(mean.grad.rename(*mean.names).align_as(nat), alpha=lr)
+            for (grad, nat) in zip(self.named_grads, self.named_nats):
+                nat.data.add_(grad.align_as(nat), alpha=lr)
         self.reset_means()
 
     def reset_means(self):
@@ -77,15 +82,8 @@ class NG(AlanModule):
     def local_parameters(self):
         return []
 
-#Designed to mirror Tilted, for testing.
-#    def forward(self, prior=None):
-#        with t.no_grad():
-#            post_means = self.nat2mean(*self.dim_nats)
-#        post_means = tuple(pm.detach() + m for (pm, m) in zip(post_means, self.dim_means))
-#        return self.dist(**self.mean2conv(*post_means))
-#
-#    def reset_means(self):
-#        pass
+
+
 
 class NGNormal(NG, NormalMixin):
     pass

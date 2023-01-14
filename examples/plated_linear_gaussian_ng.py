@@ -8,56 +8,60 @@ M = 3
 N = 4
 platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 def P(tr):
-    tr.sample('a',   alan.Normal(t.zeros(()), 1))
-    tr.sample('b',   alan.Normal(tr['a'], 1))
-    tr.sample('c',   alan.Normal(tr['b'], 1), plates='plate_1')
-    tr.sample('d',   alan.Normal(tr['c'], 1), plates='plate_2')
-    tr.sample('obs', alan.Normal(tr['d'], 0.01), plates='plate_3')
+    tr('a',   alan.Normal(t.zeros(()), 1))
+    tr('b',   alan.Normal(tr['a'], 1))
+    tr('c',   alan.Normal(tr['b'], 1), plates='plate_1')
+    tr('d',   alan.Normal(tr['c'], 1), plates='plate_2')
+    tr('obs', alan.Normal(tr['d'], 0.1), plates='plate_3')
 
-class Q(nn.Module):
+class Q(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        self.Qa = alan.NGNormal()
-        self.Qb = alan.NGNormal()
-        self.Qc = alan.NGNormal({'plate_1': J})
-        self.Qd = alan.NGNormal({'plate_1': J, 'plate_2': M})
+        self.Na = alan.NGNormal()
+        self.Nb = alan.NGNormal()
+        self.Nc = alan.NGNormal({'plate_1': J})
+        self.Nd = alan.NGNormal({'plate_1': J, 'plate_2': M})
 
     def forward(self, tr):
-        tr.sample('a', self.Qa())
-        tr.sample('b', self.Qb())
-        tr.sample('c', self.Qc())
-        tr.sample('d', self.Qd())
+        tr('a', self.Na())
+        tr('b', self.Nb())
+        tr('c', self.Nc())
+        tr('d', self.Nd())
 
-class PQ(alan.QModule):
+class PQ(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        self.Qa = alan.NGNormal()
-        self.Qb = alan.NGNormal()
-        self.Qc = alan.NGNormal({'plate_1': J})
-        self.Qd = alan.NGNormal({'plate_1': J, 'plate_2': M})
+        self.Na = alan.NGNormal()
+        self.Nb = alan.NGNormal()
+        self.Nc = alan.NGNormal({'plate_1': J})
+        self.Nd = alan.NGNormal({'plate_1': J, 'plate_2': M})
+
     def forward(self, tr):
-        tr.sample('a',   alan.Normal(t.zeros(()), 1),                  delayed_Q=self.Qa)
-        tr.sample('b',   alan.Normal(tr['a'], 1),                      delayed_Q=self.Qb)
-        tr.sample('c',   alan.Normal(tr['b'], 1),    plates='plate_1', delayed_Q=self.Qc)
-        tr.sample('d',   alan.Normal(tr['c'], 1),    plates='plate_2', delayed_Q=self.Qd)
-        tr.sample('obs', alan.Normal(tr['d'], 0.01), plates='plate_3')
+        tr('a',   self.Na(0., 1))
+        tr('b',   self.Nb(tr['a'], 1))
+        tr('c',   self.Nc(tr['b'], 1), plates='plate_1')
+        tr('d',   self.Nd(tr['c'], 1), plates='plate_2')
+        tr('obs', alan.Normal(tr['d'], 0.1), plates='plate_3')
 
 data = alan.sample(P, platesizes=platesizes, varnames=('obs',))
 
-K = 100
-T = 20
-lr = 0.05
+K = 10
+T = 40
+lr = 0.001
 
 t.manual_seed(0)
-m1 = alan.Model(P, Q(), data={'obs': data['obs']})
+q = Q()
+m1 = alan.Model(P, q).condition(data=data)
 for i in range(T):
-    print(m1.elbo(K).item())
-    m1.update(K, lr)
+    sample = m1.sample_mp(K, reparam=True)
+    print(sample.elbo().item())
+    m1.ng_update(lr, sample)
 
 print() 
 print()
 t.manual_seed(0)
-m2 = alan.Model(PQ(), data={'obs': data['obs']})
+m2 = alan.Model(PQ()).condition(data=data)
 for i in range(T):
-    print(m2.elbo(K).item())
-    m2.update(K, lr)
+    sample = m2.sample_mp(K, reparam=True)
+    print(sample.elbo().item())
+    m2.ng_update(lr, sample)
