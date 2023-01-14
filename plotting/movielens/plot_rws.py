@@ -22,10 +22,10 @@ with plt.rc_context(bundles.icml2022()):
             N = Ns[i]
             M = Ms[j]
 
-            with open('results/rws_global_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/movielens_discrete/rws_global_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws_global_k = json.load(f)
 
-            with open('results/rws_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/movielens_discrete/rws_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws = json.load(f)
 
             # with open('results/movielens_results_tmc_rws_N{0}_M{1}.json'.format(N,M)) as f:
