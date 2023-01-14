@@ -22,7 +22,7 @@ def get_ratings():
     return t.tensor(ratings.to_numpy())
 
 Ns = [5,10]
-Ms = [10,50,300]
+Ms = [10,50,150,300]
 
 
 

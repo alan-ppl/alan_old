@@ -4,8 +4,8 @@ import json
 from tueplots import axes, bundles
 
 Ks = ['3','10','30']
-Ns = ['30','200']
-Ms = ['10','50','100']
+Ns = ['5','10']
+Ms = ['10','50','300']
 # with open('results.json') as f:
 #     results = json.load(f)
 #
@@ -55,10 +55,10 @@ with plt.rc_context(bundles.icml2022()):
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
     ax[0,0].set_title('Number of users = 10')
     ax[0,1].set_title('Number of users = 50')
-    ax[0,2].set_title('Number of users = 100')
+    ax[0,2].set_title('Number of users = 300')
 
-    ax[0,0].set_ylabel('Films per user = 30 \n Predictive Log Likelihood')
-    ax[1,0].set_ylabel('Films per user = 200 \n Predictive Log Likelihood')
+    ax[0,0].set_ylabel('Films per user = 5 \n Predictive Log Likelihood')
+    ax[1,0].set_ylabel('Films per user = 10 \n Predictive Log Likelihood')
 
     ax[1,0].sharex(ax[0,0])
     ax[1,0].set_xlabel('K')
