@@ -17,16 +17,16 @@ def P(tr):
 class Q(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        self.PQa = alan.MLNormal()
-        self.PQb = alan.MLNormal()
-        self.PQc = alan.MLNormal({'plate_1': J})
-        self.PQd = alan.MLNormal({'plate_1': J, 'plate_2': M})
+        self.Na = alan.MLNormal()
+        self.Nb = alan.MLNormal()
+        self.Nc = alan.MLNormal({'plate_1': J})
+        self.Nd = alan.MLNormal({'plate_1': J, 'plate_2': M})
 
     def forward(self, tr):
-        tr('a', self.PQa())
-        tr('b', self.PQb())
-        tr('c', self.PQc())
-        tr('d', self.PQd())
+        tr('a', self.Na())
+        tr('b', self.Nb())
+        tr('c', self.Nc())
+        tr('d', self.Nd())
 
 class PQ(alan.AlanModule):
     def __init__(self):

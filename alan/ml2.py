@@ -2,10 +2,10 @@ import torch as t
 import torch.nn as nn
 from .dist import *
 from .utils import *
-from .alan_module import AlanModule
+from .model import Model
 from .exp_fam_mixin import *
 
-class ML2(AlanModule):
+class ML2(Model):
     def __init__(self, platesizes=None, sample_shape=(), init_conv=None):
         super().__init__()
         if init_conv is None:
@@ -40,24 +40,25 @@ class ML2(AlanModule):
     @property
     def named_Js(self):
         return [self.get_named_tensor(Jname) for Jname in self.Jnames]
-
     @property
     def named_grads(self):
-        return [J.grad.rename(*J.names) for J in self.named_Js]
+        return [self.get_named_grad(Jname) for Jname in self.Jnames]
 
     def check_J_zeros(self):
         if not all((J==0).all() for J in self.named_Js):
             raise Exception("One of the Js is non-zero. Presumably this is because one of the Js has been given to an optimizer as a parameter.  The solution is to use model.parameters() to extract parameters, as this avoids Js, rather than e.g. Q.parameters()")
 
-    def forward(self):
-        return self.dist(**self.mean2conv(*self.dim_means), extra_log_factor=self.extra_log_factor)
+    def Q(self, tr, *args, **kwargs):
+        return tr(self.dist(**self.mean2conv(*self.dim_means), extra_log_factor=self.extra_log_factor))
+    def P(self, tr, *args, **kwargs):
+        return tr(self.dist(*args, **kwargs))
 
     def extra_log_factor(self, sample):
         #Check the dimensions of sample are as expected.
         if len(sample.dims) != len(self.platenames) + 1:
             raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML2 proposals/approximate posteriors")
         #The factor comes in through log Q, so must be negated!
-        return -sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
+        return sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
 
     def init(self):
         with t.no_grad():

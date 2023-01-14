@@ -280,25 +280,17 @@ class SampleMixin():
                 mod._ng_update(lr)
         self.zero_grad()
 
-    def zero_grad(self):
-        #model.zero_grad() uses model.parameters(), and we have rewritten
-        #model.parameters() to not return Js.  In contrast, we need to 
-        #zero gradients on the Js.
-        if isinstance(self.P, nn.Module):
-            self.P.zero_grad()
-        if isinstance(self.Q, nn.Module):
-            self.Q.zero_grad()
-
     def local_parameters(self):
          return super().parameters(recurse=False)
 
-    def parameters(self):
+    def grad_parameters(self):
         #Avoids returning Js so they don't get passed into an optimizer.
         #This can cause problems if other methods (e.g. zero_grad) use
         #self.parameters (e.g. see ml_update).
         result = local_parameters()
         for mod in self.children():
-            for param in mod.parameters():
+            params = mod.grad_parameters() if isinstance(mod, Model) else mod.parameters()
+            for param in params:
                 result.add(param)
         return list(result)
 
