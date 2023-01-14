@@ -59,7 +59,7 @@ class AbstractTrace():
         full_stack = [*self.stack_names]
         if key is not None:
             full_stack.append(key)
-        return '/' + '/'.join(full_stack)
+        return '.'.join(full_stack)
         #result = '/'.join(self.stack_names)
         #if key is not None:
         #    result = result + '/' + key

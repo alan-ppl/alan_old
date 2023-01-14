@@ -4,11 +4,9 @@ External calling conventions:
   Those methods all take `data` and `inputs` kwargs
   Additionally, we can bind Model to data + inputs using model.bind(data=, inputs=), gives a BoundModel
 
-* internal call of module without arguments
+* named_tensor not retaining .grad
 * store Ps rather than logps
 * simplify trp / trq
-* names "/a/b" => "a.b"
-* saving QModules (named parameters break saving)
 * new tilted distributions
 * can we put set_T_dist into AbstractTrace?  (Problems with TracePred)
 * can we put multi_sample etc. for nested distributions in Trace?  (Rather than passing them as kwargs).
