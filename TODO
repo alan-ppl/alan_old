@@ -17,6 +17,8 @@ Errors:
 * optional args (multi_sample etc.) differ between P and Q
 * check all dimensions are either plates or Ks.
 * check we don't have different dimensions with the same names
+* missing tr(key)
+* already sampled tr(key)
 
 Papers:
   ML (ICML):

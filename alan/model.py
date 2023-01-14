@@ -1,15 +1,9 @@
 from warnings import warn
 import torch.nn as nn 
-#from .traces import traces.TraceQ, traces.TraceP, traces.TracePred, traces.TracePGlobal, traces.TraceQTMC, ModelInputs, Abstracttraces.Trace, Abstracttraces.TraceP, Abstracttraces.TraceQ
 from . import traces
 from .Sample import Sample, SampleGlobal
 from .utils import *
 
-from . import ml, ml2, ng, tilted
-#from .ml  import ML
-#from .ml2 import ML2 
-#from .ng  import NG
-#from .tilted import Tilted
 from .alan_module import AlanModule
 
 #    def __init__(self, P, Q=None, data=None, inputs=None):
@@ -266,20 +260,23 @@ class SampleMixin():
 #
 #        return result
 
-    def ml_update(self, K, lr, data=None):
-        elbo = self._sample(K, False, data).elbo()
-        elbo.backward()
-        for mod in self.modules():
-            if isinstance(mod, (ml2.ML2, tilted.Tilted)):
-                mod.update(lr)
-        self.zero_grad()
-
-    def update(self, K, lr, data=None):
-        _, q_obj = self.rws(K, data)
+    def update(self, lr, sample):
+        """
+        Will call update on 
+        """
+        _, q_obj = sample.rws()
         (q_obj).backward()
         for mod in self.modules():
-            if isinstance(mod, (ml.ML, tilted.Tilted, ng.NG)):
-                mod.update(lr)
+            if hasattr(mod, '_update'):
+                mod._update(lr)
+        self.zero_grad()
+
+    def ng_update(self, lr, sample):
+        assert sample.reparam
+        sample.elbo().backward()
+        for mod in self.modules():
+            if hasattr(mod, '_ng_update'):
+                mod._ng_update(lr)
         self.zero_grad()
 
     def zero_grad(self):
@@ -291,20 +288,18 @@ class SampleMixin():
         if isinstance(self.Q, nn.Module):
             self.Q.zero_grad()
 
+    def local_parameters(self):
+         return super().parameters(recurse=False)
+
     def parameters(self):
         #Avoids returning Js so they don't get passed into an optimizer.
         #This can cause problems if other methods (e.g. zero_grad) use
         #self.parameters (e.g. see ml_update).
-        all_params = set(super().parameters())
-        exclusions = []
-        for mod in self.modules():
-            if   isinstance(mod, ml2.ML2):
-                exclusions = exclusions + mod.named_Js
-            elif isinstance(mod, ml.ML):
-                exclusions = exclusions + mod.named_nats
-            elif isinstance(mod, (tilted.Tilted, ng.NG)):
-                exclusions = exclusions + mod.named_means
-        return all_params.difference(exclusions)
+        result = local_parameters()
+        for mod in self.children():
+            for param in mod.parameters():
+                result.add(param)
+        return list(result)
 
 class NestedModel():
     """
@@ -317,14 +312,14 @@ class NestedModel():
         self.kwargs = kwargs
 
     def P(self, tr):
-        self.model.P(tr, *args, **kwargs)
+        self.model.P(tr, *self.args, **self.kwargs)
     def Q(self, tr):
-        self.model.Q(tr, *args, **kwargs)
+        self.model.Q(tr, *self.args, **self.kwargs)
 
 def none_empty_dict(x):
     return {} if x is None else x
 
-class BoundModel(nn.Module, SampleMixin):
+class ConditionedModel(nn.Module, SampleMixin):
     """
     Represents a model bound to model to data and inputs.
     Returned 
@@ -350,26 +345,49 @@ class BoundModel(nn.Module, SampleMixin):
 
 class Model(SampleMixin, AlanModule):
     """Model class.
-    Args:
-        P:    The generative model, written as a function that takes a trace.
-        Q:    The proposal / approximate posterior. Optional. If not provided,
-              then we use the prior as Q.
-        data: Any non-minibatched data. This is usually used in statistics,
-              where we have small-medium data that we can reason about as a 
-              block. This is a dictionary mapping variable name to named-tensors
-              representing the data. We infer plate sizes from the sizes of 
-              the named dimensions in data (and from the sizes of any parameters
-              in Q).
+    A Model must be provided with a generative model, P, and an approximate 
+    posterior / proposal, Q.  There are two options.  They can be provided
+    as arguments, or defined in a subclass.
+
+    To provide P and Q as an argument, use `Model(P, Q)`, or `Model(P)` (in
+    which case P is used as Q).  P and Q must be callable, in the form
+    `P(tr, ...)` or `Q(tr, ...`, where ... is any extra inputs (and is the
+    same for P and Q.
+
+    Alternatively, you can subclass model, overriding __init__, and providing
+    subclass.P(tr, ...) and subclass.Q(tr, ...) as methods. 
     """
-    def __init__(self, P, Q=None):
+    def __init__(self, P=None, Q=None):
         super().__init__()
-        self.P = P
-        if Q is None:
-            Q = P
-        self.Q = Q
+        if P is not None:
+            assert not hasattr(self, 'P')
+            self.P = P
+        assert hasattr(self, 'P')
+
+        if Q is not None:
+            assert not hasattr(self, 'Q')
+            self.Q = Q
+        
+        #Default to using P as Q if Q is not defined.
+        if not hasattr(self, 'Q'):
+            self.Q = P
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)
 
-    def bind(self, data=None, inputs=None, platesizes=None):
-        return BoundModel(self, data, inputs, platesizes)
+    def condition(self, data=None, inputs=None, platesizes=None):
+        """
+        data:   Any non-minibatched data. This is usually used in statistics,
+                where we have small-medium data that we can reason about as a 
+                block. This is a dictionary mapping variable name to named-tensors
+                representing the data. We infer plate sizes from the sizes of 
+                the named dimensions in data (and from the sizes of any parameters
+                in Q).
+        inputs: Any non-minibatched data. This is usually used in statistics,
+                where we have small-medium data that we can reason about as a 
+                block. This is a dictionary mapping variable name to named-tensors
+                representing the data. We infer plate sizes from the sizes of 
+                the named dimensions in data (and from the sizes of any parameters
+                in Q).
+        """
+        return ConditionedModel(self, data, inputs, platesizes)

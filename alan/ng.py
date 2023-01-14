@@ -62,7 +62,7 @@ class NG(AlanModule):
     def forward(self, prior=None):
         return self.dist(**self.mean2conv(*self.dim_means))
 
-    def update(self, lr):
+    def _ng_update(self, lr):
         with t.no_grad():
             for (mean, nat) in zip(self.named_means, self.named_nats):
                 nat.data.add_(mean.grad.rename(*mean.names).align_as(nat), alpha=lr)
@@ -73,6 +73,9 @@ class NG(AlanModule):
             new_means = self.nat2mean(*self.named_nats)
             for old_mean, new_mean in zip(self.named_means, new_means):
                 old_mean.data.copy_(new_mean.align_as(old_mean))
+
+    def local_parameters(self):
+        return []
 
 #Designed to mirror Tilted, for testing.
 #    def forward(self, prior=None):

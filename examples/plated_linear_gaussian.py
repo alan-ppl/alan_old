@@ -8,11 +8,11 @@ M = 3
 N = 4
 platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 def P(tr):
-    tr.sample('a',   alan.Normal(t.zeros(()), 1))
-    tr.sample('b',   alan.Normal(tr['a'], 1))
-    tr.sample('c',   alan.Normal(tr['b'], 1), plates='plate_1')
-    tr.sample('d',   alan.Normal(tr['c'], 1), plates='plate_2')
-    tr.sample('obs', alan.Normal(tr['d'], 1), plates='plate_3')
+    tr('a',   alan.Normal(t.zeros(()), 1))
+    tr('b',   alan.Normal(tr['a'], 1))
+    tr('c',   alan.Normal(tr['b'], 1), plates='plate_1')
+    tr('d',   alan.Normal(tr['c'], 1), plates='plate_2')
+    tr('obs', alan.Normal(tr['d'], 1), plates='plate_3')
 
 class Q(alan.AlanModule):
     def __init__(self):
@@ -34,28 +34,28 @@ class Q(alan.AlanModule):
 
 
     def forward(self, tr):
-        tr.sample('a', alan.Normal(self.m_a, self.log_s_a.exp()))
+        tr('a', alan.Normal(self.m_a, self.log_s_a.exp()))
 
         mean_b = self.w_b * tr['a'] + self.b_b
-        tr.sample('b', alan.Normal(mean_b, self.log_s_b.exp()))
+        tr('b', alan.Normal(mean_b, self.log_s_b.exp()))
 
         mean_c = self.w_c * tr['b'] + self.b_c
-        tr.sample('c', alan.Normal(mean_c, self.log_s_c.exp()))
+        tr('c', alan.Normal(mean_c, self.log_s_c.exp()))
 
         mean_d = self.w_d * tr['c'] + self.b_d
-        tr.sample('d', alan.Normal(mean_d, self.log_s_d.exp()))
+        tr('d', alan.Normal(mean_d, self.log_s_d.exp()))
 
 data = alan.sample(P, platesizes=platesizes, varnames=('/obs',))
 
-bound_model = alan.Model(P, Q()).bind(data={'/obs': data['/obs']})
+cond_model = alan.Model(P, Q()).condition(data={'/obs': data['/obs']})
 
-opt = t.optim.Adam(bound_model.parameters(), lr=1E-3)
+opt = t.optim.Adam(cond_model.parameters(), lr=1E-3)
 
 K=10
 print("K={}".format(K))
 for i in range(20000):
     opt.zero_grad()
-    elbo = bound_model.sample_mp(K, True).elbo()
+    elbo = cond_model.sample_mp(K, True).elbo()
     (-elbo).backward()
     opt.step()
 

@@ -4,8 +4,9 @@ from .dist import *
 from .utils import *
 from .alan_module import AlanModule
 from .exp_fam_mixin import *
+from . import model
 
-class Tilted(AlanModule):
+class Tilted(model.Model):
     """
     Based on computing:
     Delta m = E_P[f(x)] - E_Q[f(x)]
@@ -51,7 +52,7 @@ class Tilted(AlanModule):
     def named_Jposts(self):
         return [self.get_named_tensor(Jpost_name) for Jpost_name in self.Jpost_names]
 
-    def tilted(self, prior):
+    def tilted(self, *args, **kwargs):
         with t.no_grad():
             prior = self.dist(*args, **kwargs)
             prior_convs = self.canonical_conv(**prior.dim_args)
@@ -75,7 +76,7 @@ class Tilted(AlanModule):
     def Q(self, tr, *args, **kwargs):
         tr(self.tilted(*args, **kwargs))
 
-    def update(self, lr):
+    def _update(self, lr):
         with t.no_grad():
             post_ms   = tuple(J.grad for J in self.named_Jposts)
             approx_ms = tuple(J.grad for J in self.named_Japproxs)
@@ -86,6 +87,11 @@ class Tilted(AlanModule):
 
             for (n, dn) in zip(self.named_nats, dns):
                 n.data.add_(dn)
+
+    def local_parameters(self):
+        return []
+        
+        
 
 class TiltedNormal(Tilted, NormalMixin):
     pass

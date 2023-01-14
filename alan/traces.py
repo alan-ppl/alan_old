@@ -21,7 +21,7 @@ class AbstractTrace():
         self.stack_names = []
         self.stack_kwargs = [{'plates':(), 'T':None, 'multi_sample':True, 'group':None, 'sum_discrete':False}]
 
-    def sample(self, key, dist=None, **kwargs): #plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
+    def __call__(self, key, dist=None, **kwargs): #plates=(), T=None, multi_sample=True, group=None, sum_discrete=False):
         #Can call as tr.sample(dist), in which case, tr.sample(key=dist, dist=None)
         if dist is None:
             key, dist = dist, key
@@ -56,10 +56,14 @@ class AbstractTrace():
         self.stack_kwargs.pop()
 
     def stack_key(self, key=None):
-        result = '/'.join(self.stack_names)
+        full_stack = [*self.stack_names]
         if key is not None:
-            result = result + '/' + key
-        return result
+            full_stack.append(key)
+        return '/' + '/'.join(full_stack)
+        #result = '/'.join(self.stack_names)
+        #if key is not None:
+        #    result = result + '/' + key
+        #return result
 
     def __getitem__(self, key):
         return self.get_stack_key(self.stack_key(key))
@@ -99,7 +103,7 @@ class AbstractTraceP(AbstractTrace):
 
             self.push_stack(key, kwargs)
             dist.P(self)
-            self.pop_stack(key, kwargs)
+            self.pop_stack()
         else:
             stack_key = self.stack_key(key)
             self.sample__(stack_key, dist, **self.kwargs(kwargs))
@@ -116,7 +120,7 @@ class AbstractTraceQ(AbstractTrace):
 
                 self.push_stack(key, kwargs)
                 dist.Q(self)
-                self.pop_stack(key, kwargs)
+                self.pop_stack()
             else:
                 stack_key = self.stack_key(key)
                 self.sample__(stack_key, dist, **self.kwargs(kwargs))
@@ -198,9 +202,12 @@ class TraceQ(AbstractTraceQ):
         self.samples = {}
         self.logq = {}
 
-    def sample__(self, key, dist, multi_sample=True, plates=(), T=None):
+    def sample__(self, key, dist, plates=(), T=None, multi_sample=True):
+        #If we've defined an approximate posterior for data then just skip it.
+        #This is common if we're using P as Q
         if key in self.data:
-            raise Exception(f"Q acts as a proposal / approximate posterior for latent variables, so we should only sample latent variables in Q.  However, we are sampling '{key}', which is data.")
+            return None
+
         assert key not in self.logq
 
         if multi_sample==False:

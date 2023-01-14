@@ -55,7 +55,7 @@ class ML(AlanModule):
     def forward(self, prior=None):
         return self.dist(**self.nat2conv(*self.dim_nats))
 
-    def update(self, lr):
+    def _update(self, lr):
         with t.no_grad():
             for (mean, nat) in zip(self.named_means, self.named_nats):
                 mean.data.add_(nat.grad.rename(*nat.names).align_as(mean), alpha=lr)
@@ -66,6 +66,15 @@ class ML(AlanModule):
             new_nats = self.mean2nat(*self.named_means)
             for old_nat, new_nat in zip(self.named_nats, new_nats):
                 old_nat.data.copy_(new_nat.align_as(old_nat))
+
+    def P(self, tr, *args, **kwargs):
+        return self.dist(*args, **kwargs)
+
+    def Q(self, tr, *args, **kwargs):
+        return self.dist(**self.nat2conv(*self.dim_nats))
+
+    def local_parameters(self):
+        return []
 
 class MLNormal(ML, NormalMixin):
     pass

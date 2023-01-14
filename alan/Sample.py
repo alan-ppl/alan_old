@@ -44,6 +44,11 @@ class Sample():
         self.ordered_plate_dims = [dim for dim in unify_dims(trp.logp.values()) if self.is_plate(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
 
+    @property
+    def reparam(self):
+        return self.trp.trq.reparam
+       
+
     def is_plate(self, dim):
         return dim in self.platedims
 

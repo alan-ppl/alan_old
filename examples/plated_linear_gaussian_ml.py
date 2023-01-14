@@ -17,16 +17,16 @@ def P(tr):
 class Q(nn.Module):
     def __init__(self):
         super().__init__()
-        self.Qa = alan.MLNormal()
-        self.Qb = alan.MLNormal()
-        self.Qc = alan.MLNormal({'plate_1': J})
-        self.Qd = alan.MLNormal({'plate_1': J, 'plate_2': M})
+        self.PQa = alan.MLNormal()
+        self.PQb = alan.MLNormal()
+        self.PQc = alan.MLNormal({'plate_1': J})
+        self.PQd = alan.MLNormal({'plate_1': J, 'plate_2': M})
 
     def forward(self, tr):
-        tr.sample('a', self.Qa())
-        tr.sample('b', self.Qb())
-        tr.sample('c', self.Qc())
-        tr.sample('d', self.Qd())
+        tr.sample('a', self.PQa(0, 1))
+        tr.sample('b', self.PQb())
+        tr.sample('c', self.PQc())
+        tr.sample('d', self.PQd())
 
 data = alan.sample(P, platesizes=platesizes, varnames=('obs',))
 
