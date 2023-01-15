@@ -95,6 +95,20 @@ class AbstractTrace():
     def kwargs(self, kwargs=None):
         return {k: v for (k, v) in self.all_kwargs(kwargs).items() if k in self.kwarg_keys}
 
+    def ones(self, *args, **kwargs):
+        """
+        Passes through to the underlying PyTorch method, but gets the right
+        device
+        """
+        return t.ones(*args, **kwargs, device=self.device)
+
+    def zeros(self, *args, **kwargs):
+        """
+        Passes through to the underlying PyTorch method, but gets the right
+        device
+        """
+        return t.zeros(*args, **kwargs, device=self.device)
+
 class AbstractTraceP(AbstractTrace):
     kwarg_keys = ['plates', 'T', 'group', 'sum_discrete']
 
