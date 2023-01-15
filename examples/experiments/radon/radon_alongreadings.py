@@ -1,7 +1,8 @@
 import torch as t
 import torch.nn as nn
 import alan
-
+from torch.distributions.constraints import interval
+from torch.distributions.constraint_registry import transform_to
 def generate_model(N,M,local,device):
     M = 4
     J = 4
