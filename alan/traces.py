@@ -190,7 +190,7 @@ class TraceQTMC(AbstractTrace):
         self.Ks     = set()
 
 
-    def sample(self, key, dist, group=None, plates=(), T=None):
+    def sample(self, key, dist, group=None, plates=(), T=None, multi_sample=False):
         if T is not None:
             dist.set_Tdim(self.platedims[T])
 
