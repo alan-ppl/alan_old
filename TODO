@@ -1,9 +1,16 @@
-* Simplify platedims for ML, ML2, Tilted etc.
-* store Ps rather than logps
+* abstract platesizes for ML, ML2, Tilted etc.
+* store Ps rather than logps, in preparation for lazy efficient stuff.
+* sort out devices (give trace a device)
+  * device is an argument to sample_...
+  * starts by checking that parameters of Model are on that device
+  * move inputs + data to device
+  * trace has a device
 * simplify trp / trq
-* new tilted distributions
 * can we put set_T_dist into AbstractTrace?  (Problems with TracePred)
-* can we put multi_sample etc. for nested distributions in Trace?  (Rather than passing them as kwargs).
+* check: 
+  * enumeration 
+  * timeseries.
+  * prediction.
 Errors:
 * P shouldn't have any QModules (QModules would imply a plated Parameter, and we really shouldn't have a plated parameter in P)
 * optional args (multi_sample etc.) differ between P and Q

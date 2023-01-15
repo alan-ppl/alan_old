@@ -51,10 +51,17 @@ from .alan_module import AlanModule
 #        self.inputs    = named2dim_tensordict(self.platedims, inputs)
 
 class SampleMixin():
-    def dims_data_inputs(self, data, inputs, platesizes):
+    def dims_data_inputs(self, data, inputs, platesizes, device):
+        #check model and/or self.data + self.inputs on ConditionModel are on desired device
+        self.check_device(device)
+        #deal with possibility of None defaults
         data       = none_empty_dict(data)
         inputs     = none_empty_dict(inputs)
         platesizes = none_empty_dict(platesizes)
+
+        #place on device
+        data   = {k: v.to(device=device) for (k, v) in data.items()}
+        inputs = {k: v.to(device=device) for (k, v) in inputs.items()}
 
         platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
 
@@ -70,11 +77,11 @@ class SampleMixin():
         inputs = named2dim_tensordict(platedims, inputs)
         return platedims, data, inputs
 
-    def sample_mp(self, K, reparam=True, data=None, inputs=None, platesizes=None):
+    def sample_mp(self, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
         """
         Internal method that actually runs P and Q.
         """
-        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes)
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
         #if 0==len(all_data):
         #    raise Exception("No data provided either to the Model(...) or to e.g. model.elbo(...)")
@@ -93,8 +100,8 @@ class SampleMixin():
 
         return Sample(trp)
 
-    def sample_global(self, K, reparam=True, data=None, inputs=None, platesizes=None):
-        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes)
+    def sample_global(self, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
         #sample from approximate posterior
         trq = traces.TraceQ(K, data, platedims, reparam)
@@ -105,8 +112,8 @@ class SampleMixin():
 
         return SampleGlobal(trp)
 
-    def sample_tmc(self, K, reparam=True, data=None, inputs=None, platesizes=None):
-        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes)
+    def sample_tmc(self, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
         #sample from approximate posterior
         trq = traces.TraceQTMC(K, data, platedims, reparam)
@@ -267,7 +274,9 @@ class SampleMixin():
         assert not sample.reparam
         _, q_obj = sample.rws()
         (q_obj).backward()
-        for mod in self.modules():
+
+        model = self.model if isinstance(self, ConditionedModel) else self
+        for mod in model.modules(): 
             if hasattr(mod, '_update'):
                 mod._update(lr)
         self.zero_grad()
@@ -275,7 +284,9 @@ class SampleMixin():
     def ng_update(self, lr, sample):
         assert sample.reparam
         sample.elbo().backward()
-        for mod in self.modules():
+
+        model = self.model if isinstance(self, ConditionedModel) else self
+        for mod in model.modules():
             if hasattr(mod, '_ng_update'):
                 mod._ng_update(lr)
         self.zero_grad()
@@ -312,8 +323,9 @@ class NestedModel():
 def none_empty_dict(x):
     return {} if x is None else x
 
-class ConditionedModel(nn.Module, SampleMixin):
+class ConditionedModel(SampleMixin):
     """
+    NOT a nn.Module
     Represents a model bound to model to data and inputs.
     Returned 
     bound_model = model.bind(data=..., inputs=...)
@@ -335,6 +347,24 @@ class ConditionedModel(nn.Module, SampleMixin):
 
     def Q(self, tr, *args, **kwargs):
         self.model.Q(tr, *args, **kwargs)
+
+    def parameters(self):
+        return self.model.parameters()
+
+    def zero_grad(self):
+        return self.model.zero_grad()
+
+    def to(self, *args, **kwargs):
+        self.model.to(*args, **kwargs)
+        self.data   = {k: v.to(*args, **kwargs) for (k, v) in self.data.items()}
+        self.inputs = {k: v.to(*args, **kwargs) for (k, v) in self.inputs.items()}
+
+    def check_device(self, device):
+        self.model.check_device(device)
+
+        device = t.device(device)
+        for x in [*self.data.values(), *self.inputs.values()]:
+            assert x.device == device
 
 class Model(SampleMixin, AlanModule):
     """Model class.
@@ -384,3 +414,8 @@ class Model(SampleMixin, AlanModule):
                 in Q).
         """
         return ConditionedModel(self, data, inputs, platesizes)
+
+    def check_device(self, device):
+        device = t.device(device)
+        for x in [*self.parameters(), *self.buffers()]:
+            assert x.device == device
