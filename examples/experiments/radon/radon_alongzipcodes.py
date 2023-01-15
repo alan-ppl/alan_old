@@ -92,6 +92,7 @@ def generate_model(N,M,local,device):
 
             sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
             sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
+            sigma_alpha_low = t.min(sigma_alpha_low, sigma_alpha_high - 0.001)
             tr.sample('gamma', alan.Uniform(gamma_low, gamma_high), multi_sample=False if local else True)
             tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high), multi_sample=False if local else True)
             tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()), multi_sample=False if local else True)
