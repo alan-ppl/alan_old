@@ -17,7 +17,8 @@ def check_not_reserved(x):
         raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
     
 class AbstractTrace():
-    def __init__(self):
+    def __init__(self, device):
+        self.device = device
         self.stack_names = []
         self.stack_kwargs = [{'plates':(), 'T':None, 'multi_sample':True, 'group':None, 'sum_discrete':False}]
 
@@ -134,8 +135,8 @@ class TraceSample(AbstractTraceP):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, platedims, N):
-        super().__init__()
+    def __init__(self, platedims, N, device):
+        super().__init__(device)
         self.Ns = () if (N is None) else (Dim('N', N),)
         self.platedims = platedims
 
@@ -151,38 +152,6 @@ class TraceSample(AbstractTraceP):
         self.samples[key] = sample
         self.logp[key] = dist.log_prob(sample)
 
-def sample(P, platesizes=None, N=None, varnames=None, inputs=None):
-    """Draw samples from a generative model (with no data).
-    
-    Args:
-        P:        The generative model (a function taking a trace).
-        plates:   A dict mapping platenames to integer sizes of that plate.
-        N:        The number of samples to draw
-        varnames: An iterable of the variables to return
-
-    Returns:
-        A dictionary mapping from variable name to sampled value, 
-        represented as a named tensor (e.g. so that it is suitable 
-        for use as data).
-    """
-    if platesizes is None:
-        platesizes = {}
-    if inputs is None:
-        inputs = {}
-
-    platedims = extend_plates_with_named_tensors({}, inputs.values())
-    inputs = named2dim_tensordict(platedims, inputs)
-    platedims = extend_plates_with_sizes(platedims, platesizes)
-    with t.no_grad():
-        tr = TraceSample(platedims, N)
-        P(tr, **inputs)
-
-    if varnames is None:
-        varnames = tr.samples.keys()
-
-    return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
-
-
 class TraceQ(AbstractTraceQ):
     """
     Samples a probabilistic program + evaluates log-probability.
@@ -190,8 +159,8 @@ class TraceQ(AbstractTraceQ):
     The latents may depend on the data (as in a VAE), but it doesn't make sense to "sample" data.
     Can high-level latents depend on plated lower-layer latents?  (I think so?)
     """
-    def __init__(self, K, data, platedims, reparam):
-        super().__init__()
+    def __init__(self, K, data, platedims, reparam, device):
+        super().__init__(device)
         self.Kdim = Dim("K", K)
 
         self.data = data
@@ -249,8 +218,8 @@ class TraceQ(AbstractTraceQ):
         return reduce_plate(t.mean, x, plate)
 
 class TraceQTMC(AbstractTrace):
-    def __init__(self, K, data, platedims, reparam):
-        super().__init__()
+    def __init__(self, K, data, platedims, reparam, device):
+        super().__init__(device)
         self.K = K
 
         self.data = data
@@ -305,7 +274,7 @@ class TraceQTMC(AbstractTrace):
 
 class TraceP(AbstractTraceP):
     def __init__(self, trq):
-        super().__init__()
+        super().__init__(trq.device)
         self.trq = trq
 
         self.samples = {}
@@ -441,7 +410,7 @@ class TracePGlobal(TraceP):
     Incomplete method purely used for benchmarking.
     e.g. doesn't do sampling from the prior.
     """
-    def __init__(self, trq, memory_diagnostics=False):
+    def __init__(self, trq):
         super().__init__(trq)
         if isinstance(trq, TraceQTMC):
             self.Ks = trq.Ks
@@ -474,8 +443,8 @@ class TracePred(AbstractTrace):
 
 
     """
-    def __init__(self, N, samples_train, data_train, data_all, platedims_train, platesizes_all):
-        super().__init__()
+    def __init__(self, N, samples_train, data_train, data_all, platedims_train, platesizes_all, device):
+        super().__init__(device)
         self.N = N
 
         self.samples_train = samples_train

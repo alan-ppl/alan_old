@@ -24,8 +24,7 @@ class P(alan.AlanModule):
         tr('obs', alan.Normal(tr['d'], 0.01), plates='plate_3')
 p = P()
 
-data = alan.sample(p, platesizes=platesizes, varnames=('obs',))
-
+data = alan.Model(p).sample_prior(platesizes=platesizes, varnames='obs')
 cond_model = alan.Model(p).condition(data={'obs': data['obs']})
 
 K=100

@@ -43,7 +43,7 @@ class PQ(alan.AlanModule):
         tr('d',   self.Nd(tr['c'], 1), plates='plate_2')
         tr('obs', alan.Normal(tr['d'], 0.1), plates='plate_3')
 
-data = alan.sample(P, platesizes=platesizes, varnames=('obs',))
+data = alan.Model(P).sample_prior(platesizes=platesizes, varnames='obs')
 
 K = 10
 T = 40

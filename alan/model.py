@@ -51,6 +51,13 @@ from .alan_module import AlanModule
 #        self.inputs    = named2dim_tensordict(self.platedims, inputs)
 
 class SampleMixin():
+    """
+    A mixin for all the sample_mp etc. methods.
+    Requires methods:
+        self.P(tr, ...) 
+        self.Q(tr, ...)
+        self.check_device(device)
+    """
     def dims_data_inputs(self, data, inputs, platesizes, device):
         #check model and/or self.data + self.inputs on ConditionModel are on desired device
         self.check_device(device)
@@ -64,6 +71,7 @@ class SampleMixin():
         inputs = {k: v.to(device=device) for (k, v) in inputs.items()}
 
         platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
+        platedims = extend_plates_with_sizes(self.platedims, platesizes)
 
         if hasattr(self, "data"):
             assert 0 == len(set(self.data).intersection(data))
@@ -92,7 +100,7 @@ class SampleMixin():
         #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = traces.TraceQ(K, data, platedims, reparam)
+        trq = traces.TraceQ(K, data, platedims, reparam, device)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TraceP(trq)
@@ -104,7 +112,7 @@ class SampleMixin():
         platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
         #sample from approximate posterior
-        trq = traces.TraceQ(K, data, platedims, reparam)
+        trq = traces.TraceQ(K, data, platedims, reparam, device)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TracePGlobal(trq)
@@ -116,13 +124,42 @@ class SampleMixin():
         platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
         #sample from approximate posterior
-        trq = traces.TraceQTMC(K, data, platedims, reparam)
+        trq = traces.TraceQTMC(K, data, platedims, reparam, device)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TracePGlobal(trq)
         self.P(trp, **inputs)
 
         return Sample(trp)
+
+
+    def sample_prior(self, N=None, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
+        """Draw samples from a generative model (with no data).
+        
+        Args:
+            P:        The generative model (a function taking a trace).
+            plates:   A dict mapping platenames to integer sizes of that plate.
+            N:        The number of samples to draw
+            varnames: An iterable of the variables to return
+
+        Returns:
+            A dictionary mapping from variable name to sampled value, 
+            represented as a named tensor (e.g. so that it is suitable 
+            for use as data).
+        """
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
+
+        with t.no_grad():
+            tr = traces.TraceSample(platedims, N, device)
+            self.P(tr, **inputs)
+
+        if isinstance(varnames, str):
+            varnames = (varnames,)
+        elif varnames is None:
+            varnames = tr.samples.keys()
+
+        return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
+
 
 #    def elbo(self, K, data=None, reparam=True):
 #        """Compute the ELBO.

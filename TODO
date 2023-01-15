@@ -1,9 +1,6 @@
-* abstract platesizes for ML, ML2, Tilted etc.
+* lots of repetition around platesize code for ML, ML2, Tilted etc.
 * store Ps rather than logps, in preparation for lazy efficient stuff.
 * sort out devices (give trace a device)
-  * device is an argument to sample_...
-  * starts by checking that parameters of Model are on that device
-  * move inputs + data to device
   * trace has a device
 * simplify trp / trq
 * can we put set_T_dist into AbstractTrace?  (Problems with TracePred)
@@ -18,6 +15,7 @@ Errors:
 * check we don't have different dimensions with the same names
 * missing tr(key)
 * already sampled tr(key)
+* device errors
 
 Papers:
   ML (ICML):
