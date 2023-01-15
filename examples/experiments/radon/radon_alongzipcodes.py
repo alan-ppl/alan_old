@@ -79,6 +79,7 @@ def generate_model(N,M,local,device):
             #state level
             sigma_beta_low = t.max(self.low, self.sigma_beta_low.exp())
             sigma_beta_high = t.min(self.high, self.sigma_beta_high.exp())
+            sigma_beta_low = t.min(sigma_beta_low, sigma_beta_high - 0.001)
 
             tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high), multi_sample=False if local else True)
             tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else True)
@@ -87,6 +88,7 @@ def generate_model(N,M,local,device):
             #county level
             gamma_low = t.max(self.low, self.gamma_low.exp())
             gamma_high = t.min(self.high, self.gamma_high.exp())
+            gamma_low = t.min(gamma_low, gamma_high - 0.001)
 
             sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
             sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
@@ -97,12 +99,14 @@ def generate_model(N,M,local,device):
             #zipcode level
             sigma_omega_low = t.max(self.low, self.sigma_omega_low.exp())
             sigma_omega_high = t.min(self.high, self.sigma_omega_high.exp())
+            sigma_omega_low = t.min(sigma_omega_low, sigma_omega_high - 0.001)
             tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high), multi_sample=False if local else True)
             tr.sample('omega', alan.Normal(self.omega_mu, self.log_omega_sigma.exp()))
 
             #reading level
             sigma_obs_low = t.max(self.low, self.sigma_obs_low.exp())
             sigma_obs_high = t.min(self.high, self.sigma_obs_high.exp())
+            sigma_obs_low = t.min(sigma_obs_low, sigma_obs_high - 0.001)
             tr.sample('sigma_obs', alan.Uniform(sigma_obs_low, sigma_obs_high))
             tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))
 

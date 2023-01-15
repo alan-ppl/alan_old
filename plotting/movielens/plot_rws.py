@@ -5,7 +5,7 @@ from tueplots import axes, bundles
 
 Ks = ['3','10','30']
 Ns = ['5','10']
-Ms = ['10','50','300']
+Ms = ['50','150','300']
 # with open('results.json') as f:
 #     results = json.load(f)
 #
@@ -53,8 +53,8 @@ with plt.rc_context(bundles.icml2022()):
             # ax[i,j].label_outer()
             count =+ 1
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
-    ax[0,0].set_title('Number of users = 10')
-    ax[0,1].set_title('Number of users = 50')
+    ax[0,0].set_title('Number of users = 50')
+    ax[0,1].set_title('Number of users = 150')
     ax[0,2].set_title('Number of users = 300')
 
     ax[0,0].set_ylabel('Films per user = 5 \n Predictive Log Likelihood')
