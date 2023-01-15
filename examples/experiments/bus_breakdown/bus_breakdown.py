@@ -38,7 +38,7 @@ def generate_model(N,M,local,device):
       tr.sample('log_sigma_phi_psi', alan.Categorical(t.tensor([0.1,0.4,0.5,0.05,0.05]).to(device)), plates = 'plate_ID')
       tr.sample('psi', alan.Normal(t.zeros((5,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       tr.sample('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
-      tr.sample('obs', alan.Binomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))
+      tr.sample('obs', alan.NegativeBinomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))
 
 
 
