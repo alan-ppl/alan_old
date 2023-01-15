@@ -3,10 +3,11 @@ from .utils import *
 from functorch.dim import Dim
 
 class Timeseries():
-    def __init__(self, initial_state, transition, inputs=None):
+    def __init__(self, initial_state, transition, depend_on_t=False, inputs=None):
         self.initial_state = initial_state
         self.transition = transition
         self._inputs = inputs
+        self.depend_on_t = depend_on_t
 
     def set_Tdim(self, Tdim):
         assert isinstance(Tdim, Dim)
@@ -19,9 +20,14 @@ class Timeseries():
             return (self._inputs.order(self.Tdim)[t],)
 
     def sample(self, reparam, sample_dims):
-        result = [self.transition(self.initial_state, *self.input(0)).sample(reparam, sample_dims)]
-        for _t in range(1, self.Tdim.size):
-            result.append(self.transition(result[-1], *self.input(_t)).sample(reparam, sample_dims=()))
+        if self.depend_on_t:
+            result = [self.transition(self.initial_state, 0, *self.input(0)).sample(reparam, sample_dims)]
+            for _t in range(1, self.Tdim.size):
+                result.append(self.transition(result[-1], _t, *self.input(_t)).sample(reparam, sample_dims=()))
+        else:
+            result = [self.transition(self.initial_state, *self.input(0)).sample(reparam, sample_dims)]
+            for _t in range(1, self.Tdim.size):
+                result.append(self.transition(result[-1], *self.input(_t)).sample(reparam, sample_dims=()))
 
         #A bug with stacking torchdim tensors.  Should be able to do:
         #return t.stack(result, 0)[self.Tdim]
@@ -43,12 +49,18 @@ class Timeseries():
         x_first = x[0]
         x_prev  = x[:-1][Tm1]
         x_curr  = x[1:][Tm1]
-
-        lp_first = self.transition(self.initial_state, *self.input(0)).log_prob(x_first)
-        inputs_rest = self.input(slice(1, None))
-        if inputs_rest != ():
-            inputs_rest = (inputs_rest[Tm1],)
-        lp_rest  = self.transition(x_prev, *inputs_rest).log_prob(x_curr)
+        if self.depend_on_t:
+            lp_first = self.transition(self.initial_state, 0, *self.input(0)).log_prob(x_first)
+            inputs_rest = self.input(slice(1, None))
+            if inputs_rest != ():
+                inputs_rest = (inputs_rest[Tm1],)
+            lp_rest  = self.transition(x_prev, self.Tdim.size-1, *inputs_rest).log_prob(x_curr)
+        else:
+            lp_first = self.transition(self.initial_state, *self.input(0)).log_prob(x_first)
+            inputs_rest = self.input(slice(1, None))
+            if inputs_rest != ():
+                inputs_rest = (inputs_rest[Tm1],)
+            lp_rest  = self.transition(x_prev, *inputs_rest).log_prob(x_curr)
 
         return t.cat([lp_first[None, ...], lp_rest.order(Tm1)], 0)[self.Tdim]
 
@@ -67,12 +79,20 @@ class Timeseries():
         x_prev  = x_prev.order(Kdim)[Kprev]
 
         #Compute log probabilities
-        first = self.transition(self.initial_state, *self.input(0)).log_prob(x_first)
+        if self.depend_on_t:
+            first = self.transition(self.initial_state, 0, *self.input(0)).log_prob(x_first)
 
-        inputs_rest = self.input(slice(1, None))
-        if inputs_rest != ():
-            inputs_rest = (inputs_rest[Tm1],)
-        rest  = self.transition(x_prev, *inputs_rest).log_prob(x_curr)
+            inputs_rest = self.input(slice(1, None))
+            if inputs_rest != ():
+                inputs_rest = (inputs_rest[Tm1],)
+            rest  = self.transition(x_prev, *inputs_rest).log_prob(x_curr)
+        else:
+            first = self.transition(self.initial_state,T.size-1,  *self.input(0)).log_prob(x_first)
+
+            inputs_rest = self.input(slice(1, None))
+            if inputs_rest != ():
+                inputs_rest = (inputs_rest[Tm1],)
+            rest  = self.transition(x_prev, *inputs_rest).log_prob(x_curr)
 
         return TimeseriesLogP(first, rest, T, Tm1, K, Kprev)
 

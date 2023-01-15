@@ -389,8 +389,6 @@ class SampleGlobal(Sample):
     def Kdim(self):
         return self.trp.trq.Kdim
 
-    def is_Kdim(self, dim):
-        return dim is self.trp.trq.Kdim
 
     def sum_not_K(self, x):
         dims = set(generic_dims(x))
