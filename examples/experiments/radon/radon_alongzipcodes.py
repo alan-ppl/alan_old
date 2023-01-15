@@ -90,6 +90,10 @@ def generate_model(N,M,local,device):
             sigma_beta_high_interval = interval(sigma_beta_low+1e-6, self.high)
             sigma_beta_high = transform_to(sigma_beta_high_interval)(self.sigma_beta_high)
 
+            print('low')
+            print(sigma_beta_low)
+            print('high')
+            print(sigma_beta_high)
 
             tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high), multi_sample=False if local else True)
             tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else True)
