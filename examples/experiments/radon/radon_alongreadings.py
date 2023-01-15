@@ -10,34 +10,6 @@ def generate_model(N,M,local,device):
     N = 2
     sizes = {'plate_state': M, 'plate_county':J, 'plate_zipcode':I, 'plate_reading':N}
 
-    def P(tr):
-      '''
-      Hierarchical Model
-      '''
-
-      tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
-      #state level
-      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']),plates='plate_state')
-      tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state')
-
-      #county level
-      tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
-      tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']), plates = 'plate_county')
-      tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_county')
-
-      #zipcode level
-
-      tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']), plates='plate_zipcode')
-      tr.sample('sigma_obs', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode')
-
-      #reading level
-
-      tr.sample('psi_int', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_reading')
-      tr.sample('obs', alan.Normal(tr['omega'] + tr['psi_int']*tr['basement'], tr['sigma_obs']),plates='plate_reading')
-
-
-
     class Q(alan.QModule):
         def __init__(self):
             super().__init__()
@@ -87,7 +59,7 @@ def generate_model(N,M,local,device):
             sigma_beta_low_interval = interval(self.low, self.high)
             sigma_beta_low = transform_to(sigma_beta_low_interval)(self.sigma_beta_low)
 
-            sigma_beta_high_interval = interval(sigma_beta_low, self.high)
+            sigma_beta_high_interval = interval(sigma_beta_low+1e-6, self.high)
             sigma_beta_high = transform_to(sigma_beta_high_interval)(self.sigma_beta_high)
 
 
@@ -101,7 +73,7 @@ def generate_model(N,M,local,device):
             gamma_low_interval = interval(self.low, self.high)
             gamma_low = transform_to(gamma_low_interval)(self.gamma_low)
 
-            gamma_high_interval = interval(gamma_low, self.high)
+            gamma_high_interval = interval(gamma_low+1e-6, self.high)
             gamma_high = transform_to(gamma_high_interval)(self.gamma_high)
 
             # sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
@@ -110,7 +82,7 @@ def generate_model(N,M,local,device):
             sigma_alpha_low_interval = interval(self.low, self.high)
             sigma_alpha_low = transform_to(sigma_alpha_low_interval)(self.sigma_alpha_low)
 
-            sigma_alpha_high_interval = interval(sigma_alpha_low, self.high)
+            sigma_alpha_high_interval = interval(sigma_alpha_low+1e-6, self.high)
             sigma_alpha_high = transform_to(sigma_alpha_high_interval)(self.sigma_alpha_high)
             tr.sample('gamma', alan.Uniform(gamma_low, gamma_high), multi_sample=False if local else True)
             tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high), multi_sample=False if local else True)
@@ -123,7 +95,7 @@ def generate_model(N,M,local,device):
             sigma_omega_low_interval = interval(self.low, self.high)
             sigma_omega_low = transform_to(sigma_omega_low_interval)(self.sigma_omega_low)
 
-            sigma_omega_high_interval = interval(sigma_omega_low, self.high)
+            sigma_omega_high_interval = interval(sigma_omega_low+1e-6, self.high)
             sigma_omega_high = transform_to(sigma_omega_high_interval)(self.sigma_omega_high)
             tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high), multi_sample=False if local else True)
             tr.sample('omega', alan.Normal(self.omega_mu, self.log_omega_sigma.exp()))
@@ -135,7 +107,7 @@ def generate_model(N,M,local,device):
             sigma_obs_low_interval = interval(self.low, self.high)
             sigma_obs_low = transform_to(sigma_obs_low_interval)(self.sigma_obs_low)
 
-            sigma_obs_high_interval = interval(sigma_obs_low, self.high)
+            sigma_obs_high_interval = interval(sigma_obs_low+1e-6, self.high)
             sigma_obs_high = transform_to(sigma_obs_high_interval)(self.sigma_obs_high)
             tr.sample('sigma_obs', alan.Uniform(sigma_obs_low, sigma_obs_high))
             tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))
