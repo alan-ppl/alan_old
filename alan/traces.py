@@ -109,6 +109,9 @@ class AbstractTraceP(AbstractTrace):
             stack_key = self.stack_key(key)
             self.sample__(stack_key, dist, **self.kwargs(kwargs))
 
+            assert key in self
+            assert self[key].device == self.device
+
 class AbstractTraceQ(AbstractTrace):
     kwarg_keys = ['plates', 'T', 'multi_sample']
 
@@ -125,6 +128,9 @@ class AbstractTraceQ(AbstractTrace):
             else:
                 stack_key = self.stack_key(key)
                 self.sample__(stack_key, dist, **self.kwargs(kwargs))
+
+                assert key in self
+                assert self[key].device == self.device
 
 
 
