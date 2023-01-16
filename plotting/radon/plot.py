@@ -21,13 +21,13 @@ with plt.rc_context(bundles.icml2022()):
         for j in range(len(Ms)):
             N = Ns[i]
             M = Ms[j]
-            with open('results/radon_alongzipcodes/elbo_LIW_N2_M2.json') as f:
+            with open('results/radon_alongreadings/elbo_LIW_N2_M2.json') as f:
                 results_local_IW = json.load(f)
 
-            with open('results/radon_alongzipcodes/elbo_N2_M2.json') as f:
+            with open('results/radon_alongreadings/elbo_N2_M2.json') as f:
                 results = json.load(f)
 
-            with open('results/radon_alongzipcodes/elbo_global_N2_M2.json') as f:
+            with open('results/radon_alongreadings/elbo_global_N2_M2.json') as f:
                 results_global_K = json.load(f)
 
 
@@ -50,12 +50,12 @@ with plt.rc_context(bundles.icml2022()):
             # ax[i,j].label_outer()
             count =+ 1
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
-    ax.set_title('4 States, 4 Counties, 2 Zipcodes, 4 Readings')
+    ax.set_title('4 States, 4 Counties, 4 Zipcodes, 2 Readings')
 
     ax.set_ylabel('Final Lower Bound')
 
 
     ax.set_xlabel('K')
     plt.legend()
-    plt.savefig('charts/chart_radon_alongzipcodes.png')
-    plt.savefig('charts/chart_radon_alongzipcodes.pdf')
+    plt.savefig('charts/chart_radon_alongreadings.png')
+    plt.savefig('charts/chart_radon_alongreadings.pdf')
