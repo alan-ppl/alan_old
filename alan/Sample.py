@@ -57,8 +57,10 @@ class Sample():
         """
         logps = self.trp.logp
         logqs = self.trp.logq
-        # print(logps)
-        # print(logqs)
+        print('Log Ps')
+        print(logps)
+        print('Log Qs')
+        print(logqs)
         if detach_p:
             logps = {n:lp.detach() for (n,lp) in logps.items()}
         if detach_q:
@@ -343,8 +345,8 @@ class SampleGlobal(Sample):
         """
         logps = self.trp.logp
         logqs = self.trp.logq
-        # print(logps)
-        # print(logqs)
+        print(logps)
+        print(logqs)
         if detach_p:
             logps = {n:lp.detach() for (n,lp) in logps.items()}
         if detach_q:
