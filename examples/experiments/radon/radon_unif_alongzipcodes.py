@@ -10,31 +10,32 @@ def generate_model(N,M,local,device):
     N = 4
     sizes = {'plate_state': M, 'plate_county':J, 'plate_zipcode':I, 'plate_reading':N}
 
+
     def P(tr):
-      '''
-      Hierarchical Model
-      '''
+        '''
+        Hierarchical Model
+        '''
 
-      tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
-      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
-      #state level
-      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']),plates='plate_state')
-      tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state')
+        tr.sample('sigma_beta', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)))
+        tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
+        #state level
+        tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta']),plates='plate_state')
+        tr.sample('sigma_alpha', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_state')
 
-      #county level
-      tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
-      tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']), plates = 'plate_county')
-      tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_county')
+        #county level
+        tr.sample('gamma', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates = 'plate_county')
+        tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha']), plates = 'plate_county')
+        tr.sample('sigma_omega', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_county')
 
-      #zipcode level
+        #zipcode level
 
-      tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']), plates='plate_zipcode')
-      tr.sample('sigma_obs', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode')
+        tr.sample('omega', alan.Normal(tr['alpha'], tr['sigma_omega']), plates='plate_zipcode')
+        tr.sample('sigma_obs', alan.Uniform(t.tensor(0.0).to(device), t.tensor(10.0).to(device)), plates='plate_zipcode')
 
-      #reading level
+        #reading level
 
-      tr.sample('psi_int', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_reading')
-      tr.sample('obs', alan.Normal(tr['omega'] + tr['psi_int']*tr['basement'], tr['sigma_obs']),plates='plate_reading')
+        tr.sample('psi_int', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_reading')
+        tr.sample('obs', alan.Normal(tr['omega'] + tr['psi_int']*tr['basement'], tr['sigma_obs']),plates='plate_reading')
 
 
 
@@ -42,9 +43,8 @@ def generate_model(N,M,local,device):
         def __init__(self):
             super().__init__()
             #statevariance
-            self.sigma_beta_p1 = nn.Parameter(t.tensor(0.00001))
-            self.sigma_beta_p2 = nn.Parameter(t.tensor(0.00001))
-            self.sigma_beta_mid =  nn.Parameter(t.tensor(5.0))
+            self.sigma_beta_low = nn.Parameter(t.tensor(0.00001).log())
+            self.sigma_beta_high = nn.Parameter(t.tensor(9.9999).log())
             #statemean
             self.mu_beta_mean = nn.Parameter(t.zeros(()))
             self.log_mu_beta_sigma = nn.Parameter(t.zeros(()))
@@ -53,83 +53,93 @@ def generate_model(N,M,local,device):
             self.beta_mu = nn.Parameter(t.zeros((M,),names=('plate_state',)))
             self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_state',)))
             #countyvariance
-            self.sigma_alpha_p1 = nn.Parameter(t.tensor([0.00001]*M, names=('plate_state',)))
-            self.sigma_alpha_p2 = nn.Parameter(t.tensor([0.00001]*M, names=('plate_state',)))
-            self.sigma_alpha_mid = nn.Parameter(t.tensor([5.0]*M, names=('plate_state',)))
+            self.sigma_alpha_low = nn.Parameter(t.tensor([0.00001]*M, names=('plate_state',)).log())
+            self.sigma_alpha_high = nn.Parameter(t.tensor([9.9999]*M, names=('plate_state',)).log())
 
             #w
-            self.gamma_p1 = nn.Parameter(t.tensor([0.00001]*J, names=('plate_county',)))
-            self.gamma_p2 = nn.Parameter(t.tensor([0.00001]*J, names=('plate_county',)))
-            self.gamma_mid = nn.Parameter(t.tensor([5.0]*J, names=('plate_county',)))
+            self.gamma_low = nn.Parameter(t.tensor([0.00001]*J, names=('plate_county',)).log())
+            self.gamma_high = nn.Parameter(t.tensor([9.9999]*J, names=('plate_county',)).log())
             #zipmean
             self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_state', 'plate_county')))
             self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_state', 'plate_county')))
             #zipvariance
-            self.sigma_omega_p1 = nn.Parameter(t.tensor([0.00001] * J, names=('plate_county',)))
-            self.sigma_omega_p2 = nn.Parameter(t.tensor([0.00001] * J, names=('plate_county',)))
-            self.sigma_omega_mid = nn.Parameter(t.tensor([5.0] * J, names=('plate_county',)))
+            self.sigma_omega_low = nn.Parameter(t.tensor([0.00001] * J, names=('plate_county',)).log())
+            self.sigma_omega_high = nn.Parameter(t.tensor([9.9999] * J, names=('plate_county',)).log())
 
             #readingmean
             self.omega_mu = nn.Parameter(t.zeros((M,J,I), names=('plate_state', 'plate_county', 'plate_zipcode')))
             self.log_omega_sigma = nn.Parameter(t.zeros((M,J,I), names=('plate_state', 'plate_county', 'plate_zipcode')))
 
             #readingvariance
-            self.sigma_obs_p1 = nn.Parameter(t.tensor([0.00001] * I, names=('plate_zipcode',)))
-            self.sigma_obs_p2 = nn.Parameter(t.tensor([0.00001] * I, names=('plate_zipcode',)))
-            self.sigma_obs_mid = nn.Parameter(t.tensor([5.0] * I, names=('plate_zipcode',)))
+            self.sigma_obs_low = nn.Parameter(t.tensor([0.00001] * I, names=('plate_zipcode',)).log())
+            self.sigma_obs_high = nn.Parameter(t.tensor([9.9999] * I, names=('plate_zipcode',)).log())
+
             #b
             self.psi_int_mu = nn.Parameter(t.zeros((N), names=('plate_reading',)))
             self.log_psi_int_sigma = nn.Parameter(t.zeros((N), names=('plate_reading',)))
 
-            self.high = t.tensor(10.0 - 1e-6).to(device)
-            self.low = t.tensor(0.0).to(device)
+            self.high = t.tensor(10.0).to(device)
+            self.low = t.tensor(0.0 + 1e-5).to(device)
 
         def forward(self, tr):
             #state level
             # sigma_beta_low = t.max(self.low, self.sigma_beta_low.exp())
             # sigma_beta_high = t.min(self.high, self.sigma_beta_high.exp())
-            sigma_beta_mid = t.max(self.low, self.sigma_beta_mid)
-            sigma_beta_low= t.max(self.low, sigma_beta_mid - self.sigma_beta_p1.exp())
-            sigma_beta_high= t.min(self.high, sigma_beta_mid + self.sigma_beta_p2.exp())
-            print(sigma_beta_mid)
-            print(sigma_beta_low)
-            # print('low')
-            # print(self.sigma_beta_low)
-            # print(sigma_beta_low)
-            # print('high')
-            # print(self.sigma_beta_high)
-            # print(sigma_beta_high)
+            sigma_beta_low_interval = interval(self.low, self.high)
+            sigma_beta_low = transform_to(sigma_beta_low_interval)(self.sigma_beta_low)
 
-            tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high), multi_sample=False if local else True)
+            sigma_beta_high_interval = interval(sigma_beta_low, self.high)
+            sigma_beta_high = transform_to(sigma_beta_high_interval)(self.sigma_beta_high)
+
+
+            tr.sample('sigma_beta', alan.Uniform(sigma_beta_low, sigma_beta_high))# multi_sample=False if local else True)
             tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else True)
-            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()), multi_sample=False if local else True)
+            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()))# multi_sample=False if local else True)
 
             #county level
-            gamma_mid = t.max(self.low, self.gamma_mid)
-            gamma_low= t.max(self.low, gamma_mid - self.gamma_p1.exp())
-            gamma_high= t.min(self.high, gamma_mid + self.gamma_p2.exp())
+            # gamma_low = t.max(self.low, self.gamma_low.exp())
+            # gamma_high = t.min(self.high, self.gamma_high.exp())
+            gamma_low_interval = interval(self.low, self.high)
+            gamma_low = transform_to(gamma_low_interval)(self.gamma_low)
 
-            sigma_alpha_mid = t.max(self.low, self.sigma_alpha_mid)
-            sigma_alpha_low= t.max(self.low, sigma_alpha_mid - self.sigma_alpha_p1.exp())
-            sigma_alpha_high= t.min(self.high, sigma_alpha_mid + self.sigma_alpha_p2.exp())
+            gamma_high_interval = interval(gamma_low, self.high)
+            gamma_high = transform_to(gamma_high_interval)(self.gamma_high)
 
-            tr.sample('gamma', alan.Uniform(gamma_low, gamma_high), multi_sample=False if local else True)
-            tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high), multi_sample=False if local else True)
-            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()), multi_sample=False if local else True)
+            # sigma_alpha_low = t.max(self.low, self.sigma_alpha_low.exp())
+            # sigma_alpha_high = t.min(self.high, self.sigma_alpha_high.exp())
+            # sigma_alpha_low = t.min(sigma_alpha_low, sigma_alpha_high - 0.001)
+            sigma_alpha_low_interval = interval(self.low, self.high)
+            sigma_alpha_low = transform_to(sigma_alpha_low_interval)(self.sigma_alpha_low)
+
+            sigma_alpha_high_interval = interval(sigma_alpha_low, self.high)
+            sigma_alpha_high = transform_to(sigma_alpha_high_interval)(self.sigma_alpha_high)
+            tr.sample('gamma', alan.Uniform(gamma_low, gamma_high))# multi_sample=False if local else True)
+            tr.sample('sigma_alpha', alan.Uniform(sigma_alpha_low, sigma_alpha_high))# multi_sample=False if local else True)
+            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))#, multi_sample=False if local else True)
 
             #zipcode level
-            sigma_omega_mid = t.max(self.low, self.sigma_omega_mid)
-            sigma_omega_low= t.max(self.low, sigma_omega_mid - self.sigma_omega_p1.exp())
-            sigma_omega_high= t.min(self.high, sigma_omega_mid + self.sigma_omega_p2.exp())
-            tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high), multi_sample=False if local else True)
-            tr.sample('omega', alan.Normal(self.omega_mu, self.log_omega_sigma.exp()))
+            # sigma_omega_low = t.max(self.low, self.sigma_omega_low.exp())
+            # sigma_omega_high = t.min(self.high, self.sigma_omega_high.exp())
+            # sigma_omega_low = t.min(sigma_omega_low, sigma_omega_high - 0.001)
+            sigma_omega_low_interval = interval(self.low, self.high)
+            sigma_omega_low = transform_to(sigma_omega_low_interval)(self.sigma_omega_low)
+
+            sigma_omega_high_interval = interval(sigma_omega_low, self.high)
+            sigma_omega_high = transform_to(sigma_omega_high_interval)(self.sigma_omega_high)
+            tr.sample('sigma_omega', alan.Uniform(sigma_omega_low, sigma_omega_high))#, multi_sample=False if local else True)
+            tr.sample('omega', alan.Normal(self.omega_mu, self.log_omega_sigma.exp()))# multi_sample=False if local else True)
 
             #reading level
-            sigma_obs_mid = t.max(self.low, self.sigma_obs_mid)
-            sigma_obs_low= t.max(self.low, sigma_obs_mid - self.sigma_obs_p1.exp())
-            sigma_obs_high= t.min(self.high, sigma_obs_mid + self.sigma_obs_p2.exp())
-            tr.sample('sigma_obs', alan.Uniform(sigma_obs_low, sigma_obs_high))
-            tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))
+            # sigma_obs_low = t.max(self.low, self.sigma_obs_low.exp())
+            # sigma_obs_high = t.min(self.high, self.sigma_obs_high.exp())
+            # sigma_obs_low = t.min(sigma_obs_low, sigma_obs_high - 0.001)
+            sigma_obs_low_interval = interval(self.low, self.high)
+            sigma_obs_low = transform_to(sigma_obs_low_interval)(self.sigma_obs_low)
+
+            sigma_obs_high_interval = interval(sigma_obs_low, self.high)
+            sigma_obs_high = transform_to(sigma_obs_high_interval)(self.sigma_obs_high)
+            tr.sample('sigma_obs', alan.Uniform(sigma_obs_low, sigma_obs_high))# multi_sample=False if local else True)
+            tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))# multi_sample=False if local else True)
 
     covariates = {'basement': t.load('radon/data/train_basement_alongzipcodes.pt').to(device),
         'county_uranium':t.load('radon/data/county_uranium.pt').rename('plate_state', 'plate_county').to(device)}

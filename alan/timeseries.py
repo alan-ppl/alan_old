@@ -7,10 +7,15 @@ class Timeseries():
         self.initial_state = initial_state
         self.transition = transition
         self._inputs = inputs
+        all_dims = set(generic_dims(initial_state)).union(generic_dims(transition(initial_state)))
+        self.dims = list(all_dims)
+
+
 
     def set_Tdim(self, Tdim):
         assert isinstance(Tdim, Dim)
         self.Tdim = Tdim
+        self.dims.append(Tdim)
 
     def input(self, t):
         if self._inputs is None:

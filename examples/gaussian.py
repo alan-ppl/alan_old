@@ -42,6 +42,11 @@ for i in range(10000):
     if 0 == i%1000:
         print(elbo.item())
 
+# Specify a path
+PATH = "state_dict_model.pt"
+
+# Save
+t.save(model.state_dict(), PATH)
 
 print("Approximate mu")
 print(model.Q.m_mu)

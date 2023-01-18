@@ -55,7 +55,7 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=10
 print("K={}".format(K))
-for i in range(20000):
+for i in range(1000):
     opt.zero_grad()
     elbo = model.elbo_tmc(K)
     (-elbo).backward()
@@ -63,3 +63,9 @@ for i in range(20000):
 
     if 0 == i%1000:
         print(elbo.item())
+
+# Specify a path
+PATH = "state_dict_model.pt"
+
+# Save
+t.save(model.state_dict(), PATH)

@@ -57,20 +57,21 @@ class Sample():
         """
         logps = self.trp.logp
         logqs = self.trp.logq
-
+        # print(logps)
+        # print(logqs)
         if detach_p:
             logps = {n:lp.detach() for (n,lp) in logps.items()}
         if detach_q:
             logqs = {n:lq.detach() for (n,lq) in logqs.items()}
 
         tensors = [*logps.values(), *[-lq for lq in logqs.values()], *extra_log_factors]
-
         ## Convert tensors to Float64
         tensors = [x.to(dtype=t.float64) for x in tensors]
 
         #iterate from lowest plate
         for plate_name in self.ordered_plate_dims[::-1]:
             tensors = self.sum_plate_T(tensors, plate_name)
+
 
         assert 1==len(tensors)
         lp = tensors[0]
@@ -342,15 +343,18 @@ class SampleGlobal(Sample):
         """
         logps = self.trp.logp
         logqs = self.trp.logq
-
+        # print(logps)
+        # print(logqs)
         if detach_p:
             logps = {n:lp.detach() for (n,lp) in logps.items()}
         if detach_q:
             logqs = {n:lq.detach() for (n,lq) in logqs.items()}
 
-        #tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
+
         tensors = [*logps.values(), *[-lq for lq in logqs.values()], *extra_log_factors]
+        # print(tensors)
         ## Convert tensors to Float64
+
         lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) - math.log(self.Kdim.size)
         return lpqs.logsumexp(self.Kdim)
 

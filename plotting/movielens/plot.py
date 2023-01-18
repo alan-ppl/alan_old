@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import json
 from tueplots import axes, bundles
 
-Ks = ['1','3','10','30']
+Ks = ['3','10','30']
 Ns = ['5','10']
 Ms = ['50','150','300']
 # with open('results.json') as f:
