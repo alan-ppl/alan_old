@@ -39,7 +39,6 @@ for M in Ms:
 
           tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
-          tr.sample('obs', alan.Bernoulli(logits = tr['z'] @ tr['x']))
 
 
         covariates = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).to(device)}
