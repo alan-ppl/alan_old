@@ -226,7 +226,7 @@ class TraceQTMC(AbstractTrace):
             logq   = mean_dims(dist.log_prob(sample).exp(), Ks).log()
 
         self.samples[key] = sample
-        self.logq[key] = logq + plus_log_K
+        self.logq[key] = (logq + plus_log_K)
 
 class TraceP(AbstractTrace):
     def __init__(self, trq, memory_diagnostics=False):
@@ -411,6 +411,7 @@ class TraceP(AbstractTrace):
             self.logq[key] = logq
 
         #Timeseries needs to know the Kdim, but other distributions ignore it.
+
         self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_Q_K else None)) + minus_log_K
 
 class TracePGlobal(TraceP):
@@ -436,7 +437,6 @@ class TracePGlobal(TraceP):
         if key not in self.data:
             self.samples[key] = sample
             self.logq[key] = self.trq.logq[key]
-
         self.logp[key] = dist.log_prob(sample)
 
 
