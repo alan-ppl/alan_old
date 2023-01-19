@@ -29,7 +29,7 @@ for M in Ms:
 
 
 
-        def P(tr):
+        def Q(tr):
           '''
           Heirarchical Model
           '''
@@ -52,7 +52,7 @@ for M in Ms:
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
         data['obs'] = data['obs'].rename('plate_1','plate_2')
 
-        model = alan.Model(P, P, data, covariates)
+        model = alan.Model(P, Q, data, covariates)
 
         Ks = [1,3,10,30]
 
