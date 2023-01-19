@@ -33,17 +33,26 @@ for M in Ms:
 
 
 
-        def Q(tr):
-          '''
-          Heirarchical Model
-          '''
+        class Q(alan.QModule):
+            def __init__(self):
+                super().__init__()
+                #mu_z
+                self.m_mu_z = nn.Parameter(t.zeros((d_z,)))
+                self.log_theta_mu_z = nn.Parameter(t.zeros((d_z,)))
+                #psi_z
+                self.m_psi_z = nn.Parameter(t.zeros((d_z,)))
+                self.log_theta_psi_z = nn.Parameter(t.zeros((d_z,)))
 
-          tr.sample('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-          tr.sample('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+                #z
+                self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
+                self.log_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
 
-          tr.sample('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
+            def forward(self, tr):
+                tr.sample('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+                tr.sample('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
 
+                tr.sample('z', alan.Normal(self.mu, self.log_sigma.exp()))
 
         covariates = {'x':t.load('data/weights_{0}_{1}.pt'.format(N,M)).to(device)}
         test_covariates = {'x':t.load('data/test_weights_{0}_{1}.pt'.format(N,M)).to(device)}
@@ -56,7 +65,7 @@ for M in Ms:
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
         data['obs'] = data['obs'].rename('plate_1','plate_2')
 
-        model = alan.Model(P, Q, data, covariates)
+        model = alan.Model(P, Q(), data, covariates)
 
         Ks = [1,3,10,30]# 3000]
 
