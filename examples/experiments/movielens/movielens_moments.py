@@ -4,6 +4,9 @@ import alan
 import time
 import numpy as np
 import json
+from alan.experiment_utils import seed_torch
+
+
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -15,6 +18,7 @@ for M in Ms:
     for N in Ns:
         sizes = {'plate_1':M, 'plate_2':N}
         d_z = 18
+        seed_torch(0)
         def P(tr):
           '''
           Heirarchical Model
@@ -54,7 +58,7 @@ for M in Ms:
 
         model = alan.Model(P, Q, data, covariates)
 
-        Ks = [1,3,10,30, 300]# 3000]
+        Ks = [1,3,10,30]# 3000]
 
         elbos = {k:[] for k in Ks}
         elbos_global = {k:[] for k in Ks}
