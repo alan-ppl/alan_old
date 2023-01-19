@@ -1,7 +1,7 @@
 * lots of repetition around platesize code for ML, ML2, Tilted etc.
 * store Ps rather than logps, in preparation for lazy efficient stuff.
 * sort out devices (give trace a device)
-  * trace has a device
+  * give dist(0, 1) a device.
 * simplify trp / trq
 * can we put set_T_dist into AbstractTrace?  (Problems with TracePred)
 * check: 

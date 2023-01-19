@@ -346,7 +346,7 @@ class TraceP(AbstractTraceP):
         values = values[plates]
         return values, Edim
 
-    def sample__(self, key, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
+    def sample__(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
         assert key not in self.logp
         if T is not None:
             dist.set_Tdim(self.platedims[T])
@@ -368,8 +368,6 @@ class TraceP(AbstractTraceP):
             #in the data, or because we sampled the variable in Q.
             if sum_discrete:
                 raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but we already have a sample of '{key}' drawn from Q.  If you're summing over a discrete latent variable, you shouldn't provide a proposal / approximate posterior for that variable.")
-            if delayed_Q is not None:
-                raise Exception("You have given a delayed_Q (which would allow us to use an approximate posterior that's a 'tilted' version of the prior, but we already have a sample of '{key}' drawn from Q.  We need one or the other!")
              
             sample = self.trq.get_stack_key(key)
             logq = self.trq.logq[key] if key in self.trq.samples else None
@@ -435,7 +433,7 @@ class TracePGlobal(TraceP):
         if isinstance(trq, TraceQTMC):
             self.Ks = trq.Ks
 
-    def sample__(self, key, dist, group=None, plates=(), T=None):
+    def sample__(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
         if T is not None:
             dist.set_Tdim(self.platedims[T])
 
@@ -541,7 +539,7 @@ class TracePred(AbstractTrace):
         dims_train.append(Ellipsis)
         return dims_all, dims_train
 
-    def sample__(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False, delayed_Q=None):
+    def sample__(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False):
         assert varname not in self.samples_all
         assert varname not in self.ll_all
         assert varname not in self.ll_train

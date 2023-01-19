@@ -375,8 +375,8 @@ class SampleGlobal(Sample):
         tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
 
         ## Convert tensors to Float64
-        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) - math.log(self.Kdim.size)
-        return lpqs.logsumexp(self.Kdim)
+        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors)
+        return lpqs.logsumexp(self.Kdim) - math.log(self.Kdim.size)
 
     @property
     def Kdim(self):
