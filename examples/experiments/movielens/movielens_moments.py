@@ -54,7 +54,7 @@ for M in Ms:
 
         model = alan.Model(P, Q, data, covariates)
 
-        Ks = [1,3,10,30]
+        Ks = [1,3,10,30, 300, 3000]
 
         elbos = {k:[] for k in Ks}
         elbos_global = {k:[] for k in Ks}
