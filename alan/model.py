@@ -100,11 +100,10 @@ class Model(nn.Module):
         #sample from approximate posterior
         trq = TraceQ(K, all_data, all_covariates, platedims, reparam)
         self.Q(trq)
-        # print(trq.logq)
         #compute logP
         trp = TraceP(trq, memory_diagnostics=memory_diagnostics)
         self.P(trp)
-        # print(trp.logp)
+
         return Sample(trp)
 
     def _sample_global(self, K, reparam, data, covariates):
@@ -123,11 +122,10 @@ class Model(nn.Module):
         #sample from approximate posterior
         trq = TraceQ(K, all_data, all_covariates, platedims, reparam)
         self.Q(trq)
-        # print(trq.logq)
         #compute logP
         trp = TracePGlobal(trq)
         self.P(trp)
-        # print(trp.logp)
+
         return SampleGlobal(trp)
 
     def _sample_tmc(self, K, reparam, data, covariates):
