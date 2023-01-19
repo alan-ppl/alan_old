@@ -45,7 +45,7 @@ def generate_model(N,M,local,device):
     test_covariates = {'x':t.load('movielens/data/test_weights_{0}_{1}.pt'.format(N,M)).to(device)}
     all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']],-2).rename('plate_1','plate_2',...)}
     covariates['x'] = covariates['x'].rename('plate_1','plate_2',...)
-    
+
 
     data = {'obs':t.load('movielens/data/data_y_{0}_{1}.pt'.format(N, M)).to(device)}
     test_data = {'obs':t.load('movielens/data/test_data_y_{0}_{1}.pt'.format(N, M)).to(device)}
