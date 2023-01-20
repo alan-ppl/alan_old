@@ -11,6 +11,7 @@ import numpy as np
 import time
 seed_torch(2)
 
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 N = 51
 
