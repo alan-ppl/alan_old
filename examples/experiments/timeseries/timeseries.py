@@ -67,15 +67,15 @@ for k in Ks:
     elbos_tmc[k] = {'mean':np.mean(elbos_tmc[k]), 'std_err':np.std(elbos_tmc[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_tmc[k]), 'time_std_err':np.std(times_tmc[k])/np.sqrt(num_runs)}
     elbos_global[k] = {'mean':np.mean(elbos_global[k]), 'std_err':np.std(elbos_global[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_global[k]), 'time_std_err':np.std(times_global[k])/np.sqrt(num_runs)}
 
-file = 'timeseries_elbo_tmc_new.json'
+file = 'results/timeseries_elbo_tmc_new.json'
 with open(file, 'w') as f:
     json.dump(elbos, f)
 
-file = 'timeseries_elbo_tmc.json'
+file = 'results/timeseries_elbo_tmc.json'
 with open(file, 'w') as f:
     json.dump(elbos_tmc, f)
 
-file = 'timeseries_elbo_global.json'
+file = 'results/timeseries_elbo_global.json'
 with open(file, 'w') as f:
     json.dump(elbos_global, f)
 
