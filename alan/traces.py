@@ -1,4 +1,6 @@
 import math
+import functools
+import operator
 from warnings import warn
 import torch as t
 import torch.distributions as td
@@ -279,7 +281,12 @@ class TraceQTMC_new(AbstractTrace):
             plates = self.filter_platedims(sample.dims)
             Ks = [dim for dim in sample.dims if (dim in self.Ks)]
             # idxs = [Categorical(t.ones(self.K)/self.K).sample(False, sample_dims=[Kdim, *plates]) for K in Ks]
-            idxs = [t.randperm(self.K)[Kdim] for K in Ks]
+            # idxs = [t.randperm(self.K)[Kdim] for K in Ks]
+
+            shapes = [plate.size for plate in plates] + [self.K]
+            ndim = functools.reduce(operator.mul, shapes, 1)
+            dims = plates + [Kdim]
+            idxs = [t.multinomial(t.ones(ndim), ndim).reshape(shapes).argsort()[dims] for K in Ks]
             sample = sample.order(*Ks)[idxs]
             logq   = mean_dims(dist.log_prob(sample).exp(), Ks).log()
 

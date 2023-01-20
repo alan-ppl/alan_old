@@ -3,9 +3,9 @@ import torch.nn as nn
 import alan
 t.manual_seed(0)
 
-J = 1
-M = 1
-N = 1
+J = 2
+M = 3
+N = 4
 platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 def P(tr):
 
@@ -79,7 +79,7 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 # print(elbo_tmc)
 K=10
 print("K={}".format(K))
-for i in range(5000):
+for i in range(10000):
     opt.zero_grad()
     elbo = model.elbo_tmc_new(K)
     (-elbo).backward()
