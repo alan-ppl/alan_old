@@ -32,8 +32,8 @@ def Q(tr):
 
 data = alan.sample(P, varnames=('obs',))
 model = alan.Model(P, Q, data)
-
-Ks=[1,3,10,30,300, 1000]
+model.to(device)
+Ks=[1,3,10,30,300]
 #Ks=[1]
 elbos = {k:[] for k in Ks}
 elbos_tmc = {k:[] for k in Ks}

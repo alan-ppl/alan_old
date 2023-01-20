@@ -59,7 +59,7 @@ for M in Ms:
         model = alan.Model(P, Q, data, covariates)
         model.to(device)
 
-        Ks = [1,3,10,30, 100]# 3000]
+        Ks = [1,3,10,30]# 3000]
 
         elbos = {k:[] for k in Ks}
         elbos_tmc = {k:[] for k in Ks}
