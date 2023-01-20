@@ -278,7 +278,7 @@ class TraceQTMC_new(AbstractTrace):
         if 0 < nks:
             plates = self.filter_platedims(sample.dims)
             Ks = [dim for dim in sample.dims if (dim in self.Ks)]
-            idxs = [Categorical(t.ones(self.K)/self.K).sample(False, sample_dims=[Kdim, *plates]) for K in Ks]
+            # idxs = [Categorical(t.ones(self.K)/self.K).sample(False, sample_dims=[Kdim, *plates]) for K in Ks]
             idxs = [t.randperm(self.K)[Kdim] for K in Ks]
             sample = sample.order(*Ks)[idxs]
             logq   = mean_dims(dist.log_prob(sample).exp(), Ks).log()
