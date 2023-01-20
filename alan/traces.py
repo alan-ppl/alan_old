@@ -228,6 +228,76 @@ class TraceQTMC(AbstractTrace):
         self.samples[key] = sample
         self.logq[key] = logq + plus_log_K
 
+
+class TraceQTMC_new(AbstractTrace):
+    def __init__(self, K, data, covariates, platedims, reparam):
+        super().__init__()
+        self.K = K
+
+        self.data = data
+        self.covariates = covariates
+        self.platedims = platedims
+
+        self.reparam = reparam
+
+        self.samples = {}
+        self.logq = {}
+
+        self.groupname2dim = {}
+        self.Ks     = set()
+
+
+    def sample(self, key, dist, group=None, plates=(), T=None, multi_sample=False):
+        if T is not None:
+            dist.set_Tdim(self.platedims[T])
+
+        #grouped K's
+        if (group is not None):
+            #new group of K's
+            if (group not in self.groupname2dim):
+                self.groupname2dim[group] = Dim(f"K_{group}", self.trq.Kdim.size)
+            Kdim = self.groupname2dim[group]
+            assert Kdim.size == self.trq.Kdim.size
+        #non-grouped K's
+        else:
+            Kdim = Dim(f"K_{key}", self.K)
+
+        plus_log_K = 0.
+        if Kdim not in self.Ks:
+            #New K-dimension.
+            plus_log_K = math.log(self.K)
+            self.Ks.add(Kdim)
+
+        sample_dims = platenames2platedims(self.platedims, plates)
+        nks = sum((dim in self.Ks) for dim in dist.dims)
+        if nks == 0:
+            sample_dims = (Kdim, *sample_dims)
+        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        logq = dist.log_prob(sample)
+
+        if 0 < nks:
+            plates = self.filter_platedims(sample.dims)
+            Ks = [dim for dim in sample.dims if (dim in self.Ks)]
+            idxs = [Categorical(t.ones(self.K)/self.K).sample(False, sample_dims=[Kdim, *plates]) for K in Ks]
+            # print(idxs)
+            # print(self.K)
+            # print([t.randperm(self.K)[Kdim] for K in Ks])
+            # idxs = [t.randperm(self.K, requires_grad=True)[Kdim] for K in Ks]
+            # print(idxs)
+            #
+            # # print(idxs)
+            # sample = sample.order(*Ks)[idxs]
+            idxs = [t.randperm(self.K)[Kdim] for K in Ks]
+            # print(idxs)
+
+            sample = sample.order(*Ks)[idxs]
+
+            logq   = mean_dims(dist.log_prob(sample).exp(), Ks).log()
+
+
+        self.samples[key] = sample
+        self.logq[key] = logq + plus_log_K
+
 class TraceP(AbstractTrace):
     def __init__(self, trq, memory_diagnostics=False):
         self.trq = trq
@@ -420,7 +490,7 @@ class TracePGlobal(TraceP):
     """
     def __init__(self, trq, memory_diagnostics=False):
         super().__init__(trq)
-        if isinstance(trq, TraceQTMC):
+        if isinstance(trq, TraceQTMC) or isinstance(trq, TraceQTMC_new):
             self.Ks = trq.Ks
 
     def sample(self, key, dist, group=None, plates=(), T=None):

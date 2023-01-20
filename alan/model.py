@@ -1,6 +1,6 @@
 from warnings import warn
 import torch.nn as nn
-from .traces import TraceQ, TraceP, TracePred, TracePGlobal, TraceQTMC
+from .traces import TraceQ, TraceP, TracePred, TracePGlobal, TraceQTMC, TraceQTMC_new
 from .Sample import Sample, SampleGlobal
 from .utils import *
 from .ml  import ML
@@ -103,7 +103,8 @@ class Model(nn.Module):
         #compute logP
         trp = TraceP(trq, memory_diagnostics=memory_diagnostics)
         self.P(trp)
-
+        # print(trp.logp)
+        # print(trp.logq)
         return Sample(trp)
 
     def _sample_global(self, K, reparam, data, covariates):
@@ -150,6 +151,29 @@ class Model(nn.Module):
 
         return Sample(trp)
 
+
+    def _sample_tmc_new(self, K, reparam, data, covariates):
+        if data is None:
+            data = {}
+        if covariates is None:
+            covariates = {}
+        platedims = extend_plates_with_named_tensors(self.platedims, data.values())
+        data = named2dim_tensordict(platedims, data)
+        covariates = named2dim_tensordict(platedims, covariates)
+
+        all_data = {**self.data, **data}
+
+        all_covariates = {**self.covariates, **covariates}
+
+        #sample from approximate posterior
+        trq = TraceQTMC_new(K, all_data, all_covariates, platedims, reparam)
+        self.Q(trq)
+        #compute logP
+        trp = TracePGlobal(trq)
+        self.P(trp)
+
+        return Sample(trp)
+
     def elbo(self, K, data=None, covariates=None, reparam=True):
         """Compute the ELBO.
         Args:
@@ -177,8 +201,14 @@ class Model(nn.Module):
     def elbo_tmc(self, K, data=None, covariates=None, reparam=True):
         return self._sample_tmc(K, reparam, data, covariates).elbo()
 
+    def elbo_tmc_new(self, K, data=None, covariates=None, reparam=True):
+        return self._sample_tmc_new(K, reparam, data, covariates).elbo()
+
     def rws_tmc(self, K, data=None, covariates=None):
         return self._sample_tmc(K, False, data, covariates).rws()
+
+    def rws_tmc_new(self, K, data=None, covariates=None):
+        return self._sample_tmc_new(K, False, data, covariates).rws()
 
     def rws(self, K, data=None, covariates=None):
         """Compute RWS objectives
@@ -267,6 +297,24 @@ class Model(nn.Module):
         self.P(tr)
         return tr, N
 
+    def _predictive_tmc(self, K, N, data_all=None, covariates_all=None, platesizes_all=None):
+        sample = self._sample_tmc(K, False, None, None)
+
+        N = Dim('N', N)
+        post_samples = sample._importance_samples(N)
+        tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.covariates, covariates_all, sample.trp.platedims, platesizes_all)
+        self.P(tr)
+        return tr, N
+
+    def _predictive_tmc_new(self, K, N, data_all=None, covariates_all=None, platesizes_all=None):
+        sample = self._sample_tmc_new(K, False, None, None)
+
+        N = Dim('N', N)
+        post_samples = sample._importance_samples(N)
+        tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.covariates, covariates_all, sample.trp.platedims, platesizes_all)
+        self.P(tr)
+        return tr, N
+
     def predictive_samples(self, K, N, platesizes_all=None):
         if platesizes_all is None:
             platesizes_all = {}
@@ -277,15 +325,19 @@ class Model(nn.Module):
         #Convert everything to named
         return trace_pred.samples_all
 
-    def predictive_ll(self, K, N, data_all, covariates_all={}, global_k=False):
+    def predictive_ll(self, K, N, data_all, covariates_all={}, sample_method='MP'):
         """
         Run as (e.g. for plated_linear_gaussian.py)
 
         >>> obs = t.randn((4, 6, 8), names=("plate_1", "plate_2", "plate_3"))
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
         """
-        if global_k:
+        if sample_method=='global_k':
             trace_pred, N = self._predictive_global(K, N, data_all, covariates_all, None)
+        elif sample_method == 'tmc':
+            trace_pred, N = self._predictive_tmc(K, N, data_all, covariates_all, None)
+        elif sample_method == 'tmc_new':
+            trace_pred, N = self._predictive_tmc_new(K, N, data_all, covariates_all, None)
         else:
             trace_pred, N = self._predictive(K, N, data_all, covariates_all, None)
         lls_all   = trace_pred.ll_all

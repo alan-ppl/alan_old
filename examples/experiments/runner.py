@@ -88,8 +88,14 @@ def run_experiment(cfg):
             objs.append(np.mean(per_seed_obj[-50:]))
             times.append((time.time() - start)/cfg.training.num_iters)
             if cfg.training.pred_ll.do_pred_ll and not cfg.local:
-                global_K = True if cfg.training.inference_method in ['elbo_global', 'rws_global'] else False
-                pred_likelihood = model.predictive_ll(K = K, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, covariates_all = all_covariates, global_k=global_K)
+                if cfg.training.inference_method == 'rws_tmc':
+                    sample_method = 'tmc'
+                elif cfg.training.inference_method == 'rws_tmc_new':
+                    sample_method = 'tmc_new'
+                else:
+                    sample_method = 'global_k'
+                sample_method = {''}
+                pred_likelihood = model.predictive_ll(K = K, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, covariates_all = all_covariates, sample_method=sample_method)
                 pred_liks.append(pred_likelihood['obs'].item())
             else:
                 pred_liks.append(0)

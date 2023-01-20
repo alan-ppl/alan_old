@@ -35,42 +35,43 @@ opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
 K=25
 
-elbos = []
-elbos_tmc = []
-for i in range(100):
-    t.manual_seed(i)
-    elbos.append(model.elbo(K))
-    model = alan.Model(P, Q(), data)
-    elbos_tmc.append(model.elbo_tmc(K))
+# elbos = []
+# elbos_tmc = []
+# for i in range(100):
+#     t.manual_seed(i)
+#     elbos.append(model.elbo(K))
+#     model = alan.Model(P, Q(), data)
+#     elbos_tmc.append(model.elbo_tmc(K))
+#
+# print(sum(elbos)/100)
+# print(sum(elbos_tmc)/100)
+print("K={}".format(K))
+for i in range(10000):
+    opt.zero_grad()
+    elbo = model.elbo_tmc_new(K)
+    # print(elbo)
+    (-elbo).backward()
+    opt.step()
 
-print(sum(elbos)/100)
-print(sum(elbos_tmc)/100)
-# print("K={}".format(K))
-# for i in range(10000):
-#     opt.zero_grad()
-#     elbo = model.elbo(K)
-#     (-elbo).backward()
-#     opt.step()
-#
-#     if 0 == i%1000:
-#         print(elbo.item())
+    if 0 == i%1000:
+        print(elbo.item())
 
 
-#
-# print("Approximate mu")
-# print(model.Q.m_mu)
-#
-# print("Approximate Covariance")
-# print(model.Q.log_s_mu.exp()**2)
-#
-# b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),data['obs'].reshape(-1,1))
-# A_n = t.inverse(t.eye(5) + t.eye(5))
-#
-# print("True mu")
-# print(b_n)
-#
-# print("True covariance")
-# print(t.diag(A_n))
+
+print("Approximate mu")
+print(model.Q.m_mu)
+
+print("Approximate Covariance")
+print(model.Q.log_s_mu.exp()**2)
+
+b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),data['obs'].reshape(-1,1))
+A_n = t.inverse(t.eye(5) + t.eye(5))
+
+print("True mu")
+print(b_n)
+
+print("True covariance")
+print(t.diag(A_n))
 #
 #
 # print('Moments')

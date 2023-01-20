@@ -276,6 +276,8 @@ def reduce_Ks(tensors, Ks_to_sum):
     maxes = [max_dims(tensor, Ks_to_sum) for tensor in tensors]
     # add a tiny amount for numerical stability
     tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
+    # print(Ks_to_sum)
+    # print(tensors_minus_max)
     result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 
     #if 0<len(Ks_to_sum):
@@ -320,7 +322,7 @@ def torchdim_einsum(tensors, sum_dims):
     assert all(not is_dimtensor(tensor) for tensor in undim_tensors)
 
     einsum_args = [val for pair in zip(undim_tensors, arg_idxs) for val in pair] + [out_idxs]
-
+    # print(einsum_args)
     result = t.einsum(*einsum_args)
     if 0 < len(out_dims):
         result = result[out_dims]

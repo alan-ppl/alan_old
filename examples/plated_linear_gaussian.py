@@ -3,15 +3,20 @@ import torch.nn as nn
 import alan
 t.manual_seed(0)
 
-J = 2
-M = 3
-N = 4
+J = 1
+M = 1
+N = 1
 platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 def P(tr):
+
     tr.sample('a',   alan.Normal(t.zeros(()), 1))
+
     tr.sample('b',   alan.Normal(tr['a'], 1))
+
     tr.sample('c',   alan.Normal(tr['b'], 1), plates='plate_1')
+
     tr.sample('d',   alan.Normal(tr['c'], 1), plates='plate_2')
+
     tr.sample('obs', alan.Normal(tr['d'], 1), plates='plate_3')
 
 class Q(alan.QModule):
@@ -34,6 +39,7 @@ class Q(alan.QModule):
 
 
     def forward(self, tr):
+
         tr.sample('a', alan.Normal(self.m_a, self.log_s_a.exp()))
 
         mean_b = self.w_b * tr['a'] + self.b_b
@@ -45,6 +51,16 @@ class Q(alan.QModule):
         mean_d = self.w_d * tr['c'] + self.b_d
         tr.sample('d', alan.Normal(mean_d, self.log_s_d.exp()))
 
+# def Q(tr):
+#
+#     tr.sample('a',   alan.Normal(t.zeros(()), 1))
+#
+#     tr.sample('b',   alan.Normal(tr['a'], 1))
+#
+#     tr.sample('c',   alan.Normal(tr['b'], 1), plates='plate_1')
+#
+#     tr.sample('d',   alan.Normal(tr['c'], 1), plates='plate_2')
+
 
 
 
@@ -53,19 +69,27 @@ model = alan.Model(P, Q(), {'obs': data['obs']})
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
+# elbo = 0
+# elbo_tmc = 0
+# for i in range(100):
+#     elbo += model.elbo(100)/100
+#     elbo_tmc += model.elbo_tmc(100)/100
+#
+# print(elbo)
+# print(elbo_tmc)
 K=10
 print("K={}".format(K))
-for i in range(1000):
+for i in range(5000):
     opt.zero_grad()
-    elbo = model.elbo_tmc(K)
+    elbo = model.elbo_tmc_new(K)
     (-elbo).backward()
     opt.step()
 
     if 0 == i%1000:
         print(elbo.item())
 
-# Specify a path
-PATH = "state_dict_model.pt"
-
-# Save
-t.save(model.state_dict(), PATH)
+# # Specify a path
+# PATH = "state_dict_model.pt"
+#
+# # Save
+# t.save(model.state_dict(), PATH)

@@ -66,7 +66,8 @@ for M in Ms:
         data['obs'] = data['obs'].rename('plate_1','plate_2')
 
         model = alan.Model(P, Q(), data, covariates)
-
+        model.to(device)
+        
         Ks = [1,3,10,30]# 3000]
 
         elbos = {k:[] for k in Ks}
