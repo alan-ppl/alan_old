@@ -61,43 +61,43 @@ for M in Ms:
 
         Ks = [1,3,10,30, 100]# 3000]
 
-elbos = {k:[] for k in Ks}
-elbos_tmc = {k:[] for k in Ks}
-elbos_global = {k:[] for k in Ks}
+        elbos = {k:[] for k in Ks}
+        elbos_tmc = {k:[] for k in Ks}
+        elbos_global = {k:[] for k in Ks}
 
-times = {k:[] for k in Ks}
-times_tmc = {k:[] for k in Ks}
-times_global = {k:[] for k in Ks}
+        times = {k:[] for k in Ks}
+        times_tmc = {k:[] for k in Ks}
+        times_global = {k:[] for k in Ks}
 
 
-for k in Ks:
-    num_runs = 1000
-    for i in range(num_runs):
-        start = time.time()
-        elbos[k].append(model.elbo_tmc_new(k).item()/num_runs)
-        end = time.time()
-        times[k].append(end-start)
-        start = time.time()
-        elbos_tmc[k].append(model.elbo_tmc(k).item()/num_runs)
-        end = time.time()
-        times_tmc[k].append(end-start)
-        start = time.time()
-        elbos_global[k].append(model.elbo_global(k).item()/num_runs)
-        end = time.time()
-        times_global[k].append(end-start)
+        for k in Ks:
+            num_runs = 1000
+            for i in range(num_runs):
+                start = time.time()
+                elbos[k].append(model.elbo_tmc_new(k).item()/num_runs)
+                end = time.time()
+                times[k].append(end-start)
+                start = time.time()
+                elbos_tmc[k].append(model.elbo_tmc(k).item()/num_runs)
+                end = time.time()
+                times_tmc[k].append(end-start)
+                start = time.time()
+                elbos_global[k].append(model.elbo_global(k).item()/num_runs)
+                end = time.time()
+                times_global[k].append(end-start)
 
-    elbos[k] = {'mean':np.mean(elbos[k]), 'std_err':np.std(elbos[k])/np.sqrt(num_runs), 'time_mean':np.mean(times[k]), 'time_std_err':np.std(times[k])/np.sqrt(num_runs)}
-    elbos_tmc[k] = {'mean':np.mean(elbos_tmc[k]), 'std_err':np.std(elbos_tmc[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_tmc[k]), 'time_std_err':np.std(times_tmc[k])/np.sqrt(num_runs)}
-    elbos_global[k] = {'mean':np.mean(elbos_global[k]), 'std_err':np.std(elbos_global[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_global[k]), 'time_std_err':np.std(times_global[k])/np.sqrt(num_runs)}
+            elbos[k] = {'mean':np.mean(elbos[k]), 'std_err':np.std(elbos[k])/np.sqrt(num_runs), 'time_mean':np.mean(times[k]), 'time_std_err':np.std(times[k])/np.sqrt(num_runs)}
+            elbos_tmc[k] = {'mean':np.mean(elbos_tmc[k]), 'std_err':np.std(elbos_tmc[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_tmc[k]), 'time_std_err':np.std(times_tmc[k])/np.sqrt(num_runs)}
+            elbos_global[k] = {'mean':np.mean(elbos_global[k]), 'std_err':np.std(elbos_global[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_global[k]), 'time_std_err':np.std(times_global[k])/np.sqrt(num_runs)}
 
-file = 'results/movielens_elbo_tmc_new.json'
-with open(file, 'w') as f:
-    json.dump(elbos, f)
+        file = 'results/movielens_elbo_tmc_new_N{0}_M{1}.json'.format(N,M)
+        with open(file, 'w') as f:
+            json.dump(elbos, f)
 
-file = 'results/movielens_elbo_tmc.json'
-with open(file, 'w') as f:
-    json.dump(elbos_tmc, f)
+        file = 'results/movielens_elbo_tmc_N{0}_M{1}.json'.format(N,M)
+        with open(file, 'w') as f:
+            json.dump(elbos_tmc, f)
 
-file = 'results/movielens_elbo_global.json'
-with open(file, 'w') as f:
-    json.dump(elbos_global, f)
+        file = 'results/movielens_elbo_global_N{0}_M{1}.json'.format(N,M)
+        with open(file, 'w') as f:
+            json.dump(elbos_global, f)
