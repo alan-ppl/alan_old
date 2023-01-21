@@ -94,7 +94,7 @@ def run_experiment(cfg):
                     sample_method = 'tmc_new'
                 else:
                     sample_method = 'global_k'
-                sample_method = {''}
+
                 pred_likelihood = model.predictive_ll(K = K, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, covariates_all = all_covariates, sample_method=sample_method)
                 pred_liks.append(pred_likelihood['obs'].item())
             else:

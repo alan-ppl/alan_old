@@ -21,7 +21,7 @@ def P(tr):
     # print(tr['ts_1'])
     for i in range(2,N+1):
         tr.sample('ts_{}'.format(i), alan.Normal(tr['ts_{}'.format(i-1)], var))
-        # print(tr['ts_{}'.format(i)])
+        print('ts_{}'.format(i))
     tr.sample('obs', alan.Normal(tr['ts_{}'.format(N)], 1.0))
 
 def Q(tr):
