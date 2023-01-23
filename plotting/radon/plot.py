@@ -4,7 +4,8 @@ import matplotlib
 import json
 from tueplots import axes, bundles, figsizes
 
-Ks = ['1','3','10','30']
+#Ks = ['1','3','10','30']
+Ks = ['3','10','30']
 Ns = ['2']
 Ms = ['2']
 # with open('results.json') as f:
@@ -15,7 +16,7 @@ Ms = ['2']
 
 
 plt.rcParams.update(bundles.icml2022())
-plt.rcParams.update(figsizes.icml2022_half())
+# plt.rcParams.update(figsizes.icml2022_half())
 count = 0
 fig, ax = plt.subplots(1,1)
 for i in range(len(Ns)):
@@ -50,7 +51,7 @@ for i in range(len(Ns)):
 
         ax.errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
         ax.errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TMC')
-        ax.errorbar(Ks,elbos_tmc_new, yerr=stds_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='TMC_NEW')
+        ax.errorbar(Ks,elbos_tmc_new, yerr=stds_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='TMC Multinomial')
         ax.errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Global K')
         #
         # ax.set_ylabel('Final Lower Bound')
