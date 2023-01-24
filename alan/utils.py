@@ -1,8 +1,8 @@
+import math
 import torch as t
 from functorch.dim import Tensor, Dim
 
 #### Utilities for working with torchdims
-
 def sum_non_dim(x):
     """
     Sums over all non-torchdim dimensions.
@@ -279,23 +279,22 @@ def reduce_Ks(tensors, Ks_to_sum):
     result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 
     #if 0<len(Ks_to_sum):
-    #    result = result - t.log(t.tensor([K.size for K in Ks_to_sum])).sum().to(device=result.device)
+    #result = result - sum(math.log(K.size) for K in Ks_to_sum) #t.log(t.tensor([K.size for K in Ks_to_sum])).sum()#.to(device=result.device)
+    breakpoint()
     return sum([result, *maxes])
 
 def max_dims(x, dims):
-    """
-    Note that this _keeps_ dims, and maxes over everything else, which
-    goes against the usual convention
-    """
-
     #Ignore dims that aren't in the tensors
     set_xdims = set(generic_dims(x))
     dims = [dim for dim in dims if dim in set_xdims]
-
-    if 0==len(dims):
-        return x
-    else:
-        return generic_order(x, dims).flatten(0, len(dims)-1).max(0).values
+    if 0!=len(dims):
+        x = x.order(dims).max(0).values
+    return x
+#
+#    if 0==len(dims):
+#        return x
+#    else:
+#        return generic_order(x, dims).flatten(0, len(dims)-1).max(0).values
 
 def torchdim_einsum(tensors, sum_dims):
     #There shouldn't be any non-torchdim dimensions.
