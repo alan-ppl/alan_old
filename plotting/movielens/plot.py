@@ -52,10 +52,10 @@ with plt.rc_context(bundles.icml2022()):
 
 
 
-            ax[i,j].errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
-            ax[i,j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TMC')
-            ax[i,j].errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Global K')
-            ax[i,j].errorbar(Ks,elbos_tmc_new, yerr=stds_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC_new')
+            # ax[i,j].errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
+            # ax[i,j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TMC')
+            ax[i,j].errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='Global K')
+            ax[i,j].errorbar(Ks,elbos_tmc_new, yerr=stds_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Permutation TMC')
 
 
             count =+ 1

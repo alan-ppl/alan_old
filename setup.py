@@ -17,6 +17,7 @@ setup(
     'scipy',
     'tqdm',
     'hydra',
+    'tensorboard',
     ],
     include_package_data = True,
     platforms = "any",

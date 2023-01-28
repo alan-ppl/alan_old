@@ -49,10 +49,10 @@ for i in range(len(Ns)):
         stds_global_K = [results_global_K[N][M][k]['final_obj_std']/np.sqrt(5) for k in Ks]
 
 
-        ax.errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
-        ax.errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TMC')
-        ax.errorbar(Ks,elbos_tmc_new, yerr=stds_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='TMC Multinomial')
-        ax.errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Global K')
+        # ax.errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
+        # ax.errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TMC')
+        ax.errorbar(Ks,elbos_tmc_new, yerr=stds_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Permutation TMC')
+        ax.errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='Global K')
         #
         # ax.set_ylabel('Final Lower Bound')
         # ax.set_xlabel('K')

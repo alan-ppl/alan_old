@@ -1,5 +1,6 @@
 import torch as t
 import torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
 import alan
 
 import os
@@ -36,6 +37,7 @@ print('...', flush=True)
 @hydra.main(version_base=None, config_path='config', config_name='conf')
 def run_experiment(cfg):
     print(cfg)
+    writer = SummaryWriter(log_dir='runs/' + cfg.dataset + '/' + cfg.model + '/')
     device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
     results_dict = {}
@@ -81,12 +83,12 @@ def run_experiment(cfg):
                 opt.step()
                 scheduler.step()
                 per_seed_obj.append(obj.item())
+                writer.add_scalar('Objective/Run number {}/{}'.format(i, K), obj.item(), j)
                 if 0 == j%1000:
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,obj.item()))
 
 
-            objs.append(np.mean(per_seed_obj[-50:]))
-            times.append((time.time() - start)/cfg.training.num_iters)
+
             if cfg.training.pred_ll.do_pred_ll and not cfg.local:
                 if cfg.training.inference_method == 'rws_tmc':
                     sample_method = 'tmc'
@@ -99,6 +101,10 @@ def run_experiment(cfg):
                 pred_liks.append(pred_likelihood['obs'].item())
             else:
                 pred_liks.append(0)
+            objs.append(np.mean(per_seed_obj[-50:]))
+            times.append((time.time() - start)/cfg.training.num_iters)
+            writer.add_scalar('Time/Run number {}'.format(i,K), times[-1], K)
+            writer.add_scalar('Predictive Log Likelihood/Run number {}'.format(i,K), pred_liks[-1], K)
 
             ###
             # SAVING MODELS DOESN'T WORK YET
