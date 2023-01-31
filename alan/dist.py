@@ -2,6 +2,7 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import dims, Tensor
 from alan.utils import *
+from .TruncatedNormal import TruncatedNormal
 
 def univariate(*names):
     return ({name: 0 for name in names}, 0)
@@ -38,6 +39,7 @@ param_event_ndim = {
     #"LogitRelaxedBernoulli":     univariate("temperature", "probs", "logits"),
     "RelaxedOneHotCategorical":  ({"temperature": 0, "probs": 1, "logits": 1}, 0),
     "StudentT":                  univariate("df", "loc", "scale"),
+    "TruncatedNormal":           univariate("loc", "scale", "a", "b"),
     "Uniform":                   univariate("low", "high"),
     "VonMises":                  univariate("loc", "concentration"),
     "Weibull":                   univariate("scale", "concentration"),
@@ -128,7 +130,10 @@ class TorchDimDist():
         return self.log_prob(x)
 
 for dn in param_event_ndim:
-    globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': getattr(td, dn)})
+    if dn == 'TruncatedNormal':
+        globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': TruncatedNormal})
+    else:
+        globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': getattr(td, dn)})
 
 
 if __name__ == "__main__":

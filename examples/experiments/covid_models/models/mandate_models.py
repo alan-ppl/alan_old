@@ -148,10 +148,9 @@ class ConfirmationDelayMandateModel(nn.Module):
                 infected_cases = T.reshape(infected_cases, (1, len(df_city)))
 
                 # convolve with delay to produce expectations
-                expected_cases = t.conv2d(
+                expected_cases = t.nn.Functional.conv2d(
                   infected_cases,
                   reporting_delay,
-                  border_mode="full"
                 )[0, :len(df_city)]
 
                 # By using pm.Data we can change these values after sampling.
