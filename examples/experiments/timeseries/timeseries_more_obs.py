@@ -49,22 +49,25 @@ def pfilter(K):
     # obs_samples = []
     logps = []
 
-    samples.append(dist.Normal(0, 1/math.sqrt(N)).sample((K,)))
+    samples.append(dist.Normal(0, var).sample((K,)))
     for i in range(2,N+1):
         if i % 3 == 0:
-            samp = dist.Normal(samples[-1], 1/math.sqrt(N)).sample()
+            samp = dist.Normal(samples[-1], var).sample()
             logp = dist.Normal(samp, 1).log_prob(data['obs_{}'.format(i // 3)])
+            logps.append(t.logsumexp(logp, dim=0) - math.log(K))
             idxs = dist.Categorical(logits=logp).sample(sample_shape=(K,))
-            samp = dist.Normal(samples[-1][idxs], 1/math.sqrt(N)).sample()
+            samp = dist.Normal(samples[-1][idxs], var).sample()
             samples.append(samp)
-            logps.append(dist.Normal(samples[-1], 1).log_prob(data['obs_{}'.format(i // 3)]))
+
+            # logps.append(t.logsumexp(dist.Normal(samples[-1], 1).log_prob(data['obs_{}'.format(i // 3)]), dim=0) - math.log(K))
         else:
             idxs = dist.Categorical(t.ones(K)/K).sample(sample_shape=(K,))
-            samples.append(dist.Normal(samples[-1][idxs], 1/math.sqrt(N)).sample())
+            samples.append(dist.Normal(samples[-1][idxs], var).sample())
         # idxs = dist.Categorical(t.ones(K)/K).sample(sample_shape=(K,))
 
+    num_obs = len(logps)
 
-    return t.logsumexp(sum(logps), dim=0) - math.log(K)
+    return sum(logps) #- math.log(K**num_obs)
 
 ## Running exps
 Ks=[3,10,30,100,300]
