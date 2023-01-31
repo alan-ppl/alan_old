@@ -23,7 +23,7 @@ def P(tr):
     for i in range(2,N+1):
         tr.sample('ts_{}'.format(i), alan.Normal(tr['ts_{}'.format(i-1)], var))
         if i % 3 == 0:
-            tr.sample('obs_{}'.format(i//3), alan.Normal(tr['ts_{}'.format(i)], var))
+            tr.sample('obs_{}'.format(i//3), alan.Normal(tr['ts_{}'.format(i)], 1))
 
 
 def Q(tr):
