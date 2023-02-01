@@ -192,7 +192,7 @@ class TraceQTMC(AbstractTrace):
         self.Ks     = set()
 
 
-    def sample(self, key, dist, group=None, plates=(), T=None, multi_sample=False):
+    def sample(self, key, dist, group=None, plates=(), T=None, multi_sample=True):
         if T is not None:
             dist.set_Tdim(self.platedims[T])
 
@@ -207,8 +207,9 @@ class TraceQTMC(AbstractTrace):
         else:
             Kdim = Dim(f"K_{key}", self.K)
 
+        Kdim = Kdim if multi_sample else ()
         plus_log_K = 0.
-        if Kdim not in self.Ks:
+        if Kdim not in self.Ks and Kdim != ():
             #New K-dimension.
             plus_log_K = math.log(self.K)
             self.Ks.add(Kdim)
@@ -216,7 +217,11 @@ class TraceQTMC(AbstractTrace):
         sample_dims = platenames2platedims(self.platedims, plates)
         nks = sum((dim in self.Ks) for dim in dist.dims)
         if nks == 0:
-            sample_dims = (Kdim, *sample_dims)
+            if multi_sample:
+                sample_dims = (Kdim, *sample_dims)
+            else:
+                sample_dims = (*Kdim, *sample_dims)
+
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         logq = dist.log_prob(sample)
 
@@ -247,9 +252,9 @@ class TraceQTMC_new(AbstractTrace):
 
         self.groupname2dim = {}
         self.Ks     = set()
+        self.no_multi_sample_Ks = set()
 
-
-    def sample(self, key, dist, group=None, plates=(), T=None, multi_sample=False):
+    def sample(self, key, dist, group=None, plates=(), T=None, multi_sample=True):
         if T is not None:
             dist.set_Tdim(self.platedims[T])
 
@@ -262,32 +267,45 @@ class TraceQTMC_new(AbstractTrace):
             assert Kdim.size == self.trq.Kdim.size
         #non-grouped K's
         else:
-            Kdim = Dim(f"K_{key}", self.K)
+            Kdim = Dim(f"K_{key}", self.K) if multi_sample else ()
+
+
 
         plus_log_K = 0.
-        if Kdim not in self.Ks:
+        if Kdim not in self.Ks and multi_sample:
             #New K-dimension.
-            plus_log_K = math.log(self.K)
+            plus_log_K = math.log(Kdim.size)
             self.Ks.add(Kdim)
+
+
 
         sample_dims = platenames2platedims(self.platedims, plates)
         nks = sum((dim in self.Ks) for dim in dist.dims)
+
         if nks == 0:
-            sample_dims = (Kdim, *sample_dims)
+            if multi_sample:
+                sample_dims = (Kdim, *sample_dims)
+            else:
+                sample_dims = (*Kdim, *sample_dims)
+
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         logq = dist.log_prob(sample)
+
 
         if 0 < nks:
             plates = self.filter_platedims(sample.dims)
             Ks = [dim for dim in sample.dims if (dim in self.Ks)]
+            #mean_Ks = [dim for dim in sample.dims if (dim in self.no_multi_sample_Ks)]
             # idxs = [Categorical(t.ones(self.K)/self.K).sample(False, sample_dims=[Kdim, *plates]) for K in Ks]
             # idxs = [t.randperm(self.K)[Kdim] for K in Ks]
 
-            shapes = [plate.size for plate in plates] + [self.K]
+            shapes = [plate.size for plate in plates] + [Kdim.size]
+
             ndim = functools.reduce(operator.mul, shapes, 1)
             dims = plates + [Kdim]
             idxs = [t.multinomial(t.ones(ndim), ndim).reshape(shapes).argsort()[dims] for K in Ks]
             sample = sample.order(*Ks)[idxs]
+
             logq   = mean_dims(dist.log_prob(sample).exp(), Ks).log()
 
 
