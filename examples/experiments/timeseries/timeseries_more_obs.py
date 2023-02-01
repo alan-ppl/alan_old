@@ -75,15 +75,15 @@ Ks=[3,10,30,100,300]
 elbos = {k:[] for k in Ks}
 elbos_tmc = {k:[] for k in Ks}
 elbos_particle = {k:[] for k in Ks}
+elbos_global = {k:[] for k in Ks}
+
 
 times = {k:[] for k in Ks}
 times_tmc = {k:[] for k in Ks}
 times_particle = {k:[] for k in Ks}
+times_global = {k:[] for k in Ks}
 
 for k in Ks:
-
-
-    # elbos = []
     num_runs = 250
     for i in range(num_runs):
         start = time.time()
@@ -100,11 +100,15 @@ for k in Ks:
         elbos_particle[k].append(pfilter(k).item())
         end = time.time()
         times_particle[k].append(end-start)
+        start = time.time()
+        elbos_global[k].append(model.elbo_global(k).item())
+        end = time.time()
+        times_global[k].append(end-start)
 
     elbos[k] = {'mean':np.mean(elbos[k]), 'std_err':np.std(elbos[k])/np.sqrt(num_runs), 'time_mean':np.mean(times[k]), 'time_std_err':np.std(times[k])/np.sqrt(num_runs)}
     elbos_tmc[k] = {'mean':np.mean(elbos_tmc[k]), 'std_err':np.std(elbos_tmc[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_tmc[k]), 'time_std_err':np.std(times_tmc[k])/np.sqrt(num_runs)}
     elbos_particle[k] = {'mean':np.mean(elbos_particle[k]), 'std_err':np.std(elbos_particle[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_particle[k]), 'time_std_err':np.std(times_particle[k])/np.sqrt(num_runs)}
-
+    elbos_global[k] = {'mean':np.mean(elbos_global[k]), 'std_err':np.std(elbos_global[k])/np.sqrt(num_runs), 'time_mean':np.mean(times_global[k]), 'time_std_err':np.std(times_global[k])/np.sqrt(num_runs)}
 
 file = 'results/timeseries_more_obs_elbo_tmc_new.json'
 with open(file, 'w') as f:
@@ -117,3 +121,7 @@ with open(file, 'w') as f:
 file = 'results/timeseries_more_obs_elbo_particle.json'
 with open(file, 'w') as f:
     json.dump(elbos_particle, f)
+
+file = 'results/timeseries_more_obs_elbo_global.json'
+with open(file, 'w') as f:
+    json.dump(elbos_global, f)

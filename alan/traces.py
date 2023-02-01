@@ -205,11 +205,10 @@ class TraceQTMC(AbstractTrace):
             assert Kdim.size == self.trq.Kdim.size
         #non-grouped K's
         else:
-            Kdim = Dim(f"K_{key}", self.K)
+            Kdim = Dim(f"K_{key}", self.K) if multi_sample else ()
 
-        Kdim = Kdim if multi_sample else ()
         plus_log_K = 0.
-        if Kdim not in self.Ks and Kdim != ():
+        if Kdim not in self.Ks and multi_sample:
             #New K-dimension.
             plus_log_K = math.log(self.K)
             self.Ks.add(Kdim)
