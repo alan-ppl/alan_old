@@ -5,7 +5,7 @@ import alan
 def generate_model(N,M,local,device):
     M = 2
     J = 3
-    I = 10
+    I = 120
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
     covariates = {'run_type': t.load('bus_breakdown/data/run_type_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
