@@ -21,7 +21,7 @@ with plt.rc_context(bundles.icml2022()):
         for j in range(len(Ms)):
             N = Ns[i]
             M = Ms[j]
-            with open('results/movielens/elbo_LIW_N{0}_M{1}.json'.format(N,M)) as f:
+            with open('results/movielens/elbo_tmc_new_LIW_N{0}_M{1}.json'.format(N,M)) as f:
                 results_IW = json.load(f)
 
             with open('results/movielens/elbo_tmc_N{0}_M{1}.json'.format(N,M)) as f:
@@ -53,7 +53,7 @@ with plt.rc_context(bundles.icml2022()):
 
 
             ax[i,j].errorbar(Ks,elbos_IW, yerr=stds_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='LIW')
-            # ax[i,j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TMC')
+            ax[i,j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TMC')
             ax[i,j].errorbar(Ks,elbos_global_K, yerr=stds_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='Globally Importance Weighted')
             ax[i,j].errorbar(Ks,elbos_tmc_new, yerr=stds_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Massively Parallel')
 

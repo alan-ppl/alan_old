@@ -30,8 +30,9 @@ with plt.rc_context(bundles.icml2022()):
 
             with open('results/movielens_discrete/rws_tmc_new_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws_tmc_new = json.load(f)
-            # with open('results/movielens_results_tmc_rws_N{0}_M{1}.json'.format(N,M)) as f:
-            #     results_rws_tmc = json.load(f)
+
+            with open('results/movielens_discrete/rws_tmc_new_LIW_N{0}_M{1}.json'.format(N,M)) as f:
+                results_IW = json.load(f)
 
 
 
@@ -44,18 +45,14 @@ with plt.rc_context(bundles.icml2022()):
             elbos_rws_global_k = [results_rws_global_k[N][M][k]['pred_likelihood'] for k in Ks]
             stds_rws_global_k = [results_rws_global_k[N][M][k]['pred_likelihood_std']/np.sqrt(5) for k in Ks]
 
-            # elbos_rws_tmc = [results_rws_tmc[N][M][k]['pred_mean'] for k in Ks]
-            # stds_rws_tmc = [results_rws_tmc[N][M][k]['pred_std']/np.sqrt(5) for k in Ks]
-            #
-            # print(elbos_rws)
-            # print(elbos_rws_global_k)
-            ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Globally Importance Weighted RWS')
-            # ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS')
-            ax[i,j].errorbar(Ks,elbos_rws_tmc_new, yerr=stds_rws_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS Multinomial')
-            # ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='TMC RWS')
-            # ax.set_ylabel('Final Lower Bound')
-            # ax.set_xlabel('K')
-            # ax[i,j].label_outer()
+            elbos_rws_IW = [results_IW[N][M][k]['pred_likelihood'] for k in Ks]
+            stds_rws_IW = [results_IW[N][M][k]['pred_likelihood_std']/np.sqrt(5) for k in Ks]
+
+            ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='Globally Importance Weighted RWS')
+            ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS')
+            ax[i,j].errorbar(Ks,elbos_rws_tmc_new, yerr=stds_rws_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Massively Parallel RWS')
+            # ax[i,j].errorbar(Ks,elbos_rws_IW, yerr=stds_rws_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='RWS LIW')
+
             count =+ 1
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
     ax[0,0].set_title('Number of users = 50')

@@ -89,7 +89,7 @@ def run_experiment(cfg):
 
 
 
-            if cfg.training.pred_ll.do_pred_ll and not cfg.local:
+            if cfg.training.pred_ll.do_pred_ll:
                 if cfg.training.inference_method == 'rws_tmc':
                     sample_method = 'tmc'
                 elif cfg.training.inference_method == 'rws_tmc_new':

@@ -21,10 +21,9 @@ def get_data():
 
 M = 3
 J = 3
-I = 10
+I = 120
 
 df = get_data()
-
 # df = data.pivot(index='School_Year', columns='Busbreakdown_ID', values='How_Long_Delayed').fillna(0)
 
 
