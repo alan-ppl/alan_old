@@ -3,7 +3,7 @@ import torch.nn as nn
 import alan
 
 def generate_model(N,M,local,device):
-    M = 2
+    M = 3
     J = 3
     I = 120
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
