@@ -26,13 +26,13 @@ def generate_model(N,M,local,device):
       '''
 
       #Year level
-      tr.sample('sigma_beta', alan.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)), plates = 'plate_Year', multi_sample=False if local else True)
-      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_Year', multi_sample=False if local else True)
-      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), multi_sample=False if local else True)
+      tr.sample('sigma_beta', alan.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)), plates = 'plate_Year')
+      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_Year')
+      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()))
 
       #Borough level
-      tr.sample('sigma_alpha', alan.Categorical(t.tensor([0.1,0.4,0.05,0.5,0.05]).to(device)), plates = 'plate_Borough', multi_sample=False if local else True)
-      tr.sample('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()), multi_sample=False if local else True)
+      tr.sample('sigma_alpha', alan.Categorical(t.tensor([0.1,0.4,0.05,0.5,0.05]).to(device)), plates = 'plate_Borough')
+      tr.sample('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
 
       #ID level
       tr.sample('log_sigma_phi_psi', alan.Categorical(t.tensor([0.1,0.4,0.5,0.05,0.05]).to(device)), plates = 'plate_ID')
@@ -75,13 +75,13 @@ def generate_model(N,M,local,device):
         def forward(self, tr):
             #Year level
 
-            tr.sample('sigma_beta', alan.Categorical(logits=self.sigma_beta_logits))
-            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()))
-            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()))
+            tr.sample('sigma_beta', alan.Categorical(logits=self.sigma_beta_logits), multi_sample=False if local else True)
+            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else True)
+            tr.sample('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()), multi_sample=False if local else True)
 
             #Borough level
-            tr.sample('sigma_alpha', alan.Categorical(logits=self.sigma_alpha_logits))
-            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))
+            tr.sample('sigma_alpha', alan.Categorical(logits=self.sigma_alpha_logits), multi_sample=False if local else True)
+            tr.sample('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()), multi_sample=False if local else True)
 
             #ID level
             tr.sample('log_sigma_phi_psi', alan.Categorical(logits=self.log_sigma_phi_psi_logits))

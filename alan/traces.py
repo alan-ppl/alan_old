@@ -251,7 +251,6 @@ class TraceQTMC_new(AbstractTrace):
 
         self.groupname2dim = {}
         self.Ks     = set()
-        self.no_multi_sample_Ks = set()
 
     def sample(self, key, dist, group=None, plates=(), T=None, multi_sample=True):
         if T is not None:
