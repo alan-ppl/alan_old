@@ -3,23 +3,26 @@ import torch.nn as nn
 import alan
 
 def generate_model(N,M,local,device):
-    M = 2
+    M = 3
     J = 3
-    I = 100
+    I = 60
+
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
     covariates = {'run_type': t.load('bus_breakdown/data/run_type_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
         'bus_company_name': t.load('bus_breakdown/data/bus_company_name_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
     test_covariates = {'run_type': t.load('bus_breakdown/data/run_type_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
         'bus_company_name': t.load('bus_breakdown/data/bus_company_name_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
-    all_covariates = {'run_type': t.vstack([covariates['run_type'],test_covariates['run_type']]),
-        'bus_company_name': t.vstack([covariates['bus_company_name'],test_covariates['bus_company_name']])}
+    all_covariates = {'run_type': t.cat([covariates['run_type'],test_covariates['run_type']],-2),
+        'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],-2)}
 
     data = {'obs':t.load('bus_breakdown/data/delay_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
     test_data = {'obs':t.load('bus_breakdown/data/delay_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
-    all_data = {'obs': t.vstack([data['obs'],test_data['obs']])}
+    all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
+    run_type_dim = covariates['run_type'].shape[-1]
+
     def P(tr):
       '''
       Hierarchical Model
@@ -36,7 +39,7 @@ def generate_model(N,M,local,device):
 
       #ID level
       tr.sample('log_sigma_phi_psi', alan.Categorical(t.tensor([0.1,0.4,0.5,0.05,0.05]).to(device)), plates = 'plate_ID')
-      tr.sample('psi', alan.Normal(t.zeros((5,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
+      tr.sample('psi', alan.Normal(t.zeros((run_type_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       tr.sample('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       tr.sample('obs', alan.NegativeBinomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))
 
@@ -63,8 +66,8 @@ def generate_model(N,M,local,device):
             #log_sigma_phi_psi logits
             self.log_sigma_phi_psi_logits = nn.Parameter(t.randn((I,5), names=('plate_ID',None)))
             #psi
-            self.psi_mean = nn.Parameter(t.zeros((I,5), names=('plate_ID',None)))
-            self.log_psi_sigma = nn.Parameter(t.zeros((I,5), names=('plate_ID',None)))
+            self.psi_mean = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
+            self.log_psi_sigma = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
             #phi
             self.phi_mean = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
             self.log_phi_sigma = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
@@ -87,10 +90,6 @@ def generate_model(N,M,local,device):
             tr.sample('log_sigma_phi_psi', alan.Categorical(logits=self.log_sigma_phi_psi_logits))
             tr.sample('psi', alan.Normal(self.psi_mean, self.log_psi_sigma.exp()))
             tr.sample('phi', alan.Normal(self.phi_mean, self.log_phi_sigma.exp()))
-
-
-
-
 
 
     return P, Q, data, covariates, all_data, all_covariates

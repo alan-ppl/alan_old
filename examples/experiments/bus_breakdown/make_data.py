@@ -88,12 +88,14 @@ Bus_Company_Name = pd.get_dummies(df['Bus_Company_Name']).to_numpy()
 
 
 run_type = run_type.reshape(M, J, I, -1)
-bus_company_name = Bus_Company_Name.reshape(M, J, I, -1)
-delay = delay.reshape(M, J, I)
-t.save(t.from_numpy(run_type)[:,:,:,:100], 'data/run_type_train.pt')
-t.save(t.from_numpy(bus_company_name)[:,:,:,:100], 'data/bus_company_name_train.pt')
-t.save(t.from_numpy(delay)[:,:,:100], 'data/delay_train.pt')
 
-t.save(t.from_numpy(run_type)[:,:,:,100:], 'data/run_type_test.pt')
-t.save(t.from_numpy(bus_company_name)[:,:,:,100:], 'data/bus_company_name_test.pt')
-t.save(t.from_numpy(delay)[:,:,100:], 'data/delay_test.pt')
+bus_company_name = Bus_Company_Name.reshape(M, J, I, -1)
+
+delay = delay.reshape(M, J, I)
+t.save(t.from_numpy(run_type)[:,:,:I//2,:], 'data/run_type_train.pt')
+t.save(t.from_numpy(bus_company_name)[:,:,:I//2,:], 'data/bus_company_name_train.pt')
+t.save(t.from_numpy(delay)[:,:,:I//2], 'data/delay_train.pt')
+
+t.save(t.from_numpy(run_type)[:,:,I//2:,:], 'data/run_type_test.pt')
+t.save(t.from_numpy(bus_company_name)[:,:,I//2:,:], 'data/bus_company_name_test.pt')
+t.save(t.from_numpy(delay)[:,:,I//2:], 'data/delay_test.pt')
