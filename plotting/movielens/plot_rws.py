@@ -49,7 +49,7 @@ with plt.rc_context(bundles.icml2022()):
             #
             # print(elbos_rws)
             # print(elbos_rws_global_k)
-            ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Global K RWS')
+            ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Globally Importance Weighted RWS')
             # ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS')
             ax[i,j].errorbar(Ks,elbos_rws_tmc_new, yerr=stds_rws_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS Multinomial')
             # ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='TMC RWS')

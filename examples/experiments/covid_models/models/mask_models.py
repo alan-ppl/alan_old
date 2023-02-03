@@ -9,72 +9,54 @@ import alan
 import numpy as np
 import math
 
-from epi_params import EpidemiologicalParameters
+from .epi_params import EpidemiologicalParameters
 # from epimodel.pymc3_distributions.asymmetric_laplace import AsymmetricLaplace
 
+def model_data(data):
+    """
+    Extract useful information for the models from the data
+    i.e nRs, nDs
+    """
+    observed_active = []
+    nRs = len(data.Rs)
+    nDs = len(data.Ds)
+    nCMs = len(data.CMs)
+    for r in range(nRs):
+        for d in range(nDs):
+            # if its not masked, after the cut, and not before 100 confirmed
+            if (
+                data.NewCases.mask[r, d] == False
+                # and d > self.CMDelayCut
+                and not np.isnan(data.Confirmed.data[r, d])
+            ):
+                observed_active.append(r * nDs + d)
+            else:
+                data.NewCases.mask[r, d] = True
+
+    all_observed_active = np.array(observed_active)
+    return all_observed_active, nRs, nDs, nCMs
 
 class RandomWalkMobilityModel(nn.Module):
-    def __init__(self):
+    def __init__(self,all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs, proposal=False):
         """
         Constructor.
 
-        :param data: PreprocessedData object
-        :param cm_plot_style: NPI data
-        :param name: model name
-        :param model: required for PyMC3, but never used.
         """
         super().__init__()
-        self.d = data
-        self.trace = None
-        # self.CMDelayCut = 30
+        self.nRs = nRs
+        self.nDs = nDs
+        self.nCMs = nCMs
+        self.all_observed_active = all_observed_active
+        self.ActiveCMs = ActiveCMs
+        self.CMs = CMs
 
-        # compute days to actually observe, looking at the data which is masked, and which isn't.
-        # indices of active country-days in the 1D Rs*Ds vector
-        observed_active = []
-
-        for r in range(self.nRs):
-            for d in range(self.nDs):
-                # if its not masked, after the cut, and not before 100 confirmed
-                if (
-                    self.d.NewCases.mask[r, d] == False
-                    # and d > self.CMDelayCut
-                    and not np.isnan(self.d.Confirmed.data[r, d])
-                ):
-                    observed_active.append(r * self.nDs + d)
-                else:
-                    self.d.NewCases.mask[r, d] = True
-        print(len(observed_active))
-        self.all_observed_active = np.array(observed_active)
-
-    @property
-    def nRs(self):
-        """
-
-        :return: number of regions / countries
-        """
-        return len(self.d.Rs)
-
-    @property
-    def nDs(self):
-        """
-
-        :return: number of days
-        """
-        return len(self.d.Ds)
-
-    @property
-    def nCMs(self):
-        """
-
-        :return: number of countermeasures
-        """
-        return len(self.d.CMs)
 
     def forward(
         self,
+        tr,
         r_walk_period=7,
         r_walk_noise_scale_prior=0.15,
-        intervention_prior="AL",
+        intervention_prior="Gauss",
         cm_prior_scale=10,
         wearing_parameterisation="exp",
         wearing_mean=0,
@@ -103,7 +85,6 @@ class RandomWalkMobilityModel(nn.Module):
         mobility_leaveout=False,
         mob_and_wearing_only=False,
         **kwargs,
-        tr
     ):
         """
         Build PyMC3 model.
@@ -128,7 +109,7 @@ class RandomWalkMobilityModel(nn.Module):
 
         # Ensure mobility feature is in the right place
         mob_feature = "avg_mobility_no_parks_no_residential"
-        assert self.d.CMs[-2] == mob_feature
+        assert self.CMs[-2] == mob_feature
 
         # build NPI Effectiveness priors
         if wearing_parameterisation is None:
@@ -142,10 +123,10 @@ class RandomWalkMobilityModel(nn.Module):
                 pass
             else:
                 tr.sample('CM_Alpha', alan.Normal(
-                    mu=0, sigma=cm_prior_scale), plates='plate_CM_alpha', shape=(self.nCMs - 1,)
+                    0, cm_prior_scale), plates='plate_CM_alpha', shape=(self.nCMs - 1,)
                 )
         else:
-            assert self.d.CMs[-1] == "percent_mc"
+            assert self.CMs[-1] == "percent_mc"
             if intervention_prior == "AL":
                 # tr.sample('CM_Alpha', alan.AsymmetricLaplace(
                 #     scale=cm_prior_scale,
@@ -156,62 +137,62 @@ class RandomWalkMobilityModel(nn.Module):
                 pass
             else:
                 tr.sample('CM_Alpha', alan.Normal(
-                    mu=0, sigma=cm_prior_scale), plates='plate_CM_alpha', shape=(self.nCMs - 2,)
+                    0, cm_prior_scale), plates='plate_CM_alpha',
                 )
 
-        tr['CMReduction'] = T.exp((-1.0) * tr['CM_Alpha'])
+        self.CMReduction = t.exp((-1.0) * tr['CM_Alpha'])
 
         # prior specification for wearing options:
         if wearing_parameterisation == "exp":
-            tr.sample("Wearing_Alpha", alan.Normal(mu=wearing_mean, sigma=wearing_sigma), #shape=(1,)
+            tr.sample("Wearing_Alpha", alan.Normal(wearing_mean, wearing_sigma), #shape=(1,)
             )
-            tr['WearingReduction'] = T.exp((-1.0) * tr['Wearing_Alpha'])
+            self.WearingReduction = t.exp((-1.0) * tr['Wearing_Alpha'])
         if wearing_parameterisation == "log_linear":
-            tr.sample("Wearing_Alpha", alan.Normal(mu=wearing_mean_linear, sigma=wearing_sigma_linear), #shape=(1,)
+            tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_linear, wearing_sigma_linear), #shape=(1,)
             )
-            tr['WearingReduction'] = 1.0 - tr['Wearing_Alpha']
+            self.WearingReduction = 1.0 - tr['Wearing_Alpha']
         if wearing_parameterisation == "log_quadratic":
-            tr.sample("Wearing_Alpha", alan.Normal(mu=wearing_mean_quadratic, sigma=wearing_sigma_quadratic), #shape=(1,)
+            tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(1,)
             )
-            tr['WearingReduction'] = 1.0 - 2.0 * tr['Wearing_Alpha']
+            self.WearingReduction = 1.0 - 2.0 * tr['Wearing_Alpha']
         if wearing_parameterisation == "log_quadratic_2":
-            tr.sample("Wearing_Alpha", alan.Normal(mu=wearing_mean_quadratic, sigma=wearing_sigma_quadratic), #shape=(2,)
+            tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(2,)
             )
-            tr['WearingReduction'] = 1.0 - tr['Wearing_Alpha'][0] - tr['Wearing_Alpha'][1]
+            self.WearingReduction = 1.0 - tr['Wearing_Alpha'][0] - tr['Wearing_Alpha'][1]
         tr.sample('Mobility_Alpha', alan.Normal(
-            mu=mobility_mean, sigma=mobility_sigma), # shape=(1,)
+            mobility_mean, mobility_sigma), # shape=(1,)
         )
-        tr['MobilityReduction'] = (2.0 * (T.exp(-1.0 * tr['Mobility_Alpha']))) / (1.0 + T.exp(-1.0 * tr['Mobility_Alpha']))
+        self.MobilityReduction = (2.0 * (t.exp(-1.0 * tr['Mobility_Alpha']))) / (1.0 + t.exp(-1.0 * tr['Mobility_Alpha']))
 
-        self.sample("HyperRMean", alan.TruncatedNormal(
-            mu=R_prior_mean_mean, sigma=R_prior_mean_scale, lower=0.1
+        tr.sample("HyperRMean", alan.TruncatedNormal(
+            R_prior_mean_mean, R_prior_mean_scale, a=0.1
         ))
 
-        tr.sample("HyperRVar", alan.HalfNormal(sigma=R_noise_scale))
+        tr.sample("HyperRVar", alan.HalfNormal(R_noise_scale))
 
-        tr.sample("RegionR_noise", alan.Normal(0, 1), plates='nRs')# shape=(self.nRs,))
-        tr['RegionR'] = tr['HyperRMean'] + tr['RegionR_noise'] * tr['HyperRVar']
+        tr.sample("RegionR_noise", alan.Normal(0, 1), plates='plate_RegionR')# shape=(self.nRs,))
+        self.RegionR = tr['HyperRMean'] + tr['RegionR_noise'] * tr['HyperRVar']
 
 
         # load CMs active without wearing, compute log-R reduction and region log-R based on NPIs active
         if wearing_parameterisation is not None:
             #DATA
-            self.ActiveCMs = self.d.ActiveCMs[:, :-2, :]
-            self.ActiveCMs = self.d.ActiveCMs[:, :-2, :]
+            self.ActiveCMs = self.ActiveCMs[:, :-2, :]
+            self.ActiveCMs = self.ActiveCMs[:, :-2, :]
             self.ActiveCMReduction = (
-                T.reshape(tr['CM_Alpha'], (1, self.nCMs - 2, 1)) * self.ActiveCMs
+                t.reshape(tr['CM_Alpha'], (1, self.nCMs - 2, 1)) * self.ActiveCMs
             )
 
-            self.ActiveCMs_wearing = self.d.ActiveCMs[:, -1, :]
+            self.ActiveCMs_wearing = self.ActiveCMs[:, -1, :]
 
         else:
-            self.ActiveCMs = self.d.ActiveCMs[:, :-1, :]
+            self.ActiveCMs = self.ActiveCMs[:, :-1, :]
 
             self.ActiveCMReduction = (
-                T.reshape(tr['CM_Alpha'], (1, self.nCMs - 1, 1)) * self.ActiveCMs
+                t.reshape(tr['CM_Alpha'], (1, self.nCMs - 1, 1)) * self.ActiveCMs
             )
 
-        growth_reduction = T.sum(self.ActiveCMReduction, axis=1)
+        growth_reduction = t.sum(self.ActiveCMReduction, axis=1)
 
         if mob_and_wearing_only:
             growth_reduction = 0
@@ -219,64 +200,64 @@ class RandomWalkMobilityModel(nn.Module):
         # calculating reductions for each of the wearing parameterisations
         if wearing_parameterisation == "exp":
             #DATA
-            self.ActiveCMReduction_wearing = T.reshape(
+            self.ActiveCMReduction_wearing = t.reshape(
                 tr['Wearing_Alpha'], (1, 1, 1)
-            ) * T.reshape(
+            ) * t.reshape(
                 self.ActiveCMs_wearing,
-                (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
             )
-            growth_reduction_wearing = T.sum(self.ActiveCMReduction_wearing, axis=1)
+            growth_reduction_wearing = t.sum(self.ActiveCMReduction_wearing, axis=1)
 
         if wearing_parameterisation == "log_linear":
-            self.ActiveCMReduction_wearing = T.reshape(
+            self.ActiveCMReduction_wearing = t.reshape(
                 tr['Wearing_Alpha'], (1, 1, 1)
-            ) * T.reshape(
+            ) * t.reshape(
                 self.ActiveCMs_wearing,
-                (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
             )
             eps = 10 ** (-20)
-            growth_reduction_wearing = -1.0 * T.log(
-                T.nnet.relu(1.0 - T.sum(self.ActiveCMReduction_wearing, axis=1))
+            growth_reduction_wearing = -1.0 * t.log(
+                t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
                 + eps
             )
 
         if wearing_parameterisation == "log_quadratic":
             self.ActiveCMReduction_wearing = (
-                T.reshape(tr['Wearing_Alpha'], (1, 1, 1))
-                * T.reshape(
+                t.reshape(tr['Wearing_Alpha'], (1, 1, 1))
+                * t.reshape(
                     self.ActiveCMs_wearing,
-                    (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
                 )
-                + T.reshape(tr['Wearing_Alpha'], (1, 1, 1))
-                * T.reshape(
+                + t.reshape(tr['Wearing_Alpha'], (1, 1, 1))
+                * t.reshape(
                     self.ActiveCMs_wearing,
-                    (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
                 )
                 ** 2
             )
             eps = 10 ** (-20)
-            growth_reduction_wearing = -1.0 * T.log(
-                T.nnet.relu(1.0 - T.sum(self.ActiveCMReduction_wearing, axis=1))
+            growth_reduction_wearing = -1.0 * t.log(
+                t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
                 + eps
             )
 
         if wearing_parameterisation == "log_quadratic_2":
             self.ActiveCMReduction_wearing = (
-                T.reshape(tr['Wearing_Alpha'][0], (1, 1, 1))
-                * T.reshape(
+                t.reshape(tr['Wearing_Alpha'][0], (1, 1, 1))
+                * t.reshape(
                     self.ActiveCMs_wearing,
-                    (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
                 )
-                + T.reshape(tr['Wearing_Alpha'][1], (1, 1, 1))
-                * T.reshape(
+                + t.reshape(tr['Wearing_Alpha'][1], (1, 1, 1))
+                * t.reshape(
                     self.ActiveCMs_wearing,
-                    (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
                 )
                 ** 2
             )
             eps = 10 ** (-20)
-            growth_reduction_wearing = -1.0 * T.log(
-                T.nnet.relu(1.0 - T.sum(self.ActiveCMReduction_wearing, axis=1))
+            growth_reduction_wearing = -1.0 * t.log(
+                t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
                 + eps
             )
         if wearing_parameterisation is None:
@@ -285,20 +266,20 @@ class RandomWalkMobilityModel(nn.Module):
             pm.Deterministic("growth_reduction_wearing", growth_reduction_wearing)
 
         # make reduction for mobility
-        self.ActiveCMs_mobility =  self.d.ActiveCMs[:, -2, :]
+        self.ActiveCMs_mobility =  self.ActiveCMs[:, -2, :]
 
 
-        self.ActiveCMReduction_mobility = T.reshape(
+        self.ActiveCMReduction_mobility = t.reshape(
             tr['Mobility_Alpha'], (1, 1, 1)
-        ) * T.reshape(
+        ) * t.reshape(
             self.ActiveCMs_mobility,
-            (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+            (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
         )
 
-        growth_reduction_mobility = -1.0 * T.log(
-            T.sum(
-                (2.0 * T.exp(-1.0 * self.ActiveCMReduction_mobility))
-                / (1.0 + T.exp(-1.0 * self.ActiveCMReduction_mobility)),
+        growth_reduction_mobility = -1.0 * t.log(
+            t.sum(
+                (2.0 * t.exp(-1.0 * self.ActiveCMReduction_mobility))
+                / (1.0 + t.exp(-1.0 * self.ActiveCMReduction_mobility)),
                 axis=1,
             )
         )
@@ -307,38 +288,38 @@ class RandomWalkMobilityModel(nn.Module):
             initial_mobility_reduction = 0
         else:
             initial_mobility_reduction = growth_reduction_mobility[:, 0]
-            initial_mobility_reduction = T.reshape(initial_mobility_reduction, (self.nRs, 1))
+            initial_mobility_reduction = t.reshape(initial_mobility_reduction, (self.nRs, 1))
 
 
         # random walk
         nNP = int(self.nDs / r_walk_period) - 1
 
-        tr.sample("r_walk_noise_scale", alan.HalfNormal(sigma=r_walk_noise_scale_prior))
+        tr.sample("r_walk_noise_scale", alan.HalfNormal(r_walk_noise_scale_prior))
         # rescaling variables by 10 for better NUTS adaptation
         tr.sample("r_walk_noise", alan.Normal(0, 1.0 / 10), shape=(self.nRs, nNP))
-        expanded_r_walk_noise = T.repeat(
-            r_walk_noise_scale * 10.0 * T.cumsum(r_walk_noise, axis=-1),
+        expanded_r_walk_noise = t.repeat(
+            r_walk_noise_scale * 10.0 * t.cumsum(r_walk_noise, axis=-1),
             r_walk_period,
             axis=-1,
         )[: self.nRs, : (self.nDs - 2 * r_walk_period)]
 
-        full_log_Rt_noise = T.zeros((self.nRs, self.nDs))
-        full_log_Rt_noise = T.subtensor.set_subtensor(
+        full_log_Rt_noise = t.zeros((self.nRs, self.nDs))
+        full_log_Rt_noise = t.subtensor.set_subtensor(
             full_log_Rt_noise[:, 2 * r_walk_period :], expanded_r_walk_noise
         )
 
-        self.ExpectedLogR = T.reshape(pm.math.log(self.RegionR), (self.nRs, 1))
-            - growth_reduction
-            - growth_reduction_wearing
-            - (growth_reduction_mobility - initial_mobility_reduction)
+        self.ExpectedLogR = t.reshape(pm.math.log(self.RegionR), (self.nRs, 1)) \
+            - growth_reduction \
+            - growth_reduction_wearing \
+            - (growth_reduction_mobility - initial_mobility_reduction) \
             + full_log_Rt_noise
 
 
-        self.Rt_walk = T.exp(T.log(self.RegionR.reshape((self.nRs, 1))) + full_log_Rt_noise)
+        self.Rt_walk = t.exp(t.log(self.RegionR.reshape((self.nRs, 1))) + full_log_Rt_noise)
 
 
-        self.Rt_cm = T.exp(
-                T.log(self.RegionR.reshape((self.nRs, 1)))
+        self.Rt_cm = t.exp(
+                t.log(self.RegionR.reshape((self.nRs, 1)))
                 - growth_reduction
                 - growth_reduction_wearing
             )
@@ -353,14 +334,14 @@ class RandomWalkMobilityModel(nn.Module):
 
         self.ExpectedGrowth = gi_beta * (
                 np.exp(self.ExpectedLogR / gi_alpha)
-                - T.ones_like(self.ExpectedLogR)
+                - t.ones_like(self.ExpectedLogR)
             )
 
         self.Growth = self.ExpectedGrowth
 
         # Originally N(0, 50)
-        tr.sample("InitialSize_log", alan.Normal(log_init_mean, log_init_sd), shape=(self.nRs,))
-        self.Infected_log = T.reshape(self.InitialSize_log, (self.nRs, 1))
+        tr.sample("InitialSize_log", alan.Normal(log_init_mean, log_init_sd), plates='plate_InitSize_log')
+        self.Infected_log = t.reshape(self.InitialSize_log, (self.nRs, 1)) \
             + self.Growth.cumsum(axis=1)
 
         self.Infected = math.exp(self.Infected_log)
@@ -372,8 +353,8 @@ class RandomWalkMobilityModel(nn.Module):
 
         cases_delay_dist = alan.NegativeBinomial(total_count=r, probs=p)
         bins = np.arange(0, cases_truncation)
-        pmf = T.exp(cases_delay_dist.logp(bins))
-        pmf = pmf / T.sum(pmf)
+        pmf = t.exp(cases_delay_dist.logp(bins))
+        pmf = pmf / t.sum(pmf)
         reporting_delay = pmf.reshape((1, cases_truncation))
 
         ## Border=full?
@@ -395,7 +376,7 @@ class RandomWalkMobilityModel(nn.Module):
         p = r/(r+mu)
         # self.ObservedCases = pm.NegativeBinomial(
         #     "ObservedCases",
-        #     mu=self.ExpectedCases.reshape((self.nRs * self.nDs,))[
+        #     self.ExpectedCases.reshape((self.nRs * self.nDs,))[
         #         self.all_observed_active
         #     ],
         #     alpha=self.Psi,
@@ -404,70 +385,32 @@ class RandomWalkMobilityModel(nn.Module):
         #         self.all_observed_active
         #     ],
         # )
-        tr.sample('obs', alan.NegativeBinomial(total_count=r, probs=p),shape=(len(self.all_observed_active),)))
+        if not proposal:
+            tr.sample('obs', alan.NegativeBinomial(total_count=r, probs=p), plates='Plate_obs',)
 
+# class RandomWalkMobilityModel_Q(alan.QModule):
+#     def __init__(self):
 
 class MandateMobilityModel(nn.Module):
-    def __init__(self, data):
+    def __init__(self,all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs, proposal=False):
         """
         Constructor.
 
-        :param data: PreprocessedData object
-        :param cm_plot_style: NPI data
-        :param name: model name
-        :param model: required for PyMC3, but never used.
         """
         super().__init__()
-        self.d = data
-        # self.CMDelayCut = 30
-
-        # compute days to actually observe, looking at the data which is masked, and which isn't.
-        # indices of active country-days in the 1D Rs*Ds vector
-        observed_active = []
-
-        for r in range(self.nRs):
-            for d in range(self.nDs):
-                # if its not masked, after the cut, and not before 100 confirmed
-                if (
-                    self.d.NewCases.mask[r, d] == False
-                    # and d > self.CMDelayCut
-                    and not np.isnan(self.d.Confirmed.data[r, d])
-                ):
-                    observed_active.append(r * self.nDs + d)
-                else:
-                    self.d.NewCases.mask[r, d] = True
-
-        self.all_observed_active = np.array(observed_active)
-
-    @property
-    def nRs(self):
-        """
-
-        :return: number of regions / countries
-        """
-        return len(self.d.Rs)
-
-    @property
-    def nDs(self):
-        """
-
-        :return: number of days
-        """
-        return len(self.d.Ds)
-
-    @property
-    def nCMs(self):
-        """
-
-        :return: number of countermeasures
-        """
-        return len(self.d.CMs)
+        self.nRs = nRs
+        self.nDs = nDs
+        self.nCMs = nCMs
+        self.all_observed_active = all_observed_active
+        self.ActiveCMs = ActiveCMs
+        self.CMs = CMs
 
     def build_model(
         self,
+        tr,
         r_walk_period=7,
         r_walk_noise_scale_prior=0.15,
-        intervention_prior="AL",
+        intervention_prior="Gauss",
         cm_prior_scale=10,
         mobility_mean=1.704,
         mobility_sigma=0.44,
@@ -532,64 +475,64 @@ class MandateMobilityModel(nn.Module):
             else:
                 tr.sample('CM_alpha', alan.normal(0, cm_prior_scale), shape=(self.nCMs - 3,))
 
-            self.CMReduction = T.exp((-1.0) * tr['CM_Alpha'])
+            self.CMReduction = t.exp((-1.0) * tr['CM_Alpha'])
 
 
 
-            tr.sample('Mandate_Alpha_1', alan.Normal(0, mask_sigma), shape=(1,))
+            tr.sample('Mandate_Alpha_1', alan.Nmal(0, mask_sigma), shape=(1,))
 
             tr.sample('Mandate_Alpha_2', alan.Normal(0, mask_sigma), shape=(1,))
             if n_mandates == 1:
-                self.MandateReduction = T.exp((-1.0) * tr['Mandate_Alpha_1'])
+                self.MandateReduction = t.exp((-1.0) * tr['Mandate_Alpha_1'])
 
             else:
-                self.MandateReduction = T.exp((-1.0) * (tr['Mandate_Alpha_1'] + tr['Mandate_Alpha_2']))
+                self.MandateReduction = t.exp((-1.0) * (tr['Mandate_Alpha_1'] + tr['Mandate_Alpha_2']))
 
 
             tr.sample('Mobility_Alpha', alan.Normal(mobility_mean, mobility_sigma), shape=(1,))
-            self.MobilityReduction = (2.0 * (T.exp(-1.0 * tr['Mobility_Alpha']))) / (1.0 + T.exp(-1.0 * tr['Mobility_Alpha']))
+            self.MobilityReduction = (2.0 * (t.exp(-1.0 * tr['Mobility_Alpha']))) / (1.0 + t.exp(-1.0 * tr['Mobility_Alpha']))
 
 
             # self.HyperRMean = pm.TruncatedNormal(
-            #     "HyperRMean", mu=R_prior_mean_mean, sigma=R_prior_mean_scale, lower=0.1
+            #     "HyperRMean", R_prior_mean_mean, sigma=R_prior_mean_scale, lower=0.1
             # )
             tr.sample('HyperRMean', alan.TruncatedNormal(R_prior_mean_mean, R_prior_mean_scale, 0.1))
 
             # self.HyperRVar = pm.HalfNormal("HyperRVar", sigma=R_noise_scale)
             tr.sample('HyperRVar', alan.HalfNormal(R_noise_scale))
             # self.RegionR_noise = pm.Normal("RegionR_noise", 0, 1, shape=(self.nRs,))
-            tr.sample('RegionR_noise', alan.Normal(0,1), shape=(self.nRs,))
+            tr.sample('RegionR_noise', alan.Normal(0,1), plates='Plate_RegionR')
             self.RegionR = self.HyperRMean + self.RegionR_noise * self.HyperRVar
 
             #DATA
-            self.ActiveCMs = self.d.ActiveCMs[:, :-3, :]
+            self.ActiveCMs = self.ActiveCMs[:, :-3, :]
             self.ActiveCMReduction = (
-                T.reshape(tr['CM_Alpha'], (1, self.nCMs - 3, 1)) * self.ActiveCMs
+                t.reshape(tr['CM_Alpha'], (1, self.nCMs - 3, 1)) * self.ActiveCMs
             )
 
-            self.ActiveCMs_mandate_1 = self.d.ActiveCMs[:, -3, :]
+            self.ActiveCMs_mandate_1 = self.ActiveCMs[:, -3, :]
 
-            self.ActiveCMs_mandate_2 = self.d.ActiveCMs[:, -1, :]
+            self.ActiveCMs_mandate_2 = self.ActiveCMs[:, -1, :]
 
 
-            growth_reduction = T.sum(self.ActiveCMReduction, axis=1)
+            growth_reduction = t.sum(self.ActiveCMReduction, axis=1)
             # pm.Deterministic("growth_reduction", growth_reduction)
 
-            self.ActiveCMReduction_mandate_1 = T.reshape(
+            self.ActiveCMReduction_mandate_1 = t.reshape(
                 tr['Mandate_Alpha_1'], (1, 1, 1)
-            ) * T.reshape(
+            ) * t.reshape(
                 self.ActiveCMs_mandate_1,
-                (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
             )
-            self.ActiveCMReduction_mandate_2 = T.reshape(
+            self.ActiveCMReduction_mandate_2 = t.reshape(
                 tr['Mandate_Alpha_2'], (1, 1, 1)
-            ) * T.reshape(
+            ) * t.reshape(
                 self.ActiveCMs_mandate_2,
-                (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
             )
 
-            growth_reduction_mandate_1 = T.sum(self.ActiveCMReduction_mandate_1, axis=1)
-            growth_reduction_mandate_2 = T.sum(self.ActiveCMReduction_mandate_2, axis=1)
+            growth_reduction_mandate_1 = t.sum(self.ActiveCMReduction_mandate_1, axis=1)
+            growth_reduction_mandate_2 = t.sum(self.ActiveCMReduction_mandate_2, axis=1)
 
             if n_mandates == 1:
                 growth_reduction_mandate = growth_reduction_mandate_1
@@ -598,20 +541,20 @@ class MandateMobilityModel(nn.Module):
 
             # make reduction for mobility
             #DATA
-            self.ActiveCMs_mobility = self.d.ActiveCMs[:, -2, :]
+            self.ActiveCMs_mobility = self.ActiveCMs[:, -2, :]
 
 
-            self.ActiveCMReduction_mobility = T.reshape(
+            self.ActiveCMReduction_mobility = t.reshape(
                 tr['Mobility_Alpha'], (1, 1, 1)
-            ) * T.reshape(
+            ) * t.reshape(
                 self.ActiveCMs_mobility,
-                (self.d.ActiveCMs.shape[0], 1, self.d.ActiveCMs.shape[2]),
+                (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
             )
 
-            growth_reduction_mobility = -1.0 * T.log(
-                T.sum(
-                    (2.0 * T.exp(-1.0 * self.ActiveCMReduction_mobility))
-                    / (1.0 + T.exp(-1.0 * self.ActiveCMReduction_mobility)),
+            growth_reduction_mobility = -1.0 * t.log(
+                t.sum(
+                    (2.0 * t.exp(-1.0 * self.ActiveCMReduction_mobility))
+                    / (1.0 + t.exp(-1.0 * self.ActiveCMReduction_mobility)),
                     axis=1,
                 )
             )
@@ -620,7 +563,7 @@ class MandateMobilityModel(nn.Module):
                 initial_mobility_reduction = 0
             else:
                 initial_mobility_reduction = growth_reduction_mobility[:, 0]
-                initial_mobility_reduction = T.reshape(initial_mobility_reduction, (self.nRs, 1))
+                initial_mobility_reduction = t.reshape(initial_mobility_reduction, (self.nRs, 1))
                 # pm.Deterministic("initial_mobility_reduction", initial_mobility_reduction)
                 #
                 # pm.Deterministic("growth_reduction_mobility", growth_reduction_mobility)
@@ -634,29 +577,29 @@ class MandateMobilityModel(nn.Module):
             # r_walk_noise = pm.Normal("r_walk_noise", 0, 1.0 / 10, shape=(self.nRs, nNP))
             tr.sample("r_walk_noise", alan.Normal(0, 1.0 / 10), shape=(self.nRs, nNP))
 
-            expanded_r_walk_noise = T.repeat(
-                r_walk_noise_scale * 10.0 * T.cumsum(r_walk_noise, axis=-1),
+            expanded_r_walk_noise = t.repeat(
+                r_walk_noise_scale * 10.0 * t.cumsum(r_walk_noise, axis=-1),
                 r_walk_period,
                 axis=-1,
             )[: self.nRs, : (self.nDs - 2 * r_walk_period)]
 
-            full_log_Rt_noise = T.zeros((self.nRs, self.nDs))
-            full_log_Rt_noise = T.subtensor.set_subtensor(
+            full_log_Rt_noise = t.zeros((self.nRs, self.nDs))
+            full_log_Rt_noise = t.subtensor.set_subtensor(
                 full_log_Rt_noise[:, 2 * r_walk_period :], expanded_r_walk_noise
             )
 
-            self.ExpectedLogR = T.reshape(pm.math.log(self.RegionR), (self.nRs, 1))
-                - growth_reduction
-                - growth_reduction_mandate
-                - (growth_reduction_mobility - initial_mobility_reduction)
+            self.ExpectedLogR = t.reshape(pm.math.log(self.RegionR), (self.nRs, 1)) \
+                - growth_reduction \
+                - growth_reduction_mandate \
+                - (growth_reduction_mobility - initial_mobility_reduction) \
                 + full_log_Rt_noise
 
 
-            self.Rt_walk = T.exp(T.log(self.RegionR.reshape((self.nRs, 1))) + full_log_Rt_noise),
+            self.Rt_walk = t.exp(t.log(self.RegionR.reshape((self.nRs, 1))) + full_log_Rt_noise),
 
 
-            self.Rt_cm = T.exp(
-                    T.log(self.RegionR.reshape((self.nRs, 1)))
+            self.Rt_cm = t.exp(
+                    t.log(self.RegionR.reshape((self.nRs, 1)))
                     - growth_reduction
                     - growth_reduction_mandate
                 )
@@ -670,18 +613,18 @@ class MandateMobilityModel(nn.Module):
             gi_beta = tr['GI_mean'] / tr['GI_sd'] ** 2
             gi_alpha = tr['GI_mean'] ** 2 / tr['GI_sd'] ** 2
 
-            self.ExpectedGrowth = gi_beta
+            self.ExpectedGrowth = gi_beta \
                 * (
                     np.exp(self.ExpectedLogR / gi_alpha)
-                    - T.ones_like(self.ExpectedLogR)
+                    - t.ones_like(self.ExpectedLogR)
                 )
 
 
             self.Growth = self.ExpectedGrowth
 
             # Originally N(0, 50)
-            tr.sample("InitialSize_log", alan.Normal(log_init_mean, log_init_sd) shape=(self.nRs,))
-            self.Infected_log = T.reshape(tr["InitialSize_log"], (self.nRs, 1))
+            tr.sample("InitialSize_log", alan.Normal(log_init_mean, log_init_sd), shape=(self.nRs,))
+            self.Infected_log = t.reshape(tr["InitialSize_log"], (self.nRs, 1)) \
                 + self.Growth.cumsum(axis=1)
 
             self.Infected = math.exp(self.Infected_log)
@@ -694,8 +637,8 @@ class MandateMobilityModel(nn.Module):
 
             cases_delay_dist = alan.NegativeBinomial(total_count=r, probs=p)
             bins = np.arange(0, cases_truncation)
-            pmf = T.exp(cases_delay_dist.logp(bins))
-            pmf = pmf / T.sum(pmf)
+            pmf = t.exp(cases_delay_dist.logp(bins))
+            pmf = pmf / t.sum(pmf)
             reporting_delay = pmf.reshape((1, cases_truncation))
 
             expected_confirmed = t.nn.Functional.conv2d(
@@ -711,7 +654,7 @@ class MandateMobilityModel(nn.Module):
             # likelihood
             # self.ObservedCases = pm.NegativeBinomial(
             #     "ObservedCases",
-            #     mu=self.ExpectedCases.reshape((self.nRs * self.nDs,))[
+            #     self.ExpectedCases.reshape((self.nRs * self.nDs,))[
             #         self.all_observed_active
             #     ],
             #     alpha=self.Psi,
@@ -724,5 +667,5 @@ class MandateMobilityModel(nn.Module):
             mu = self.ExpectedCases.reshape((self.nRs * self.nDs,))[
                 self.all_observed_active
             ]
-
-            tr.sample('obs', alan.NegativeBinomial(total_count=r, probs=p),shape=(len(self.all_observed_active),))
+            if not proposal:
+                tr.sample('obs', alan.NegativeBinomial(total_count=r, probs=p),shape=(len(self.all_observed_active),))

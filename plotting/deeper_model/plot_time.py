@@ -41,7 +41,7 @@ with plt.rc_context(bundles.icml2022()):
 
             ax[j].errorbar(Ks,elbos_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='LIW')
             ax[j].errorbar(Ks,elbos_tpp, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='TPP')
-            ax[j].errorbar(Ks,elbos_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Global K')
+            ax[j].errorbar(Ks,elbos_global_K, linewidth=0.55, markersize = 0.75, fmt='-o', c='green', label='Globally Importance Weighted')
             # ax[j].errorbar(Ks,elbos_tmc, yerr=stds_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC')
             #
             # ax.set_ylabel('Final Lower Bound')
