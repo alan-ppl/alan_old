@@ -5,7 +5,7 @@ import alan
 def generate_model(N,M,local,device):
     M = 3
     J = 3
-    I = 60
+    I = 30
 
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
