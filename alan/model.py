@@ -235,6 +235,15 @@ class Model(nn.Module):
         """
         return self._sample(K, False, data, covariates).weights()
 
+    def weights_tmc(self, K, data=None, covariates=None):
+        return self._sample_tmc(K, False, data, covariates).weights()
+
+    def weights_tmc_new(self, K, data=None, covariates=None):
+        return self._sample_tmc_new(K, False, data, covariates).weights()
+
+    def weights_global(self, K, data=None, covariates=None):
+        return self._sample_global(K, False, data, covariates).weights()
+
     def moments(self, K, fs, data=None, covariates=None):
         """Compute marginal importance weights
         Args:

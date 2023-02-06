@@ -385,6 +385,44 @@ class SampleGlobal(Sample):
 
         return post_samples
 
+    def weights(self):
+        """
+        Produces normalized weights for each latent variable.
+
+        Make a little function that converts all the aunnamed to dim tensors
+        """
+        var_names     = list(self.trp.samples.keys())
+        samples       = list(self.trp.samples.values())
+        logqs         = [self.trp.logq[var_name] for var_name in var_names]
+        dimss         = [lq.dims for lq in logqs]
+        undim_logqs   = [generic_order(lq, dims) for (lq, dims) in zip(logqs, dimss)]
+
+        #Start with Js with no dimensions (like NN parameters)
+        undim_Js = [t.zeros_like(ulq, requires_grad=True) for ulq in undim_logqs]
+        #Put torchdims back in.
+        dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
+        #Compute result with torchdim Js
+        result = self.tensor_product(extra_log_factors=dim_Js)
+        #But differentiate wrt non-torchdim Js
+        ws = list(t.autograd.grad(result, undim_Js))
+
+        result = {}
+        for i in range(len(ws)):
+            sample = samples[i]
+            w = ws[i][dimss[i]]
+
+            # #Change sample, w from dim2named, replacing K_varname with 'K'
+            # K_dim = next(dim for dim in dimss[i] if self.is_K(dim))
+            # K_name = repr(K_dim)
+            # replacement_dict = {K_name: 'K'}
+
+            sample = dim2named_tensor(sample)#.rename(**replacement_dict)
+            w      = dim2named_tensor(w)#.rename(**replacement_dict)
+
+            result[var_names[i]] = (sample, w)
+        
+        return result
+
     @property
     def Kdim(self):
         return self.trp.trq.Kdim
