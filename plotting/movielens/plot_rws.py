@@ -49,7 +49,7 @@ with plt.rc_context(bundles.icml2022()):
             stds_rws_IW = [results_IW[N][M][k]['pred_likelihood_std']/np.sqrt(5) for k in Ks]
 
             ax[i,j].errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='Globally Importance Weighted RWS')
-            ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS')
+            # ax[i,j].errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS')
             ax[i,j].errorbar(Ks,elbos_rws_tmc_new, yerr=stds_rws_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='Massively Parallel RWS')
             # ax[i,j].errorbar(Ks,elbos_rws_IW, yerr=stds_rws_IW, linewidth=0.55, markersize = 0.75, fmt='-o', c='purple', label='RWS LIW')
 
