@@ -1,0 +1,7 @@
+lbatch -c 1 -g 1 -m 22 -t 35 -a cosc020762 --gputype A100 -q cnu --cmd python runner_time.py dataset=radon model=radon_discrete training.inference_method=rws_tmc_new training.num_iters=50
+lbatch -c 1 -g 1 -m 22 -t 25 -a cosc020762 --gputype A100 -q cnu --cmd python runner_time.py dataset=radon model=radon_discrete training.inference_method=rws_global training.num_iters=50
+lbatch -c 1 -g 1 -m 22 -t 25 -a cosc020762 --gputype A100 -q cnu --cmd python runner_time.py dataset=radon model=radon_discrete training.inference_method=rws_tmc training.num_iters=50
+lbatch -c 1 -g 1 -m 22 -t 25 -q cnu -a cosc020762 --gputype A100 --cmd python runner_time.py dataset=bus_breakdown model=bus_breakdown training.inference_method=rws_tmc_new training.num_iters=50
+lbatch -c 1 -g 1 -m 22 -t 25 -q cnu -a cosc020762 --gputype A100 --cmd python runner_time.py dataset=bus_breakdown model=bus_breakdown training.inference_method=rws_global training.num_iters=50
+lbatch -c 1 -g 1 -m 22 -t 10 -q cnu -a cosc020762 --gputype A100 --cmd python runner_time.py dataset=movielens model=movielens_discrete training.inference_method=rws_tmc_new training.N=5 training.M=300 training.num_iters=50 training.Ks=[1,3,10,30,300]
+lbatch -c 1 -g 1 -m 22 -t 10 -q cnu -a cosc020762 --gputype A100 --cmd python runner_time.py dataset=movielens model=movielens_discrete training.inference_method=rws_global training.N=5 training.M=300 training.num_iters=50 training.Ks=[1,3,10,30,300]
