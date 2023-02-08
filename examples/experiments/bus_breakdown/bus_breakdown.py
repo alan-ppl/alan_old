@@ -29,9 +29,9 @@ def generate_model(N,M,local,device):
       '''
 
       #Year level
-      tr.sample('sigma_beta', alan.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)), plates = 'plate_Year')
-      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_Year')
-      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()))
+      tr.sample('sigma_beta', alan.Categorical(t.tensor([0.1,0.5,0.4,0.05,0.05]).to(device)))
+      tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
+      tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
 
       #Borough level
       tr.sample('sigma_alpha', alan.Categorical(t.tensor([0.1,0.4,0.05,0.5,0.05]).to(device)), plates = 'plate_Borough')
@@ -51,10 +51,10 @@ def generate_model(N,M,local,device):
         def __init__(self):
             super().__init__()
             #sigma_beta
-            self.sigma_beta_logits = nn.Parameter(t.randn((M,5), names=('plate_Year',None)))
+            self.sigma_beta_logits = nn.Parameter(t.randn((5,)))
             #mu_beta
-            self.mu_beta_mean = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
-            self.log_mu_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
+            self.mu_beta_mean = nn.Parameter(t.zeros(()))
+            self.log_mu_beta_sigma = nn.Parameter(t.zeros(()))
             #beta
             self.beta_mu = nn.Parameter(t.zeros((M,),names=('plate_Year',)))
             self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
