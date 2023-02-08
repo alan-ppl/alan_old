@@ -23,9 +23,9 @@ class Q(alan.QModule):
     def forward(self, tr):
         tr.sample('mu', alan.Normal(self.m_mu, self.log_s_mu.exp())) #, plate="plate_1")
 
-data = alan.sample(P, varnames=('obs',)) #, sizes={"plate_1": 2})
-
+data = alan.sample(P, varnames=('obs','mu')) #, sizes={"plate_1": 2})
 print(data)
+data = alan.sample(P, varnames=('obs',)) #, sizes={"plate_1": 2})
 model = alan.Model(P, Q(), data)
 
 
