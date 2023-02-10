@@ -23,7 +23,7 @@ def generate_model(N,M,local,device):
 
         #county level
         tr.sample('gamma', alan.Categorical(t.tensor([0.1]*10).to(device)), plates = 'plate_county')
-        tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha'] + 1), plates = 'plate_county')
+        tr.sample('alpha', alan.Normal(tr['beta'] + tr['gamma'] * tr['county_uranium'], tr['sigma_alpha'] + 1))
         tr.sample('sigma_omega', alan.Categorical(t.tensor([0.1]*10).to(device)), plates='plate_county')
 
         #zipcode level
@@ -53,6 +53,7 @@ def generate_model(N,M,local,device):
             self.sigma_alpha = nn.Parameter(t.rand((M,10),names=('plate_state',None)))
             #w
             self.gamma = nn.Parameter(t.rand((J,10),names=('plate_county',None)))
+            self.w_gamma = nn.Parameter(t.rand((J,),names=('plate_county',)))
             #zipmean
             self.w_alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_state', 'plate_county')))
             self.w_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_state', 'plate_county')))
@@ -84,7 +85,7 @@ def generate_model(N,M,local,device):
             #county level
             tr.sample('gamma', alan.Categorical(logits=self.gamma))
             tr.sample('sigma_alpha', alan.Categorical(logits=self.sigma_alpha))
-            mean_alpha_mu = self.w_alpha_mu * tr['beta'] + self.b_alpha_mu + tr['gamma'] * tr['county_uranium']
+            mean_alpha_mu = self.w_alpha_mu * tr['beta'] + self.b_alpha_mu + self.w_gamma * tr['gamma'] * tr['county_uranium']
             log_alpha_sigma = self.w_alpha_sigma * tr['sigma_alpha'] + self.b_alpha_sigma
             tr.sample('alpha', alan.Normal(mean_alpha_mu, log_alpha_sigma.exp()))
 
