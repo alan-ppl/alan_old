@@ -14,7 +14,7 @@ seed_torch(2)
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
-N = 51
+N = 30
 
 var = float(1/math.sqrt(N))
 def P(tr):
@@ -23,7 +23,7 @@ def P(tr):
     for i in range(2,N+1):
         tr.sample('ts_{}'.format(i), alan.Normal(tr['ts_{}'.format(i-1)], var))
 
-    tr.sample('obs', alan.Normal(tr['ts_{}'.format(N)], 1.0))
+    tr.sample('obs', alan.Normal(tr['ts_{}'.format(N)], 1))
 
 def Q(tr):
     tr.sample('ts_1', alan.Normal(0.0, var))

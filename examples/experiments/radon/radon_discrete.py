@@ -75,28 +75,28 @@ def generate_model(N,M,local,device):
         def forward(self, tr):
             #state level
 
-            tr.sample('sigma_beta', alan.Categorical(logits=self.sigma_beta), multi_sample=False if local else True)
-            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()), multi_sample=False if local else True)
+            tr.sample('sigma_beta', alan.Categorical(logits=self.sigma_beta))
+            tr.sample('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()))
             mean_beta_mu = self.w_beta_mu * tr['mu_beta'] + self.b_beta_mu
             log_beta_sigma = self.w_beta_sigma * tr['sigma_beta'] + self.b_beta_sigma
-            tr.sample('beta', alan.Normal(mean_beta_mu, log_beta_sigma.exp()), multi_sample=False if local else True)
+            tr.sample('beta', alan.Normal(mean_beta_mu, log_beta_sigma.exp()))
 
             #county level
-            tr.sample('gamma', alan.Categorical(logits=self.gamma), multi_sample=False if local else True)
-            tr.sample('sigma_alpha', alan.Categorical(logits=self.sigma_alpha), multi_sample=False if local else True)
+            tr.sample('gamma', alan.Categorical(logits=self.gamma))
+            tr.sample('sigma_alpha', alan.Categorical(logits=self.sigma_alpha))
             mean_alpha_mu = self.w_alpha_mu * tr['beta'] + self.b_alpha_mu + tr['gamma'] * tr['county_uranium']
             log_alpha_sigma = self.w_alpha_sigma * tr['sigma_alpha'] + self.b_alpha_sigma
-            tr.sample('alpha', alan.Normal(mean_alpha_mu, log_alpha_sigma.exp()), multi_sample=False if local else True)
+            tr.sample('alpha', alan.Normal(mean_alpha_mu, log_alpha_sigma.exp()))
 
             #zipcode level
-            tr.sample('sigma_omega', alan.Categorical(logits=self.sigma_omega), multi_sample=False if local else True)
+            tr.sample('sigma_omega', alan.Categorical(logits=self.sigma_omega))
             mean_omega_mu = self.w_omega_mu * tr['alpha'] + self.b_omega_mu
-            log_omega_sigma = self.w_omega_sigma * tr['sigma_alpha'] + self.b_omega_sigma
-            tr.sample('omega', alan.Normal(mean_omega_mu, log_omega_sigma.exp()), multi_sample=False if local else True)
+            log_omega_sigma = self.w_omega_sigma * tr['sigma_omega'] + self.b_omega_sigma
+            tr.sample('omega', alan.Normal(mean_omega_mu, log_omega_sigma.exp()))
 
             #reading level
-            tr.sample('sigma_obs', alan.Categorical(logits=self.sigma_obs), multi_sample=False if local else True)
-            tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()), multi_sample=False if local else True)
+            tr.sample('sigma_obs', alan.Categorical(logits=self.sigma_obs))
+            tr.sample('psi_int', alan.Normal(self.psi_int_mu, self.log_psi_int_sigma.exp()))
 
     covariates = {'basement': t.load('radon/data/train_basement_alongreadings.pt').to(device),
         'county_uranium':t.load('radon/data/county_uranium.pt').rename('plate_state', 'plate_county').to(device)}

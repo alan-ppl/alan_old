@@ -26,8 +26,8 @@ for i in range(len(Ns)):
         # with open('results/radon_discrete/rws_tmc_new_LIW_N2_M2.json') as f:
         #     results_local_IW = json.load(f)
         #
-        # with open('results/radon_discrete/rws_tmc_N2_M2.json') as f:
-        #     results_tmc = json.load(f)
+        with open('results/radon_discrete/rws_tmc_N2_M2.json') as f:
+            results_rws_tmc = json.load(f)
 
         with open('results/radon_discrete/rws_tmc_new_N2_M2.json') as f:
             results_rws_tmc_new = json.load(f)
@@ -36,8 +36,8 @@ for i in range(len(Ns)):
             results_rws_global_k = json.load(f)
 
 
-        # elbos_rws_tmc = [results_rws_tmc[N][M][k]['pred_likelihood'] for k in Ks]
-        # stds_rws_tmc = [results_rws_tmc[N][M][k]['pred_likelihood_std']/np.sqrt(5) for k in Ks]
+        elbos_rws_tmc = [results_rws_tmc[N][M][k]['pred_likelihood'] for k in Ks]
+        stds_rws_tmc = [results_rws_tmc[N][M][k]['pred_likelihood_std']/np.sqrt(5) for k in Ks]
 
         elbos_rws_tmc_new = [results_rws_tmc_new[N][M][k]['pred_likelihood'] for k in Ks]
         stds_rws_tmc_new = [results_rws_tmc_new[N][M][k]['pred_likelihood_std']/np.sqrt(5) for k in Ks]
@@ -47,7 +47,7 @@ for i in range(len(Ns)):
 
 
         ax.errorbar(Ks,elbos_rws_global_k, yerr=stds_rws_global_k, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='Global RWS')
-        # ax.errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS')
+        ax.errorbar(Ks,elbos_rws_tmc, yerr=stds_rws_tmc, linewidth=0.55, markersize = 0.75, fmt='-o', c='orange', label='TMC RWS')
         ax.errorbar(Ks,elbos_rws_tmc_new, yerr=stds_rws_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='red', label='MP RWS')
 
         # ax.set_ylabel('Final Lower Bound')
@@ -62,5 +62,5 @@ ax.set_ylabel('Predictive Log Likelihood')
 
 ax.set_xlabel('K')
 plt.legend()
-plt.savefig('charts/chart_radon_alongreadings.png')
-plt.savefig('charts/chart_radon_alongreadings.pdf')
+plt.savefig('charts/chart_radon_discrete.png')
+plt.savefig('charts/chart_radon_discrete.pdf')

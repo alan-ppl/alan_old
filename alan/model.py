@@ -56,7 +56,7 @@ class Model(nn.Module):
                 mod._platedims = self.platedims
             else:
                 for x in list(mod.parameters(recurse=False)) + list(mod.buffers(recurse=False)):
-                    if any(name is not None in x.names):
+                    if any(name is not None for name in x.names):
                         raise Exception("Named parameter on an nn.Module.  To specify plates in approximate posteriors correctly, we need to use QModule in place of nn.Module")
 
         self.platedims = extend_plates_with_named_tensors(self.platedims, data.values())
