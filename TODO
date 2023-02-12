@@ -1,3 +1,6 @@
+* All Q's are the same, except that they do something slighlty different with how they choose parents.
+*
+
 * lots of repetition around platesize code for ML, ML2, Tilted etc.
 * store Ps rather than logps, in preparation for lazy efficient stuff.
 * sort out devices (give trace a device)

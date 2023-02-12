@@ -85,7 +85,19 @@ class SampleMixin():
         inputs = named2dim_tensordict(platedims, inputs)
         return platedims, data, inputs
 
-    def sample_mp(self, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
+    def sample_same(self, *args, **kwargs):
+        return self.sample_tensor(traces.TraceQSame, *args, **kwargs)
+
+    def sample_cat(self, *args, **kwargs):
+        return self.sample_tensor(traces.TraceQCategorical, *args, **kwargs)
+
+    def sample_perm(self, *args, **kwargs):
+        return self.sample_tensor(traces.TraceQPermutation, *args, **kwargs)
+
+    def sample_global(self, *args, **kwargs):
+        return self.sample_tensor(traces.TraceQGlobal, *args, **kwargs)
+
+    def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
         """
         Internal method that actually runs P and Q.
         """
@@ -100,38 +112,14 @@ class SampleMixin():
         #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = traces.TraceQ(K, data, platedims, reparam, device)
+        trq = trace_type(K, data, platedims, reparam, device)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TraceP(trq)
         self.P(trp, **inputs)
+        breakpoint()
 
         return Sample(trp)
-
-    def sample_global(self, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
-        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
-
-        #sample from approximate posterior
-        trq = traces.TraceQ(K, data, platedims, reparam, device)
-        self.Q(trq, **inputs)
-        #compute logP
-        trp = traces.TracePGlobal(trq)
-        self.P(trp, **inputs)
-
-        return SampleGlobal(trp)
-
-    def sample_tmc(self, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
-        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
-
-        #sample from approximate posterior
-        trq = traces.TraceQTMC(K, data, platedims, reparam, device)
-        self.Q(trq, **inputs)
-        #compute logP
-        trp = traces.TracePGlobal(trq)
-        self.P(trp, **inputs)
-
-        return Sample(trp)
-
 
     def sample_prior(self, N=None, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
         """Draw samples from a generative model (with no data).

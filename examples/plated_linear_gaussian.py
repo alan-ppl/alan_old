@@ -55,7 +55,7 @@ K=10
 print("K={}".format(K))
 for i in range(20000):
     opt.zero_grad()
-    elbo = cond_model.sample_mp(K, True).elbo()
+    elbo = cond_model.sample_cat(K, True).elbo()
     (-elbo).backward()
     opt.step()
 

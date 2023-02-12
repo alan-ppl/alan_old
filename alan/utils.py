@@ -25,6 +25,15 @@ def mean_dims(x, dims):
         x = x.order(dims).mean(0)
     return x
 
+def log_meandims_exp(x, dims):
+    dims = list(dims)
+    if 0 < len(dims):
+        x = x.order(dims)
+        m = x.max(0).values
+        x = (x - m).exp().mean(0).log() + m
+    return x
+
+
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
 
@@ -280,7 +289,6 @@ def reduce_Ks(tensors, Ks_to_sum):
 
     #if 0<len(Ks_to_sum):
     #result = result - sum(math.log(K.size) for K in Ks_to_sum) #t.log(t.tensor([K.size for K in Ks_to_sum])).sum()#.to(device=result.device)
-    breakpoint()
     return sum([result, *maxes])
 
 def max_dims(x, dims):
