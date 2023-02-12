@@ -79,7 +79,7 @@ def pfilter(K):
     return sum(logps) #- math.log(K**num_obs)
 
 ## Running exps
-Ks=[3,10,30,100,300]
+Ks=[3,10,30,100,300,1000]
 #Ks=[1]
 elbos = {k:[] for k in Ks}
 elbos_tmc = {k:[] for k in Ks}
@@ -92,9 +92,11 @@ times_tmc = {k:[] for k in Ks}
 times_particle = {k:[] for k in Ks}
 times_global = {k:[] for k in Ks}
 
+varnames = ('obs_{}'.format(j) for j in range(1,N//3 + 1))
 num_runs = 100
 for i in range(num_runs):
-    data = alan.sample(P, varnames=('obs_1','obs_2','obs_3','obs_4','obs_5', 'obs_6', 'obs_7','obs_8','obs_9','obs_10'))
+    varnames = ('obs_{}'.format(j) for j in range(1,N//3 + 1))
+    data = alan.sample(P, varnames=tuple(varnames))
     for k in Ks:
         model = alan.Model(P, Q, data)
         start = time.time()

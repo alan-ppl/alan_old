@@ -224,7 +224,6 @@ class TraceQTMC(AbstractTrace):
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         logq = dist.log_prob(sample)
 
-
         if 0 < nks:
             plates = self.filter_platedims(sample.dims)
             Ks = [dim for dim in sample.dims if (dim in self.Ks)]
@@ -234,7 +233,6 @@ class TraceQTMC(AbstractTrace):
 
         self.samples[key] = sample
         self.logq[key] = logq + plus_log_K
-
 
 
 class TraceQTMC_new(AbstractTrace):
@@ -303,7 +301,10 @@ class TraceQTMC_new(AbstractTrace):
 
             ndim = functools.reduce(operator.mul, shapes, 1)
             dims = plates + [Kdim]
+            #t.multinomial samples with replacement so doesn't bias the sampling like t.randint would
             idxs = [t.multinomial(t.ones(ndim), ndim).reshape(shapes).argsort()[dims] for K in Ks]
+
+
             sample = sample.order(*Ks)[idxs]
 
             logq   = mean_dims(dist.log_prob(sample).exp(), Ks).log()
@@ -311,8 +312,6 @@ class TraceQTMC_new(AbstractTrace):
 
         self.samples[key] = sample
         self.logq[key] = logq + plus_log_K
-
-
 
 class TraceP(AbstractTrace):
     def __init__(self, trq, memory_diagnostics=False):
@@ -504,15 +503,10 @@ class TracePGlobal(TraceP):
     Incomplete method purely used for benchmarking.
     e.g. doesn't do sampling from the prior.
     """
-    def __init__(self, trq, memory_diagnostics=False, sum_discrete=True):
+    def __init__(self, trq, memory_diagnostics=False):
         super().__init__(trq)
         if isinstance(trq, TraceQTMC) or isinstance(trq, TraceQTMC_new):
             self.Ks = trq.Ks
-            self.Es = set()
-
-    @property
-    def platedims(self):
-        return self.trq.platedims
 
     def sample(self, key, dist, group=None, plates=(), T=None):
         self.check(key, plates, T)
@@ -524,50 +518,11 @@ class TracePGlobal(TraceP):
         assert key in self.trq
 
         sample = self.trq[key]
-        # if sum_discrete:
-        #     #Analytically sum out a discrete latent
-        #     if group is not None:
-        #         raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but you have also provided a group.  This doesn't make sense.  Only variables sampled from Q can be grouped.")
-        #     sample, Kdim = self.sum_discrete(key, dist, plates)
-        #     logq = t.zeros_like(sample)
-        #     self.Ks.add(Kdim)
-        #     self.Es.add(Kdim)
-
         if key not in self.data:
             self.samples[key] = sample
             self.logq[key] = self.trq.logq[key]
 
         self.logp[key] = dist.log_prob(sample)
-
-    def sum_discrete(self, key, dist, plates):
-        """
-        Enumerates discrete variables.
-        """
-        if dist.dist_name not in ["Bernoulli", "Categorical"]:
-            raise Exception(f'Can only sum over discrete random variables with a Bernoulli or Categorical distribution.  Trying to sum over a "{dist.dist_name}" distribution.')
-
-        dim_plates    = set(dim for dim in dist.dims if (dim in self.platedims))
-        sample_plates = platenames2platedims(self.platedims, plates)
-        plates = list(dim_plates.union(sample_plates))
-
-        torch_dist = dist.dist(**dist.all_args)
-
-        values = torch_dist.enumerate_support(expand=False)
-        values = values.view(-1)
-        assert 1 == values.ndim
-        Edim = Dim(f'E_{key}', values.shape[0])
-        values = values[Edim]
-        #values is now just all a vector containing values in the support.
-
-        #Add a bunch of 1 dimensions.
-        idxs = (len(plates)*[None])
-        idxs.append(Ellipsis)
-        values = values[idxs]
-        #Expand them to full size
-        values = values.expand(*[plate.size for plate in plates])
-        #And name them
-        values = values[plates]
-        return values, Edim
 
 
 class TracePred(AbstractTrace):

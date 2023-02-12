@@ -32,7 +32,7 @@ def Q(tr):
         tr.sample('ts_{}'.format(i), alan.Normal(tr['ts_{}'.format(i-1)], var))
 
 data = {'obs':t.tensor(4)}
-#data = alan.sample(P, varnames=('obs',))
+# data = alan.sample(P, varnames=('obs',))
 model = alan.Model(P, Q, data)
 model.to(device)
 
@@ -55,7 +55,7 @@ def pfilter(K):
     return t.logsumexp(dist.Normal(samples[-1], 1).log_prob(data['obs']), dim=0) - math.log(K)
 
 ## Running exps
-Ks=[3,10,30,100,300]
+Ks=[3,10,30,100,300,1000]
 #Ks=[1]
 elbos = {k:[] for k in Ks}
 elbos_tmc = {k:[] for k in Ks}
@@ -71,6 +71,7 @@ times_global = {k:[] for k in Ks}
 print(data)
 for k in Ks:
     num_runs = 250
+    # data = alan.sample(P, varnames=('obs',))
     for i in range(num_runs):
         start = time.time()
         model = alan.Model(P, Q, data)

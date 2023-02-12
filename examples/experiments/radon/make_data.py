@@ -121,7 +121,6 @@ t.save(t.from_numpy(county_uranium), 'data/county_uranium.pt')
 
 train_basement_alongreadings = basement.reshape(M, J, I, N)[:,:,:,:N//2]
 train_radon_alongreadings = radon.reshape(M, J, I, N)[:,:,:,:N//2]
-
 test_basement_alongreadings = basement.reshape(M, J, I, N)[:,:,:,N//2:]
 test_radon_alongreadings = radon.reshape(M, J, I, N)[:,:,:,N//2:]
 
