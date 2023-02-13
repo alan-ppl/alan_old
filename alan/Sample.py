@@ -14,61 +14,64 @@ class Sample():
       Check that all dims are something (plate, timeseries, K)
     """
     def __init__(self, trp):
-        self.trp = trp
+        self.Ks = trp.Ks
+        self.samples = trp.samples
 
-        for lp in [*trp.logp.values(), *trp.logq.values()]:
+        for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
             if isinstance(lp, TimeseriesLogP):
                 assert lp.first.shape == () and lp.rest.shape == ()
             else:
                 assert lp.shape == ()
 
-        for (rv, lp) in trp.logp.items():
-            assert (rv in trp.logq) or (rv in trp.data)
+        Q_keys = [*trp.group, *trp.logq_var]
+        assert set(Q_keys) == set(trp.samples.keys()) 
 
-        for (rv, lq) in trp.logq.items():
+        for (rv, lp) in trp.logp.items():
+            assert (rv in Q_keys) or (rv in trp.data)
+
+        #All keys in Q
+        for key in Q_keys:
+
             #check that any rv in logqs is also in logps
-            if rv not in trp.logp:
+            if key not in trp.logp:
                 raise Exception(f"The latent variable '{rv}' is sampled in Q but not P.")
 
-            lp = trp.logp[rv]
-            lq = trp.logq[rv]
+            lp = trp.logp[key]
+            lq = trp.logq_var[key] if (key in trp.logq_var) else trp.logq_group[trp.group[key]]
 
             # check same plates/timeseries appear in lp and lq
             lp_notK = [dim for dim in generic_dims(lp) if not self.is_K(dim)]
             lq_notK = [dim for dim in generic_dims(lq) if not self.is_K(dim)]
             assert set(lp_notK) == set(lq_notK)
 
+        self.logp = [*trp.logp.values()]
+        self.logq = [*trp.logq_group.values(), *trp.logq_var.values()]
 
         #Assumes that self.lps come in ordered
-        self.platedims = set(trp.trq.platedims.values())
-        self.ordered_plate_dims = [dim for dim in unify_dims(trp.logp.values()) if self.is_plate(dim)]
+        self.platedims = set(trp.platedims.values())
+        self.ordered_plate_dims = [dim for dim in unify_dims(self.logp) if self.is_plate(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
-
-    @property
-    def reparam(self):
-        return self.trp.trq.reparam
-       
 
     def is_plate(self, dim):
         return dim in self.platedims
 
     def is_K(self, dim):
-        return dim in self.trp.Ks
+        return dim in self.Ks
 
     def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):
         """
         Sums over plates, starting at the lowest plate.
         The key exported method.
         """
-        logps = self.trp.logp
-        logqs = self.trp.logq
-
+        logp = self.logp
         if detach_p:
-            logps = {n:lp.detach() for (n,lp) in logps.items()}
-        if detach_q:
-            logqs = {n:lq.detach() for (n,lq) in logqs.items()}
+            logp = [lp.detach() for lp in logp]
 
-        tensors = [*logps.values(), *[-lq for lq in logqs.values()], *extra_log_factors]
+        logq = self.logq
+        if detach_q:
+            logq = [lq.detach() for lq in logq]
+
+        tensors = [*logp, *[-lq for lq in logq], *extra_log_factors]
 
         ## Convert tensors to Float64
         tensors = [x.to(dtype=t.float64) for x in tensors]
@@ -167,7 +170,7 @@ class Sample():
         if callable(fs[0]):
             fs = (fs,)
 
-        ms        = [(f(*[self.trp[v] for v in vs]) if isinstance(vs, tuple) else f(self.trp[vs])) for (f, vs) in fs]
+        ms        = [(f(*[self.samples[v] for v in vs]) if isinstance(vs, tuple) else f(self.samples[vs])) for (f, vs) in fs]
         #Keep only platedims.
         dimss     = [[dim for dim in generic_dims(m) if dim in self.platedims] for m in ms]
         sizess    = [[dim.size for dim in dims] for dims in dimss]
@@ -191,7 +194,7 @@ class Sample():
         Uses importance weighting to approximate E_{P(z|x)}[log Q(z)].
         Could also implement using importance weights?
         """
-        ms = list(self.trp.logq.values())
+        ms = list(self.logq.values())
         #Keep only platedims.
         dimss     = [[dim for dim in generic_dims(m) if dim in self.platedims] for m in ms]
         sizess    = [[dim.size for dim in dims] for dims in dimss]
@@ -213,9 +216,9 @@ class Sample():
 
         Make a little function that converts all the aunnamed to dim tensors
         """
-        var_names     = list(self.trp.samples.keys())
-        samples       = list(self.trp.samples.values())
-        logqs         = [self.trp.logq[var_name] for var_name in var_names]
+        var_names     = list(self.samples.keys())
+        samples       = list(self.samples.values())
+        logqs         = [self.logq[var_name] for var_name in var_names]
         dimss         = [lq.dims for lq in logqs]
         undim_logqs   = [generic_order(lq, dims) for (lq, dims) in zip(logqs, dimss)]
 
@@ -254,9 +257,9 @@ class Sample():
         """
         #### Computing the marginals
         #ordered in the order of generating under P
-        var_names           = list(self.trp.samples.keys())
-        samples             = list(self.trp.samples.values())
-        logps_u             = [self.trp.logp[var_name] for var_name in var_names]
+        var_names           = list(self.samples.keys())
+        samples             = list(self.samples.values())
+        logps_u             = [self.logp[var_name] for var_name in var_names]
         #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
         #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
         logps_f, unflatten  = flatten_tslp_list(logps_u)
@@ -359,20 +362,20 @@ def sample_cond(marg, K, K_post_idxs, N):
     return Categorical(cond).sample(False, sample_dims=(N,))
 
 class SampleGlobal(Sample):
-    def tensor_product(self, detach_p=False, detach_q=False):
+    def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):
         """
         Sums over plates, starting at the lowest plate.
         The key exported method.
         """
-        logps = self.trp.logp
-        logqs = self.trp.logq
-
+        logp = self.logp
         if detach_p:
-            logps = {n:lp.detach() for (n,lp) in logps.items()}
-        if detach_q:
-            logqs = {n:lq.detach() for (n,lq) in logqs.items()}
+            logp = [lp.detach() for lp in logp.items()]
 
-        tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
+        logq = self.logq
+        if detach_q:
+            logq = [lq.detach() for lq in logq.items()]
+
+        tensors = [*logp.values(), *[-lq for lq in logq.values()], *extra_log_factors]
 
         ## Convert tensors to Float64
         lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors)

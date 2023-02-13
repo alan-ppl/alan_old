@@ -287,8 +287,8 @@ def reduce_Ks(tensors, Ks_to_sum):
     tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
     result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 
-    #if 0<len(Ks_to_sum):
-    #result = result - sum(math.log(K.size) for K in Ks_to_sum) #t.log(t.tensor([K.size for K in Ks_to_sum])).sum()#.to(device=result.device)
+    if 0<len(Ks_to_sum):
+        result = result - sum(math.log(K.size) for K in Ks_to_sum) #t.log(t.tensor([K.size for K in Ks_to_sum])).sum()#.to(device=result.device)
     return sum([result, *maxes])
 
 def max_dims(x, dims):

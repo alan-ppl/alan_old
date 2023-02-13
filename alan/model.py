@@ -117,7 +117,6 @@ class SampleMixin():
         #compute logP
         trp = traces.TraceP(trq)
         self.P(trp, **inputs)
-        breakpoint()
 
         return Sample(trp)
 

@@ -122,6 +122,10 @@ class AbstractTrace():
         """
         return t.zeros(*args, **kwargs, device=self.device)
 
+    @property
+    def Ks(self):
+        return set([*self.K_var.values(), *self.K_group.values()])
+
 
 class AbstractTraceP(AbstractTrace):
     kwarg_keys = ['plates', 'T', 'sum_discrete']
@@ -173,14 +177,14 @@ class AbstractTraceQ(AbstractTrace):
         self.logq_var = {}
         self.logq_group = {}
 
+        #Dict mapping varname to K
         self.K_var = {}
+        #Dict mapping varname to K
         self.K_group = {}
+        #Dict mapping varname to group
+        self.group = {}
 
         self.group_parent_idxs = {}
-
-    @property
-    def Ks(self):
-        return set([*self.K_var.values(), *self.K_group.values()])
 
     def sample__(self, key, dist, plates=(), T=None, group=None, multi_sample=True):
         #If we've defined an approximate posterior for data then just skip it.
@@ -201,6 +205,7 @@ class AbstractTraceQ(AbstractTrace):
 
         #Create new Kdim
         if (group is not None):
+            self.group[key] = group
             #new group of K's
             if (group not in self.K_group):
                 self.K_group[group] = Dim(f"K_{group}", K)
@@ -239,13 +244,14 @@ class AbstractTraceQ(AbstractTrace):
             self.logq_var[key] = logq
 
     def finalize_logq(self):
-        logq = {}
+        logq_group = {}
         for (k, v) in self.logq_group.items():
-            logq[k] = self.logq(v, self.K_group[k])
+            logq_group[k] = self.logq(v, self.K_group[k])
+
+        logq_var = {}
         for (k, v) in self.logq_var.items():
-            print((k, v))
-            logq[k] = self.logq(v, self.K_var[k])
-        return logq
+            logq_var[k] = self.logq(v, self.K_var[k])
+        return logq_group, logq_var
 
     def reduce_plate(self, f, x, plate):
         """
@@ -470,9 +476,10 @@ class TraceP(AbstractTraceP):
         self.platedims = trq.platedims
         self.samples = trq.samples
         self.data = trq.data
-        self.logq = trq.finalize_logq()
+        self.logq_group, self.logq_var = trq.finalize_logq()
         self.K_group = trq.K_group
         self.K_var = trq.K_var
+        self.group = trq.group
 
         self.logp = {}
 
