@@ -23,10 +23,10 @@ class Q(alan.AlanModule):
         self.Nd = alan.MLNormal({'plate_1': J, 'plate_2': M})
 
     def forward(self, tr):
-        self.Na(tr, 'a')
-        self.Nb(tr, 'b')
-        self.Nc(tr, 'c')
-        self.Nd(tr, 'd')
+        tr('a',   self.Na())
+        tr('b',   self.Nb())
+        tr('c',   self.Nc())
+        tr('d',   self.Nd())
         
 
 #class PQ(alan.AlanModule):

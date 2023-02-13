@@ -67,8 +67,8 @@ class ML(AlanModule):
             for old_nat, new_nat in zip(self.named_nats, new_nats):
                 old_nat.data.copy_(new_nat.align_as(old_nat))
 
-    def __call__(self, tr, key):
-        return tr(key, self.dist(**self.nat2conv(*self.dim_nats)))
+    def __call__(self):
+        return self.dist(**self.nat2conv(*self.dim_nats))
 
     def local_parameters(self):
         return []

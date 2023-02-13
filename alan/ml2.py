@@ -48,8 +48,8 @@ class ML2(AlanModule):
         if not all((J==0).all() for J in self.named_Js):
             raise Exception("One of the Js is non-zero. Presumably this is because one of the Js has been given to an optimizer as a parameter.  The solution is to use model.parameters() to extract parameters, as this avoids Js, rather than e.g. Q.parameters()")
 
-    def __call__(self, tr, key):
-        return tr(key, self.dist(**self.mean2conv(*self.dim_means), extra_log_factor=self.extra_log_factor))
+    def __call__(self):
+        return self.dist(**self.mean2conv(*self.dim_means), extra_log_factor=self.extra_log_factor)
 
     def extra_log_factor(self, sample):
         #Check the dimensions of sample are as expected.

@@ -4,9 +4,8 @@ from .dist import *
 from .utils import *
 from .alan_module import AlanModule
 from .exp_fam_mixin import *
-from . import model
 
-class Tilted(model.Model):
+class Tilted(AlanModule):
     """
     Based on computing:
     Delta m = E_P[f(x)] - E_Q[f(x)]
@@ -71,10 +70,8 @@ class Tilted(model.Model):
 
         return self.dist(**self.nat2conv(*Q_nats), extra_log_factor=inner)
 
-    def P(self, tr, *args, **kwargs):
-        tr(self.dist(*args, **kwargs))
-    def Q(self, tr, *args, **kwargs):
-        tr(self.tilted(*args, **kwargs))
+    def __call__(self, *args, **kwargs):
+        return self.tilted(*args, **kwargs)
 
     def _update(self, lr):
         with t.no_grad():
