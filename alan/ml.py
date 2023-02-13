@@ -3,10 +3,9 @@ import torch.nn as nn
 from .dist import *
 from .utils import *
 from .alan_module import AlanModule
-from .model import Model
 from .exp_fam_mixin import *
 
-class ML(Model):
+class ML(AlanModule):
     """
     Isn't quite ML...
     In particular, the RWS wake-phase Q update allows us to in effect compute,
@@ -68,11 +67,8 @@ class ML(Model):
             for old_nat, new_nat in zip(self.named_nats, new_nats):
                 old_nat.data.copy_(new_nat.align_as(old_nat))
 
-    def P(self, tr, *args, **kwargs):
-        return tr(self.dist(*args, **kwargs))
-
-    def Q(self, tr, *args, **kwargs):
-        return tr(self.dist(**self.nat2conv(*self.dim_nats)))
+    def __call__(self, tr, key):
+        return tr(key, self.dist(**self.nat2conv(*self.dim_nats)))
 
     def local_parameters(self):
         return []

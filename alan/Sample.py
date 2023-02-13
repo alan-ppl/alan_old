@@ -16,6 +16,7 @@ class Sample():
     def __init__(self, trp):
         self.Ks = trp.Ks
         self.samples = trp.samples
+        self.reparam = trp.reparam
 
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
             if isinstance(lp, TimeseriesLogP):

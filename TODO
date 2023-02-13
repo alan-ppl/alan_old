@@ -1,19 +1,17 @@
-* All Q's are the same, except that they do something slighlty different with how they choose parents.
-*
+* Timeseries
+* Sum discrete
+* ML etc. Model -> QModule
+* prediction.
+
+
 
 * lots of repetition around platesize code for ML, ML2, Tilted etc.
 * store Ps rather than logps, in preparation for lazy efficient stuff.
 * sort out devices (give trace a device)
   * give dist(0, 1) a device.
-* simplify trp / trq
-* can we put set_T_dist into AbstractTrace?  (Problems with TracePred)
-* check: 
-  * enumeration 
-  * timeseries.
-  * prediction.
+
 Errors:
 * P shouldn't have any QModules (QModules would imply a plated Parameter, and we really shouldn't have a plated parameter in P)
-* optional args (multi_sample etc.) differ between P and Q
 * check all dimensions are either plates or Ks.
 * check we don't have different dimensions with the same names
 * missing tr(key)
