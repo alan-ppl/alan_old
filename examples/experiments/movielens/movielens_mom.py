@@ -14,15 +14,20 @@ resultsFolder = "results"
 # resultsFolder = "results/0.25P"
 
 device0 = t.device("cuda" if t.cuda.is_available() else "cpu")
-print(device0)
+# print(device0)
+# device0 = "cpu"
 # device="cpu"
+# device=device0
 Ns = [5,10]
 Ms = [50,150,300]
+
+Ns = [20]
+Ms = [450]
 
 for useData in [True, False]:
     for M in Ms:
         for N in Ns:
-            device="cpu" if M==300 else device0  # 300 is too big for GPU -- sort this out
+            # device="cpu" if M==300 else device0  # 300 is too big for my GPU -- try getting blue pebble set up
             print(device)
             sizes = {'plate_1':M, 'plate_2':N}
             d_z = 18
@@ -69,7 +74,6 @@ for useData in [True, False]:
 
                 data = {'obs': sampledData['obs']}
                 # N.B.: p_ll doesn't really makes sense for sampled data, but we can compute it anyway if we have test_data/all_data
-                #       (makes code a bit simpler to compute p_ll anyway--TODO: stop computing these pointless p_lls)
                 test_data = {'obs':t.load('data/test_data_y_{0}_{1}.pt'.format(N, M)).to(device)}
                 all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
                 data['obs'] = data['obs'].rename('plate_1','plate_2')
@@ -78,75 +82,80 @@ for useData in [True, False]:
             model = alan.Model(P, Q, data, covariates)
 
             model.to(device)
-            Ks = [1,3,10,30]#,50]
+            Ks = {"tmc_new": [1,3,10,30], "global_k": [1,3,30,100,300,1000,3000,10000,30000]}
 
             # "MP" is defunct and in reality 'massively parallel' will come to mean "tmc_new" in the paper,
             # but we can generate results for "MP" anyway if we want
             # methods = ["MP", "tmc", "tmc_new", "global_k"]  
             methods = ["tmc_new", "global_k"]
 
-            elbos = {method: {k:[] for k in Ks} for method in methods}
-            elbo_times = {method: {k:[] for k in Ks} for method in methods}
+            if useData:
+                elbos = {method: {k:[] for k in Ks[method]} for method in methods}
+                elbo_times = {method: {k:[] for k in Ks[method]} for method in methods}
 
-            p_lls = {method: {k:[] for k in Ks} for method in methods}
-            p_ll_times = {method: {k:[] for k in Ks} for method in methods}
+                p_lls = {method: {k:[] for k in Ks[method]} for method in methods}
+                p_ll_times = {method: {k:[] for k in Ks[method]} for method in methods}
 
-            expectations = {method: {k:[] for k in Ks} for method in methods}
-            expectation_times = {method: {k:[] for k in Ks} for method in methods}
+            expectations = {method: {k:[] for k in Ks[method]} for method in methods}
+            expectation_times = {method: {k:[] for k in Ks[method]} for method in methods}
             
             # input("start?")
 
-            for k in Ks:
+            for k in Ks["global_k"]:
                 print(f"M={M}, N={N}, k={k}")
 
-                num_runs = 1000
+                num_runs = 5#000
                 for i in range(num_runs):
                     # if i % 100 == 0: print(i)
 
                     if verbose: print("run", i)#, end=" ")
 
-                    # Compute the elbos
+                    if useData:
+                        # Compute the elbos
 
-                    # start = time.time()
-                    # elbos["MP"][k].append(model.elbo(k).item())#/num_runs)
-                    # end = time.time()
-                    # elbo_times["MP"][k].append(end-start)
+                        # start = time.time()
+                        # elbos["MP"][k].append(model.elbo(k).item())#/num_runs)
+                        # end = time.time()
+                        # elbo_times["MP"][k].append(end-start)
 
-                    start = time.time()
-                    elbos["tmc_new"][k].append(model.elbo_tmc_new(k).item())#/num_runs)
-                    end = time.time()
-                    elbo_times["tmc_new"][k].append(end-start)
+                        if k in Ks["tmc_new"]:
+                            start = time.time()
+                            elbos["tmc_new"][k].append(model.elbo_tmc_new(k).item())#/num_runs)
+                            end = time.time()
+                            elbo_times["tmc_new"][k].append(end-start)
 
-                    # start = time.time()
-                    # elbos["tmc"][k].append(model.elbo_tmc(k).item())#/num_runs)
-                    # end = time.time()
-                    # elbo_times["tmc"][k].append(end-start)
+                        # start = time.time()
+                        # elbos["tmc"][k].append(model.elbo_tmc(k).item())#/num_runs)
+                        # end = time.time()
+                        # elbo_times["tmc"][k].append(end-start)
 
-                    start = time.time()
-                    elbos["global_k"][k].append(model.elbo_global(k).item())#/num_runs)
-                    end = time.time()
-                    elbo_times["global_k"][k].append(end-start)
+                        start = time.time()
+                        elbos["global_k"][k].append(model.elbo_global(k).item())#/num_runs)
+                        end = time.time()
+                        elbo_times["global_k"][k].append(end-start)
 
 
-                    # Compute the predictive log-likelihood
+                        # Compute the predictive log-likelihood
 
-                    # print(model.predictive_ll(1, 10, data_all=all_data, covariates_all=all_covariates, sample_method="MP")["obs"].item())
-                    for method in methods:
-                        if verbose: print(method, end=". ")
-                        error = True
-                        while error:
-                            try:
-                                start = time.time()
-                                p_lls[method][k].append(model.predictive_ll(k, 100, data_all=all_data, covariates_all=all_covariates, sample_method=method)["obs"].item())
-                                end = time.time()
+                        
+                        # print(model.predictive_ll(1, 10, data_all=all_data, covariates_all=all_covariates, sample_method="MP")["obs"].item())
+                        for method in methods:
+                            if method != "tmc_new" or k in Ks["tmc_new"]:
+                                if verbose: print(method, end=". ")
+                                error = True
+                                while error:
+                                    try:
+                                        start = time.time()
+                                        p_lls[method][k].append(model.predictive_ll(k, 100, data_all=all_data, covariates_all=all_covariates, sample_method=method)["obs"].item())
+                                        end = time.time()
 
-                                if verbose: print(p_lls[method][k][-1])
-                                p_ll_times[method][k].append(end-start)
+                                        if verbose: print(p_lls[method][k][-1])
+                                        p_ll_times[method][k].append(end-start)
 
-                                error = False
-                            except ValueError:
-                                # print("error")
-                                pass
+                                        error = False
+                                    except ValueError:
+                                        # print("error")
+                                        pass
 
                     # print()
                     
@@ -163,10 +172,11 @@ for useData in [True, False]:
                     # end=time.time()
                     # expectation_times["tmc"][k].append(end-start)
 
-                    start = time.time()
-                    expectations["tmc_new"][k].append(pp.mean(model.weights_tmc_new(k)))
-                    end=time.time()
-                    expectation_times["tmc_new"][k].append(end-start)
+                    if k in Ks["tmc_new"]:
+                        start = time.time()
+                        expectations["tmc_new"][k].append(pp.mean(model.weights_tmc_new(k)))
+                        end=time.time()
+                        expectation_times["tmc_new"][k].append(end-start)
 
                     start = time.time()
                     expectations["global_k"][k].append(pp.mean(model.weights_global(k)))
@@ -177,52 +187,55 @@ for useData in [True, False]:
 
                 # Compute mean/std_err of results, store w/ mean/std_err execution time 
                 for method in methods:
-                    elbos[method][k] = {'mean': np.mean(elbos[method][k]),
-                                        'std_err': np.std(elbos[method][k])/np.sqrt(num_runs),
-                                        'time_mean': np.mean(elbo_times[method][k]),
-                                        'time_std_err': np.std(elbo_times[method][k])/np.sqrt(num_runs)}
+                    if method != "tmc_new" or k in Ks["tmc_new"]:
+                        if useData:
+                            elbos[method][k] = {'mean': np.mean(elbos[method][k]),
+                                                'std_err': np.std(elbos[method][k])/np.sqrt(num_runs),
+                                                'time_mean': np.mean(elbo_times[method][k]),
+                                                'time_std_err': np.std(elbo_times[method][k])/np.sqrt(num_runs)}
 
-                    
-                    p_lls[method][k] = {'mean': np.mean(p_lls[method][k]),
-                                        'std_err': np.std(p_lls[method][k])/np.sqrt(num_runs),
-                                        'time_mean': np.mean(p_ll_times[method][k]),
-                                        'time_std_err': np.std(p_ll_times[method][k])/np.sqrt(num_runs)}
-
-                    
-                    rvs = list(expectations[method][k][0].keys())
-                    mean_vars = {rv: [] for rv in rvs}  # average element variance for each rv
-
-                    if useData:
-                        expectation_means = {rv: sum([x[rv] for x in expectations[method][k]])/num_runs for rv in rvs}
-                    else:
-                        expectation_means = {rv: sampledData[rv] for rv in rvs}
                         
-                    sq_errs = {rv: [] for rv in rvs}
+                            p_lls[method][k] = {'mean': np.mean(p_lls[method][k]),
+                                                'std_err': np.std(p_lls[method][k])/np.sqrt(num_runs),
+                                                'time_mean': np.mean(p_ll_times[method][k]),
+                                                'time_std_err': np.std(p_ll_times[method][k])/np.sqrt(num_runs)}
 
-                    for est in expectations[method][k]:
-                        for rv in est:
-                            sq_err = ((expectation_means[rv] - est[rv])**2).cpu()
-                            sq_errs[rv].append(sq_err.rename(None))
                     
-                    for rv in rvs:
-                        mean_vars[rv] = float(t.mean(t.stack(sq_errs[rv])))
+                        rvs = list(expectations[method][k][0].keys())
+                        mean_vars = {rv: [] for rv in rvs}  # average element variance for each rv
 
-                    expectations[method][k] = {}
-                    expectations[method][k]["time_mean"] = float(np.mean(expectation_times[method][k]))
-                    expectations[method][k]["time_std_err"] = float(np.std(expectation_times[method][k]))
-                    for rv in rvs:
-                        expectations[method][k][rv] = {"mean_var": mean_vars[rv]}
+                        if useData:
+                            expectation_means = {rv: sum([x[rv] for x in expectations[method][k]])/num_runs for rv in rvs}
+                        else:
+                            expectation_means = {rv: sampledData[rv] for rv in rvs}
+                            
+                        sq_errs = {rv: [] for rv in rvs}
+
+                        for est in expectations[method][k]:
+                            for rv in est:
+                                sq_err = ((expectation_means[rv] - est[rv])**2).cpu()
+                                sq_errs[rv].append(sq_err.rename(None))
+                        
+                        for rv in rvs:
+                            mean_vars[rv] = float(t.mean(t.stack(sq_errs[rv])))
+
+                        expectations[method][k] = {}
+                        expectations[method][k]["time_mean"] = float(np.mean(expectation_times[method][k]))
+                        expectations[method][k]["time_std_err"] = float(np.std(expectation_times[method][k]))
+                        for rv in rvs:
+                            expectations[method][k][rv] = {"mean_var": mean_vars[rv]}
 
 
             useDataStr = "trueData" if useData else "sampledData"
 
-            file = f'{resultsFolder}/{useDataStr}/movielens_elbo_N{N}_M{M}.json'
-            with open(file, 'w') as f:
-                json.dump(elbos, f)
+            if useData:
+                file = f'{resultsFolder}/{useDataStr}/movielens_elbo_N{N}_M{M}.json'
+                with open(file, 'w') as f:
+                    json.dump(elbos, f)
 
-            file = f'{resultsFolder}/{useDataStr}/movielens_p_ll_N{N}_M{M}.json'
-            with open(file, 'w') as f:
-                json.dump(p_lls, f)
+                file = f'{resultsFolder}/{useDataStr}/movielens_p_ll_N{N}_M{M}.json'
+                with open(file, 'w') as f:
+                    json.dump(p_lls, f)
 
             file = f'{resultsFolder}/{useDataStr}/movielens_expectation_N{N}_M{M}.json'
             with open(file, 'w') as f:
