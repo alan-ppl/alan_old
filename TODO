@@ -106,7 +106,9 @@ Error checking for minibatching.
   And we don't currently check these restrictions.
 
 Masks / nested tensors for different numbers of observations in a plate...
-
+ Is it possible to sort observations and batch according to length sort of like what they do in NLP with diffferent length sentences?
+ 
+ 
 Reduce memory consumption:
   Tips in docs:
     Group everything in a plate.
