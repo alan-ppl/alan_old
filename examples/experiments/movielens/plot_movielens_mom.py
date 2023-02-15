@@ -5,11 +5,11 @@ from tueplots import axes, bundles
 # TODO: Clean this up, some of these functions can probably pretty easily be combined together
 
 
-Ks = {"tmc_new": ['1', '3', '10', '30'], "global_k": ['1', '3','10','30', '100', '300', '1000', '3000', '10000', '30000']}
+Ks = {"tmc_new": ['1', '3', '10', '30'], "global_k": ['1', '3','10','30', '100', '300', '1000', '3000', '10000']}#, '30000']}
 Ns = ['5','10']
 Ms = ['50', '150','300']
 
-Ns = ['10']
+Ns = ['20']
 Ms = ['450']
 
 def multiPlotValsVsK(Ks, Ns, Ms, mode="elbo"): # mode="elbo" or "p_ll"
@@ -352,13 +352,13 @@ def plotAllForSinglePlateCombination(Ks, N, M, rv):
         
         fig, ax = plt.subplots(2,4,figsize=(8.5, 4.5))
         for i in range(2):
-            with open(f'results/trueData/movielens_elbo_N{N}_M{M}.json') as f:
+            with open(f'results/movielens_elbo_N{N}_M{M}.json') as f:
                 elbos = json.load(f)
-            with open(f'results/trueData/movielens_p_ll_N{N}_M{M}.json') as f:
+            with open(f'results/movielens_p_ll_N{N}_M{M}.json') as f:
                 p_lls = json.load(f)
-            with open(f'results/trueData/movielens_expectation_N{N}_M{M}.json') as f:
+            with open(f'results/movielens_variance_N{N}_M{M}.json') as f:
                 vars = json.load(f)
-            with open(f'results/sampledData/movielens_expectation_N{N}_M{M}.json') as f:
+            with open(f'results/movielens_MSE_N{N}_M{M}.json') as f:
                 mses = json.load(f)
 
             elbo_MP = [elbos["tmc_new"][k]['mean'] for k in Ks["tmc_new"]]
@@ -418,10 +418,13 @@ def plotAllForSinglePlateCombination(Ks, N, M, rv):
                 ax[i,3].errorbar(mses_time_global_K,mses_global_K, yerr=0, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='Global IS')
 
         for j in range(4):
+            colTitles = ['a','b','c','d']
             ax[0,j].set_xlabel('K')
             ax[1,j].set_xlabel('Time (s)')
 
             ax[0,j].tick_params(axis='x', labelrotation = 90)
+
+            ax[0,j].set_title(f'({colTitles[j]})', loc='left', weight="bold")
 
         for i in range(2):
             ax[i,0].set_ylabel("Evidence Lower Bound", fontsize=10)
@@ -430,12 +433,12 @@ def plotAllForSinglePlateCombination(Ks, N, M, rv):
             ax[i,3].set_ylabel(f"MSE of {rv} Estimator", fontsize=10)
 
         plt.legend()
-        plt.savefig(f'results/movielens_all_N{N}_M{M}_{rv}.png')
-        plt.savefig(f'results/movielens_all_N{N}_M{M}_{rv}.pdf')
+        plt.savefig(f'plots/movielens_all_N{N}_M{M}_{rv}.png')
+        plt.savefig(f'plots/movielens_all_N{N}_M{M}_{rv}.pdf')
         plt.close()
 
-plotAllForSinglePlateCombination(Ks, 10, 450, "z")
-# plotAllForSinglePlateCombination(Ks, 20, 450, "z")
+# plotAllForSinglePlateCombination(Ks, 10, 450, "z")
+plotAllForSinglePlateCombination(Ks, 20, 450, "z")
 
 # for useData in [True, False]:
 #     if useData:
