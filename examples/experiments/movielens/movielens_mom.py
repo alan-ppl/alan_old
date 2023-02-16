@@ -7,16 +7,37 @@ import json
 from alan.experiment_utils import seed_torch
 import alan.postproc as pp
 import gc
+import sys
 
+nArgs = len(sys.argv)
 verbose = False
+forceCPU = False
+num_runs = 1000
+
+if nArgs == 1:
+    pass
+elif nArgs == 2:
+    if sys.argv[1].isnumeric():
+        num_runs = int(sys.argv[1])
+    else:
+        if sys.argv[1] in ("-v", "-c", "-vc", "-cv"):
+            verbose = "v" in sys.argv[1]
+            forceCPU = "c" in sys.argv[1] 
+        else:
+            raise ValueError("Non-numeric number of runs entered.\nUsage: python argtest.py [-vc] num_runs\n  -v:\tverbose output\n  -c:\t\tforce cpu use")
+elif nArgs == 3:
+    if sys.argv[2].isnumeric():
+        num_runs = int(sys.argv[2])
+    else:
+        raise ValueError("Non-numeric number of runs entered.\nUsage: python argtest.py [-vc] num_runs\n  -v:\tverbose output\n  -c:\t\tforce cpu use")
+    verbose = "v" in sys.argv[1]
+    forceCPU = "c" in sys.argv[1]
+else:
+        raise ValueError("Too many arguments.\nUsage: python argtest.py [-vc] num_runs\n  -v:\tverbose output\n  -c:\t\tforce cpu use")
 
 resultsFolder = "results"
 
-device = t.device("cuda" if t.cuda.is_available() else "cpu")
-device = "cpu"
-
-# Ns = [5,10]
-# Ms = [50,150,300]
+device = "cpu" if forceCPU else t.device("cuda" if t.cuda.is_available() else "cpu")
 
 Ns = [20]
 Ms = [450]
@@ -78,7 +99,7 @@ for useData in [True, False]:
             model = alan.Model(P, Q, data, covariates)
 
             model.to(device)
-            Ks = {"tmc_new": [1,3,10,30], "global_k": [1,3,10,30,100,300,1000,3000,10000,30000]}
+            Ks = {"tmc_new": [1,3,10,30], "global_k": [1,3,10,30,100,300,1000,3000,10000]}#,30000]}
 
             # "tmc_new" is the massively parallel approach 
             methods = ["tmc_new", "global_k"]
@@ -92,17 +113,13 @@ for useData in [True, False]:
 
             expectations = {method: {k:[] for k in Ks[method]} for method in methods}
             expectation_times = {method: {k:[] for k in Ks[method]} for method in methods}
-            
-            # input("start?")
 
             for k in Ks["global_k"]:
                 print(f"M={M}, N={N}, k={k}")
 
-                num_runs = 5#000
                 for i in range(num_runs):
-                    # if i % 100 == 0: print(i)
-
-                    if verbose: print("run", i)#, end=" ")
+                    if verbose: 
+                        if i % 250 == 0: print(f"{i+1}/{num_runs}")
 
                     if useData:
                         # Compute the elbos
@@ -131,7 +148,6 @@ for useData in [True, False]:
                                         p_lls[method][k].append(model.predictive_ll(k, 100, data_all=all_data, covariates_all=all_covariates, sample_method=method)["obs"].item())
                                         end = time.time()
 
-                                        if verbose: print(p_lls[method][k][-1])
                                         p_ll_times[method][k].append(end-start)
 
                                         error = False
@@ -139,16 +155,16 @@ for useData in [True, False]:
                                         pass
 
                     # Compute (an estimate of) the expectation for each variable in the model
+                    start = time.time()
+                    expectations["global_k"][k].append(pp.mean(model.weights_global(k)))
+                    end=time.time()
+                    expectation_times["global_k"][k].append(end-start)
+
                     if k in Ks["tmc_new"]:
                         start = time.time()
                         expectations["tmc_new"][k].append(pp.mean(model.weights_tmc_new(k)))
                         end=time.time()
                         expectation_times["tmc_new"][k].append(end-start)
-
-                    start = time.time()
-                    expectations["global_k"][k].append(pp.mean(model.weights_global(k)))
-                    end=time.time()
-                    expectation_times["global_k"][k].append(end-start)
 
                     # input("Next run?")
 
