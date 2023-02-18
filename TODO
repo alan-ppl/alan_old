@@ -1,3 +1,8 @@
+* What happens when a K-group is shared across plates?
+  * tensor sum should work, as we don't sum out K_group in lower plates if it also appears in upper plates.
+  * should work with moments / marginals, as we don't use grouped logq
+  * sampling should work (we go through variables in the order they were generated in P, and if there's a new K, we sample it).  So that will sample K at the high-level if appears first at a high-level.
+* Prediction is a method on Model that takes a Sample.
 * Timeseries
 * Sum discrete
 * ML etc. Model -> QModule

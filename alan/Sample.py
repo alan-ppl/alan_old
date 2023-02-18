@@ -2,7 +2,8 @@ import math
 from .utils import *
 from .timeseries import TimeseriesLogP, flatten_tslp_list
 from .dist import Categorical
-from functorch.dim import dims, Tensor
+from functorch.dim import dims, Tensor, Dim
+from . import traces
 
 class Sample():
     """
@@ -14,9 +15,7 @@ class Sample():
       Check that all dims are something (plate, timeseries, K)
     """
     def __init__(self, trp):
-        self.Ks = trp.Ks
-        self.samples = trp.samples
-        self.reparam = trp.reparam
+        self.trp = trp
 
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
             if isinstance(lp, TimeseriesLogP):
@@ -45,16 +44,41 @@ class Sample():
             lq_notK = [dim for dim in generic_dims(lq) if not self.is_K(dim)]
             assert set(lp_notK) == set(lq_notK)
 
+        self.varname2logp = trp.logp
         self.logp = [*trp.logp.values()]
         self.logq = [*trp.logq_group.values(), *trp.logq_var.values()]
 
         #Assumes that self.lps come in ordered
-        self.platedims = set(trp.platedims.values())
-        self.ordered_plate_dims = [dim for dim in unify_dims(self.logp) if self.is_plate(dim)]
+        self.set_platedims = set(trp.platedims.values())
+        self.ordered_plate_dims = [dim for dim in unify_dims(self.logp) if self.is_platedim(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
 
-    def is_plate(self, dim):
-        return dim in self.platedims
+    @property
+    def samples(self):
+        return self.trp.samples
+
+    @property
+    def data(self):
+        return self.trp.data
+
+    @property
+    def reparam(self):
+        return self.trp.reparam
+
+    @property
+    def Ks(self):
+        return self.trp.Ks
+
+    @property
+    def device(self):
+        return self.trp.device
+
+    @property
+    def platedims(self):
+        return self.trp.platedims
+
+    def is_platedim(self, dim):
+        return dim in self.set_platedims
 
     def is_K(self, dim):
         return dim in self.Ks
@@ -173,7 +197,7 @@ class Sample():
 
         ms        = [(f(*[self.samples[v] for v in vs]) if isinstance(vs, tuple) else f(self.samples[vs])) for (f, vs) in fs]
         #Keep only platedims.
-        dimss     = [[dim for dim in generic_dims(m) if dim in self.platedims] for m in ms]
+        dimss     = [[dim for dim in generic_dims(m) if self.is_platedim(dim)] for m in ms]
         sizess    = [[dim.size for dim in dims] for dims in dimss]
         named_Js  = [t.zeros(sizes, dtype=m.dtype, device=m.device, requires_grad=True) for (m, sizes) in zip(ms, sizess)]
         dimss     = [[*dims, Ellipsis] for dims in dimss]
@@ -197,7 +221,7 @@ class Sample():
         """
         ms = list(self.logq.values())
         #Keep only platedims.
-        dimss     = [[dim for dim in generic_dims(m) if dim in self.platedims] for m in ms]
+        dimss     = [[dim for dim in generic_dims(m) if self.is_platedim(dim)] for m in ms]
         sizess    = [[dim.size for dim in dims] for dims in dimss]
         named_Js  = [t.zeros(sizes, dtype=m.dtype, device=m.device, requires_grad=True) for (m, sizes) in zip(ms, sizess)]
         dimss     = [[*dims, Ellipsis] for dims in dimss]
@@ -219,12 +243,13 @@ class Sample():
         """
         var_names     = list(self.samples.keys())
         samples       = list(self.samples.values())
-        logqs         = [self.logq[var_name] for var_name in var_names]
-        dimss         = [lq.dims for lq in logqs]
-        undim_logqs   = [generic_order(lq, dims) for (lq, dims) in zip(logqs, dimss)]
+        #Will fail if there are no dims (i.e. for unplated variable with multisample=False)
+        dimss         = [sample.dims for sample in samples]
 
-        #Start with Js with no dimensions (like NN parameters)
-        undim_Js = [t.zeros_like(ulq, requires_grad=True) for ulq in undim_logqs]
+        undim_Js = []
+        for (sample, dims) in zip(samples, dimss):
+            undim_Js.append(t.zeros(tuple(dim.size for dim in dims), device=sample.device, requires_grad=True))
+
         #Put torchdims back in.
         dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
         #Compute result with torchdim Js
@@ -249,6 +274,13 @@ class Sample():
 
         return result
 
+    def importance_samples(self, N):
+        """
+        Returns t.tensors
+        """
+        N = Dim('N', N)
+        return self._importance_samples(N)
+
     def _importance_samples(self, N):
         """
         Returns torchdim tensors, so not for external use.
@@ -256,11 +288,12 @@ class Sample():
         The marginals are computed using the derivative of log Z again.
         We sample forward, following the generative model.
         """
+        assert isinstance(N, Dim)
         #### Computing the marginals
         #ordered in the order of generating under P
         var_names           = list(self.samples.keys())
         samples             = list(self.samples.values())
-        logps_u             = [self.logp[var_name] for var_name in var_names]
+        logps_u             = [self.varname2logp[var_name] for var_name in var_names]
         #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
         #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
         logps_f, unflatten  = flatten_tslp_list(logps_u)

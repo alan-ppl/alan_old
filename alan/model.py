@@ -238,58 +238,56 @@ class SampleMixin():
 #        N = Dim('N', N)
 #        return self._sample(K, False, data)._importance_samples(N)
 #
-#    def _predictive(self, K, N, data_all=None, platesizes_all=None):
-#        sample = self._sample(K, False, None)
-#
-#        N = Dim('N', N)
-#        post_samples = sample._importance_samples(N)
-#        tr = traces.TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all)
-#        self.P(tr)
-#        return tr, N
-#
-#    def predictive_samples(self, K, N, platesizes_all=None):
-#        if platesizes_all is None:
-#            platesizes_all = {}
-#        trace_pred, N = self._predictive(K, N, None, platesizes_all)
-#        #Convert everything to named
-#        #Return a dict mapping
-#        #Convert everything to named
-#        return trace_pred.samples_all
-#
-#    def predictive_ll(self, K, N, data_all):
-#        """
-#        Run as (e.g. for plated_linear_gaussian.py)
-#
-#        >>> obs = t.randn((4, 6, 8), names=("plate_1", "plate_2", "plate_3"))
-#        >>> model.predictive_ll(5, 10, data_all={"obs": obs})
-#        """
-#
-#        trace_pred, N = self._predictive(K, N, data_all, None)
-#        lls_all   = trace_pred.ll_all
-#        lls_train = trace_pred.ll_train
-#        assert set(lls_all.keys()) == set(lls_train.keys())
-#
-#        result = {}
-#        for varname in lls_all:
-#            ll_all   = lls_all[varname]
-#            ll_train = lls_train[varname]
-#
-#            #print(varname)
-#
-#            dims_all   = [dim for dim in ll_all.dims   if dim is not N]
-#            dims_train = [dim for dim in ll_train.dims if dim is not N]
-#            assert len(dims_all) == len(dims_train)
-#
-#            #print(dims_all)
-#            #print(dims_train)
-#            if 0 < len(dims_all):
-#                ll_all   = ll_all.sum(dims_all)
-#                ll_train = ll_train.sum(dims_train)
-#            #print(ll_all)
-#            #print(ll_train)
-#            result[varname] = (ll_all - ll_train).mean(N)
-#
-#        return result
+    def _predictive(self, sample, N, data_all=None, platesizes_all=None):
+        N = Dim('N', N)
+        post_samples = sample._importance_samples(N)
+        tr = traces.TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all, device=sample.device)
+        self.P(tr)
+        return tr, N
+
+    def predictive_samples(self, sample, N, platesizes_all=None):
+        if platesizes_all is None:
+            platesizes_all = {}
+        trace_pred, N = self._predictive(sample, N, None, platesizes_all)
+        #Convert everything to named
+        #Return a dict mapping
+        #Convert everything to named
+        return trace_pred.samples_all
+
+    def predictive_ll(self, sample, N, data_all):
+        """
+        Run as (e.g. for plated_linear_gaussian.py)
+
+        >>> obs = t.randn((4, 6, 8), names=("plate_1", "plate_2", "plate_3"))
+        >>> model.predictive_ll(5, 10, data_all={"obs": obs})
+        """
+
+        trace_pred, N = self._predictive(sample, N, data_all, None)
+        lls_all   = trace_pred.ll_all
+        lls_train = trace_pred.ll_train
+        assert set(lls_all.keys()) == set(lls_train.keys())
+
+        result = {}
+        for varname in lls_all:
+            ll_all   = lls_all[varname]
+            ll_train = lls_train[varname]
+
+            #print(varname)
+
+            dims_all   = [dim for dim in ll_all.dims   if dim is not N]
+            dims_train = [dim for dim in ll_train.dims if dim is not N]
+            assert len(dims_all) == len(dims_train)
+
+            #print(dims_all)
+            #print(dims_train)
+            if 0 < len(dims_all):
+                ll_all   = ll_all.sum(dims_all)
+                ll_train = ll_train.sum(dims_train)
+            #print(ll_all)
+            #print(ll_train)
+            result[varname] = (ll_all - ll_train).mean(N)
+
+        return result
 
     def update(self, lr, sample):
         """
