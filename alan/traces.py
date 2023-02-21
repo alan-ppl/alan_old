@@ -648,7 +648,6 @@ class TracePred(AbstractTrace):
     def _sample_sample(self, varname, dist, plates):
         sample_dims = platenames2platedims(self.platedims_all, plates)
         sample_dims.append(self.N)
-
         sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         sample_train = self.data_train[varname] if (varname in self.data_train) else self.samples_train[varname]
 
@@ -704,12 +703,15 @@ class TracePred(AbstractTrace):
 
         # Check that data_all matches data_train
         #assert t.allclose(sample_all_ordered[idxs], sample_train_ordered)
+        print(dist.all_args)
         ll_all                 = dist.log_prob(sample_all)
+        # print(ll_all)
         self.ll_all[varname]   = ll_all
+
 
         # if self.N is not dims_all[0]:
         #     dims_all = [self.N] + dims_all
-
+        # print(generic_order(ll_all, dims_all)[idxs][dims_train])
         self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
 
 def split_train_test(x, T_all, T_train, T_test):

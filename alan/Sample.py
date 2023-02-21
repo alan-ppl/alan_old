@@ -13,7 +13,7 @@ class Sample():
       Check that data appears in logps but not logqs
       Check that all dims are something (plate, timeseries, K)
     """
-    def __init__(self, trp):
+    def __init__(self, trp,K):
         self.trp = trp
 
         for lp in [*trp.logp.values(), *trp.logq.values()]:
@@ -31,6 +31,8 @@ class Sample():
                 raise Exception(f"The latent variable '{rv}' is sampled in Q but not P.")
 
             lp = trp.logp[rv]
+            # print(K)
+
             lq = trp.logq[rv]
 
             # check same plates/timeseries appear in lp and lq
@@ -231,7 +233,9 @@ class Sample():
         #ordered in the order of generating under P
         var_names           = list(self.trp.samples.keys())
         samples             = list(self.trp.samples.values())
+
         logps_u             = [self.trp.logp[var_name] for var_name in var_names]
+
         #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
         #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
         logps_f, unflatten  = flatten_tslp_list(logps_u)
@@ -306,8 +310,9 @@ class Sample():
 
             #the sample should only have one K, so pick it out and index into it.
             sample_K = next(dim for dim in samples[i].dims if self.is_K(dim))
-
             post_samples[var_names[i]] = samples[i].order(sample_K)[K_post_idxs[sample_K]]
+
+
         return post_samples
 
 
@@ -323,12 +328,10 @@ def sample_cond(marg, K, K_post_idxs, N):
     #note that none of the previous Ks have a T dimension, so we don't need to
     #do any time indexing...
     cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
-
     #Check none of the conditional probabilites are big and negative
     assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
     #Set any small and negative conditional probaiblities to zero.
     cond = cond * (cond > 0)
-
     #Put current K at the back for the sampling,
     cond = cond.order(K)
     cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
@@ -352,7 +355,8 @@ class SampleGlobal(Sample):
         #tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
         tensors = [*logps.values(), *[-lq for lq in logqs.values()], *extra_log_factors]
         ## Convert tensors to Float64
-        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) - math.log(self.Kdim.size)
+
+        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) #- math.log(self.Kdim.size)
         return lpqs.logsumexp(self.Kdim)
 
     def _importance_samples(self, N):
@@ -375,15 +379,17 @@ class SampleGlobal(Sample):
         logps = self.trp.logp
         logqs = self.trp.logq
         tensors = [*logps.values(), *[-lq for lq in logqs.values()]]
-        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) - math.log(self.Kdim.size)
+
+        lpqs = sum(self.sum_not_K(x.to(dtype=t.float64)) for x in tensors) #- math.log(self.Kdim.size)
         weights = lpqs.softmax(self.Kdim)
-
+        # print(weights)
         sampled_Ks = Categorical(weights.order(self.Kdim)).sample(False, sample_dims=(N,))
-
+        # print(sampled_Ks)
         post_samples = {}
         for i in range(len(var_names)):
             post_samples[var_names[i]] = samples[i].order(self.Kdim)[sampled_Ks]
 
+        # print(post_samples)
         return post_samples
 
     @property

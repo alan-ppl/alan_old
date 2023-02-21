@@ -16,7 +16,7 @@ setup(
     'pandas',
     'scipy',
     'tqdm',
-    'hydra',
+    'hydra-core',
     'tensorboard',
     ],
     include_package_data = True,

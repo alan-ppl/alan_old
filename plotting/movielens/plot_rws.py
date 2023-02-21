@@ -5,10 +5,10 @@ from tueplots import axes, bundles
 
 Ks_global = ['3','10','30','100','300', '1000', '3000', "10000", "30000"]
 Ks_tmc = ['3','10','30']
-Ns = ['5','10']
-Ms = ['50','150','300']
-Ns = ['5']
-Ms = ['300']
+# Ns = ['5','10']
+# Ms = ['50','150','300']
+Ns = ['100']
+Ms = ['10']
 # with open('results.json') as f:
 #     results = json.load(f)
 #
@@ -67,12 +67,16 @@ with plt.rc_context(bundles.icml2022()):
 
     # ax[1,0].sharex(ax[0,0])
     ax.set_xlabel('K')
+    ax.annotate(r'\bf{a}', xy=(0, 1), xycoords='axes fraction', fontsize=10,
+                xytext=(-40, 5), textcoords='offset points',
+                ha='right', va='bottom')
     # ax[1,1].sharex(ax[0,0])
     # ax[1,1].set_xlabel('K')
     # ax[1,2].sharex(ax[0,0])
     # ax[1,2].set_xlabel('K')
     # fig.tight_layout()
     # plt.legend()
+
     plt.savefig('charts/chart_movielens_rwsN5M300.png'.format(N, M))
     plt.savefig('charts/chart_movielens_rwsN5M300.pdf'.format(N, M))
 
@@ -130,6 +134,9 @@ with plt.rc_context(bundles.icml2022()):
 
     # ax[1,0].sharex(ax[0,0])
     ax.set_xlabel('Time (Seconds)')
+    ax.annotate(r'\bf{b}', xy=(0, 1), xycoords='axes fraction', fontsize=10,
+                xytext=(-40, 5), textcoords='offset points',
+                ha='right', va='bottom')
     # ax[1,1].sharex(ax[0,0])
     # ax[1,1].set_xlabel('K')
     # ax[1,2].sharex(ax[0,0])

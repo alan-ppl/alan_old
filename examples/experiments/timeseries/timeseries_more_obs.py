@@ -19,7 +19,7 @@ N = 30
 var = float(1/math.sqrt(N))
 tau = 5
 def P(tr):
-    tr.sample('ts_1', alan.Normal(0.0, 1))
+    tr.sample('ts_1', alan.Normal(0.0, np.sqrt(2/tau))))
     # print(tr['ts_1'])
     for i in range(2,N+1):
         latent = (1-(1/tau))*tr['ts_{}'.format(i-1)]
@@ -30,7 +30,7 @@ def P(tr):
         #     tr.sample('obs_{}'.format((N+1)//7), alan.Normal(tr['ts_{}'.format(i)], 1))
 
 def Q(tr):
-    tr.sample('ts_1', alan.Normal(0.0, 1))
+    tr.sample('ts_1', alan.Normal(0.0, np.sqrt(2/tau))))
     # print(tr['ts_1'])
     for i in range(2,N+1):
         latent = (1-(1/tau))*tr['ts_{}'.format(i-1)]
@@ -53,7 +53,7 @@ def pfilter(K):
     # obs_samples = []
     logps = []
 
-    samples.append(dist.Normal(0, 1).sample((K,)))
+    samples.append(dist.Normal(0, np.sqrt(2/tau))).sample((K,)))
     for i in range(2,N+1):
         if i % 3 == 0:
             samp = dist.Normal((1-(1/tau))*samples[-1], np.sqrt(2/tau)).sample()

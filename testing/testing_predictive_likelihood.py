@@ -1,10 +1,8 @@
 import torch as t
 import torch.nn as nn
 import alan
-from alan.prob_prog import Trace, TraceLogP, TraceSampleLogQ
-from alan.backend import vi
-import tqdm
-from functorch.dim import dims
+import numpy as np
+t.manual_seed(0)
 
 def P(tr):
   '''
@@ -39,7 +37,7 @@ K=5
 print("K={}".format(K))
 for i in range(10000):
     opt.zero_grad()
-    elbo = model.elbo(dims=dims)
+    elbo = model.elbo(K)
     (-elbo).backward()
     opt.step()
 
@@ -53,7 +51,7 @@ print(model.Q.m_mu)
 print("Approximate Covariance")
 print(model.Q.log_s_mu.exp()**2)
 
-b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),alan.dename(data['obs']).reshape(-1,1))
+b_n = t.mm(t.inverse(t.eye(5) + t.eye(5)),data['obs'].rename(None).reshape(-1,1))
 A_n = t.inverse(t.eye(5) + t.eye(5))
 
 print("True mu")

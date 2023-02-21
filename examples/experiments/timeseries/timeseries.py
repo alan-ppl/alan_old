@@ -47,7 +47,7 @@ def pfilter(K):
     logps = []
 
 
-    samples.append(dist.Normal(0, 1/math.sqrt(N)).sample((K,)))
+    samples.append(dist.Normal(0, var).sample((K,)))
     for i in range(2,N+1):
         idxs = dist.Categorical(t.ones(K)/K).sample(sample_shape=(K,))
         samples.append(dist.Normal(samples[-1][idxs], 1/math.sqrt(N)).sample())

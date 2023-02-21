@@ -103,7 +103,7 @@ class Model(nn.Module):
         #compute logP
         trp = TraceP(trq, memory_diagnostics=memory_diagnostics)
         self.P(trp)
-        return Sample(trp)
+        return Sample(trp,K)
 
     def _sample_global(self, K, reparam, data, covariates):
         if data is None:
@@ -126,7 +126,7 @@ class Model(nn.Module):
         self.P(trp)
         # print(trp.logq)
         # print(trp.logp)
-        return SampleGlobal(trp)
+        return SampleGlobal(trp,K)
 
     def _sample_tmc(self, K, reparam, data, covariates):
         if data is None:
@@ -147,7 +147,7 @@ class Model(nn.Module):
         #compute logP
         trp = TracePGlobal(trq)
         self.P(trp)
-        return Sample(trp)
+        return Sample(trp,K)
 
 
     def _sample_tmc_new(self, K, reparam, data, covariates):
@@ -171,7 +171,7 @@ class Model(nn.Module):
         self.P(trp)
         # print(trp.logq)
         # print(trp.logp)
-        return Sample(trp)
+        return Sample(trp,K)
 
     def elbo(self, K, data=None, covariates=None, reparam=True):
         """Compute the ELBO.
@@ -307,6 +307,7 @@ class Model(nn.Module):
 
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
+        # print(post_samples['a'].mean(N))
         tr = TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.covariates, covariates_all, sample.trp.platedims, platesizes_all)
         self.P(tr)
         return tr, N
@@ -359,7 +360,8 @@ class Model(nn.Module):
             if 0 < len(dims_all):
                 ll_all   = ll_all.sum(dims_all)
                 ll_train = ll_train.sum(dims_train)
-
+            # print(ll_all)
+            # print(ll_train)
             result[varname] = (ll_all - ll_train).mean(N)
 
         return result
