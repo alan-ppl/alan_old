@@ -33,7 +33,7 @@ def model_data(data):
             else:
                 data.NewCases.mask[r, d] = True
 
-    all_observed_active = np.array(observed_active)
+    all_observed_active = t.tensor(observed_active)
     return all_observed_active, nRs, nDs, nCMs
 
 class RandomWalkMobilityModel(nn.Module):
@@ -43,11 +43,11 @@ class RandomWalkMobilityModel(nn.Module):
 
         """
         super().__init__()
-        self.nRs = nRs
-        self.nDs = nDs
-        self.nCMs = nCMs
+        self.nRs = t.tensor(nRs)
+        self.nDs = t.tensor(nDs)
+        self.nCMs = t.tensor(nCMs)
         self.all_observed_active = all_observed_active
-        self.ActiveCMs = ActiveCMs
+        self.ActiveCMs = t.from_numpy(ActiveCMs)
         self.CMs = CMs
 
 
@@ -147,18 +147,18 @@ class RandomWalkMobilityModel(nn.Module):
             tr.sample("Wearing_Alpha", alan.Normal(wearing_mean, wearing_sigma), #shape=(1,)
             )
             self.WearingReduction = t.exp((-1.0) * tr['Wearing_Alpha'])
-        if wearing_parameterisation == "log_linear":
-            tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_linear, wearing_sigma_linear), #shape=(1,)
-            )
-            self.WearingReduction = 1.0 - tr['Wearing_Alpha']
-        if wearing_parameterisation == "log_quadratic":
-            tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(1,)
-            )
-            self.WearingReduction = 1.0 - 2.0 * tr['Wearing_Alpha']
-        if wearing_parameterisation == "log_quadratic_2":
-            tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(2,)
-            )
-            self.WearingReduction = 1.0 - tr['Wearing_Alpha'][0] - tr['Wearing_Alpha'][1]
+        # if wearing_parameterisation == "log_linear":
+        #     tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_linear, wearing_sigma_linear), #shape=(1,)
+        #     )
+        #     self.WearingReduction = 1.0 - tr['Wearing_Alpha']
+        # if wearing_parameterisation == "log_quadratic":
+        #     tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(1,)
+        #     )
+        #     self.WearingReduction = 1.0 - 2.0 * tr['Wearing_Alpha']
+        # if wearing_parameterisation == "log_quadratic_2":
+        #     tr.sample("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(2,)
+        #     )
+        #     self.WearingReduction = 1.0 - tr['Wearing_Alpha'][0] - tr['Wearing_Alpha'][1]
         tr.sample('Mobility_Alpha', alan.Normal(
             mobility_mean, mobility_sigma), # shape=(1,)
         )
@@ -179,18 +179,16 @@ class RandomWalkMobilityModel(nn.Module):
             #DATA
             self.ActiveCMs = self.ActiveCMs[:, :-2, :]
             self.ActiveCMs = self.ActiveCMs[:, :-2, :]
-            self.ActiveCMReduction = (
-                t.reshape(tr['CM_Alpha'], (1, self.nCMs - 2, 1)) * self.ActiveCMs
-            )
+            self.ActiveCMReduction = tr['CM_Alpha'] * self.ActiveCMs
+
 
             self.ActiveCMs_wearing = self.ActiveCMs[:, -1, :]
 
         else:
             self.ActiveCMs = self.ActiveCMs[:, :-1, :]
 
-            self.ActiveCMReduction = (
-                t.reshape(tr['CM_Alpha'], (1, self.nCMs - 1, 1)) * self.ActiveCMs
-            )
+            self.ActiveCMReduction = tr['CM_Alpha'] * self.ActiveCMs
+
 
         growth_reduction = t.sum(self.ActiveCMReduction, axis=1)
 
@@ -200,81 +198,58 @@ class RandomWalkMobilityModel(nn.Module):
         # calculating reductions for each of the wearing parameterisations
         if wearing_parameterisation == "exp":
             #DATA
-            self.ActiveCMReduction_wearing = t.reshape(
-                tr['Wearing_Alpha'], (1, 1, 1)
-            ) * t.reshape(
-                self.ActiveCMs_wearing,
-                (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
-            )
+            self.ActiveCMReduction_wearing = (tr['Wearing_Alpha']) * self.ActiveCMs_wearing
+
+
             growth_reduction_wearing = t.sum(self.ActiveCMReduction_wearing, axis=1)
 
-        if wearing_parameterisation == "log_linear":
-            self.ActiveCMReduction_wearing = t.reshape(
-                tr['Wearing_Alpha'], (1, 1, 1)
-            ) * t.reshape(
-                self.ActiveCMs_wearing,
-                (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
-            )
-            eps = 10 ** (-20)
-            growth_reduction_wearing = -1.0 * t.log(
-                t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
-                + eps
-            )
-
-        if wearing_parameterisation == "log_quadratic":
-            self.ActiveCMReduction_wearing = (
-                t.reshape(tr['Wearing_Alpha'], (1, 1, 1))
-                * t.reshape(
-                    self.ActiveCMs_wearing,
-                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
-                )
-                + t.reshape(tr['Wearing_Alpha'], (1, 1, 1))
-                * t.reshape(
-                    self.ActiveCMs_wearing,
-                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
-                )
-                ** 2
-            )
-            eps = 10 ** (-20)
-            growth_reduction_wearing = -1.0 * t.log(
-                t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
-                + eps
-            )
-
-        if wearing_parameterisation == "log_quadratic_2":
-            self.ActiveCMReduction_wearing = (
-                t.reshape(tr['Wearing_Alpha'][0], (1, 1, 1))
-                * t.reshape(
-                    self.ActiveCMs_wearing,
-                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
-                )
-                + t.reshape(tr['Wearing_Alpha'][1], (1, 1, 1))
-                * t.reshape(
-                    self.ActiveCMs_wearing,
-                    (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
-                )
-                ** 2
-            )
-            eps = 10 ** (-20)
-            growth_reduction_wearing = -1.0 * t.log(
-                t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
-                + eps
-            )
+        # if wearing_parameterisation == "log_linear":
+        #     self.ActiveCMReduction_wearing = tr['Wearing_Alpha'] * self.ActiveCMs_wearing
+        #     eps = 10 ** (-20)
+        #     growth_reduction_wearing = -1.0 * t.log(
+        #         t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
+        #         + eps
+        #     )
+        #
+        # if wearing_parameterisation == "log_quadratic":
+        #     self.ActiveCMReduction_wearing = tr['Wearing_Alpha'] * self.ActiveCMs_wearing + t.reshape(tr['Wearing_Alpha'], (1, 1, 1))
+        #         * self.ActiveCMs_wearing**2
+        #
+        #     eps = 10 ** (-20)
+        #     growth_reduction_wearing = -1.0 * t.log(
+        #         t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
+        #         + eps
+        #     )
+        #
+        # if wearing_parameterisation == "log_quadratic_2":
+        #     self.ActiveCMReduction_wearing = (
+        #         t.reshape(tr['Wearing_Alpha'][0], (1, 1, 1))
+        #         * t.reshape(
+        #             self.ActiveCMs_wearing,
+        #             (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
+        #         )
+        #         + t.reshape(tr['Wearing_Alpha'][1], (1, 1, 1))
+        #         * t.reshape(
+        #             self.ActiveCMs_wearing,
+        #             (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
+        #         )
+        #         ** 2
+        #     )
+        #     eps = 10 ** (-20)
+        #     growth_reduction_wearing = -1.0 * t.log(
+        #         t.nnet.relu(1.0 - t.sum(self.ActiveCMReduction_wearing, axis=1))
+        #         + eps
+        #     )
         if wearing_parameterisation is None:
-            growth_reduction_wearing = 0
+            self.growth_reduction_wearing = 0
         else:
-            pm.Deterministic("growth_reduction_wearing", growth_reduction_wearing)
+            self.growth_reduction_wearing = growth_reduction_wearing
 
         # make reduction for mobility
         self.ActiveCMs_mobility =  self.ActiveCMs[:, -2, :]
 
 
-        self.ActiveCMReduction_mobility = t.reshape(
-            tr['Mobility_Alpha'], (1, 1, 1)
-        ) * t.reshape(
-            self.ActiveCMs_mobility,
-            (self.ActiveCMs.shape[0], 1, self.ActiveCMs.shape[2]),
-        )
+        self.ActiveCMReduction_mobility = tr['Mobility_Alpha'] * self.ActiveCMs_mobility
 
         growth_reduction_mobility = -1.0 * t.log(
             t.sum(
@@ -284,11 +259,11 @@ class RandomWalkMobilityModel(nn.Module):
             )
         )
         if mobility_leaveout:
-            growth_reduction_mobility = 0
-            initial_mobility_reduction = 0
+            self.growth_reduction_mobility = 0
+            self.initial_mobility_reduction = 0
         else:
-            initial_mobility_reduction = growth_reduction_mobility[:, 0]
-            initial_mobility_reduction = t.reshape(initial_mobility_reduction, (self.nRs, 1))
+            self.initial_mobility_reduction = growth_reduction_mobility[:, 0]
+            self.initial_mobility_reduction = self.initial_mobility_reduction)
 
 
         # random walk
