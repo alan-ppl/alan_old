@@ -22,7 +22,7 @@ def get_ratings():
     return t.tensor(ratings.to_numpy())
 
 #Films
-Ns = [100,200]
+Ns = [100,200,500,800]
 #Users
 Ms = [10,20,50]
 

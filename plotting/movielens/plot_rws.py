@@ -7,8 +7,8 @@ Ks_global = ['3','10','30','100','300', '1000', '3000', "10000", "30000"]
 Ks_tmc = ['3','10','30']
 # Ns = ['5','10']
 # Ms = ['50','150','300']
-Ns = ['100']
-Ms = ['10']
+Ns = ['200']
+Ms = ['50']
 # with open('results.json') as f:
 #     results = json.load(f)
 #
@@ -28,14 +28,14 @@ with plt.rc_context(bundles.icml2022()):
             with open('results/movielens_discrete/rws_global_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws_global_k = json.load(f)
 
-            with open('results/movielens_discrete/rws_tmc_N{0}_M{1}.json'.format(N,M)) as f:
-                results_rws_tmc = json.load(f)
+            # with open('results/movielens_discrete/rws_tmc_N{0}_M{1}.json'.format(N,M)) as f:
+            #     results_rws_tmc = json.load(f)
 
             with open('results/movielens_discrete/rws_tmc_new_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws_tmc_new = json.load(f)
 
-            with open('results/movielens_discrete/rws_tmc_new_LIW_N{0}_M{1}.json'.format(N,M)) as f:
-                results_IW = json.load(f)
+            # with open('results/movielens_discrete/rws_tmc_new_LIW_N{0}_M{1}.json'.format(N,M)) as f:
+            #     results_IW = json.load(f)
 
 
 
@@ -60,9 +60,9 @@ with plt.rc_context(bundles.icml2022()):
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
     # ax[0,0].set_title('Number of users = 50')
     # ax[0,1].set_title('Number of users = 150')
-    ax.set_title('Number of users = 300')
+    ax.set_title('Number of users = 50')
 
-    ax.set_ylabel('Films per user = 5 \n Predictive Log Likelihood')
+    ax.set_ylabel('Films per user = 200 \n Predictive Log Likelihood')
     # ax[1,0].set_ylabel('Films per user = 10 \n Predictive Log Likelihood')
 
     # ax[1,0].sharex(ax[0,0])
@@ -94,14 +94,14 @@ with plt.rc_context(bundles.icml2022()):
             with open('results/movielens_discrete/rws_global_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws_global_k = json.load(f)
 
-            with open('results/movielens_discrete/rws_tmc_N{0}_M{1}.json'.format(N,M)) as f:
-                results_rws_tmc = json.load(f)
+            # with open('results/movielens_discrete/rws_tmc_N{0}_M{1}.json'.format(N,M)) as f:
+            #     results_rws_tmc = json.load(f)
 
             with open('results/movielens_discrete/rws_tmc_new_N{0}_M{1}.json'.format(N,M)) as f:
                 results_rws_tmc_new = json.load(f)
 
-            with open('results/movielens_discrete/rws_tmc_new_LIW_N{0}_M{1}.json'.format(N,M)) as f:
-                results_IW = json.load(f)
+            # with open('results/movielens_discrete/rws_tmc_new_LIW_N{0}_M{1}.json'.format(N,M)) as f:
+            #     results_IW = json.load(f)
 
 
 
@@ -127,9 +127,9 @@ with plt.rc_context(bundles.icml2022()):
     # plt.title('Groups: 0, Observations per group: 1, with one standard deviation')
     # ax[0,0].set_title('Number of users = 50')
     # ax[0,1].set_title('Number of users = 150')
-    ax.set_title('Number of users = 300')
+    ax.set_title('Number of users = 50')
 
-    ax.set_ylabel('Films per user = 5 \n Predictive Log Likelihood')
+    ax.set_ylabel('Films per user = 200 \n Predictive Log Likelihood')
     # ax[1,0].set_ylabel('Films per user = 10 \n Predictive Log Likelihood')
 
     # ax[1,0].sharex(ax[0,0])

@@ -703,7 +703,6 @@ class TracePred(AbstractTrace):
 
         # Check that data_all matches data_train
         #assert t.allclose(sample_all_ordered[idxs], sample_train_ordered)
-        print(dist.all_args)
         ll_all                 = dist.log_prob(sample_all)
         # print(ll_all)
         self.ll_all[varname]   = ll_all
