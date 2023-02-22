@@ -111,7 +111,7 @@ class AbstractTraceQ(AbstractTrace):
 
 
         if T is not None:
-            dist.set_Tdim(self.platedims[T])
+            dist.set_trace_Tdim(self, self.platedims[T])
 
         #If we've defined an approximate posterior for data then just skip it.
         #This is common if we're using P as Q
@@ -159,6 +159,11 @@ class AbstractTraceQ(AbstractTrace):
             self.logq_var[key] = logq
 
     def finalize_logq(self):
+        """
+        Need to post-process logq's for the mixture over parent particles.
+        But we can't do this as we go along, because we need to combine all
+        log-probability tensors within a group first
+        """
         logq_group = {}
         for (k, v) in self.logq_group.items():
             logq_group[k] = self.logq(v, self.K_group[k])
@@ -300,7 +305,7 @@ class TraceSample(AbstractTrace):
 #    def sample_(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
 #        assert key not in self.logp
 #        if T is not None:
-#            dist.set_Tdim(self.platedims[T])
+#            dist.set_trace, Tdim(self, self.platedims[T])
 #
 #        if isinstance(dist, Timeseries) and (dist._inputs is not None):
 #            warn("Generative models with timeseries with inputs are likely to be highly inefficient; if possible, try to rewrite the model so that timeseries doesn't have inputs.  For instance, you could marginalise the inputs and include them as noise in the transitions.")
@@ -401,7 +406,7 @@ class TraceP(AbstractTrace):
 
     def sample_(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
         if T is not None:
-            dist.set_Tdim(self.platedims[T])
+            dist.set_trace_Tdim(self, self.platedims[T])
 
         assert key not in self.logp
         assert (key in self.samples) != (key in self.data)
@@ -507,7 +512,7 @@ class TracePred(AbstractTrace):
         assert varname not in self.ll_train
 
         if T is not None:
-            dist.set_Tdim(self.platedims_all[T])
+            dist.set_trace_Tdim(self, self.platedims_all[T])
 
         if varname in self.data_all:
             #Compute predictive log-probabilities and put them in self.ll_all and self.ll_train
@@ -556,7 +561,7 @@ class TracePred(AbstractTrace):
                 inputs = (inputs_test,)
 
             test_dist = Timeseries(sample_init, dist.transition, *inputs)
-            test_dist.set_Tdim(T_test)
+            test_dist.set_trace_Tdim(self, T_test)
             sample_test = test_dist.sample(reparam=self.reparam, sample_dims=sample_dims)
             sample_all = t.cat([sample_train.order(T_train), sample_test.order(T_test)], 0)[T_all]
 

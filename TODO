@@ -2,13 +2,8 @@
   * tensor sum should work, as we don't sum out K_group in lower plates if it also appears in upper plates.
   * should work with moments / marginals, as we don't use grouped logq
   * sampling should work (we go through variables in the order they were generated in P, and if there's a new K, we sample it).  So that will sample K at the high-level if appears first at a high-level.
-* Prediction is a method on Model that takes a Sample.
 * Timeseries
 * Sum discrete
-* ML etc. Model -> QModule
-* prediction.
-
-
 
 * lots of repetition around platesize code for ML, ML2, Tilted etc.
 * store Ps rather than logps, in preparation for lazy efficient stuff.
@@ -25,13 +20,6 @@ Errors:
 * device errors
 
 Papers:
-  ML (ICML):
-    Proof of validity of RWS and VI + superiority over TMC (requires TMC).
-  Stats (UAI?)
-    log-derivatives for computing marginals + posterior samples
-  Fast proposals (UAI?):
-    fast ML learning of factorised approximate posteriors
-    tilted / pseudo-likelihood based approximate posteriors + a fast learning mechanism
   MCMC:
     6)
   Alan:

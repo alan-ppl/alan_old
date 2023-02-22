@@ -20,7 +20,7 @@ def P(tr):
 
 def P_int(tr):
     tr.sample('theta', alan.Normal(0, s_theta))
-    tr.sample('obs',   alan.Normal(tr['theta'], (v_z + v_obs).sqrt())
+    tr.sample('obs',   alan.Normal(tr['theta'], (v_z + v_obs).sqrt()))
 
 N = 2
 obs = t.ones(N) + 0.1 * t.randn(N)

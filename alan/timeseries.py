@@ -8,8 +8,9 @@ class Timeseries():
         self.transition = transition 
         self._inputs = inputs
 
-    def set_Tdim(self, Tdim):
+    def set_trace_Tdim(self, trace, Tdim):
         assert isinstance(Tdim, Dim)
+        self.trace = trace
         self.Tdim = Tdim
 
     def input(self, t):
