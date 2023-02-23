@@ -95,7 +95,7 @@ class TorchDimDist():
             assert not is_dimtensor(arg)
             self.all_args[argname] = arg
 
-    def sample(self, reparam, sample_dims, index=False):
+    def sample(self, reparam, sample_dims, index=False, Kdim=None):
         torch_dist = self.dist(**self.all_args)
         if reparam and not torch_dist.has_rsample:
             raise Exception(f'Trying to do reparameterised sampling of {self.dist_name}, which is not implemented by PyTorch (likely because {self.dist_name} is a distribution over discrete random variables).')
