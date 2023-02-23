@@ -4,19 +4,20 @@ import alan
 t.manual_seed(0)
 
 def P(tr):
-    tr.sample('decay', alan.Normal(-3, 1), plate="plate_1")
+    tr('decay', alan.Normal(-3, 1), plates="plate_1")
     transition = lambda x: alan.Normal(t.exp(tr['decay']) * x, 0.01)
-    tr.sample('ts', alan.Timeseries(0, transition), T="Tb")
-    tr.sample('obs', alan.Normal(tr['ts'], 1))
+    tr('ts', alan.Timeseries(0, transition), T="Tb")
+    tr('obs', alan.Normal(tr['ts'], 1))
 
 def Q(tr):
-    tr.sample('decay', alan.Normal(-3, 1), plate="plate_1")
+    tr('decay', alan.Normal(-3, 1), plates="plate_1")
     transition = lambda x: alan.Normal(t.exp(tr['decay']) * x, 0.01)
-    tr.sample('ts', alan.Timeseries(0, transition), T="Tb")
+    tr('ts', alan.Timeseries(0, transition), T="Tb")
 
-data = alan.sample(P, varnames=('obs',), sizes={"Tb": 20, "plate_1": 3})
 
-model = alan.Model(P, Q, data)
+model = alan.Model(P, Q)
+data = model.sample_prior(varnames=('obs',), platesizes={"Tb": 20, "plate_1": 3})
+model = model.condition(data=data)
 sample = model.sample(5, True, {})
 elbo = model.elbo(5)
 sample = model.importance_samples(5, 10)

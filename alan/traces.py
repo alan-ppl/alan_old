@@ -109,9 +109,12 @@ class AbstractTraceQ(AbstractTrace):
         if key in self.samples:
             raise Exception(f"Trying to sample {key}, but we have already have a variable with this name.")
 
-
-        if T is not None:
-            dist.set_trace_Tdim(self, self.platedims[T])
+        if (T is not None) and not isinstance(dist, Timeseries):
+            raise Exception("T provided, but dist is not a Timeseries")
+        if (T is None) and isinstance(dist, Timeseries):
+            raise Exception("dist is a Timeseries, but T is not provided")
+        if (T is not None) and (group is not None):
+            raise Exception("Timeseries cannot currently be grouped")
 
         #If we've defined an approximate posterior for data then just skip it.
         #This is common if we're using P as Q
@@ -131,15 +134,31 @@ class AbstractTraceQ(AbstractTrace):
             Kdim = Dim(f"K_{key}", self.K)
             self.K_var[key] = Kdim
 
+        if T is not None:
+            dist.set_trace_Tdim(self, self.platedims[T])
+
         sample_dims = platenames2platedims(self.platedims, plates)
         sample_dims = (Kdim, *sample_dims)
-        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims, Kdim=Kdim)
 
+        #Shouldn't matter if we run this on top of a Timeseries sample, as that sample should only
+        #have one K (Kdim).
+        sample = self.index_sample(sample, Kdim, group)
+
+        logq = dist.log_prob(sample)
+        self.samples[key] = sample
+
+        if group is not None:
+            self.logq_group[group] = self.logq_group.get(key, 0.) + logq
+        else:
+            self.logq_var[key] = logq
+
+    def index_sample(self, sample, Kdim, group):
         plates = self.extract_platedims(sample)
         Ks = self.extract_Kdims(sample, exclude=Kdim)
 
         if group is not None:
-            idxs = group_parent_idxs[group]
+            idxs = self.group_parent_idxs[group]
         else:
             idxs = {}
 
@@ -149,14 +168,7 @@ class AbstractTraceQ(AbstractTrace):
 
         if 0 < len(Ks):
             sample = sample.order(Ks)[[idxs[K] for K in Ks]]
-
-        logq = dist.log_prob(sample)
-        self.samples[key] = sample
-
-        if group is not None:
-            self.logq_group[group] = self.logq_group.get(key, 0.) + logq
-        else:
-            self.logq_var[key] = logq
+        return sample
 
     def finalize_logq(self):
         """
@@ -242,6 +254,9 @@ class TraceSample(AbstractTrace):
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
     def sample_(self, key, dist, plates=(), T=None, group=None, sum_discrete=False):
+        if T is not None:
+            dist.set_trace_Tdim(self, self.platedims[T])
+
         sample_dims = [*self.Ns, *(self.platedims[plate] for plate in plates)]
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         self.samples[key] = sample

@@ -1,4 +1,15 @@
+* Timeseries:
+  * Ban grouping across transitions and init.
+  * 
+  * Do a full sample for all the parent latents, just not the timeseries latent.
+  * Then index the sample for all Ks from the parent latents. 
 * What happens when a K-group is shared across plates?
+  * problem: the parents for sampling:
+    * if group is defined at a higher-level, then lower-level latents in the same group all need to share the same parents.
+    * that will happen automatically if we're talking about parents of both higher and lower-level latents.
+    * but it won't happen if a variable is just a parent of the lower-level latent.
+    * but we don't have enough information to actually achieve that.
+    * so we can't 
   * tensor sum should work, as we don't sum out K_group in lower plates if it also appears in upper plates.
   * should work with moments / marginals, as we don't use grouped logq
   * sampling should work (we go through variables in the order they were generated in P, and if there's a new K, we sample it).  So that will sample K at the high-level if appears first at a high-level.
@@ -11,6 +22,7 @@
   * give dist(0, 1) a device.
 
 Errors:
+* groups should all be at the same plate level (at least if Categorical or Permutation but not Same).
 * P shouldn't have any QModules (QModules would imply a plated Parameter, and we really shouldn't have a plated parameter in P)
 * check all dimensions are either plates or Ks.
 * check we don't have different dimensions with the same names

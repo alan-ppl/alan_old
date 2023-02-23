@@ -9,6 +9,11 @@ class Timeseries():
         self._inputs = inputs
 
     def set_trace_Tdim(self, trace, Tdim):
+        """
+        Timeseries is initialized in user code, and the user (and hence the init) doesn't know:
+          the length of the timeseries.
+          the type of trace (e.g. Categorical vs Permutation vs Same). 
+        """
         assert isinstance(Tdim, Dim)
         self.trace = trace
         self.Tdim = Tdim
@@ -19,10 +24,22 @@ class Timeseries():
         else:
             return (self._inputs.order(self.Tdim)[t],)
 
-    def sample(self, reparam, sample_dims):
-        result = [self.transition(self.initial_state, *self.input(0)).sample(reparam, sample_dims)]
+    def sample(self, reparam, sample_dims, Kdim=None):
+        index = Kdim is not None
+        Knext = (Dim('Knext', self.trace.K),) if index else ()
+        sample_dims = (*sample_dims, *Knext)
+
+        #self.initial_sample and hence sample has arbitrary K's
+        sample = self.transition(self.initial_state, *self.input(0)).sample(reparam, sample_dims)
+        if index:
+            sample = self.index_sample(sample, *Knext, None)
+        result = [sample]
+
         for _t in range(1, self.Tdim.size):
-            result.append(self.transition(result[-1], *self.input(_t)).sample(reparam, sample_dims=()))
+            sample = self.transition(result[-1], *self.input(_t)).sample(reparam, sample_dims=Knext)
+            if index:
+                sample = self.index_sample(sample, *Knext, None)
+            result.append(sample)
 
         #A bug with stacking torchdim tensors.  Should be able to do:
         #return t.stack(result, 0)[self.Tdim]
@@ -31,7 +48,10 @@ class Timeseries():
         #Actually we need to strip the torchdims before stacking
         result_dims = generic_dims(result[0])
         result = [generic_order(x, result_dims) for x in result]
-        return t.stack(result, 0)[[self.Tdim, *result_dims]]
+        result = t.stack(result, 0)[[self.Tdim, *result_dims]]
+        if index:
+            result.order(*Knext)[self.Kdim]
+        return result
 
     def log_prob(self, x):
         #No dimensions in initial state that don't also appear in x.
