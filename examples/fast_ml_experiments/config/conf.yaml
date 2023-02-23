@@ -1,0 +1,14 @@
+---
+  dataset: ???
+  model: ???
+  training:
+    num_iters: 20
+    N: 2
+    M: 2
+    Ks: [3,10,30]
+    num_runs: 5
+    pred_ll:
+      do_pred_ll: False
+      num_pred_ll_samples: 1000
+    lr: 1e-3
+    ML: 1

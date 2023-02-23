@@ -61,13 +61,13 @@ class ML2(AlanModule):
     def init(self):
         with t.no_grad():
             for (m, g) in zip(self.named_means, self.named_grads):
-                m.data.copy_(g.align_as(m))
+                m.data.copy_(g)
 
     def _update(self, lr):
         self.check_J_zeros()
         with t.no_grad():
             for (m, g) in zip(self.named_means, self.named_grads):
-                m.data.mul_(1-lr).add_(g.align_as(m), alpha=lr)
+                m.data.mul_(1-lr).add_(g, alpha=lr)
 
     def local_parameters(self):
         return []
