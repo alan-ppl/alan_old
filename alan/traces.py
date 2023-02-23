@@ -48,8 +48,8 @@ class AbstractTrace():
 
     def extract_Kdims(self, x, exclude=None):
         result = self.filter_Kdims(generic_dims(x))
-        if (exclude is not None) and (exclude in set(result)):
-            result = list(result)
+        result = set(result)
+        if (exclude is not None) and (exclude in result):
             result.remove(exclude)
             result = tuple(result)
         return result
