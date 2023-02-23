@@ -32,13 +32,15 @@ class Timeseries():
         #self.initial_sample and hence sample has arbitrary K's
         sample = self.transition(self.initial_state, *self.input(0)).sample(reparam, sample_dims)
         if index:
-            sample = self.index_sample(sample, *Knext, None)
+            sample = self.trace.index_sample(sample, *Knext, None)
+            sample = sample.order(Knext)[Kdim]
         result = [sample]
 
         for _t in range(1, self.Tdim.size):
             sample = self.transition(result[-1], *self.input(_t)).sample(reparam, sample_dims=Knext)
             if index:
-                sample = self.index_sample(sample, *Knext, None)
+                sample = self.trace.index_sample(sample, *Knext, None)
+                sample = sample.order(Knext)[Kdim]
             result.append(sample)
 
         #A bug with stacking torchdim tensors.  Should be able to do:
@@ -49,8 +51,6 @@ class Timeseries():
         result_dims = generic_dims(result[0])
         result = [generic_order(x, result_dims) for x in result]
         result = t.stack(result, 0)[[self.Tdim, *result_dims]]
-        if index:
-            result.order(*Knext)[self.Kdim]
         return result
 
     def log_prob(self, x):

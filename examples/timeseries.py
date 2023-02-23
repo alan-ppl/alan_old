@@ -18,8 +18,8 @@ def Q(tr):
 model = alan.Model(P, Q)
 data = model.sample_prior(varnames=('obs',), platesizes={"Tb": 20, "plate_1": 3})
 model = model.condition(data=data)
-sample = model.sample(5, True, {})
-elbo = model.elbo(5)
+sample = model.sample_cat(5, True)
+elbo = sample.elbo()
 sample = model.importance_samples(5, 10)
 
 obs = t.randn((30, 4), names=('Tb', 'plate_1'))

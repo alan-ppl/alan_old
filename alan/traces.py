@@ -48,7 +48,7 @@ class AbstractTrace():
 
     def extract_Kdims(self, x, exclude=None):
         result = self.filter_Kdims(generic_dims(x))
-        if (exclude is not None) and (exclude in result):
+        if (exclude is not None) and (exclude in set(result)):
             result = list(result)
             result.remove(exclude)
             result = tuple(result)
@@ -166,8 +166,9 @@ class AbstractTraceQ(AbstractTrace):
             if K not in idxs:
                 idxs[K] = self.parent_samples(plates, Kdim, K)
 
+        #breakpoint()
         if 0 < len(Ks):
-            sample = sample.order(Ks)[[idxs[K] for K in Ks]]
+            sample = sample.order(*Ks)[[idxs[K] for K in Ks]]
         return sample
 
     def finalize_logq(self):
@@ -231,7 +232,7 @@ class TraceQSame(AbstractTraceQ):
 
         if len(Ks) > 0:
             idxs = [self.parent_samples(plates, Kdim, K) for K in Ks]
-            logq = logq.order(Ks)[idxs]
+            logq = logq.order(*Ks)[idxs]
         return logq
         
 
