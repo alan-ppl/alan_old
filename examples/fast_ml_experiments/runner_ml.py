@@ -54,7 +54,7 @@ def run_experiment(cfg):
     # foo.MyClass()
     # experiment = importlib.import_module(cfg.model.model, 'Deeper_Hier_Regression')
 
-    P, Q, data, covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML)
+    P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML)
     for K in Ks:
         print(K,M,N)
         results_dict[N] = results_dict.get(N, {})
@@ -86,7 +86,8 @@ def run_experiment(cfg):
 
 
             if cfg.training.pred_ll.do_pred_ll:
-                pred_likelihood = model.predictive_ll(K = K, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data)
+                sample = model.sample_same(K, inputs=test_covariates, reparam=False)
+                pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, covariates_train=covariates, covariates_all=all_covariates)
                 pred_liks.append(pred_likelihood['obs'].item())
             else:
                 pred_liks.append(0)

@@ -103,12 +103,12 @@ class SampleMixin():
 
         return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
-    def _predictive(self, sample, N, data_all=None, covariates_all=None, platesizes_all=None, device=t.device('cpu')):
+    def _predictive(self, sample, N, data_all=None, covariates_train = None, covariates_all=None, platesizes_all=None):
         N = Dim('N', N)
         #platedims, data, inputs = self.dims_data_inputs(data_all, covariates_all, platesizes_all, device)
         post_samples = sample._importance_samples(N)
-        tr = traces.TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all, device=sample.device)
-        self.P(tr, **covariates_all)
+        tr = traces.TracePred(N, post_samples, sample.trp.data, data_all, covariates_train, covariates_all, sample.trp.platedims, platesizes_all, device=sample.device)
+        self.P(tr, **tr.covariates_all)
         return tr, N
 
     def predictive_samples(self, sample, N, platesizes_all=None):
@@ -120,7 +120,7 @@ class SampleMixin():
         #Convert everything to named
         return trace_pred.samples_all
 
-    def predictive_ll(self, sample, N, data_all, covariates_all):
+    def predictive_ll(self, sample, N, data_all, covariates_train, covariates_all):
         """
         Run as (e.g. for plated_linear_gaussian.py)
 
@@ -128,7 +128,7 @@ class SampleMixin():
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
         """
 
-        trace_pred, N = self._predictive(sample, N, data_all, covariates_all)
+        trace_pred, N = self._predictive(sample, N, data_all, covariates_train, covariates_all)
         lls_all   = trace_pred.ll_all
         lls_train = trace_pred.ll_train
         assert set(lls_all.keys()) == set(lls_train.keys())
