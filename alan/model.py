@@ -1,5 +1,5 @@
 from warnings import warn
-import torch.nn as nn 
+import torch.nn as nn
 from . import traces
 from .Sample import Sample, SampleGlobal
 from .utils import *
@@ -10,7 +10,7 @@ class SampleMixin():
     """
     A mixin for all the sample_mp etc. methods.
     Requires methods:
-        self.P(tr, ...) 
+        self.P(tr, ...)
         self.Q(tr, ...)
         self.check_device(device)
     """
@@ -78,7 +78,7 @@ class SampleMixin():
 
     def sample_prior(self, N=None, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
         """Draw samples from a generative model (with no data).
-        
+
         Args:
             P:        The generative model (a function taking a trace).
             plates:   A dict mapping platenames to integer sizes of that plate.
@@ -86,8 +86,8 @@ class SampleMixin():
             varnames: An iterable of the variables to return
 
         Returns:
-            A dictionary mapping from variable name to sampled value, 
-            represented as a named tensor (e.g. so that it is suitable 
+            A dictionary mapping from variable name to sampled value,
+            represented as a named tensor (e.g. so that it is suitable
             for use as data).
         """
         platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
@@ -103,11 +103,12 @@ class SampleMixin():
 
         return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
-    def _predictive(self, sample, N, data_all=None, platesizes_all=None):
+    def _predictive(self, sample, N, data_all=None, covariates_all=None, platesizes_all=None, device=t.device('cpu')):
         N = Dim('N', N)
+        #platedims, data, inputs = self.dims_data_inputs(data_all, covariates_all, platesizes_all, device)
         post_samples = sample._importance_samples(N)
         tr = traces.TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all, device=sample.device)
-        self.P(tr)
+        self.P(tr, **covariates_all)
         return tr, N
 
     def predictive_samples(self, sample, N, platesizes_all=None):
@@ -119,7 +120,7 @@ class SampleMixin():
         #Convert everything to named
         return trace_pred.samples_all
 
-    def predictive_ll(self, sample, N, data_all):
+    def predictive_ll(self, sample, N, data_all, covariates_all):
         """
         Run as (e.g. for plated_linear_gaussian.py)
 
@@ -127,7 +128,7 @@ class SampleMixin():
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
         """
 
-        trace_pred, N = self._predictive(sample, N, data_all, None)
+        trace_pred, N = self._predictive(sample, N, data_all, covariates_all)
         lls_all   = trace_pred.ll_all
         lls_train = trace_pred.ll_train
         assert set(lls_all.keys()) == set(lls_train.keys())
@@ -156,14 +157,14 @@ class SampleMixin():
 
     def update(self, lr, sample):
         """
-        Will call update on 
+        Will call update on
         """
         assert not sample.reparam
         _, q_obj = sample.rws()
         (q_obj).backward()
 
         model = self.model if isinstance(self, ConditionedModel) else self
-        for mod in model.modules(): 
+        for mod in model.modules():
             if hasattr(mod, '_update'):
                 mod._update(lr)
         self.zero_grad()
@@ -214,7 +215,7 @@ class ConditionedModel(SampleMixin):
     """
     NOT a nn.Module
     Represents a model bound to model to data and inputs.
-    Returned 
+    Returned
     bound_model = model.bind(data=..., inputs=...)
     bound_model.sample_mp(K) == model.sample_mp(K, data=..., inputs=...)
     """
@@ -255,7 +256,7 @@ class ConditionedModel(SampleMixin):
 
 class Model(SampleMixin, AlanModule):
     """Model class.
-    A Model must be provided with a generative model, P, and an approximate 
+    A Model must be provided with a generative model, P, and an approximate
     posterior / proposal, Q.  There are two options.  They can be provided
     as arguments, or defined in a subclass.
 
@@ -265,7 +266,7 @@ class Model(SampleMixin, AlanModule):
     same for P and Q.
 
     Alternatively, you can subclass model, overriding __init__, and providing
-    subclass.P(tr, ...) and subclass.Q(tr, ...) as methods. 
+    subclass.P(tr, ...) and subclass.Q(tr, ...) as methods.
     """
     def __init__(self, P=None, Q=None):
         super().__init__()
@@ -277,7 +278,7 @@ class Model(SampleMixin, AlanModule):
         if Q is not None:
             assert not hasattr(self, 'Q')
             self.Q = Q
-        
+
         #Default to using P as Q if Q is not defined.
         if not hasattr(self, 'Q'):
             self.Q = P
@@ -288,15 +289,15 @@ class Model(SampleMixin, AlanModule):
     def condition(self, data=None, inputs=None, platesizes=None):
         """
         data:   Any non-minibatched data. This is usually used in statistics,
-                where we have small-medium data that we can reason about as a 
+                where we have small-medium data that we can reason about as a
                 block. This is a dictionary mapping variable name to named-tensors
-                representing the data. We infer plate sizes from the sizes of 
+                representing the data. We infer plate sizes from the sizes of
                 the named dimensions in data (and from the sizes of any parameters
                 in Q).
         inputs: Any non-minibatched data. This is usually used in statistics,
-                where we have small-medium data that we can reason about as a 
+                where we have small-medium data that we can reason about as a
                 block. This is a dictionary mapping variable name to named-tensors
-                representing the data. We infer plate sizes from the sizes of 
+                representing the data. We infer plate sizes from the sizes of
                 the named dimensions in data (and from the sizes of any parameters
                 in Q).
         """
