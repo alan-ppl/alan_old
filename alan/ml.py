@@ -58,14 +58,14 @@ class ML(AlanModule):
     def _update(self, lr):
         with t.no_grad():
             for (mean, grad) in zip(self.named_means, self.named_grads):
-                mean.data.add_(grad.align_as(mean), alpha=lr)
+                mean.data.add_(grad, alpha=lr)
         self.reset_nats()
 
     def reset_nats(self):
         with t.no_grad():
             new_nats = self.mean2nat(*self.named_means)
             for old_nat, new_nat in zip(self.named_nats, new_nats):
-                old_nat.data.copy_(new_nat.align_as(old_nat))
+                old_nat.data.copy_(new_nat)
 
     def __call__(self):
         return self.dist(**self.nat2conv(*self.dim_nats))
