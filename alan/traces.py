@@ -465,7 +465,7 @@ class TracePred(AbstractTrace):
 
 
     """
-    def __init__(self, N, samples_train, inputs_train, inputs_all, data_train, data_all, platedims_train, platedims_all, device):
+    def __init__(self, N, samples_train, data_train, data_all, inputs_train, inputs_all, platedims_train, platedims_all, device):
         super().__init__(device)
         self.N = N
 
@@ -592,7 +592,7 @@ class TracePred(AbstractTrace):
 
         dims_all, dims_train = self.corresponding_plates(sample, sample_train)
 
-        sample_ordered   = generic_order(sample_all,   dims_all)
+        sample_ordered       = generic_order(sample,       dims_all)
         sample_train_ordered = generic_order(sample_train, dims_train)
 
         idxs = [slice(0, l) for l in sample_train_ordered.shape[:len(dims_all)]]

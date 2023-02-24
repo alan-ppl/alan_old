@@ -110,8 +110,7 @@ class SampleMixin():
         platedims_all, data_all, inputs_all = self.dims_data_inputs(data_all, inputs_all, platesizes_all, device=sample.device, use_model=False)
 
         tr = traces.TracePred(
-            N, 
-            post_samples, 
+            N, post_samples, 
             sample.trp.data, data_all, 
             sample.trp.inputs, inputs_all, 
             sample.trp.platedims, platedims_all, 
