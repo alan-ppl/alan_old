@@ -15,8 +15,35 @@ def check_not_reserved(x):
     reserved = (x in reserved_names) or (x[:2] in reserved_prefix)
     if reserved:
         raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
+
+class GetItem():
+    def __init__(self, data, inputs, samples, platedims):
+        self.data = data
+        self.inputs = inputs
+        self.samples = samples
+        self.platedims = platedims
+
+    def __getitem__(self, key):
+        assert key in self
+        if key in self.data:
+            return self.data[key]
+        elif key in self.inputs:
+            return self.inputs[key]
+        elif key in self.samples:
+            return self.samples[key]
+        else:
+            assert False
+
+    def __contains__(self, key):
+        in_data   = key in self.data
+        in_inputs = key in self.inputs
+        in_sample = key in self.samples
+        result = in_data + in_inputs + in_sample
+        assert result in [0, 1]
+        return result == 1
+
     
-class AbstractTrace():
+class AbstractTrace(GetItem):
     def __init__(self, device):
         self.device = device
 
@@ -25,15 +52,6 @@ class AbstractTrace():
             plates = (plates,)
 
         self.sample_(key, dist, plates=plates, T=T, **kwargs)
-
-    def __getitem__(self, key):
-        return self.samples[key]
-
-    def __contains__(self, key):
-        in_data   = stack_key in self.data
-        in_sample = stack_key in self.samples
-        assert not (in_data and in_sample)
-        return in_data or in_sample
 
     def filter_platedims(self, dims):
         platedims = set(self.platedims.values())
@@ -74,11 +92,12 @@ class AbstractTrace():
 
 
 class AbstractTraceQ(AbstractTrace):
-    def __init__(self, K, data, platedims, reparam, device):
+    def __init__(self, K, data, inputs, platedims, reparam, device):
         super().__init__(device)
         self.K = K
 
         self.data = data
+        self.inputs = inputs
         self.platedims = platedims
 
         self.reparam = reparam
@@ -243,9 +262,10 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, platedims, N, device):
+    def __init__(self, N, inputs, platedims, device):
         super().__init__(device)
         self.Ns = () if (N is None) else (Dim('N', N),)
+        self.inputs = inputs
         self.platedims = platedims
 
         self.reparam = False
@@ -410,8 +430,9 @@ class TraceP(AbstractTrace):
     def __init__(self, trq):
         super().__init__(trq.device)
         self.platedims = trq.platedims
-        self.samples = trq.samples
         self.data = trq.data
+        self.inputs = trq.inputs
+        self.samples = trq.samples
         self.logq_group, self.logq_var = trq.finalize_logq()
         self.K_group = trq.K_group
         self.K_var = trq.K_var
@@ -444,63 +465,45 @@ class TracePred(AbstractTrace):
 
 
     """
-    def __init__(self, N, samples_train, data_train, data_all, platedims_train, platesizes_all, device):
+    def __init__(self, N, samples_train, inputs_train, inputs_all, data_train, data_all, platedims_train, platedims_all, device):
         super().__init__(device)
         self.N = N
 
-        self.samples_train = samples_train
-        self.data_train = data_train
+        self.train = GetItem(data_train, inputs_train, samples_train, platedims_train)
         self.platedims_train = platedims_train
 
-        #Either data_all or platesizes_all is not None, but not both.
-        assert (data_all is None) != (platesizes_all is None)
- 
-        if platesizes_all is not None:
-            self.platedims_all = extend_plates_with_sizes({}, platesizes_all)
-            self.data_all      = {}
-        elif data_all is not None:
-            self.platedims_all = extend_plates_with_named_tensors({}, data_all.values())
-            self.data_all      = named2dim_tensordict(self.platedims_all, data_all)
-        else:
-            assert False
+        self.samples = {}
+        self.data = data_all
+        self.inputs = inputs_all
+        self.platedims = platedims_all
 
-        self.samples_all  = {}
+        self.samples  = {}
         self.ll_all       = {}
         self.ll_train     = {}
 
         self.reparam      = False
 
         #Check that any new dimensions exist in training, and are bigger than those in training
-        for platename, platedim_all in self.platedims_all.items():
-            if platename not in self.platedims_train:
-                raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data_all which isn't present in the training data.")
-            if platedim_all.size < self.platedims_train[platename].size:
-                raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data_all which is smaller than than the same plate in the training data (remember that the new data / plate sizes correspond to the training + test data)")
+        for platename, platedim_all in self.platedims.items():
+            if platename not in self.train.platedims:
+                raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data which isn't present in the training data.")
+            if platedim_all.size < self.train.platedims[platename].size:
+                raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data which is smaller than than the same plate in the training data (remember that the new data / plate sizes correspond to the training + test data)")
 
-        #If any random variables from data_train are missing in data_all, fill them in
-        for (rv, x) in self.data_train.items():
-            if rv not in self.data_all:
-                self.data_all[rv] = x
-        #If any plates from platedims_train are missing in platedims_all, fill them in
-        for (platename, platedim) in self.data_train.items():
-            if platename not in self.platedims_all:
-                self.platedims_all[platename] = platedim
+        #If any random variables from data_train are missing in data, fill them in
+        #Not sure about this line...
+        for (rv, x) in self.train.data.items():
+            if rv not in self.data:
+                self.data[rv] = x
+        #If any plates from platedims_train are missing in platedims, fill them in
+        for (platename, platedim) in self.train.data.items():
+            if platename not in self.platedims:
+                self.platedims[platename] = platedim
 
-        #Check that _something_ is bigger:
-        data_bigger   = any(data_train[dataname].numel() < dat.numel() for (dataname, dat) in self.data_all.items())
-        plates_bigger = any(platedims_train[platename].size < plate.size for (platename, plate) in self.platedims_all.items())
-
-        if not (data_bigger or plates_bigger):
+        plates_bigger = any(platedims_train[platename].size < plate.size for (platename, plate) in self.platedims.items())
+        if not plates_bigger:
             raise Exception(f"None of the data tensors or plate sizes provided for prediction is bigger than those at training time.  Remember that the data/plate sizes are the sizes of train + 'test'")
             
-
-    def __getitem__(self, key):
-        in_data   = key in self.data_all
-        in_sample = key in self.samples_all
-        assert in_data or in_sample
-        assert not (in_data and in_sample)
-        return self.samples_all[key] if in_sample else self.data_all[key]
-
     def corresponding_plates(self, x_all, x_train):
         """
         x_all and x_train are tensors with plates, but the all and training plates
@@ -510,52 +513,52 @@ class TracePred(AbstractTrace):
         """
         dims_all   = set(x_all.dims)   #Includes N!
         dims_train = set(x_train.dims) #Includes N!
-        dimnames_all   = [name for (name, dim) in self.platedims_all.items()   if dim in dims_all]
-        dimnames_train = [name for (name, dim) in self.platedims_train.items() if dim in dims_train]
+        dimnames_all   = [name for (name, dim) in self.platedims.items()   if dim in dims_all]
+        dimnames_train = [name for (name, dim) in self.train.platedims.items() if dim in dims_train]
         assert set(dimnames_all) == set(dimnames_train)
         dimnames = dimnames_all
 
         #Corresponding list of dims for all and train.
-        dims_all   = [self.platedims_all[dimname]   for dimname in dimnames]
-        dims_train = [self.platedims_train[dimname] for dimname in dimnames]
+        dims_all   = [self.platedims[dimname]   for dimname in dimnames]
+        dims_train = [self.train.platedims[dimname] for dimname in dimnames]
         dims_all.append(Ellipsis)
         dims_train.append(Ellipsis)
         return dims_all, dims_train
 
     def sample_(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False):
-        assert varname not in self.samples_all
+        assert varname not in self.samples
         assert varname not in self.ll_all
         assert varname not in self.ll_train
 
         if T is not None:
-            dist.set_trace_Tdim(self, self.platedims_all[T])
+            dist.set_trace_Tdim(self, self.platedims[T])
 
-        if varname in self.data_all:
+        if varname in self.data:
             #Compute predictive log-probabilities and put them in self.ll_all and self.ll_train
             self._sample_logp(varname, dist, plates)
         else:
-            #Compute samples, and put them in self.sample_all
+            #Compute samples, and put them in self.sample
             self._sample_sample(varname, dist, plates)
 
     def _sample_sample(self, varname, dist, plates):
-        sample_dims = platenames2platedims(self.platedims_all, plates)
+        sample_dims = platenames2platedims(self.platedims, plates)
         sample_dims.append(self.N)
 
-        sample_all = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
-        sample_train = self.data_train[varname] if (varname in self.data_train) else self.samples_train[varname]
+        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+        sample_train = self.train[varname]
 
-        dims_all, dims_train = self.corresponding_plates(sample_all, sample_train)
-        sample_all   = generic_order(sample_all,   dims_all)   #Still torchdim, as it has N!
+        dims_all, dims_train = self.corresponding_plates(sample, sample_train)
+        sample       = generic_order(sample,       dims_all)   #Still torchdim, as it has N!
         sample_train = generic_order(sample_train, dims_train) #Still torchdim, as it has N!
 
         idxs = [slice(0, l) for l in sample_train.shape[:len(dims_all)]]
         idxs.append(Ellipsis)
 
         #Actually do the replacement in-place
-        sample_all[idxs] = sample_train
+        sample[idxs] = sample_train
 
         #Put torchdim back
-        sample_all = sample_all[dims_all]
+        sample = sample[dims_all]
 
         if isinstance(dist, Timeseries):
             #Throw away the "test" part of the timeseries, and resample. Note that
@@ -568,7 +571,7 @@ class TracePred(AbstractTrace):
             T_train = dims_train[T_idx]
             T_test = Dim('T_test', T_all.size - T_train.size)
 
-            sample_train, sample_test = split_train_test(sample_all, T_all, T_train, T_test)
+            sample_train, sample_test = split_train_test(sample, T_all, T_train, T_test)
             sample_init = sample_train.order(T_train)[-1]
 
             inputs = ()
@@ -579,26 +582,26 @@ class TracePred(AbstractTrace):
             test_dist = Timeseries(sample_init, dist.transition, *inputs)
             test_dist.set_trace_Tdim(self, T_test)
             sample_test = test_dist.sample(reparam=self.reparam, sample_dims=sample_dims)
-            sample_all = t.cat([sample_train.order(T_train), sample_test.order(T_test)], 0)[T_all]
+            sample = t.cat([sample_train.order(T_train), sample_test.order(T_test)], 0)[T_all]
 
-        self.samples_all[varname] = sample_all
+        self.samples[varname] = sample
 
     def _sample_logp(self, varname, dist, plates):
-        sample_all   = self.data_all[varname]
-        sample_train = self.data_train[varname]
+        sample   = self.data[varname]
+        sample_train = self.train.data[varname]
 
-        dims_all, dims_train = self.corresponding_plates(sample_all, sample_train)
+        dims_all, dims_train = self.corresponding_plates(sample, sample_train)
 
-        sample_all_ordered   = generic_order(sample_all,   dims_all)
+        sample_ordered   = generic_order(sample_all,   dims_all)
         sample_train_ordered = generic_order(sample_train, dims_train)
 
         idxs = [slice(0, l) for l in sample_train_ordered.shape[:len(dims_all)]]
         idxs.append(Ellipsis)
 
-        # Check that data_all matches data_train
-        #assert t.allclose(sample_all_ordered[idxs], sample_train_ordered)
+        # Check that data matches data_train
+        #assert t.allclose(sample_ordered[idxs], sample_train_ordered)
 
-        ll_all                 = dist.log_prob(sample_all)
+        ll_all                 = dist.log_prob(sample)
         self.ll_all[varname]   = ll_all
         self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
 

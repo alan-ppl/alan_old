@@ -8,13 +8,13 @@ from .alan_module import AlanModule
 
 class SampleMixin():
     """
-    A mixin for all the sample_mp etc. methods.
+    A mixin for Model and ConditionModel that introduces the sample_... methods
     Requires methods:
         self.P(tr, ...) 
         self.Q(tr, ...)
         self.check_device(device)
     """
-    def dims_data_inputs(self, data, inputs, platesizes, device):
+    def dims_data_inputs(self, data, inputs, platesizes, device, use_model=True):
         #check model and/or self.data + self.inputs on ConditionModel are on desired device
         self.check_device(device)
         #deal with possibility of None defaults
@@ -26,14 +26,15 @@ class SampleMixin():
         data   = {k: v.to(device=device) for (k, v) in data.items()}
         inputs = {k: v.to(device=device) for (k, v) in inputs.items()}
 
-        platedims = extend_plates_with_named_tensors(self.platedims, [*data.values(), *inputs.values()])
-        platedims = extend_plates_with_sizes(self.platedims, platesizes)
+        platedims = self.platedims if use_model else {}
+        platedims = extend_plates_with_named_tensors(platedims, [*data.values(), *inputs.values()])
+        platedims = extend_plates_with_sizes(platedims, platesizes)
 
-        if hasattr(self, "data"):
+        if hasattr(self, "data") and use_model:
             assert 0 == len(set(self.data).intersection(data))
             data = {**self.data, **data}
 
-        if hasattr(self, "inputs"):
+        if hasattr(self, "inputs") and use_model:
             assert 0 == len(set(self.inputs).intersection(inputs))
             inputs = {**self.inputs, **inputs}
 
@@ -68,7 +69,7 @@ class SampleMixin():
         #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = trace_type(K, data, platedims, reparam, device)
+        trq = trace_type(K, data, inputs, platedims, reparam, device)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TraceP(trq)
@@ -76,7 +77,7 @@ class SampleMixin():
 
         return Sample(trp)
 
-    def sample_prior(self, N=None, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
+    def sample_prior(self, N=None, reparam=True, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
         """Draw samples from a generative model (with no data).
         
         Args:
@@ -93,7 +94,7 @@ class SampleMixin():
         platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
         with t.no_grad():
-            tr = traces.TraceSample(platedims, N, device)
+            tr = traces.TraceSample(N, inputs, platedims, device)
             self.P(tr, **inputs)
 
         if isinstance(varnames, str):
@@ -103,10 +104,19 @@ class SampleMixin():
 
         return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
-    def _predictive(self, sample, N, data_all=None, platesizes_all=None):
+    def _predictive(self, sample, N, data_all=None, inputs_all=None, platesizes_all=None):
         N = Dim('N', N)
         post_samples = sample._importance_samples(N)
-        tr = traces.TracePred(N, post_samples, sample.trp.data, data_all, sample.trp.platedims, platesizes_all, device=sample.device)
+        platedims_all, data_all, inputs_all = self.dims_data_inputs(data_all, inputs_all, platesizes_all, device=sample.device, use_model=False)
+
+        tr = traces.TracePred(
+            N, 
+            post_samples, 
+            sample.trp.data, data_all, 
+            sample.trp.inputs, inputs_all, 
+            sample.trp.platedims, platedims_all, 
+            device=sample.device
+        )
         self.P(tr)
         return tr, N
 
@@ -119,7 +129,7 @@ class SampleMixin():
         #Convert everything to named
         return trace_pred.samples_all
 
-    def predictive_ll(self, sample, N, data_all):
+    def predictive_ll(self, sample, N, data_all, inputs_all=None):
         """
         Run as (e.g. for plated_linear_gaussian.py)
 
@@ -127,7 +137,7 @@ class SampleMixin():
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
         """
 
-        trace_pred, N = self._predictive(sample, N, data_all, None)
+        trace_pred, N = self._predictive(sample, N, data_all, inputs_all, None)
         lls_all   = trace_pred.ll_all
         lls_train = trace_pred.ll_train
         assert set(lls_all.keys()) == set(lls_train.keys())
