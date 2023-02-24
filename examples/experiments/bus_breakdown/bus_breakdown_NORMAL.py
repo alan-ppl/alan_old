@@ -60,7 +60,7 @@ def generate_model(N,M,local,device):
             self.beta_mu = nn.Parameter(t.zeros((M,),names=('plate_Year',)))
             self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
             #sigma_alpha
-            self.sigma_alpha_mu = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
+            self.sigma_alpha_mean = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
             self.sigma_alpha_sigma = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
             #alpha
             self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
