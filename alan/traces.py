@@ -253,7 +253,7 @@ class TraceQSame(AbstractTraceQ):
             idxs = [self.parent_samples(plates, Kdim, K) for K in Ks]
             logq = logq.order(*Ks)[idxs]
         return logq
-        
+
 
 class TraceSample(AbstractTrace):
     """
@@ -327,7 +327,7 @@ class TraceSample(AbstractTrace):
 #        Edim = Dim(f'E_{key}', values.shape[0])
 #        values = values[Edim]
 #        #values is now just all a vector containing values in the support.
-#        
+#
 #        #Add a bunch of 1 dimensions.
 #        idxs = (len(plates)*[None])
 #        idxs.append(Ellipsis)
@@ -356,11 +356,11 @@ class TraceSample(AbstractTrace):
 #                raise Exception(f"Timeseries '{key}' is grouped with another variable which is sampled first. Timeseries can be grouped, but must be sampled first")
 #
 #        if self.trq.contains_stack_key(key):
-#            #We already have a value for the sample, either because it is 
+#            #We already have a value for the sample, either because it is
 #            #in the data, or because we sampled the variable in Q.
 #            if sum_discrete:
 #                raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but we already have a sample of '{key}' drawn from Q.  If you're summing over a discrete latent variable, you shouldn't provide a proposal / approximate posterior for that variable.")
-#             
+#
 #            sample = self.trq.get_stack_key(key)
 #            logq = self.trq.logq[key] if key in self.trq.samples else None
 #
@@ -379,7 +379,7 @@ class TraceSample(AbstractTrace):
 #            logq = t.zeros_like(sample)
 #            self.Ks.add(Kdim)
 #            self.Es.add(Kdim)
-#        
+#
 #        dims_sample = set(generic_dims(sample))
 #
 #        minus_log_K = 0.
@@ -456,14 +456,10 @@ class TracePred(AbstractTrace):
     """
     Draws samples from P conditioned on samples from ...
     Usually just used to sample fake data from the model.
-
     post_rvs is posterior samples of all latents + training data.
-
     We can choose to provide data or sizes.
       If we provide data, then we compute test_ll
       If we provide sizes, then we compute predictive samples
-
-
     """
     def __init__(self, N, samples_train, data_train, data_all, inputs_train, inputs_all, platedims_train, platedims_all, device):
         super().__init__(device)
