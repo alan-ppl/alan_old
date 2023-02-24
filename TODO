@@ -1,8 +1,7 @@
+* Prediction:
+  * if we have data/inputs with non-extended dimensions, then treat it as a sample.
 * Timeseries:
-  * Ban grouping across transitions and init.
-  * 
-  * Do a full sample for all the parent latents, just not the timeseries latent.
-  * Then index the sample for all Ks from the parent latents. 
+  * log Q
 * What happens when a K-group is shared across plates?
   * problem: the parents for sampling:
     * if group is defined at a higher-level, then lower-level latents in the same group all need to share the same parents.

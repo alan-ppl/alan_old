@@ -69,12 +69,12 @@ def run_experiment(cfg):
             start = time.time()
             seed_torch(i)
 
-            model = alan.Model(P, Q()).condition(data=data)
+            model = alan.Model(P, Q())#.condition(data=data)
             model.to(device)
 
 
             for j in range(cfg.training.num_iters):
-                sample = model.sample_same(K, inputs=covariates, reparam=False)
+                sample = model.sample_same(K, data=data, inputs=covariates, reparam=False)
                 elbo = sample.elbo().item()
                 per_seed_obj.append(elbo)
                 model.update(cfg.training.lr, sample)
@@ -86,8 +86,8 @@ def run_experiment(cfg):
 
 
             if cfg.training.pred_ll.do_pred_ll:
-                sample = model.sample_same(K, inputs=test_covariates, reparam=False)
-                pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, covariates_train=covariates, covariates_all=all_covariates)
+                sample = model.sample_same(K, data=test_data, inputs=test_covariates, reparam=False)
+                pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
                 pred_liks.append(pred_likelihood['obs'].item())
             else:
                 pred_liks.append(0)
