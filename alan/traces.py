@@ -46,7 +46,7 @@ class AbstractTrace(GetItem):
 
         for plate in plates:
             if plate not in self.platedims:
-                raise Exception(f"Unknown plate {plate}".)
+                raise Exception(f"Unknown plate {plate}.")
 
         if key in self.inputs:
             raise Exception("Trying to sample {key}, but {key} provided as an input")
@@ -287,7 +287,7 @@ class TraceSample(AbstractTrace):
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
     def sample_(self, key, dist, plates=(), T=None, group=None, sum_discrete=False):
-        del group, plates, sum_discrete
+        del group, sum_discrete
 
         if key in self:
             raise Exception(
@@ -318,15 +318,67 @@ class TraceP(AbstractTrace):
         self.reparam = trq.reparam
 
         self.logp = {}
+        self.Es = set()
+
+    def sum_discrete(self, key, dist, plates):
+        """
+        Enumerates discrete variables.
+        """
+        if dist.dist_name not in ["Bernoulli", "Categorical"]:
+            raise Exception(
+                f'Can only sum over discrete random variables with a '
+                f'Bernoulli or Categorical distribution.  Trying to ' 
+                f'sum over a "{dist.dist_name}" distribution.'
+            )
+
+        dim_plates    = set(dim for dim in dist.dims if (dim in self.platedims))
+        sample_plates = platenames2platedims(self.platedims, plates)
+        plates = list(dim_plates.union(sample_plates))
+
+        torch_dist = dist.dist(**dist.all_args)
+
+        values = torch_dist.enumerate_support(expand=False)
+        values = values.view(-1)
+        assert 1 == values.ndim
+        Edim = Dim(f'E_{key}', values.shape[0])
+        values = values[Edim]
+        #values is now just all a vector containing values in the support.
+
+        #Add a bunch of 1 dimensions.
+        idxs = (len(plates)*[None])
+        idxs.append(Ellipsis)
+        values = values[idxs]
+        #Expand them to full size
+        values = values.expand(*[plate.size for plate in plates])
+        #And name them
+        values = values[plates]
+        return values, Edim
 
     def sample_(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
+        if sum_discrete and (key in self):
+            raise Exception(
+                f"Trying to sum over {key}, but variable already present in"
+                f"Either data, inputs, or samples"
+            )
+
+        if (key not in self.samples) and (key not in self.data):
+            raise Exception(
+                f"{key} not in either data or samples"
+            )
+
+        if key in self.logp:
+            raise Exception(
+                f"{key} already sampled"
+            )
+
         if T is not None:
             dist.set_trace_Tdim(self, self.platedims[T])
 
-        assert key not in self.logp
-        assert (key in self.samples) != (key in self.data)
-
-        sample = self.samples[key] if (key in self.samples) else self.data[key]
+        if sum_discrete:
+            self.samples[key], Edim = self.sum_discrete(key, dist, plates)
+            self.Es.add(Edim)
+        else:
+            sample = self.samples[key] if (key in self.samples) else self.data[key]
         self.logp[key] = dist.log_prob(sample)
 
 
