@@ -9,13 +9,6 @@ from .timeseries import Timeseries
 from .dist import Categorical, Uniform
 from . import model
 
-reserved_names = ("K", "N")
-reserved_prefix = ("K_", "E_")
-def check_not_reserved(x):
-    reserved = (x in reserved_names) or (x[:2] in reserved_prefix)
-    if reserved:
-        raise Exception(f"You tried to use a variable or plate name '{x}'.  That name is reserved.  Specifically, we have reserved names {reserved_names} and reserved prefixes {reserved_prefix}.")
-
 class GetItem():
     def __init__(self, data, inputs, samples, platedims):
         self.data = data
@@ -24,7 +17,8 @@ class GetItem():
         self.platedims = platedims
 
     def __getitem__(self, key):
-        assert key in self
+        if not key in self:
+            raise Exception(f"{key} not present in data, inputs or samples")
         if key in self.data:
             return self.data[key]
         elif key in self.inputs:
@@ -41,7 +35,6 @@ class GetItem():
         result = in_data + in_inputs + in_sample
         assert result in [0, 1]
         return result == 1
-
     
 class AbstractTrace(GetItem):
     def __init__(self, device):
@@ -50,6 +43,18 @@ class AbstractTrace(GetItem):
     def __call__(self, key, dist, plates=(), T=None, **kwargs):
         if isinstance(plates, str):
             plates = (plates,)
+
+        for plate in plates:
+            if plate not in self.platedims:
+                raise Exception(f"Unknown plate {plate}".)
+
+        if key in self.inputs:
+            raise Exception("Trying to sample {key}, but {key} provided as an input")
+
+        if (T is not None) and not isinstance(dist, Timeseries):
+            raise Exception("T provided, but dist is not a Timeseries")
+        if (T is None) and isinstance(dist, Timeseries):
+            raise Exception("dist is a Timeseries, but T is not provided")
 
         self.sample_(key, dist, plates=plates, T=T, **kwargs)
 
@@ -74,15 +79,13 @@ class AbstractTrace(GetItem):
 
     def ones(self, *args, **kwargs):
         """
-        Passes through to the underlying PyTorch method, but gets the right
-        device
+        Passes through to the underlying PyTorch method, but gets the right device
         """
         return t.ones(*args, **kwargs, device=self.device)
 
     def zeros(self, *args, **kwargs):
         """
-        Passes through to the underlying PyTorch method, but gets the right
-        device
+        Passes through to the underlying PyTorch method, but gets the right device
         """
         return t.zeros(*args, **kwargs, device=self.device)
 
@@ -108,11 +111,11 @@ class AbstractTraceQ(AbstractTrace):
 
         #Dict mapping varname to K
         self.K_var = {}
-        #Dict mapping varname to K
+        #Dict mapping groupname to K
         self.K_group = {}
-        #Dict mapping varname to group
+        #Dict mapping varname to groupname
         self.group = {}
-
+        #Group -> parent_varname -> idxs
         self.group_parent_idxs = {}
 
     def sample_(self, key, dist, plates=(), T=None, group=None, multi_sample=True, sum_discrete=False):
@@ -121,22 +124,29 @@ class AbstractTraceQ(AbstractTrace):
             raise Exception("We don't need an approximate posterior if sum_discrete=True")
 
         if multi_sample==False:
-            warn("WARNING: multi_sample=False will break alot of things, including importance sampling, importance weighting, and RWS. Prefer grouped K's wherever possible. Though it is necessary to do Bayesian reasoning about parameters when we minibatch across latent variables")
-            if group is not None:
-                raise Exception(f"Doesn't make sense to group the variable {key} when multi_sample=False")
+            warn(
+                "WARNING: multi_sample=False will break alot of things, "
+                "including importance sampling, importance weighting, " 
+                "and RWS. Prefer grouped K's wherever possible. Though "
+                "it is necessary to do Bayesian reasoning about parameters " 
+                "when we minibatch across latent variables"
+            )
+        if (multi_sample==False) and (group is not None):
+            raise Exception(f"Doesn't make sense to group the variable {key} when multi_sample=False")
 
-        if key in self.samples:
-            raise Exception(f"Trying to sample {key}, but we have already have a variable with this name.")
+        if key in self:
+            raise Exception(
+                f"Trying to sample {key} from an approximate posterior, "
+                f"but we have already have a variable with this name."
+            )
 
-        if (T is not None) and not isinstance(dist, Timeseries):
-            raise Exception("T provided, but dist is not a Timeseries")
-        if (T is None) and isinstance(dist, Timeseries):
-            raise Exception("dist is a Timeseries, but T is not provided")
         if (T is not None) and (group is not None):
             raise Exception("Timeseries cannot currently be grouped")
 
-        #If we've defined an approximate posterior for data then just skip it.
-        #This is common if we're using P as Q
+        #Sometimes we want to use the prior as an approximate posterior.
+        #The prior will specify how to sample the data.  But we don't
+        #need to sample the data under the approximate posterior, so we
+        #just ignore the call.
         if key in self.data:
             return None
 
@@ -145,12 +155,11 @@ class AbstractTraceQ(AbstractTrace):
             self.group[key] = group
             #new group of K's
             if (group not in self.K_group):
-                self.K_group[group] = Dim(f"K_{group}", K)
+                self.K_group[group] = Dim(f"Kgroup_{group}", self.K)
             Kdim = self.K_group[group]
-            assert Kdim.size == self.trq.Kdim.size
         #non-grouped K's
         else:
-            Kdim = Dim(f"K_{key}", self.K)
+            Kdim = Dim(f"Kvar_{key}", self.K)
             self.K_var[key] = Kdim
 
         if T is not None:
@@ -158,10 +167,13 @@ class AbstractTraceQ(AbstractTrace):
 
         sample_dims = platenames2platedims(self.platedims, plates)
         sample_dims = (Kdim, *sample_dims)
-        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims, Kdim=Kdim)
 
-        #Shouldn't matter if we run this on top of a Timeseries sample, as that sample should only
-        #have one K (Kdim).
+        #Draw one sample for each K in the parameters of dist,
+        sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims, Kdim=Kdim)
+        #However, the resulting sample should have only one K,
+        #corresponding to this variable's Kvar or Kgroup, and
+        #we get that by selecting a value of each of the
+        #previous Ks
         sample = self.index_sample(sample, Kdim, group)
 
         logq = dist.log_prob(sample)
@@ -185,7 +197,6 @@ class AbstractTraceQ(AbstractTrace):
             if K not in idxs:
                 idxs[K] = self.parent_samples(plates, Kdim, K)
 
-        #breakpoint()
         if 0 < len(Ks):
             sample = sample.order(*Ks)[[idxs[K] for K in Ks]]
         return sample
@@ -219,6 +230,7 @@ class AbstractTraceQ(AbstractTrace):
         Note that these do not exist on TraceP, because aggregating/mixing along
         a plate in the generative model will break things!
         """
+        assert isinstance(plate, str)
         return f(x, self.platedims[plate])
 
     def mean(x, plate):
@@ -275,6 +287,14 @@ class TraceSample(AbstractTrace):
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
     def sample_(self, key, dist, plates=(), T=None, group=None, sum_discrete=False):
+        del group, plates, sum_discrete
+
+        if key in self:
+            raise Exception(
+                f"Trying to sample {key} from an approximate posterior, "
+                f"but we have already have a variable with this name."
+            )
+
         if T is not None:
             dist.set_trace_Tdim(self, self.platedims[T])
 
@@ -283,148 +303,6 @@ class TraceSample(AbstractTrace):
         self.samples[key] = sample
         self.logp[key] = dist.log_prob(sample)
 
-
-#class TraceP(AbstractTraceP):
-#    def __init__(self, trq):
-#        super().__init__(trq.device)
-#        self.trq = trq
-#
-#        self.samples = {}
-#        self.logp = {}
-#        self.logq = {}
-#
-#        self.groupname2dim = {}
-#
-#        #All Ks, including sum_discrete
-#        self.Ks     = set()
-#        #Only sum_discrete
-#        self.Es     = set()
-#
-#    @property
-#    def data(self):
-#        return self.trq.data
-#
-#    @property
-#    def platedims(self):
-#        return self.trq.platedims
-#
-#    def sum_discrete(self, key, dist, plates):
-#        """
-#        Enumerates discrete variables.
-#        """
-#        if dist.dist_name not in ["Bernoulli", "Categorical"]:
-#            raise Exception(f'Can only sum over discrete random variables with a Bernoulli or Categorical distribution.  Trying to sum over a "{dist.dist_name}" distribution.')
-#
-#        dim_plates    = set(dim for dim in dist.dims if (dim in self.platedims))
-#        sample_plates = platenames2platedims(self.platedims, plates)
-#        plates = list(dim_plates.union(sample_plates))
-#
-#        torch_dist = dist.dist(**dist.all_args)
-#
-#        values = torch_dist.enumerate_support(expand=False)
-#        values = values.view(-1)
-#        assert 1 == values.ndim
-#        Edim = Dim(f'E_{key}', values.shape[0])
-#        values = values[Edim]
-#        #values is now just all a vector containing values in the support.
-#        
-#        #Add a bunch of 1 dimensions.
-#        idxs = (len(plates)*[None])
-#        idxs.append(Ellipsis)
-#        values = values[idxs]
-#        #Expand them to full size
-#        values = values.expand(*[plate.size for plate in plates])
-#        #And name them
-#        values = values[plates]
-#        return values, Edim
-#
-#    def sample_(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
-#        assert key not in self.logp
-#        if T is not None:
-#            dist.set_trace, Tdim(self, self.platedims[T])
-#
-#        if isinstance(dist, Timeseries) and (dist._inputs is not None):
-#            warn("Generative models with timeseries with inputs are likely to be highly inefficient; if possible, try to rewrite the model so that timeseries doesn't have inputs.  For instance, you could marginalise the inputs and include them as noise in the transitions.")
-#
-#        if isinstance(dist, Timeseries) and (group is not None):
-#            #Works around a limitation in importance sampling.
-#            #Namely, we importance sample variables according to their order in P.
-#            #If we have a plate and a timeseries which are grouped, then we have to sample the timeseries first
-#            #that'll happen directly if the timeseries appears first in the probabilistic model,
-#            #but we'll do something wrong if we try to sample the plate first.
-#            if group in self.groupname2dim:
-#                raise Exception(f"Timeseries '{key}' is grouped with another variable which is sampled first. Timeseries can be grouped, but must be sampled first")
-#
-#        if self.trq.contains_stack_key(key):
-#            #We already have a value for the sample, either because it is 
-#            #in the data, or because we sampled the variable in Q.
-#            if sum_discrete:
-#                raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but we already have a sample of '{key}' drawn from Q.  If you're summing over a discrete latent variable, you shouldn't provide a proposal / approximate posterior for that variable.")
-#             
-#            sample = self.trq.get_stack_key(key)
-#            logq = self.trq.logq[key] if key in self.trq.samples else None
-#
-#            #Check that plates match for sample from Q previous and P here
-#            Q_sample_plates = set(self.filter_platedims(generic_dims(sample)))
-#            P_sample_plates = set(self.filter_platedims(dist.dims)).union(platenames2platedims(self.platedims, plates))
-#            if Q_sample_plates != P_sample_plates:
-#                raise Exception(f"The plates for P and Q don't match for variable '{key}'.  Specifically, P has plates {tuple(P_sample_plates)}, while Q has plates {tuple(Q_sample_plates)}")
-#
-#        else:
-#            assert sum_discrete
-#            #Analytically sum out a discrete latent
-#            if group is not None:
-#                raise Exception("You have asked to sum over all settings of '{key}' (i.e. `sum_discrete=True`), but you have also provided a group.  This doesn't make sense.  Only variables sampled from Q can be grouped.")
-#            sample, Kdim = self.sum_discrete(key, dist, plates)
-#            logq = t.zeros_like(sample)
-#            self.Ks.add(Kdim)
-#            self.Es.add(Kdim)
-#        
-#        dims_sample = set(generic_dims(sample))
-#
-#        minus_log_K = 0.
-#
-#        #If the sample has a trq.Kdim
-#        has_Q_K = self.trq.Kdim in dims_sample
-#        if has_Q_K:
-#            #grouped K's
-#            if (group is not None):
-#                #new group of K's
-#                if (group not in self.groupname2dim):
-#                    self.groupname2dim[group] = Dim(f"K_{group}", self.trq.Kdim.size)
-#                Kdim = self.groupname2dim[group]
-#                assert Kdim.size == self.trq.Kdim.size
-#            #non-grouped K's
-#            else:
-#                Kdim = Dim(f"K_{key}", self.trq.Kdim.size)
-#
-#            if Kdim not in self.Ks:
-#                #New K-dimension.
-#                minus_log_K = -math.log(self.trq.Kdim.size)
-#                self.Ks.add(Kdim)
-#
-#            #Rename K -> K_groupname, or K_varname.
-#            sample = sample.order(self.trq.Kdim)[Kdim]
-#            logq = logq.order(self.trq.Kdim)[Kdim]
-#
-#        if key not in self.data:
-#            self.samples[key] = sample
-#        if logq is not None:
-#            self.logq[key] = logq
-#
-#        #Timeseries needs to know the Kdim, but other distributions ignore it.
-#        self.logp[key] = dist.log_prob_P(sample, Kdim=(Kdim if has_Q_K else None)) + minus_log_K
-#
-#class TracePGlobal(TraceP):
-#    """
-#    Incomplete method purely used for benchmarking.
-#    e.g. doesn't do sampling from the prior.
-#    """
-#    def __init__(self, trq):
-#        super().__init__(trq)
-#        if isinstance(trq, TraceQTMC):
-#            self.Ks = trq.Ks
-#
 
 class TraceP(AbstractTrace):
     def __init__(self, trq):

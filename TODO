@@ -1,7 +1,6 @@
-* Prediction:
-  * if we have data/inputs with non-extended dimensions, then treat it as a sample.
-* Timeseries:
-  * log Q
+* Timeseries log Q!!
+* ML with MvNormal (different sizes for different parameters).
+* Sum discrete
 * What happens when a K-group is shared across plates?
   * problem: the parents for sampling:
     * if group is defined at a higher-level, then lower-level latents in the same group all need to share the same parents.
@@ -21,6 +20,8 @@
   * give dist(0, 1) a device.
 
 Errors:
+* error checking for inputs
+* error checking for predictions (in particular, when data_all doesn't exist when it should).
 * groups should all be at the same plate level (at least if Categorical or Permutation but not Same).
 * P shouldn't have any QModules (QModules would imply a plated Parameter, and we really shouldn't have a plated parameter in P)
 * check all dimensions are either plates or Ks.
