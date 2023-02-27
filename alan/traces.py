@@ -265,7 +265,7 @@ class TraceQSame(AbstractTraceQ):
             idxs = [self.parent_samples(plates, Kdim, K) for K in Ks]
             logq = logq.order(*Ks)[idxs]
         return logq
-        
+
 
 class TraceSample(AbstractTrace):
     """
@@ -334,14 +334,10 @@ class TracePred(AbstractTrace):
     """
     Draws samples from P conditioned on samples from ...
     Usually just used to sample fake data from the model.
-
     post_rvs is posterior samples of all latents + training data.
-
     We can choose to provide data or sizes.
       If we provide data, then we compute test_ll
       If we provide sizes, then we compute predictive samples
-
-
     """
     def __init__(self, N, samples_train, data_train, data_all, inputs_train, inputs_all, platedims_train, platedims_all, device):
         super().__init__(device)

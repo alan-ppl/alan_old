@@ -17,7 +17,7 @@ def generate_model(N,M,device,ML=1):
         'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],-2)}
 
     data = {'obs':t.load('bus_breakdown/data/delay_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
-    data = {**covariates, **data}
+    # data = {**covariates, **data}
     test_data = {'obs':t.load('bus_breakdown/data/delay_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
     # test_data = {**test_covariates, **test_data}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
@@ -124,4 +124,4 @@ def generate_model(N,M,device,ML=1):
                 tr('psi', self.psi())
                 tr('phi', self.phi())
 
-    return P, Q, data, covariates, all_data, all_covariates
+    return P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates

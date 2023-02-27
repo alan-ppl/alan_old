@@ -37,7 +37,7 @@ print('...', flush=True)
 @hydra.main(version_base=None, config_path='config', config_name='conf')
 def run_experiment(cfg):
     print(cfg)
-    writer = SummaryWriter(log_dir='runs/' + cfg.dataset + '/' + cfg.model + '/')
+    # writer = SummaryWriter(log_dir='runs/' + cfg.dataset + '/' + cfg.model + '/')
     device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
     results_dict = {}
@@ -54,7 +54,7 @@ def run_experiment(cfg):
     # foo.MyClass()
     # experiment = importlib.import_module(cfg.model.model, 'Deeper_Hier_Regression')
 
-    P, Q, data, covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML)
+    P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML)
     for K in Ks:
         print(K,M,N)
         results_dict[N] = results_dict.get(N, {})
@@ -69,31 +69,32 @@ def run_experiment(cfg):
             start = time.time()
             seed_torch(i)
 
-            model = alan.Model(P, Q()).condition(data=data)
+            model = alan.Model(P, Q())#.condition(data=data)
             model.to(device)
 
 
             for j in range(cfg.training.num_iters):
-                sample = model.sample_same(K, inputs=covariates, reparam=False)
+                sample = model.sample_same(K, data=data, inputs=covariates, reparam=False)
                 elbo = sample.elbo().item()
                 per_seed_obj.append(elbo)
                 model.update(cfg.training.lr, sample)
 
-                writer.add_scalar('Objective/Run number {}/{}'.format(i, K), elbo, j)
-                if 0 == j%1000:
+                # writer.add_scalar('Objective/Run number {}/{}'.format(i, K), elbo, j)
+                if j % 10 == 0:
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
 
 
 
             if cfg.training.pred_ll.do_pred_ll:
-                pred_likelihood = model.predictive_ll(K = K, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data)
+                sample = model.sample_same(K, data=test_data, inputs=test_covariates, reparam=False)
+                pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
                 pred_liks.append(pred_likelihood['obs'].item())
             else:
                 pred_liks.append(0)
             objs.append(np.mean(per_seed_obj[-50:]))
             times.append((time.time() - start)/cfg.training.num_iters)
-            writer.add_scalar('Time/Run number {}'.format(i,K), times[-1], K)
-            writer.add_scalar('Predictive Log Likelihood/Run number {}'.format(i,K), pred_liks[-1], K)
+            # writer.add_scalar('Time/Run number {}'.format(i,K), times[-1], K)
+            # writer.add_scalar('Predictive Log Likelihood/Run number {}'.format(i,K), pred_liks[-1], K)
 
             ###
             # SAVING MODELS DOESN'T WORK YET
@@ -105,7 +106,7 @@ def run_experiment(cfg):
 
         results_dict[N][M][K] = {'final_obj':np.mean(objs),'final_obj_std':np.std(objs), 'pred_likelihood':np.mean(pred_liks), 'pred_likelihood_std':np.std(pred_liks), 'objs': objs, 'pred_liks':pred_liks, 'avg_time':np.mean(times), 'std_time':np.std(times)}
 
-    file = cfg.dataset + '/results/' + cfg.model + '/' + cfg.training.inference_method + '_' + 'N{0}_M{1}.json'.format(N,M)
+    file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML) + '_{}_'.format(cfg.training.lr) + '_' + 'N{0}_M{1}.json'.format(N,M)
     with open(file, 'w') as f:
         json.dump(results_dict, f)
 
