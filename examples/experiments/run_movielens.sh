@@ -25,7 +25,7 @@
 # ### RWS
 # lbatch -c 1 -g 1 -m 22 -t 10 -q cnu --cmd python runner.py dataset=movielens model=movielens training.inference_method=rws training.N=5 training.M=150
 # lbatch -c 1 -g 1 -m 22 -t 10 -q cnu --cmd python runner.py dataset=movielens model=movielens training.inference_method=rws training.N=5 training.M=50
-lbatch -c 1 -g 1 -m 22 -t 10 -q cnu --cmd python runner.py dataset=movielens model=movielens training.inference_method=rws_tmc_new training.N=5 training.M=300
+lbatch -c 1 -g 1 -m 22 -t 10 -q cnu -a cosc020762 --gputype A100 --cmd python runner.py dataset=movielens model=movielens training.inference_method=rws_tmc_new training.N=5 training.M=300
 # lbatch -c 1 -g 1 -m 22 -t 10 -q cnu --cmd python runner.py dataset=movielens model=movielens training.inference_method=rws training.N=10 training.M=150
 # lbatch -c 1 -g 1 -m 22 -t 10 -q cnu --cmd python runner.py dataset=movielens model=movielens training.inference_method=rws training.N=10 training.M=50
 # lbatch -c 1 -g 1 -m 22 -t 10 -q cnu --cmd python runner.py dataset=movielens model=movielens training.inference_method=rws training.N=10 training.M=300
