@@ -5,7 +5,7 @@
     num_iters: 200
     N: 2
     M: 2
-    Ks: [3,10,30,100,300,1000,3000,10000]
+    Ks: [3,10,30]
     num_runs: 5
     pred_ll:
       do_pred_ll: False
