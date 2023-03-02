@@ -5,14 +5,16 @@ t.manual_seed(0)
 
 def P(tr):
     tr('decay', alan.Normal(-3, 1), plates="plate_1")
+    tr('init',  alan.Normal(0, 1), plates="plate_1")
     transition = lambda x: alan.Normal(t.exp(tr['decay']) * x, 0.01)
-    tr('ts', alan.Timeseries(0, transition), T="Tb")
+    tr('ts', alan.Timeseries('init', transition), T="Tb")
     tr('obs', alan.Normal(tr['ts'], 1))
 
 def Q(tr):
     tr('decay', alan.Normal(-3, 1), plates="plate_1")
+    tr('init',  alan.Normal(0, 1), plates="plate_1")
     transition = lambda x: alan.Normal(t.exp(tr['decay']) * x, 0.01)
-    tr('ts', alan.Timeseries(0, transition), T="Tb")
+    tr('ts', alan.Timeseries('init', transition), T="Tb")
 
 
 model = alan.Model(P, Q)

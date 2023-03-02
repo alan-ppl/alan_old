@@ -1,6 +1,5 @@
 import math
 from .utils import *
-from .timeseries import TimeseriesLogP, flatten_tslp_list
 from .dist import Categorical
 from functorch.dim import dims, Tensor, Dim
 from . import traces
@@ -18,10 +17,7 @@ class Sample():
         self.trp = trp
 
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
-            if isinstance(lp, TimeseriesLogP):
-                assert lp.first.shape == () and lp.rest.shape == ()
-            else:
-                assert lp.shape == ()
+            assert lp.shape == ()
 
         Q_keys = [*trp.group, *trp.logq_var]
         assert set(Q_keys) == set(trp.samples.keys()) 
@@ -124,43 +120,19 @@ class Sample():
         #collect K's that appear in higher plates
         Ks_to_keep = set([dim for dim in unify_dims(higher_lps) if self.is_K(dim)])
 
-        ts  = [lp for lp in lower_lps if     isinstance(lp, TimeseriesLogP)]
-        nts = [lp for lp in lower_lps if not isinstance(lp, TimeseriesLogP)]
-        assert len(ts) in [0, 1, 2]
+        if plate_dim in self.trp.Tdim2Ks.keys():
+            Kprev, Kdim = self.trp.Tdim2Ks[plate_dim]
+            Ks_to_keep = [Kdim, *Ks_to_keep]
 
-        if 2==len(ts):
-            #Could happen if we have a timeseries extra_log_factor when importance sampling
-            ts = [ts[0] + ts[1]]
-        if len(ts) == 1:
-            lower_lp = self.sum_T(ts[0], nts, plate_dim, Ks_to_keep)
-        else:
-            lower_lp = self.sum_plate(nts, plate_dim, Ks_to_keep)
+        lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
+
+        if plate_dim in self.trp.Tdim2Ks.keys():
+            lower_lp = chain_logmmexp(lower_lp, plate_dim, Kprev, Kdim) #Kprev x Knext
+            lower_lp = reduce_Ks([lower_lp], [Kdim])
+        elif plate_dim is not None:
+            lower_lp = lower_lp.sum(plate_dim)
 
         return [*higher_lps, lower_lp]
-
-    def sum_T(self, ts, non_ts, T, Ks_to_keep):
-        assert ts.T is T
-
-        #Split all the non-timeseries log-p's into the first and rest.
-        non_ts_T = [lp.order(T)    for lp in non_ts]
-        firsts   = [lp[0]          for lp in non_ts_T]
-        rests    = [lp[1:][ts.Tm1] for lp in non_ts_T]
-
-        #Reduce over Ks separately for first and rest
-        Ks_to_keep = [ts.K, *Ks_to_keep]
-        first = self.reduce_Ks_to_keep([ts.first, *firsts], Ks_to_keep)
-        rest  = self.reduce_Ks_to_keep([ts.rest,  *rests],  Ks_to_keep)
-
-        first = first.order(ts.K)[ts.Kprev] #Replace K with Kprev
-        rest = chain_logmmexp(rest, ts.Tm1, ts.Kprev, ts.K) #Kprev x Knext
-
-        return reduce_Ks([first, rest], [ts.Kprev, ts.K])
-
-    def sum_plate(self, lower_lps, plate_dim, Ks_to_keep):
-        lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
-        if plate_dim is not None:
-            lower_lp = lower_lp.sum(plate_dim)
-        return lower_lp
 
     def reduce_Ks_to_keep(self, tensors, Ks_to_keep):
         """

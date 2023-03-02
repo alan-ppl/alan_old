@@ -187,7 +187,7 @@ class AbstractTraceQ(AbstractTrace):
         #previous Ks
         sample = self.index_sample(sample, Kdim, group)
 
-        logq = dist.log_prob_Q(sample, Kdim=Kdim)
+        logq = dist.log_prob(sample, Kdim=Kdim)
         self.samples[key] = sample
 
         if group is not None:
@@ -329,6 +329,9 @@ class TraceP(AbstractTrace):
         self.logp = {}
         self.Es = set()
 
+        #set of timeseries dimensions (as strings)
+        self.Tdim2Ks = {}
+
     def sum_discrete(self, key, dist, plates):
         """
         Enumerates discrete variables.
@@ -381,7 +384,11 @@ class TraceP(AbstractTrace):
             )
 
         if T is not None:
+            if T in self.Tdim2Ks.keys():
+                raise Exception("We cannot have two timeseries with this T-dimension")
             dist.set_trace_Tdim(self, self.platedims[T])
+
+            self.Tdim2Ks[self.platedims[T]] = (self.key2Kdim(dist.initial_state_key), self.key2Kdim(key))
 
         if sum_discrete:
             self.samples[key], Edim = self.sum_discrete(key, dist, plates)
