@@ -69,9 +69,12 @@ class AbstractTrace(GetItem):
     def extract_platedims(self, x):
         return self.filter_platedims(generic_dims(x))
 
-    def extract_Kdims(self, x, exclude=None):
+    def extract_Kdims(self, x, exclude=None, extra_K=None):
         result = self.filter_Kdims(generic_dims(x))
         result = set(result)
+        if extra_K is not None:
+            assert extra_K is not exclude
+            result.add(extra_K)
         if (exclude is not None) and (exclude in result):
             result.remove(exclude)
             result = tuple(result)
@@ -92,6 +95,14 @@ class AbstractTrace(GetItem):
     @property
     def Ks(self):
         return set([*self.K_var.values(), *self.K_group.values()])
+
+    def key2Kdim(self, key):
+        if key in self.K_var:
+            return self.K_var[key]
+        if key in self.group:
+            return self.K_group[self.group[key]]
+        else:
+            return None
 
 
 class AbstractTraceQ(AbstractTrace):
@@ -176,7 +187,7 @@ class AbstractTraceQ(AbstractTrace):
         #previous Ks
         sample = self.index_sample(sample, Kdim, group)
 
-        logq = dist.log_prob(sample)
+        logq = dist.log_prob_Q(sample, Kdim=Kdim)
         self.samples[key] = sample
 
         if group is not None:
@@ -241,25 +252,25 @@ class TraceQCategorical(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):
         return Categorical(t.ones(K.size)/K.size).sample(False, sample_dims=[Kdim, *plates])
 
-    def logq(self, logq, Kdim):
-        return log_meandims_exp(logq, self.extract_Kdims(logq, exclude=Kdim))
+    def logq(self, logq, Kdim, extra_K=None):
+        return log_meandims_exp(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
 
 class TraceQPermutation(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):
         assert Kdim.size == K.size
         return Uniform().sample(False, sample_dims=[Kdim, *plates]).argsort(Kdim)
 
-    def logq(self, logq, Kdim):
-        return log_meandims_exp(logq, self.extract_Kdims(logq, exclude=Kdim))
+    def logq(self, logq, Kdim, extra_K=None):
+        return log_meandims_exp(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
 
 class TraceQSame(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):
         idxs = t.arange(self.K)[Kdim].expand(*plates)
         return idxs
 
-    def logq(self, logq, Kdim):
+    def logq(self, logq, Kdim, extra_K=None):
         plates = self.extract_platedims(logq)
-        Ks = self.extract_Kdims(logq, exclude=Kdim)
+        Ks = self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K)
 
         if len(Ks) > 0:
             idxs = [self.parent_samples(plates, Kdim, K) for K in Ks]
@@ -301,8 +312,6 @@ class TraceSample(AbstractTrace):
         sample_dims = [*self.Ns, *(self.platedims[plate] for plate in plates)]
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         self.samples[key] = sample
-        self.logp[key] = dist.log_prob(sample)
-
 
 class TraceP(AbstractTrace):
     def __init__(self, trq):
@@ -377,9 +386,10 @@ class TraceP(AbstractTrace):
         if sum_discrete:
             self.samples[key], Edim = self.sum_discrete(key, dist, plates)
             self.Es.add(Edim)
+            self.logp[key] = dist.log_prob(sample, Kdim=Edim)
         else:
             sample = self.samples[key] if (key in self.samples) else self.data[key]
-        self.logp[key] = dist.log_prob(sample)
+            self.logp[key] = dist.log_prob(sample, Kdim=self.key2Kdim(key))
 
 
 class TracePred(AbstractTrace):

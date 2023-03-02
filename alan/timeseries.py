@@ -53,7 +53,10 @@ class Timeseries():
         result = t.stack(result, 0)[[self.Tdim, *result_dims]]
         return result
 
-    def log_prob(self, x):
+    def log_prob_same(self, x):
+        """
+        Only retained for testing.
+        """
         #No dimensions in initial state that don't also appear in x.
         #Should be the case whenever we're doing "non-tensorised" sampling.
         assert 0==len(set(generic_dims(self.initial_state)).difference(generic_dims(x)))
@@ -73,7 +76,7 @@ class Timeseries():
 
         return t.cat([lp_first[None, ...], lp_rest.order(Tm1)], 0)[self.Tdim]
 
-    def log_prob_P(self, x, Kdim):
+    def log_prob(self, x, Kdim):
         #Set up key dimensions
         T = self.Tdim
         Tm1 = Dim('Tm1', T.size-1)
@@ -97,9 +100,24 @@ class Timeseries():
 
         return TimeseriesLogP(first, rest, T, Tm1, K, Kprev)
 
+    def log_prob_Q(self, x, Kdim):
+        ts = self.log_prob(x, Kdim)
+
+        first = self.trace.logq(ts.first, Kdim)
+        rest  = self.trace.logq(ts.rest, Kdim, extra_K=ts.Kprev)
+
+        return t.cat([first[None], rest.order(ts.Tm1)], 0)[ts.T]
+
 
 
 class TimeseriesLogP():
+    """
+    The initial state in the timeseries is passed in directly,
+    meaning it can have any number of Ks (typically zero, if
+    deterministic init, or one if sampled from a dist).  That
+    means the first transition in the timeseries has a different
+    size logp compared to all the others.
+    """
     def __init__(self, first, rest, T, Tm1, K, Kprev):
         assert all(isinstance(x, Dim) for x in [T, Tm1, K, Kprev])
         assert T.size == Tm1.size+1

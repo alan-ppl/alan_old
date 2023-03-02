@@ -106,7 +106,7 @@ class TorchDimDist():
         dims = [*sample_dims, *self.dims, Ellipsis]
         return sample[dims]
 
-    def log_prob(self, x):
+    def log_prob(self, x, Kdim=None):
         #Same number of unnamed batch dims
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):
@@ -121,8 +121,8 @@ class TorchDimDist():
 
         return log_prob + self.extra_log_factor(x)
 
-    def log_prob_P(self, x, Kdim):
-        return self.log_prob(x)
+    def log_prob_Q(self, x, Kdim=None):
+        return self.log_prob(x, Kdim=Kdim)
 
 for dn in param_event_ndim:
     globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': getattr(td, dn)})

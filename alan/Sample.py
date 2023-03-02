@@ -29,6 +29,7 @@ class Sample():
         for (rv, lp) in trp.logp.items():
             assert (rv in Q_keys) or (rv in trp.data)
 
+
         #All keys in Q
         for key in Q_keys:
 
@@ -40,8 +41,10 @@ class Sample():
             lq = trp.logq_var[key] if (key in trp.logq_var) else trp.logq_group[trp.group[key]]
 
             # check same plates/timeseries appear in lp and lq
-            lp_notK = [dim for dim in generic_dims(lp) if not self.is_K(dim)]
-            lq_notK = [dim for dim in generic_dims(lq) if not self.is_K(dim)]
+            #lp_notK = [dim for dim in generic_dims(lp) if not self.is_K(dim)]
+            #lq_notK = [dim for dim in generic_dims(lq) if not self.is_K(dim)]
+            lp_notK = trp.extract_platedims(lp)
+            lq_notK = trp.extract_platedims(lq)
             assert set(lp_notK) == set(lq_notK)
 
         self.varname2logp = trp.logp
