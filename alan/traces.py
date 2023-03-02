@@ -313,6 +313,10 @@ class TraceSample(AbstractTrace):
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         self.samples[key] = sample
 
+    @property
+    def Ks(self):
+        return set()
+
 class TraceP(AbstractTrace):
     def __init__(self, trq):
         super().__init__(trq.device)
@@ -331,6 +335,8 @@ class TraceP(AbstractTrace):
 
         #set of timeseries dimensions (as strings)
         self.Tdim2Ks = {}
+        self.Tvar2Tdim = {}
+        self.used_platenames = set()
 
     def sum_discrete(self, key, dist, plates):
         """
@@ -383,12 +389,20 @@ class TraceP(AbstractTrace):
                 f"{key} already sampled"
             )
 
-        if T is not None:
-            if T in self.Tdim2Ks.keys():
-                raise Exception("We cannot have two timeseries with this T-dimension")
-            dist.set_trace_Tdim(self, self.platedims[T])
+        self.used_platenames = self.used_platenames.intersection(plates)
 
-            self.Tdim2Ks[self.platedims[T]] = (self.key2Kdim(dist.initial_state_key), self.key2Kdim(key))
+        if T is not None:
+            if T in self.used_platenames:
+                raise Exception(
+                    "Timeseries must be the first thing sampled with the T-dimension; " 
+                    "you can sample plates later with T, but not earlier.  This is to "
+                    "ensure that importance sampling works. "
+                )
+            Tdim = self.platedims[T]
+            dist.set_trace_Tdim(self, Tdim)
+
+            self.Tdim2Ks[Tdim] = (self.key2Kdim(dist.initial_state_key), self.key2Kdim(key))
+            self.Tvar2Tdim[key] = Tdim
 
         if sum_discrete:
             self.samples[key], Edim = self.sum_discrete(key, dist, plates)

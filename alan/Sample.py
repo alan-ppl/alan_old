@@ -268,31 +268,25 @@ class Sample():
         #ordered in the order of generating under P
         var_names           = list(self.samples.keys())
         samples             = list(self.samples.values())
-        logps_u             = [self.varname2logp[var_name] for var_name in var_names]
-        #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
-        #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
-        logps_f, unflatten  = flatten_tslp_list(logps_u)
-        dimss               = [lp.dims for lp in logps_f]
-        undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps_f, dimss)]
+        logps               = [self.varname2logp[var_name] for var_name in var_names]
+        dimss               = [lp.dims for lp in logps]
+        undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps, dimss)]
 
         #Start with Js with no dimensions (like NN parameters)
         undim_Js = [t.zeros_like(ulp, requires_grad=True) for ulp in undim_logps]
         #Put torchdims back in.
         dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
         #Compute result with torchdim Js
-        result = self.tensor_product(extra_log_factors=unflatten(dim_Js))
+        result = self.tensor_product(extra_log_factors=dim_Js)
         #But differentiate wrt non-torchdim Js
         marginals = list(t.autograd.grad(result, undim_Js))
         #Put dims back,
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
         #Normalized, marg gives the "posterior marginals" over Ks
 
-        #Wrap up the first and last marginals into a TimeseriesLogP.
-        marginals = unflatten(marginals)
-
         #Delete everything that's a flat list (otherwise we risk difficult-to-catch bugs).
         #Could also separate computing marginals into a separate function.
-        del logps_f, unflatten, dimss, undim_logps, undim_Js, dim_Js, result
+        del logps, dimss, undim_logps, undim_Js, dim_Js, result
 
         #### Sampling the K's
 
@@ -307,37 +301,30 @@ class Sample():
             #.dims, and the resulting new_K should make sense for both .first and .last
             new_Ks = [dim for dim in generic_dims(marg) if self.is_K(dim) and (dim not in K_post_idxs)]
 
-            #Timeseries must be associated with a new K.  Should be enforced in TraceP,
-            #but check again here.
-            if isinstance(marg, TimeseriesLogP):
-                assert 1==len(new_Ks)
-
             #Should be zero (e.g. if grouped) or one new K.
             assert len(new_Ks) in (0, 1)
 
             #If there's a new K, then we need to do posterior sampling for that K.
             if 1==len(new_Ks):
                 K = new_Ks[0]
-                if isinstance(marg, TimeseriesLogP):
-                    #sample the initial state (t=0)
-                    init_K_post = sample_cond(marg.first, K, K_post_idxs, N)
+                if var_names[i] in self.trp.Tvar2Tdim.keys():
+                    Tdim = self.trp.Tvar2Tdim[var_names[i]]
+                    Kprev, Kdim = self.trp.Tdim2Ks[Tdim]
 
-                    #sample the rest of the states (t=1...T-1)
-                    Kprev      = marg.Kprev
-                    rest       = marg.rest.order(marg.Tm1) #Bring Tm1 to first dimension.
+                    marg = marg.order(Tdim)
 
                     #Tensor to record all the K's
-                    K_posts    = init_K_post[None, ...].expand(marg.T.size)
+                    init_K_post = sample_cond(marg[0], Kdim, K_post_idxs, N)
+                    K_posts    = init_K_post[None, ...].expand(Tdim.size)
 
-                    for _t in range(1, marg.T.size):
+                    for _t in range(1, Tdim.size):
                         _K_post_idxs = {Kprev: K_posts[_t-1], **K_post_idxs}
 
                         #rest runs from t=1...T-1, so rest[0] corresponds to time t=1.
                         #could be optimized by indexing into marg with K_post_idxs once.
-                        K_posts[_t] = sample_cond(rest[_t-1], K, _K_post_idxs, N)
+                        K_posts[_t] = sample_cond(marg[_t-1], Kdim, _K_post_idxs, N)
 
-                    K_post_idxs[K] = K_posts[marg.T]
-
+                    K_post_idxs[K] = K_posts[Tdim]
                 else:
                     K_post_idxs[K] = sample_cond(marg, K, K_post_idxs, N)
 

@@ -1,8 +1,6 @@
 * Timeseries
-  * Initial state must have only one K, which can be achieved by ensuring that its a sample.
-  * That way log P(x_t| x_{t-1}) is a single tensor which is always the same shape.
-  * TraceQ doesn't need to know explicitly about whether anything is a timeseries.
-  * 
+  * Record timeseries variable names.
+  * Marry variable names with ...
 
 * ML with MvNormal (different sizes for different parameters).
 * Sum discrete
