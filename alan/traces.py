@@ -537,8 +537,6 @@ class TracePred(AbstractTrace):
         sample = self.data[varname]
         sample_train = self.train.data[varname]
 
-        if varname == 'obs':
-            breakpoint()
         dims_all, dims_train = self.corresponding_plates(sample, sample_train)
 
         sample_ordered       = generic_order(sample,       dims_all)
