@@ -105,6 +105,8 @@ class SampleMixin():
         return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
     def _predictive(self, sample, N, data_all=None, inputs_all=None, platesizes_all=None):
+        assert isinstance(sample, (Sample, SampleGlobal))
+        assert isinstance(N, int)
         N = Dim('N', N)
         #platedims, data, inputs = self.dims_data_inputs(data_all, covariates_all, platesizes_all, device)
         post_samples = sample._importance_samples(N)
@@ -121,14 +123,14 @@ class SampleMixin():
         self.P(tr, **inputs_all)
         return tr, N
 
-    def predictive_samples(self, sample, N, platesizes_all=None):
+    def predictive_samples(self, sample, N, inputs_all=None, platesizes_all=None):
         if platesizes_all is None:
             platesizes_all = {}
-        trace_pred, N = self._predictive(sample, N, None, platesizes_all)
+        trace_pred, N = self._predictive(sample, N, data_all=None, inputs_all=inputs_all, platesizes_all=platesizes_all)
         #Convert everything to named
         #Return a dict mapping
         #Convert everything to named
-        return trace_pred.samples_all
+        return trace_pred.samples
 
     def predictive_ll(self, sample, N, data_all, inputs_all=None):
         """

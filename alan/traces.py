@@ -447,13 +447,8 @@ class TracePred(AbstractTrace):
             if platedim_all.size < self.train.platedims[platename].size:
                 raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data which is smaller than than the same plate in the training data (remember that the new data / plate sizes correspond to the training + test data)")
 
-        #If any random variables from data_train are missing in data, fill them in
-        #Not sure about this line...
-        for (rv, x) in self.train.data.items():
-            if rv not in self.data:
-                self.data[rv] = x
         #If any plates from platedims_train are missing in platedims, fill them in
-        for (platename, platedim) in self.train.data.items():
+        for (platename, platedim) in self.train.platedims.items():
             if platename not in self.platedims:
                 self.platedims[platename] = platedim
 
@@ -528,25 +523,22 @@ class TracePred(AbstractTrace):
             T_train = dims_train[T_idx]
             T_test = Dim('T_test', T_all.size - T_train.size)
 
-            sample_train, sample_test = split_train_test(sample, T_all, T_train, T_test)
+            sample_train, _ = split_train_test(sample, T_all, T_train, T_test)
             sample_init = sample_train.order(T_train)[-1]
 
-            inputs = ()
-            if dist._inputs is not None:
-                inputs_train, inputs_test = split_train_test(dist._inputs, T_all, T_train, T_test)
-                inputs = (inputs_test,)
-
-            test_dist = Timeseries(sample_init, dist.transition, *inputs)
-            test_dist.set_trace_Tdim(self, T_test)
+            inputs_test = tuple(split_train_test(x, T_all, T_train, T_test)[1] for x in dist._inputs)
+            test_dist = Timeseries.pred_init(sample_init, dist.transition, T_test, inputs_test)
             sample_test = test_dist.sample(reparam=self.reparam, sample_dims=sample_dims)
             sample = t.cat([sample_train.order(T_train), sample_test.order(T_test)], 0)[T_all]
 
         self.samples[varname] = sample
 
     def _sample_logp(self, varname, dist, plates):
-        sample   = self.data[varname]
+        sample = self.data[varname]
         sample_train = self.train.data[varname]
 
+        if varname == 'obs':
+            breakpoint()
         dims_all, dims_train = self.corresponding_plates(sample, sample_train)
 
         sample_ordered       = generic_order(sample,       dims_all)
