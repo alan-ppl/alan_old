@@ -24,7 +24,7 @@ class Sample():
                 assert lp.shape == ()
 
         Q_keys = [*trp.group, *trp.logq_var]
-        assert set(Q_keys) == set(trp.samples.keys()) 
+        assert set(Q_keys) == set(trp.samples.keys())
 
         for (rv, lp) in trp.logp.items():
             assert (rv in Q_keys) or (rv in trp.data)
@@ -214,8 +214,8 @@ class Sample():
 
         return named_Es
 
-    def Elogq(self): 
-        """
+    def Elogq(self):
+        r"""
         Uses importance weighting to approximate E_{P(z|x)}[log Q(z)].
         Could also implement using importance weights?
         """
@@ -239,7 +239,7 @@ class Sample():
         """
         Produces normalized weights for each latent variable.
 
-        Make a little function that converts all the aunnamed to dim tensors
+        Make a little function that converts all the unnamed to dim tensors
         """
         var_names     = list(self.samples.keys())
         samples       = list(self.samples.values())

@@ -4,15 +4,23 @@ from functorch.dim import Dim
 
 class Timeseries():
     def __init__(self, initial_state, transition, inputs=None):
-        self.initial_state = initial_state 
-        self.transition = transition 
+        r"""
+        Creates a Timeseries.
+
+        Args:
+            initial_state (tensor)
+            transition (function):
+            inputs (tensor):
+        """
+        self.initial_state = initial_state
+        self.transition = transition
         self._inputs = inputs
 
     def set_trace_Tdim(self, trace, Tdim):
         """
         Timeseries is initialized in user code, and the user (and hence the init) doesn't know:
           the length of the timeseries.
-          the type of trace (e.g. Categorical vs Permutation vs Same). 
+          the type of trace (e.g. Categorical vs Permutation vs Same).
         """
         assert isinstance(Tdim, Dim)
         self.trace = trace
@@ -45,7 +53,7 @@ class Timeseries():
 
         #A bug with stacking torchdim tensors.  Should be able to do:
         #return t.stack(result, 0)[self.Tdim]
-        #where result has some torchdim tensors. 
+        #where result has some torchdim tensors.
 
         #Actually we need to strip the torchdims before stacking
         result_dims = generic_dims(result[0])
@@ -140,7 +148,7 @@ class TimeseriesLogP():
             return self.similar(self.first + other.first, self.rest + other.rest)
         else:
             raise Exception(f"Don't know how to add {other} to a TimeseriesLogP")
-            
+
 
 def tslp_to_tuple(tslp):
     """

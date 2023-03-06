@@ -7,14 +7,24 @@ from .utils import *
 from .alan_module import AlanModule
 
 class SampleMixin():
-    """
-    A mixin for Model and ConditionModel that introduces the sample_... methods
+    r"""
+    A mixin for :class:`Model` and :class:`ConditionModel` that introduces the sample_... methods
     Requires methods:
         self.P(tr, ...)
         self.Q(tr, ...)
         self.check_device(device)
     """
     def dims_data_inputs(self, data, inputs, platesizes, device, use_model=True):
+        r"""
+        Adds the right dimensions to *data* and *inputs*.
+
+        Args:
+            data (Dict): *Dict* containing data
+            inputs (Dict): *Dict* containing inputs (covariates)
+            platesizes (Dict): *Dict* mapping from dim name to size
+            device (torch.device): Device to put data and inputs on
+            use_model (Bool): *True* to use the model to determine dims
+        """
         #check model and/or self.data + self.inputs on ConditionModel are on desired device
         self.check_device(device)
         #deal with possibility of None defaults
@@ -43,20 +53,49 @@ class SampleMixin():
         return platedims, data, inputs
 
     def sample_same(self, *args, **kwargs):
+        r"""
+        Sample from the model where each of the K particles is sampled conditioned on the K'th parent
+        """
         return self.sample_tensor(traces.TraceQSame, *args, **kwargs)
 
     def sample_cat(self, *args, **kwargs):
+        r"""
+        Sample from the model where each of the K particles is sampled conditioned on a parent selected using
+        a categorical distribution
+        """
         return self.sample_tensor(traces.TraceQCategorical, *args, **kwargs)
 
     def sample_perm(self, *args, **kwargs):
+        r"""
+        Sample from the model where each of the K particles is sampled conditioned on a parent selected using a permutation
+        """
         return self.sample_tensor(traces.TraceQPermutation, *args, **kwargs)
 
     def sample_global(self, *args, **kwargs):
+        r"""
+        Sample from the model where K samples are drawn from the whole latent space with no combinations
+        """
         return self.sample_tensor(traces.TraceQGlobal, *args, **kwargs)
 
     def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
-        """
-        Internal method that actually runs P and Q.
+        r"""
+        Internal method that actually runs *P* and *Q*.
+
+        Args:
+            trace_type: One of:
+                            - traces.TraceQSame
+                            - traces.TraceQCategorical
+                            - traces.TraceQPermutation
+                            - traces.TraceQGlobal
+            K (int): Number of K samples
+            reparam (bool): *True* to sample using reparameterisation trick (Not available for all dists)
+            data (Dict): *Dict* containing data
+            inputs (Dict): *Dict* containing inputs (covariates)
+            platesizes (Dict): *Dict* mapping from dim name to size
+            device (torch.device): Device to put data and inputs on
+
+        Returns:
+            Sample (:class:`Sample.Sample`): Sample object
         """
         platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
@@ -81,10 +120,12 @@ class SampleMixin():
         """Draw samples from a generative model (with no data).
 
         Args:
-            P:        The generative model (a function taking a trace).
-            plates:   A dict mapping platenames to integer sizes of that plate.
-            N:        The number of samples to draw
-            varnames: An iterable of the variables to return
+            N (int):        The number of samples to draw
+            reparam (bool): *True* to sample using reparameterisation trick (Not available for all dists)
+            inputs (Dict): *Dict* containing inputs (covariates)
+            platesizes (Dict): *Dict* mapping from dim name to size
+            device (torch.device): Device to put data and inputs on
+            varnames (iterable): An iterable of the variables to return
 
         Returns:
             A dictionary mapping from variable name to sampled value,
@@ -105,6 +146,19 @@ class SampleMixin():
         return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
     def _predictive(self, sample, N, data_all=None, inputs_all=None, platesizes_all=None):
+        """Internal method that returns a trace for the predictive distribution
+
+        Args:
+            sample (:class:`Sample`): sample object (corresponding to...)
+            N (int):        The number of samples to draw
+            data_all (Dict): *Dict* containing both testing and training data
+            inputs_all (Dict): *Dict* containing both testing and training inputs (covariates)
+            platesizes_all (Dict): *Dict* mapping from dim name to size
+
+        Returns:
+            tr (:class:`traces.TracePred`): trace for the predictive distribution
+            N (TorchDim.dim): TorchDim dim with size N
+        """
         N = Dim('N', N)
         #platedims, data, inputs = self.dims_data_inputs(data_all, covariates_all, platesizes_all, device)
         post_samples = sample._importance_samples(N)
@@ -167,7 +221,7 @@ class SampleMixin():
 
     def update(self, lr, sample):
         """
-        Will call update on
+        Will call update on Model
         """
         assert not sample.reparam
         _, q_obj = sample.rws()

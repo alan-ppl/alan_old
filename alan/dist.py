@@ -59,10 +59,26 @@ def pad_nones(arg, ndim):
 
 
 class TorchDimDist():
-    """
+    r"""
+    Wrapper for PyTorch dists to make them accept TorchDim arguments.
+
+    :class:`TorchDimDist` allows for sampling (or evaluating the log probability of) TorchDim-ed tensors
+    from distributions with non-dimmed arguments as well as sampling from distributions with dimmed arguments
+
+
+    .. warning::
     self.dist and self.dims are exposed!
     """
     def __init__(self, *args, extra_log_factor=lambda x: 0, **kwargs):
+        r"""
+        Creates a TorchDimDist.
+
+        Args:
+            args (List): *List* of arguments for the underlying PyTorch dist, should correspond to the order of arguments in param_event_ndim
+            extra_log_factor (function): (*Optional*) Should be a function mapping from sample to *scalar*
+                                         corresponding to an extra term added to the evaluated log probability
+            kwargs (Dict): *Dict* of keyword arguments for the underlying PyTorch Dist
+        """
         self.extra_log_factor = extra_log_factor
         param_ndim, self.result_ndim = param_event_ndim[self.dist_name]
         for kwarg in kwargs:
@@ -96,6 +112,16 @@ class TorchDimDist():
             self.all_args[argname] = arg
 
     def sample(self, reparam, sample_dims, Kdim=None):
+        r"""
+        Generates a sample with sample_dims + self.dims dimensions
+
+        Args:
+            reparam (bool): *True* for reparameterised sampling (Not supported by all dists)
+            sample_dims (List): *List* of dimensions to sample (TorchDim dimensions have corresponding sizes)
+
+        Returns:
+            sample (TorchDim.Tensor): sample with correct dimensions
+        """
         torch_dist = self.dist(**self.all_args)
         if reparam and not torch_dist.has_rsample:
             raise Exception(f'Trying to do reparameterised sampling of {self.dist_name}, which is not implemented by PyTorch (likely because {self.dist_name} is a distribution over discrete random variables).')
@@ -107,6 +133,9 @@ class TorchDimDist():
         return sample[dims]
 
     def log_prob(self, x):
+        r"""
+        Evaluates the log probability for a sample *x*
+        """
         #Same number of unnamed batch dims
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):

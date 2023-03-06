@@ -6,7 +6,7 @@ from .alan_module import AlanModule
 from .exp_fam_mixin import *
 
 class Tilted(AlanModule):
-    """
+    r"""
     Based on computing:
     Delta m = E_P[f(x)] - E_Q[f(x)]
     where P is the true posterior.
@@ -89,8 +89,8 @@ class Tilted(AlanModule):
 
     def local_parameters(self):
         return []
-        
-        
+
+
 
 class TiltedNormal(Tilted, NormalMixin):
     pass
