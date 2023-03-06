@@ -9,7 +9,7 @@ This library showcases Massively Parallel Importance Weighting in the context of
    :maxdepth: 2
    :caption: Contents:
 
-   tpp
+   alan
    examples
 
 Indices and tables

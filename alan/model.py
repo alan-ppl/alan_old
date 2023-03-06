@@ -8,7 +8,7 @@ from .alan_module import AlanModule
 
 class SampleMixin():
     r"""
-    A mixin for :class:`Model` and :class:`ConditionModel` that introduces the sample_... methods
+    A mixin for :class:`Model` and :class:`ConditionedModel` that introduces the sample_... methods
     Requires methods:
         self.P(tr, ...)
         self.Q(tr, ...)
@@ -19,11 +19,11 @@ class SampleMixin():
         Adds the right dimensions to *data* and *inputs*.
 
         Args:
-            data (Dict): *Dict* containing data
-            inputs (Dict): *Dict* containing inputs (covariates)
-            platesizes (Dict): *Dict* mapping from dim name to size
+            data (Dict): **Dict** containing data
+            inputs (Dict): **Dict** containing inputs (covariates)
+            platesizes (Dict): **Dict** mapping from dim name to size
             device (torch.device): Device to put data and inputs on
-            use_model (Bool): *True* to use the model to determine dims
+            use_model (Bool): **True** to use the model to determine dims
         """
         #check model and/or self.data + self.inputs on ConditionModel are on desired device
         self.check_device(device)
@@ -88,14 +88,14 @@ class SampleMixin():
                             - traces.TraceQPermutation
                             - traces.TraceQGlobal
             K (int): Number of K samples
-            reparam (bool): *True* to sample using reparameterisation trick (Not available for all dists)
-            data (Dict): *Dict* containing data
-            inputs (Dict): *Dict* containing inputs (covariates)
-            platesizes (Dict): *Dict* mapping from dim name to size
+            reparam (bool): **True** to sample using reparameterisation trick (Not available for all dists)
+            data (Dict): **Dict** containing data
+            inputs (Dict): **Dict** containing inputs (covariates)
+            platesizes (Dict): **Dict** mapping from dim name to size
             device (torch.device): Device to put data and inputs on
 
         Returns:
-            Sample (:class:`Sample.Sample`): Sample object
+            Sample (:class:`alan.Sample.Sample`): Sample object
         """
         platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
@@ -121,9 +121,9 @@ class SampleMixin():
 
         Args:
             N (int):        The number of samples to draw
-            reparam (bool): *True* to sample using reparameterisation trick (Not available for all dists)
-            inputs (Dict): *Dict* containing inputs (covariates)
-            platesizes (Dict): *Dict* mapping from dim name to size
+            reparam (bool): **True** to sample using reparameterisation trick (Not available for all dists)
+            inputs (Dict): **Dict** containing inputs (covariates)
+            platesizes (Dict): **Dict** mapping from dim name to size
             device (torch.device): Device to put data and inputs on
             varnames (iterable): An iterable of the variables to return
 
@@ -151,12 +151,12 @@ class SampleMixin():
         Args:
             sample (:class:`Sample`): sample object (corresponding to...)
             N (int):        The number of samples to draw
-            data_all (Dict): *Dict* containing both testing and training data
-            inputs_all (Dict): *Dict* containing both testing and training inputs (covariates)
-            platesizes_all (Dict): *Dict* mapping from dim name to size
+            data_all (Dict): **Dict** containing both testing and training data
+            inputs_all (Dict): **Dict** containing both testing and training inputs (covariates)
+            platesizes_all (Dict): **Dict** mapping from dim name to size
 
         Returns:
-            tr (:class:`traces.TracePred`): trace for the predictive distribution
+            tr (:class:`alan.traces.TracePred`): trace for the predictive distribution
             N (TorchDim.dim): TorchDim dim with size N
         """
         N = Dim('N', N)
@@ -351,19 +351,20 @@ class Model(SampleMixin, AlanModule):
         return NestedModel(self, args, kwargs)
 
     def condition(self, data=None, inputs=None, platesizes=None):
-        """
-        data:   Any non-minibatched data. This is usually used in statistics,
-                where we have small-medium data that we can reason about as a
-                block. This is a dictionary mapping variable name to named-tensors
-                representing the data. We infer plate sizes from the sizes of
-                the named dimensions in data (and from the sizes of any parameters
-                in Q).
-        inputs: Any non-minibatched data. This is usually used in statistics,
-                where we have small-medium data that we can reason about as a
-                block. This is a dictionary mapping variable name to named-tensors
-                representing the data. We infer plate sizes from the sizes of
-                the named dimensions in data (and from the sizes of any parameters
-                in Q).
+        r"""
+        Args:
+            data:   Any non-minibatched data. This is usually used in statistics,
+                    where we have small-medium data that we can reason about as a
+                    block. This is a dictionary mapping variable name to named-tensors
+                    representing the data. We infer plate sizes from the sizes of
+                    the named dimensions in data (and from the sizes of any parameters
+                    in Q).
+            inputs: Any non-minibatched data. This is usually used in statistics,
+                    where we have small-medium data that we can reason about as a
+                    block. This is a dictionary mapping variable name to named-tensors
+                    representing the data. We infer plate sizes from the sizes of
+                    the named dimensions in data (and from the sizes of any parameters
+                    in Q).
         """
         return ConditionedModel(self, data, inputs, platesizes)
 
