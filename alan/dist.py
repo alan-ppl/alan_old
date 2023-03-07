@@ -38,6 +38,7 @@ param_event_ndim = {
     #"LogitRelaxedBernoulli":     univariate("temperature", "probs", "logits"),
     "RelaxedOneHotCategorical":  ({"temperature": 0, "probs": 1, "logits": 1}, 0),
     "StudentT":                  univariate("df", "loc", "scale"),
+    "TruncatedNormal":           univariate("loc", "scale", "a", "b"),
     "Uniform":                   univariate("low", "high"),
     "VonMises":                  univariate("loc", "concentration"),
     "Weibull":                   univariate("scale", "concentration"),

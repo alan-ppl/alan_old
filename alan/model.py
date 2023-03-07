@@ -132,7 +132,7 @@ class SampleMixin():
             represented as a named tensor (e.g. so that it is suitable
             for use as data).
         """
-        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
+        platedims, _, inputs = self.dims_data_inputs(None, inputs, platesizes, device)
 
         with t.no_grad():
             tr = traces.TraceSample(N, inputs, platedims, device)

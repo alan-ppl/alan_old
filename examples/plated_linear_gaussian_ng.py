@@ -53,15 +53,15 @@ t.manual_seed(0)
 q = Q()
 m1 = alan.Model(P, q).condition(data=data)
 for i in range(T):
-    sample = m1.sample_mp(K, reparam=True)
+    sample = m1.sample_perm(K, reparam=True)
     print(sample.elbo().item())
     m1.ng_update(lr, sample)
 
-print() 
+print()
 print()
 t.manual_seed(0)
 m2 = alan.Model(PQ()).condition(data=data)
 for i in range(T):
-    sample = m2.sample_mp(K, reparam=True)
+    sample = m2.sample_perm(K, reparam=True)
     print(sample.elbo().item())
     m2.ng_update(lr, sample)
