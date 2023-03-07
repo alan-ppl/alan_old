@@ -438,7 +438,9 @@ def plotAllForSinglePlateCombination(Ks, N, M, rv):
         plt.close()
 
 # plotAllForSinglePlateCombination(Ks, 10, 450, "z")
-plotAllForSinglePlateCombination(Ks, 20, 450, "z")
+# plotAllForSinglePlateCombination(Ks, 20, 450, "z")
+plotAllForSinglePlateCombination(Ks, 100, 10, "z")
+
 
 # for useData in [True, False]:
 #     if useData:

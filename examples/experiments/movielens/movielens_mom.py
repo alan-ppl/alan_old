@@ -140,7 +140,6 @@ for useData in [True, False]:
                         
                         for method in methods:
                             if method != "tmc_new" or k in Ks["tmc_new"]:
-                                if verbose: print(method, end=". ")
                                 error = True
                                 while error:
                                     try:

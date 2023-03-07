@@ -24,6 +24,8 @@ def get_ratings():
 Ns = [5,10,20]
 Ms = [10,50,150,300,450]
 
+Ns = [20]
+Ms = [450]
 
 
 for N in Ns:
@@ -32,10 +34,15 @@ for N in Ns:
         users = np.random.choice(x.shape[0], 2*M, replace=False)
         films = np.random.choice(x.shape[1], 2*N, replace=False)
 
+        # train_weights = x[np.ix_(users[:M] ,films[:N])]
+        # test_weights = x[np.ix_(users[M:] ,films[N:])]
+        # train_data = get_ratings()[np.ix_(users[:M] ,films[:N])]
+        # test_data = get_ratings()[np.ix_(users[M:] ,films[N:])]
+
         train_weights = x[np.ix_(users[:M] ,films[:N])]
-        test_weights = x[np.ix_(users[M:] ,films[N:])]
+        test_weights = x[np.ix_(users[:M] ,films[N:])]
         train_data = get_ratings()[np.ix_(users[:M] ,films[:N])]
-        test_data = get_ratings()[np.ix_(users[M:] ,films[N:])]
+        test_data = get_ratings()[np.ix_(users[:M] ,films[N:])]
 
         t.save(train_data, 'data/data_y_{0}_{1}.pt'.format(N, M))
         t.save(train_weights, 'data/weights_{0}_{1}.pt'.format(N,M))
