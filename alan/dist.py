@@ -1,7 +1,9 @@
 import torch as t
 import torch.distributions as td
-from functorch.dim import dims, Tensor
+import functorch.dim
 from alan.utils import *
+Tensor = (t.Tensor, functorch.dim.Tensor)
+
 
 def univariate(*names):
     return ({name: 0 for name in names}, 0)
@@ -49,7 +51,7 @@ def pad_nones(arg, ndim):
     Pad with as many unnamed dimensions as necessary to reach ndim
     Ignores torchdim dimensions
     """
-    if isinstance(arg, (t.Tensor, Tensor)):
+    if isinstance(arg, Tensor):
         idxs = (ndim - arg.ndim)*[None]
         idxs.append(Ellipsis)
         return arg.__getitem__(idxs)
@@ -107,6 +109,7 @@ class TorchDimDist():
         return sample[dims]
 
     def log_prob(self, x, Kdim=None):
+        assert isinstance(x, Tensor)
         #Same number of unnamed batch dims
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):
@@ -129,6 +132,8 @@ for dn in param_event_ndim:
 
 
 if __name__ == "__main__":
+    from functorch.dim import dims
+
     i = dims(1)
     j = dims(1, [10])
     mean = t.ones(3,3)[i]

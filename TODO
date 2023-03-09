@@ -1,9 +1,6 @@
-* Timeseries
-  * Record timeseries variable names.
-  * Marry variable names with ...
-
 * ML with MvNormal (different sizes for different parameters).
 * Sum discrete
+* Prevent groups being shared across plates (all variables within the same group should have the same plates).
 * What happens when a K-group is shared across plates?
   * problem: the parents for sampling:
     * if group is defined at a higher-level, then lower-level latents in the same group all need to share the same parents.
@@ -14,24 +11,15 @@
   * tensor sum should work, as we don't sum out K_group in lower plates if it also appears in upper plates.
   * should work with moments / marginals, as we don't use grouped logq
   * sampling should work (we go through variables in the order they were generated in P, and if there's a new K, we sample it).  So that will sample K at the high-level if appears first at a high-level.
-* Timeseries
-* Sum discrete
-
 * lots of repetition around platesize code for ML, ML2, Tilted etc.
-* store Ps rather than logps, in preparation for lazy efficient stuff.
-* sort out devices (give trace a device)
-  * give dist(0, 1) a device.
 
 Errors:
+* predictive_ll must have data_all and data_train (and inputs) with the same keys.
 * error checking for inputs
-* error checking for predictions (in particular, when data_all doesn't exist when it should).
 * groups should all be at the same plate level (at least if Categorical or Permutation but not Same).
 * P shouldn't have any QModules (QModules would imply a plated Parameter, and we really shouldn't have a plated parameter in P)
 * check all dimensions are either plates or Ks.
 * check we don't have different dimensions with the same names
-* missing tr(key)
-* missing plate
-* already sampled tr(key)
 * device errors
 
 Papers:
