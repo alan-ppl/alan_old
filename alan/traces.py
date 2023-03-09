@@ -134,6 +134,13 @@ class AbstractTraceQ(AbstractTrace):
         if sum_discrete:
             raise Exception("We don't need an approximate posterior if sum_discrete=True")
 
+        #Sometimes we want to use the prior as an approximate posterior.
+        #The prior will specify how to sample the data.  But we don't
+        #need to sample the data under the approximate posterior, so we
+        #just ignore the call.
+        if key in self.data:
+            return None
+
         if multi_sample==False:
             warn(
                 "WARNING: multi_sample=False will break alot of things, "
@@ -153,13 +160,6 @@ class AbstractTraceQ(AbstractTrace):
 
         if (T is not None) and (group is not None):
             raise Exception("Timeseries cannot currently be grouped")
-
-        #Sometimes we want to use the prior as an approximate posterior.
-        #The prior will specify how to sample the data.  But we don't
-        #need to sample the data under the approximate posterior, so we
-        #just ignore the call.
-        if key in self.data:
-            return None
 
         #Create new Kdim
         if (group is not None):
