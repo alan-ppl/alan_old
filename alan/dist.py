@@ -1,7 +1,10 @@
 import torch as t
 import torch.distributions as td
 from functorch.dim import dims, Tensor
+from .TruncatedNormal import TruncatedNormal
 from alan.utils import *
+
+import numbers
 
 def univariate(*names):
     return ({name: 0 for name in names}, 0)
@@ -57,6 +60,11 @@ def pad_nones(arg, ndim):
     else:
         return arg
 
+def convert_scalar_args(args):
+    for k,v in args.items():
+        if isinstance(v, float):
+            args[k] = t.tensor(v,dtype=t.float32).reshape((1,))
+    return args
 
 
 class TorchDimDist():
@@ -89,6 +97,7 @@ class TorchDimDist():
         #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
         arg_dict = {argname: args[i] for (i, argname) in enumerate(list(param_ndim.keys())[:len(args)])}
         #Merge args and kwargs into a unified kwarg dict
+        #self.dim_args = convert_scalar_args({**arg_dict, **kwargs})
         self.dim_args = {**arg_dict, **kwargs}
         #Check for any positional arguments that are also given as a named argument.
         assert len(self.dim_args) == len(kwargs) + len(arg_dict)
@@ -138,7 +147,7 @@ class TorchDimDist():
         Evaluates the log probability for a sample *x*
         """
         #Same number of unnamed batch dims
-        assert x.ndim == self.result_ndim + self.unnamed_batch_dims
+        assert x.ndim == self.result_ndim + self.unnamed_batch_dims  or x.ndim == self.result_ndim + self.unnamed_batch_dims + 1
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):
         #    breakpoint()
         x_dims = generic_dims(x)
@@ -155,7 +164,10 @@ class TorchDimDist():
         return self.log_prob(x)
 
 for dn in param_event_ndim:
-    globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': getattr(td, dn)})
+    if dn == 'TruncatedNormal':
+        globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': TruncatedNormal})
+    else:
+        globals()[dn] = type(dn, (TorchDimDist,), {'dist_name': dn, 'dist': getattr(td, dn)})
 
 
 if __name__ == "__main__":

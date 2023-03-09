@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 # import theano
-import pytorch as t
+import torch as t
 
-from preprocessed_data import PreprocessedData
+from .preprocessed_data import PreprocessedData
 
 
 def naive_set_region_days(df, out, col, rs, Ds):
@@ -54,7 +54,7 @@ def process_response(data, res, window, smooth):
     # blank out negative cases
     New[New < 0] = np.nan
     # blank out nans and infs
-    New = np.ma.masked_invalid(New.astype(t.float32))
+    New = np.ma.masked_invalid(New)
 
     setattr(data, res, New)
     return data
