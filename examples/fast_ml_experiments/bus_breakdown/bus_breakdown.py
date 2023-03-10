@@ -108,7 +108,7 @@ def generate_model(N,M,device,ML=1):
                 self.phi = alan.ML2Normal({'plate_ID':I}, sample_shape=(bus_company_name_dim,))
 
 
-            def forward(self, tr):
+            def forward(self, tr, run_type, bus_company_name):
                 #Year level
 
                 tr('sigma_beta', self.sigma_beta())
