@@ -2,6 +2,11 @@ import torch as t
 import torch.nn as nn
 import alan
 t.manual_seed(0)
+t.use_deterministic_algorithms(True) 
+import random
+random.seed(0)
+import numpy as np
+np.random.seed(0)
 
 J = 2
 M = 3

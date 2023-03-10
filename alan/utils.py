@@ -1,6 +1,11 @@
 import math
 import torch as t
-from functorch.dim import Tensor, Dim
+import functorch
+from functorch.dim import Dim
+
+Tensor = (functorch.dim.Tensor, t.Tensor)
+Number = (int, float)
+TensorNumber = (*Tensor, *Number)
 
 #### Utilities for working with torchdims
 def sum_non_dim(x):
@@ -9,33 +14,31 @@ def sum_non_dim(x):
     """
     return x.sum() if x.ndim > 0 else x
 
-def sum_dims(x, dims):
-    """
-    """
-    dims = list(dims)
-    if 0<len(dims):
-        x = x.order(dims).sum(0)
-    return x
+"""
+Defines a series of reduction functions that are called e.g. as
+sum_dims(x, (i, j)), where i, j are torchdims.
+"""
+def reduce_dims(func):
+    def inner(x, dims):
+        dims = list(dims)
+        if 0<len(dims):
+            x = getattr(x.order(dims), func)(0)
+        return x
+    return inner
 
-def mean_dims(x, dims):
-    """
-    """
-    dims = list(dims)
-    if 0<len(dims):
-        x = x.order(dims).mean(0)
-    return x
+sum_dims        = reduce_dims("sum")
+prod_dims       = reduce_dims("prod")
+mean_dims       = reduce_dims("mean")
+min_dims        = reduce_dims("min")
+max_dims        = reduce_dims("max")
+logsumexp_dims  = reduce_dims("logsumexp")
 
-def log_meandims_exp(x, dims):
-    dims = list(dims)
-    if 0 < len(dims):
-        x = x.order(dims)
-        m = x.max(0).values
-        x = (x - m).exp().mean(0).log() + m
-    return x
+def logmeanexp_dims(x, dims):
+    return logsumexp_dims(x, dims) - sum([math.log(dim.size) for dim in dims])
 
 
 def is_dimtensor(tensor):
-    return isinstance(tensor, Tensor)
+    return isinstance(tensor, functorch.dim.Tensor)
 
 def unify_dims(tensors):
     """
@@ -45,31 +48,41 @@ def unify_dims(tensors):
 
 def generic_ndim(x):
     """
-    Implements x.ndim, which is only defined for tensors
+    Generalises x.ndim, which is only defined for tensors
     """
-    assert isinstance(x, (t.Tensor, Tensor, int, float))
-    return x.ndim if isinstance(x, (t.Tensor, Tensor)) else 0
+    assert isinstance(x, TensorNumber)
+    return x.ndim if isinstance(x, Tensor) else 0
 
 def generic_dims(x):
     """
-    Implements x.dims, which is only defined for torchdim tensors
+    Generalises x.dims, which is only defined for torchdim tensors
     """
-    #return x.dims if isinstance(x, Tensor) else ()
-    return x.dims if hasattr(x, "dims") else ()
+    return x.dims if is_dimtensor(x) else ()
 
 def generic_order(x, dims):
     """
-    Implements x.order(dims), which is only defined for torchdim tensors
+    Generalises x.order(dims), which is only defined for torchdim tensors
     """
-    #Drop trailing Ellipsis.
-    if (0 < len(dims)) and (dims[-1] == Ellipsis):
-        dims = dims[:-1]
+    #dims = drop_ellipsis(dims)
+    assert_no_ellipsis(dims)
 
-    #If x is a torch tensor, then we can't have any dims.
-    if isinstance(x, t.Tensor):
+    #If x is not a dimtensor, then we can't have any dims.
+    if not is_dimtensor(x):
         assert 0 == len(dims)
 
     return x.order(*dims) if 0<len(dims) else x
+
+def assert_no_ellipsis(dims):
+    if 0<len(dims):
+        assert dims[-1] is not Ellipsis
+
+def generic_idx(x, dims):
+    assert_no_ellipsis(dims)
+
+    if len(dims)==0:
+        return x
+    else:
+        return x[dims]
 
 def ordered_unique(ls):
     """
@@ -85,11 +98,10 @@ def ordered_unique(ls):
 
 def partition_tensors(lps, dim):
     """
-    Partitions a list of tensors into two sets, one containing a given dim_name
-    or only has interactions with tensors that have that dim name,
-    one that doesn't
+    Partitions a list of tensors into two sets, one list with all tensors
+    that have dim, and another list with all tensors that don't have that
+    dim
     """
-
     has_dim = [lp for lp in lps if dim     in set(generic_dims(lp))]
     no_dim  = [lp for lp in lps if dim not in set(generic_dims(lp))]
 
@@ -98,30 +110,32 @@ def partition_tensors(lps, dim):
 
 def singleton_order(x, dims):
     """
-    Takes a torchdim tensor and returns a standard tensor.
-
-    x[dims] fails if any dims aren't present in x.
-    This makes a new singleton dimension.
+    Takes a torchdim tensor and returns a standard tensor,
+    in a manner that mirrors `x.order(dims)` (if `dims` had all
+    dimensions in `x`). However, with `x.order(dims)`,
+    all dimensions in `dims` must be in `x`.  Here, we allow new
+    dimensions in `dims` (i.e. dimensions in `dims` that aren't
+    in `x`), and add singleton dimensions to the result for those
+    dimensions.
     """
-    #Return immediately if not a dim tensor, as it broadcasts over everything
-    if not is_dimtensor(x):
+    #This will be applied in dist.py to distribution arguments, 
+    #which may be non-tensors.  These non-tensors should broadcast 
+    #properly whatever happens, so we can return immediately.
+    if not isinstance(x, Tensor):
+        assert isinstance(x, Number)
         return x
 
-    #Ignore final Ellipsis
-    if (len(dims) > 0) and (dims[-1] is Ellipsis):
-        dims = dims[:-1]
-    #No Ellipsis anywhere else
-    assert Ellipsis not in dims
+    assert_no_ellipsis(dims)
 
     x_dims = set(generic_dims(x))
-    dims_present = [dim for dim in dims if dim in x_dims]
+
+    dims_in_x = [dim for dim in dims if dim in x_dims]
+    x = generic_order(x, dims_in_x)
+
     idxs = [(slice(None) if (dim in x_dims) else None) for dim in dims]
-    idxs.append(Ellipsis)
-
-
-    result = generic_order(x, dims_present)[idxs]
-    assert not is_dimtensor(result)
-    return result
+    x = generic_idx(x, idxs)
+    assert not is_dimtensor(x)
+    return x
 
 def dim2named_tensor(x, dims=None):
     """
@@ -143,16 +157,17 @@ def named2dim_tensor(d, x):
     Returns:
         A torchdim tensor.
     """
+    #can't already be a dimtensor
+    assert not is_dimtensor(x)
 
-    if 0==x.ndim:
+    #if a number then just return
+    if isinstance(x, Number):
         return x
 
+    assert isinstance(x, t.Tensor)
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
 
-    if all(x is None for x in x.names):
-        return x
-
-    return x.rename(None)[torchdims]
+    return generic_idx(x.rename(None), torchdims)
 
 def named2dim_tensordict(d, tensordict):
     """Maps named2dim_tensor over a dict of tensors

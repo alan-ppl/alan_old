@@ -5,6 +5,7 @@ import alan
 import alan.postproc as pp
 from testing_utils import test_vs_int
 from alan.utils import dim2named_tensor
+t.manual_seed(0)
 
 pobs_z1 = 0.8
 pobs_z0 = 0.3
@@ -34,6 +35,8 @@ def Q_nonfac(tr):
     tr('z',     alan.Bernoulli(tr['theta']), plates="plate_1")
 Qs = [Q_prior, Q_fac, Q_nonfac]
 
+#def test():
+#    test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001)
 test_vs_int(P_int, P, Qs, obs, obs_all, K=1000, N=1001)
 
 ##### Sum over z

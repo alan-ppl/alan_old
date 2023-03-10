@@ -253,7 +253,7 @@ class TraceQCategorical(AbstractTraceQ):
         return Categorical(t.ones(K.size)/K.size).sample(False, sample_dims=[Kdim, *plates])
 
     def logq(self, logq, Kdim, extra_K=None):
-        return log_meandims_exp(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
+        return logmeanexp_dims(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
 
 class TraceQPermutation(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):
@@ -261,7 +261,7 @@ class TraceQPermutation(AbstractTraceQ):
         return Uniform().sample(False, sample_dims=[Kdim, *plates]).argsort(Kdim)
 
     def logq(self, logq, Kdim, extra_K=None):
-        return log_meandims_exp(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
+        return logmeanexp_dims(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
 
 class TraceQSame(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):

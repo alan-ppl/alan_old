@@ -1,3 +1,5 @@
+* non-deterministic for .sample_cat
+* breaking for .sample_perm
 * ML with MvNormal (different sizes for different parameters).
 * Sum discrete
 * Prevent groups being shared across plates (all variables within the same group should have the same plates).

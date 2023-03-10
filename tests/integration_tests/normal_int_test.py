@@ -5,6 +5,7 @@ import alan
 import alan.postproc as pp
 from testing_utils import within_stderrs
 from alan.utils import dim2named_tensor
+t.manual_seed(0)
 
 s_theta = t.ones(())
 s_z     = t.ones(())
