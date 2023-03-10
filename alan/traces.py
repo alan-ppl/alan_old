@@ -258,7 +258,7 @@ class TraceQCategorical(AbstractTraceQ):
 class TraceQPermutation(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):
         assert Kdim.size == K.size
-        return Uniform().sample(False, sample_dims=[Kdim, *plates]).argsort(Kdim)
+        return Uniform(0,1).sample(False, sample_dims=[Kdim, *plates]).argsort(Kdim)
 
     def logq(self, logq, Kdim, extra_K=None):
         return logmeanexp_dims(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
