@@ -49,6 +49,7 @@ class RandomWalkMobilityModel(nn.Module):
         self.all_observed_active = all_observed_active
         self.ActiveCMs = t.from_numpy(ActiveCMs)
         self.CMs = CMs
+        self.proposal=proposal
 
 
     def forward(
@@ -331,25 +332,30 @@ class RandomWalkMobilityModel(nn.Module):
         gi_alpha = tr['GI_mean'] ** 2 / tr['GI_sd'] ** 2
 
         self.ExpectedGrowth = gi_beta * (
-                np.exp(self.ExpectedLogR / gi_alpha)
+                t.exp(self.ExpectedLogR / gi_alpha)
                 - t.ones_like(self.ExpectedLogR)
             )
 
         self.Growth = self.ExpectedGrowth
-
+        print(self.Growth)
         # Originally N(0, 50)
         tr("InitialSize_log", alan.Normal(t.tensor(log_init_mean).repeat(self.nRs), log_init_sd))
         self.Infected_log = t.reshape(tr['InitialSize_log'], (self.nRs, 1)) \
             + self.Growth.cumsum(axis=1)
 
+
         self.Infected = t.exp(self.Infected_log)
+        print(self.Infected)
+        print(self.Infected.shape)
+        print(self.Infected.isnan().sum())
+        print(self.Infected.max())
         r = cases_delay_disp_mean
         mu = cases_delay_mean_mean
         p = r/(r+mu)
 
         # tr('cases_delay_dist', alan.NegativeBinomial(total_count=r, probs=p))
 
-        cases_delay_dist = alan.NegativeBinomial(total_count=r, probs=p)
+        cases_delay_dist = t.distributions.NegativeBinomial(total_count=r, probs=p)
         bins = t.arange(0, cases_truncation)
 
         pmf = t.exp(cases_delay_dist.log_prob(bins))
@@ -358,24 +364,24 @@ class RandomWalkMobilityModel(nn.Module):
         reporting_delay = pmf.reshape((1, cases_truncation))
 
         ## Border=full?
+
         expected_confirmed = t.nn.functional.conv2d(
-            self.Infected.float().reshape(1,1,self.Infected.shape[0],self.Infected.shape[1]),
-            reporting_delay.reshape(1,1,reporting_delay.shape[0],reporting_delay.shape[1])
+            self.Infected.reshape(1,1,self.Infected.shape[0],self.Infected.shape[1]),
+            reporting_delay.reshape(1,1,reporting_delay.shape[0],reporting_delay.shape[1]), padding='same',
+            bias = t.ones(1)*1e-8
         )#[:, : self.nDs]
-        print(expected_confirmed.shape)
-        print(self.nRs)
-        print(self.nDs)
         self.ExpectedCases = expected_confirmed.reshape((self.nRs, self.nDs))
 
 
         # Observation Noise Dispersion Parameter (negbin alpha)
-        tr('Psi', alan.HalfNormal(5))
+        tr('psi', alan.HalfNormal(5))
         # effectively handle missing values ourselves
         # likelihood
-        r = self.Psi
+        r = tr['psi']
         mu = self.ExpectedCases.reshape((self.nRs * self.nDs,))[
             self.all_observed_active
         ]
+
         p = r/(r+mu)
         # self.ObservedCases = pm.NegativeBinomial(
         #     "ObservedCases",
@@ -388,7 +394,8 @@ class RandomWalkMobilityModel(nn.Module):
         #         self.all_observed_active
         #     ],
         # )
-        if not proposal:
+
+        if not self.proposal:
             tr('obs', alan.NegativeBinomial(total_count=r, probs=p), plates='Plate_obs',)
 
 # class RandomWalkMobilityModel_Q(alan.QModule):

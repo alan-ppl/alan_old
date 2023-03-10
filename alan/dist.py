@@ -147,7 +147,7 @@ class TorchDimDist():
         Evaluates the log probability for a sample *x*
         """
         #Same number of unnamed batch dims
-        assert x.ndim == self.result_ndim + self.unnamed_batch_dims  or x.ndim == self.result_ndim + self.unnamed_batch_dims + 1
+        assert x.ndim == self.result_ndim + self.unnamed_batch_dims  #or x.ndim == self.result_ndim + self.unnamed_batch_dims + 1
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):
         #    breakpoint()
         x_dims = generic_dims(x)
