@@ -3,6 +3,7 @@ import torch.nn as nn
 from .dist import *
 from .utils import *
 from .model import Model
+from .alan_module import AlanModule
 from .exp_fam_mixin import *
 
 class NG(Model):

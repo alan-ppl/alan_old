@@ -7,14 +7,24 @@ from .utils import *
 from .alan_module import AlanModule
 
 class SampleMixin():
-    """
-    A mixin for Model and ConditionModel that introduces the sample_... methods
+    r"""
+    A mixin for :class:`Model` and :class:`ConditionedModel` that introduces the sample_... methods
     Requires methods:
         self.P(tr, ...)
         self.Q(tr, ...)
         self.check_device(device)
     """
     def dims_data_inputs(self, data, inputs, platesizes, device, use_model=True):
+        r"""
+        Adds the right dimensions to *data* and *inputs*.
+
+        Args:
+            data (Dict): **Dict** containing data
+            inputs (Dict): **Dict** containing inputs (covariates)
+            platesizes (Dict): **Dict** mapping from dim name to size
+            device (torch.device): Device to put data and inputs on
+            use_model (Bool): **True** to use the model to determine dims
+        """
         #check model and/or self.data + self.inputs on ConditionModel are on desired device
         self.check_device(device)
         #deal with possibility of None defaults
@@ -43,20 +53,49 @@ class SampleMixin():
         return platedims, data, inputs
 
     def sample_same(self, *args, **kwargs):
+        r"""
+        Sample from the model where each of the K particles is sampled conditioned on the K'th parent
+        """
         return self.sample_tensor(traces.TraceQSame, *args, **kwargs)
 
     def sample_cat(self, *args, **kwargs):
+        r"""
+        Sample from the model where each of the K particles is sampled conditioned on a parent selected using
+        a categorical distribution
+        """
         return self.sample_tensor(traces.TraceQCategorical, *args, **kwargs)
 
     def sample_perm(self, *args, **kwargs):
+        r"""
+        Sample from the model where each of the K particles is sampled conditioned on a parent selected using a permutation
+        """
         return self.sample_tensor(traces.TraceQPermutation, *args, **kwargs)
 
     def sample_global(self, *args, **kwargs):
+        r"""
+        Sample from the model where K samples are drawn from the whole latent space with no combinations
+        """
         return self.sample_tensor(traces.TraceQGlobal, *args, **kwargs)
 
     def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
-        """
-        Internal method that actually runs P and Q.
+        r"""
+        Internal method that actually runs *P* and *Q*.
+
+        Args:
+            trace_type: One of:
+                            - traces.TraceQSame
+                            - traces.TraceQCategorical
+                            - traces.TraceQPermutation
+                            - traces.TraceQGlobal
+            K (int): Number of K samples
+            reparam (bool): **True** to sample using reparameterisation trick (Not available for all dists)
+            data (Dict): **Dict** containing data
+            inputs (Dict): **Dict** containing inputs (covariates)
+            platesizes (Dict): **Dict** mapping from dim name to size
+            device (torch.device): Device to put data and inputs on
+
+        Returns:
+            Sample (:class:`alan.Sample.Sample`): Sample object
         """
         platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
 
@@ -81,10 +120,12 @@ class SampleMixin():
         """Draw samples from a generative model (with no data).
 
         Args:
-            P:        The generative model (a function taking a trace).
-            plates:   A dict mapping platenames to integer sizes of that plate.
-            N:        The number of samples to draw
-            varnames: An iterable of the variables to return
+            N (int):        The number of samples to draw
+            reparam (bool): **True** to sample using reparameterisation trick (Not available for all dists)
+            inputs (Dict): **Dict** containing inputs (covariates)
+            platesizes (Dict): **Dict** mapping from dim name to size
+            device (torch.device): Device to put data and inputs on
+            varnames (iterable): An iterable of the variables to return
 
         Returns:
             A dictionary mapping from variable name to sampled value,
@@ -169,7 +210,7 @@ class SampleMixin():
 
     def update(self, lr, sample):
         """
-        Will call update on
+        Will call update on Model
         """
         assert not sample.reparam
         _, q_obj = sample.rws()
@@ -299,19 +340,20 @@ class Model(SampleMixin, AlanModule):
         return NestedModel(self, args, kwargs)
 
     def condition(self, data=None, inputs=None, platesizes=None):
-        """
-        data:   Any non-minibatched data. This is usually used in statistics,
-                where we have small-medium data that we can reason about as a
-                block. This is a dictionary mapping variable name to named-tensors
-                representing the data. We infer plate sizes from the sizes of
-                the named dimensions in data (and from the sizes of any parameters
-                in Q).
-        inputs: Any non-minibatched data. This is usually used in statistics,
-                where we have small-medium data that we can reason about as a
-                block. This is a dictionary mapping variable name to named-tensors
-                representing the data. We infer plate sizes from the sizes of
-                the named dimensions in data (and from the sizes of any parameters
-                in Q).
+        r"""
+        Args:
+            data:   Any non-minibatched data. This is usually used in statistics,
+                    where we have small-medium data that we can reason about as a
+                    block. This is a dictionary mapping variable name to named-tensors
+                    representing the data. We infer plate sizes from the sizes of
+                    the named dimensions in data (and from the sizes of any parameters
+                    in Q).
+            inputs: Any non-minibatched data. This is usually used in statistics,
+                    where we have small-medium data that we can reason about as a
+                    block. This is a dictionary mapping variable name to named-tensors
+                    representing the data. We infer plate sizes from the sizes of
+                    the named dimensions in data (and from the sizes of any parameters
+                    in Q).
         """
         return ConditionedModel(self, data, inputs, platesizes)
 

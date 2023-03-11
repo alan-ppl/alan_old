@@ -38,7 +38,7 @@ print('...', flush=True)
 def run_experiment(cfg):
     print(cfg)
     # writer = SummaryWriter(log_dir='runs/' + cfg.dataset + '/' + cfg.model + '/')
-    device = t.device("cuda" if t.cuda.is_available() else "cpu")
+    device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
 
     results_dict = {}
 
@@ -74,7 +74,7 @@ def run_experiment(cfg):
 
 
             for j in range(cfg.training.num_iters):
-                sample = model.sample_same(K, data=data, inputs=covariates, reparam=False)
+                sample = model.sample_same(K, data=data, inputs=covariates, reparam=False, device=device)
                 elbo = sample.elbo().item()
                 per_seed_obj.append(elbo)
                 model.update(cfg.training.lr, sample)
@@ -86,7 +86,7 @@ def run_experiment(cfg):
 
 
             if cfg.training.pred_ll.do_pred_ll:
-                sample = model.sample_same(K, data=test_data, inputs=test_covariates, reparam=False)
+                sample = model.sample_same(K, data=test_data, inputs=test_covariates, reparam=False, device=device)
                 pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
                 pred_liks.append(pred_likelihood['obs'].item())
             else:

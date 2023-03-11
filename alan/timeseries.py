@@ -21,7 +21,7 @@ class Timeseries():
         """
         Timeseries is initialized in user code, and the user (and hence the init) doesn't know:
           the length of the timeseries.
-          the type of trace (e.g. Categorical vs Permutation vs Same). 
+          the type of trace (e.g. Categorical vs Permutation vs Same).
         """
         assert isinstance(Tdim, Dim)
         self.trace = trace
@@ -76,7 +76,7 @@ class Timeseries():
 
         #A bug with stacking torchdim tensors.  Should be able to do:
         #return t.stack(result, 0)[self.Tdim]
-        #where result has some torchdim tensors. 
+        #where result has some torchdim tensors.
 
         #Actually we need to strip the torchdims before stacking
         result_dims = generic_dims(result[0])

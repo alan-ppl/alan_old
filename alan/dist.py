@@ -4,6 +4,7 @@ import functorch.dim
 from alan.utils import *
 Tensor = (t.Tensor, functorch.dim.Tensor)
 
+
 def pad_nones(arg, ndim):
     """
     Pad with as many unnamed dimensions as necessary to reach ndim
@@ -32,6 +33,7 @@ def parse(spec, args, kwargs):
     #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
     arg_dict = {spec[i]: arg for (i, arg) in enumerate(args)}
 
+
     key_overlap = set(arg_dict.keys()).intersection(kwargs.keys())
     if 0 < len(key_overlap):
         raise Exception(f'Multiple values provided for {key_overlap} arguments in distribution.')
@@ -40,12 +42,29 @@ def parse(spec, args, kwargs):
     
 
 class TorchDimDist():
-    """
+    r"""
+    Wrapper for PyTorch dists to make them accept TorchDim arguments.
+
+    :class:`TorchDimDist` allows for sampling (or evaluating the log probability of) TorchDim-ed tensors
+    from distributions with non-dimmed arguments as well as sampling from distributions with dimmed arguments
+
+
+    .. warning::
     self.dist and self.dims are exposed!
     """
     def __init__(self, *args, extra_log_factor=lambda x: 0, **kwargs):
+        r"""
+        Creates a TorchDimDist.
+
+        Args:
+            args (List): *List* of arguments for the underlying PyTorch dist, should correspond to the order of arguments in param_event_ndim
+            extra_log_factor (function): (*Optional*) Should be a function mapping from sample to *scalar*
+                                         corresponding to an extra term added to the evaluated log probability
+            kwargs (Dict): *Dict* of keyword arguments for the underlying PyTorch Dist
+        """
         self.extra_log_factor = extra_log_factor
         #param_ndim, self.result_ndim = param_event_ndim[self.dist_name]
+
 
         #Dict argument name -> value
         self.dim_args = parse(list(self.param_ndim.keys()), args, kwargs)
@@ -72,6 +91,16 @@ class TorchDimDist():
             self.all_args[argname] = arg
 
     def sample(self, reparam, sample_dims, Kdim=None):
+        r"""
+        Generates a sample with sample_dims + self.dims dimensions
+
+        Args:
+            reparam (bool): *True* for reparameterised sampling (Not supported by all dists)
+            sample_dims (List): *List* of dimensions to sample (TorchDim dimensions have corresponding sizes)
+
+        Returns:
+            sample (TorchDim.Tensor): sample with correct dimensions
+        """
         torch_dist = self.dist(**self.all_args)
         if reparam and not torch_dist.has_rsample:
             raise Exception(f'Trying to do reparameterised sampling of {type(self)}, which is not implemented by PyTorch (likely because {type(self)} is a distribution over discrete random variables).')
@@ -84,8 +113,9 @@ class TorchDimDist():
 
     def log_prob(self, x, Kdim=None):
         assert isinstance(x, Tensor)
+
         #Same number of unnamed batch dims
-        assert x.ndim == self.result_ndim + self.unnamed_batch_dims
+        assert x.ndim == self.result_ndim + self.unnamed_batch_dims  #or x.ndim == self.result_ndim + self.unnamed_batch_dims + 1
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):
         #    breakpoint()
         x_dims = generic_dims(x)
@@ -124,6 +154,7 @@ def new_univariate_torch_dist(name, params):
     Assumes all parameters and samples are univariate.
     """
     new_torch_dist(name, 0, {param: 0 for param in params})
+
 
 def new_locscale_torch_dist(name):
     """
