@@ -10,7 +10,7 @@ def pad_nones(arg, ndim):
     Ignores torchdim dimensions
     """
     if isinstance(arg, Tensor):
-        return generic_idx(arg, (ndim - arg.ndim)*[None]) 
+        return generic_getitem(arg, (ndim - arg.ndim)*[None]) 
     else: 
         return arg
 
@@ -80,7 +80,7 @@ class TorchDimDist():
         sample_shape = [dim.size for dim in sample_dims]
         sample = sample_method(sample_shape=sample_shape)
         dims = [*sample_dims, *self.dims]
-        return generic_idx(sample, dims)
+        return generic_getitem(sample, dims)
 
     def log_prob(self, x, Kdim=None):
         assert isinstance(x, Tensor)
@@ -92,7 +92,7 @@ class TorchDimDist():
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims]
         log_prob = self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))
-        log_prob = generic_idx(log_prob, all_dims)
+        log_prob = generic_getitem(log_prob, all_dims)
 
         if self.unnamed_batch_dims > 0:
             log_prob = log_prob.sum()

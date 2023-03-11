@@ -73,16 +73,25 @@ def generic_order(x, dims):
     return x.order(*dims) if 0<len(dims) else x
 
 def assert_no_ellipsis(dims):
+    assert isinstance(dims, (list, tuple))
     if 0<len(dims):
         assert dims[-1] is not Ellipsis
 
-def generic_idx(x, dims):
+def generic_getitem(x, dims):
     assert_no_ellipsis(dims)
 
     if len(dims)==0:
         return x
     else:
         return x[dims]
+
+def generic_setitem(x, dims, value):
+    assert_no_ellipsis(dims)
+
+    if len(dims)==0:
+        dims = (Ellipsis,)
+
+    x[dims] = value
 
 def ordered_unique(ls):
     """
@@ -133,7 +142,7 @@ def singleton_order(x, dims):
     x = generic_order(x, dims_in_x)
 
     idxs = [(slice(None) if (dim in x_dims) else None) for dim in dims]
-    x = generic_idx(x, idxs)
+    x = generic_getitem(x, idxs)
     assert not is_dimtensor(x)
     return x
 
@@ -167,7 +176,7 @@ def named2dim_tensor(d, x):
     assert isinstance(x, t.Tensor)
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
 
-    return generic_idx(x.rename(None), torchdims)
+    return generic_getitem(x.rename(None), torchdims)
 
 def named2dim_tensordict(d, tensordict):
     """Maps named2dim_tensor over a dict of tensors

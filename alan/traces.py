@@ -473,8 +473,6 @@ class TracePred(AbstractTrace):
         #Corresponding list of dims for all and train.
         dims_all   = [self.platedims[dimname]   for dimname in dimnames]
         dims_train = [self.train.platedims[dimname] for dimname in dimnames]
-        dims_all.append(Ellipsis)
-        dims_train.append(Ellipsis)
         return dims_all, dims_train
 
     def sample_(self, varname, dist, group=None, plates=(), T=None, sum_discrete=False):
@@ -503,14 +501,16 @@ class TracePred(AbstractTrace):
         sample       = generic_order(sample,       dims_all)   #Still torchdim, as it has N!
         sample_train = generic_order(sample_train, dims_train) #Still torchdim, as it has N!
 
-        idxs = [slice(0, l) for l in sample_train.shape[:len(dims_all)]]
-        idxs.append(Ellipsis)
+        #idxs = [slice(0, l) for l in sample_train.shape[:len(dims_all)]]
+        idxs = [slice(0, dim.size) for dim in dims_train] 
 
         #Actually do the replacement in-place
-        sample[idxs] = sample_train
+        #sample[idxs] = sample_train
+        generic_setitem(sample, idxs, sample_train)
 
         #Put torchdim back
-        sample = sample[dims_all]
+        #sample = sample[dims_all]
+        sample = generic_getitem(sample, dims_all)
 
         if isinstance(dist, Timeseries):
             #Throw away the "test" part of the timeseries, and resample. Note that
@@ -542,15 +542,15 @@ class TracePred(AbstractTrace):
         sample_ordered       = generic_order(sample,       dims_all)
         sample_train_ordered = generic_order(sample_train, dims_train)
 
-        idxs = [slice(0, l) for l in sample_train_ordered.shape[:len(dims_all)]]
-        idxs.append(Ellipsis)
-
-        # Check that data matches data_train
-        #assert t.allclose(sample_ordered[idxs], sample_train_ordered)
+        idxs = [slice(0, dim.size) for dim in dims_train] 
 
         ll_all                 = dist.log_prob(sample)
         self.ll_all[varname]   = ll_all
-        self.ll_train[varname] = generic_order(ll_all, dims_all)[idxs][dims_train]
+
+        ll_train = generic_order(ll_all, dims_all)
+        ll_train = generic_getitem(ll_train, idxs)
+        ll_train = generic_getitem(ll_train, dims_train)
+        self.ll_train[varname] = ll_train
 
 def split_train_test(x, T_all, T_train, T_test):
     x_undim = x.order(T_all)
