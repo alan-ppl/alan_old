@@ -48,16 +48,16 @@ def reduce_dims(func):
         if 0<len(dims):
             if not isinstance(x, functorch.dim.Tensor):
                 raise Exception("dims provided, but x is not a torchdim tensor.")
-            x = getattr(x.order(dims), func)(0)
+            x = func(x.order(dims), 0)
         return x
     return inner
 
-sum_dims        = reduce_dims("sum")
-prod_dims       = reduce_dims("prod")
-mean_dims       = reduce_dims("mean")
-min_dims        = reduce_dims("min")
-max_dims        = reduce_dims("max")
-logsumexp_dims  = reduce_dims("logsumexp")
+sum_dims        = reduce_dims(t.sum)
+prod_dims       = reduce_dims(t.prod)
+mean_dims       = reduce_dims(t.mean)
+min_dims        = reduce_dims(lambda x, dim: t.min(x, dim).values)
+max_dims        = reduce_dims(lambda x, dim: t.max(x, dim).values)
+logsumexp_dims  = reduce_dims(t.logsumexp)
 
 def logmeanexp_dims(x, dims):
     return logsumexp_dims(x, dims) - sum([math.log(dim.size) for dim in dims])
@@ -324,18 +324,6 @@ def reduce_Ks(tensors, Ks_to_sum):
         result = result - sum(math.log(K.size) for K in Ks_to_sum) #t.log(t.tensor([K.size for K in Ks_to_sum])).sum()#.to(device=result.device)
     return sum([result, *maxes])
 
-def max_dims(x, dims):
-    #Ignore dims that aren't in the tensors
-    set_xdims = set(generic_dims(x))
-    dims = [dim for dim in dims if dim in set_xdims]
-    if 0!=len(dims):
-        x = x.order(dims).max(0).values
-    return x
-#
-#    if 0==len(dims):
-#        return x
-#    else:
-#        return generic_order(x, dims).flatten(0, len(dims)-1).max(0).values
 
 def torchdim_einsum(tensors, sum_dims):
     #There shouldn't be any non-torchdim dimensions.
