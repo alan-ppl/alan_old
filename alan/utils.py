@@ -11,17 +11,43 @@ TensorNumber = (*Tensor, *Number)
 def sum_non_dim(x):
     """
     Sums over all non-torchdim dimensions.
+    Returns x for anything that isn't a tensor.
     """
-    return x.sum() if x.ndim > 0 else x
+    return x.sum() if (isinstance(x, Tensor) and x.ndim > 0) else x
 
 """
 Defines a series of reduction functions that are called e.g. as
 sum_dims(x, (i, j)), where i, j are torchdims.
 """
+def assert_iter(dims, varname='dims'):
+    if not isinstance(dims, (list, tuple)):
+        raise Exception(varname + ' must be a list or tuple')
+
+def assert_unique_iter(dims, varname='dims'):
+    assert_iter(dims, varname=varname)
+    if len(set(dims)) != len(dims):
+        raise Exception(f'Non-unique elements in {varname}')
+
+def assert_unique_dim_iter(dims, varname='dims'):
+    assert_unique_iter(dims, varname=varname)
+    for dim in dims:
+        if not isinstance(dim, Dim):
+            raise Exception(f'dim in {varname} is not torchdim dimension')
+
+def assert_no_ellipsis(dims):
+    if 0<len(dims):
+        assert dims[-1] is not Ellipsis
+
 def reduce_dims(func):
+    """
+    Reduces over specified torchdim dimensions.
+    Returns itself if no dims given.
+    """
     def inner(x, dims):
-        dims = list(dims)
+        assert_unique_dim_iter(dims)
         if 0<len(dims):
+            if not isinstance(x, functorch.dim.Tensor):
+                raise Exception("dims provided, but x is not a torchdim tensor.")
             x = getattr(x.order(dims), func)(0)
         return x
     return inner
@@ -63,7 +89,7 @@ def generic_order(x, dims):
     """
     Generalises x.order(dims), which is only defined for torchdim tensors
     """
-    #dims = drop_ellipsis(dims)
+    assert_unique_dim_iter(dims)
     assert_no_ellipsis(dims)
 
     #If x is not a dimtensor, then we can't have any dims.
@@ -72,12 +98,8 @@ def generic_order(x, dims):
 
     return x.order(*dims) if 0<len(dims) else x
 
-def assert_no_ellipsis(dims):
-    assert isinstance(dims, (list, tuple))
-    if 0<len(dims):
-        assert dims[-1] is not Ellipsis
-
 def generic_getitem(x, dims):
+    assert_iter(dims) #dims doesn't have to be unique, e.g. [2,2]
     assert_no_ellipsis(dims)
 
     if len(dims)==0:
@@ -86,6 +108,7 @@ def generic_getitem(x, dims):
         return x[dims]
 
 def generic_setitem(x, dims, value):
+    assert_iter(dims) #dims doesn't have to be unique, e.g. [2,2]
     assert_no_ellipsis(dims)
 
     if len(dims)==0:
@@ -102,6 +125,7 @@ def ordered_unique(ls):
     Returns:
         list of unique elements, in the order they first appeared in ls
     """
+    assert_iter(ls, 'ls')
     d = {l:None for l in ls}
     return list(d.keys())
 
@@ -143,16 +167,14 @@ def singleton_order(x, dims):
 
     idxs = [(slice(None) if (dim in x_dims) else None) for dim in dims]
     x = generic_getitem(x, idxs)
-    assert not is_dimtensor(x)
+
     return x
 
-def dim2named_tensor(x, dims=None):
+def dim2named_tensor(x):
     """
     Converts a torchdim to a named tensor.
-    Will fail if duplicated dim names passed in
     """
-    if dims is None:
-        dims = generic_dims(x)
+    dims = generic_dims(x)
     names = [repr(dim) for dim in dims]
     return generic_order(x, dims).rename(*names, ...)
 
@@ -165,6 +187,8 @@ def named2dim_tensor(d, x):
         x (t.Tensor): named tensor.
     Returns:
         A torchdim tensor.
+
+    Assumes that all named dimensions appear in the dict.
     """
     #can't already be a dimtensor
     assert not is_dimtensor(x)
@@ -174,6 +198,11 @@ def named2dim_tensor(d, x):
         return x
 
     assert isinstance(x, t.Tensor)
+
+    for name in x.names:
+        if name not in d:
+            raise Exception(f"No torchdim dimension for named dimension {name} in named2dim_tensor")
+
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
 
     return generic_getitem(x.rename(None), torchdims)
@@ -280,26 +309,6 @@ def logmmexp(prev, curr, Kmid):
 
 def chain_logmmexp(ms, T, Kprev, Kcurr):
     return chain_reduce(logmmexp, ms, T, Kprev, Kcurr)
-
-if __name__ == "__main__":
-    from functorch.dim import dims
-
-    #chain_reduce and td_matmul
-    T, Kprev, K = dims(3, [5, 3, 3])
-    tensor_ms = t.randn(5, 3, 3)
-
-    tensor_result = t.chain_matmul(*t.unbind(tensor_ms, 0))
-    td_result = chain_reduce(td_matmul, tensor_ms[T, Kprev, K], T, Kprev, K).order(Kprev, K)
-    assert t.allclose(tensor_result, td_result)
-
-    #logmmexp
-    Kmid = dims(1, [3])
-    A = t.randn(3,3)
-    B = t.randn(3,3)
-
-    tensor_result = (t.exp(A) @ t.exp(B)).log()
-    td_result = logmmexp(A[Kprev, Kmid], B[Kmid, K], Kmid).order(Kprev, K)
-    assert t.allclose(tensor_result, td_result)
 
 
 def reduce_Ks(tensors, Ks_to_sum):

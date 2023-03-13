@@ -112,8 +112,7 @@ class TorchDimDist():
         Returns:
             sample (Tensor): sample with correct dimensions
         """
-        if not isinstance(sample_dims, (list, tuple)):
-            raise Exception(f'sample_dims in {type(self)} must be list or tuple')
+        assert_unique_dim_iter(sample_dims, 'sample_dims')
        
         torch_dist = self.dist(**self.all_args)
         if reparam and not torch_dist.has_rsample:
@@ -135,7 +134,9 @@ class TorchDimDist():
         x_dims = generic_dims(x)
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims]
-        log_prob = self.dist(**self.all_args).log_prob(singleton_order(x, all_dims))
+        x = singleton_order(x, all_dims)
+        assert not is_dimtensor(x)
+        log_prob = self.dist(**self.all_args).log_prob(x)
         log_prob = generic_getitem(log_prob, all_dims)
 
         if self.unnamed_batch_dims > 0:
