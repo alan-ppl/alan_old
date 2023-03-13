@@ -284,8 +284,7 @@ class Sample():
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
         #Normalized, marg gives the "posterior marginals" over Ks
 
-        #Delete everything that's a flat list (otherwise we risk difficult-to-catch bugs).
-        #Could also separate computing marginals into a separate function.
+        #Delete everything that's not necessary for the rest
         del logps, dimss, undim_logps, undim_Js, dim_Js, result
 
         #### Sampling the K's
@@ -347,6 +346,7 @@ def sample_cond(marg, K, K_post_idxs, N):
     cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
 
     #Check none of the conditional probabilites are big and negative
+    assert cond.dtype == t.float64
     assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
     #Set any small and negative conditional probaiblities to zero.
     cond = cond * (cond > 0)

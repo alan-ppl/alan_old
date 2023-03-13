@@ -25,10 +25,13 @@ def parse(spec, args, kwargs):
     Returns:
         Dict of argument names -> values.
     """
+    if len(spec) < len(args):
+        raise Exception(f'Too many arguments given to distribution')
+
     #Check that all argument names in kwargs are in spec.
     for kwarg in kwargs:
         if kwarg not in spec:
-            raise Exception(f'Unrecognised argument "{kwarg}" given to distribution; distribution only accepts {tuple(param_ndim.keys())}.')
+            raise Exception(f'Unrecognised argument "{kwarg}" given to distribution.')
 
     #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
     arg_dict = {spec[i]: arg for (i, arg) in enumerate(args)}
@@ -47,10 +50,18 @@ class TorchDimDist():
 
     :class:`TorchDimDist` allows for sampling (or evaluating the log probability of) TorchDim-ed tensors
     from distributions with non-dimmed arguments as well as sampling from distributions with dimmed arguments
+    
+    Note that at present there is no sample_shape dimension, to do IID sampling over
+    new non-torchdim dimensions.  To achieve the same effect, do something like
+    ```
+    alan.Normal(t.randn(3)[:, None].expand(-1, 4), 1)
+    ```
 
+    Also note that log-probabilities returned by these classes sum over all non-torchdim
+    dimensions (because these are irrelevant for all of Alan's downstream processing)
 
     .. warning::
-    self.dist and self.dims are exposed!
+    For people editting the class in future: self.dist and self.dims are exposed!
     """
     def __init__(self, *args, extra_log_factor=lambda x: 0, **kwargs):
         r"""
@@ -79,7 +90,7 @@ class TorchDimDist():
 
             #Raise an error e.g. if we require a vector but we get a scalar.
             if ubd < 0:
-                raise Exception(f'{argname} in {type(self)} should have dimension {self.param_ndim[argname]}, but actually has dimension {generic_ndim(arg)}')
+                raise Exception(f'{argname} in {self} should have dimension {self.param_ndim[argname]}, but actually has dimension {generic_ndim(arg)}')
 
         self.all_args = {}
         for (argname, arg) in self.dim_args.items():
@@ -99,8 +110,11 @@ class TorchDimDist():
             sample_dims (List): *List* of dimensions to sample (TorchDim dimensions have corresponding sizes)
 
         Returns:
-            sample (TorchDim.Tensor): sample with correct dimensions
+            sample (Tensor): sample with correct dimensions
         """
+        if not isinstance(sample_dims, (list, tuple)):
+            raise Exception(f'sample_dims in {type(self)} must be list or tuple')
+       
         torch_dist = self.dist(**self.all_args)
         if reparam and not torch_dist.has_rsample:
             raise Exception(f'Trying to do reparameterised sampling of {type(self)}, which is not implemented by PyTorch (likely because {type(self)} is a distribution over discrete random variables).')
@@ -195,27 +209,3 @@ new_univariate_torch_dist("Uniform", ("low", "high"))
 new_univariate_torch_dist("VonMises", ("loc", "concentration"))
 new_univariate_torch_dist("Weibull", ("scale", "concentration"))
 new_torch_dist("Wishart", 2, {"df": 0, "covariance_matrix": 2, "precision_matrix": 2, "scale_tril": 2})
-    
-
-if __name__ == "__main__":
-    from functorch.dim import dims
-
-    i = dims(1)
-    j = dims(1, [10])
-    mean = t.ones(3,3)[i]
-    std = t.ones(())
-    dist = Normal(mean, std)
-    result = dist.sample(False, sample_dims=(j,))
-    print(result)
-
-    print(dist.log_prob(result))
-
-    i = dims(1)
-    j = dims(1, [10])
-    mean = t.ones(3,3)[i]
-    cov = t.eye((3))
-    dist = MultivariateNormal(mean, precision_matrix=cov)
-    result = dist.sample(False, sample_dims=(j,))
-    print(result)
-
-    print(dist.log_prob(result))

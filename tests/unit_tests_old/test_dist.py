@@ -28,6 +28,9 @@ def get_log_prob_asserter(log_prob_shape, log_prob_names):
             assert dims[i] in set(log_prob_names)
     return inner
 
+def test_normal():
+    
+
 class TestTorchdimDist(unittest.TestCase):
     def test_sample(self):
         def test_loc_scale_dist(loc, scale, target_shape, target_names,
