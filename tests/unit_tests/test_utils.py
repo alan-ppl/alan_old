@@ -148,23 +148,10 @@ def test_torchdim_einsum_reduce():
 
     XYZ = sum_dims(X*Y*Z, (d4,d5,d6))
     XYZd = XYZ / d4.size / d5.size / d6.size
-
     assert t.isclose(XYZ, torchdim_einsum((X,Y,Z), (d4,d5,d6))).all()
-    breakpoint()
-    assert t.isclose(XYZd.log(), reduce_Ks((X,Y,Z), (d4,d5,d6))).all()
+    assert t.isclose(XYZd.log(), reduce_Ks((lX,lY,lZ), (d4,d5,d6))).all()
 
-    #XYZ = sum_dims(X*Y*Z, (d4,d5))
-    #assert t.isclose(XYZ.order(d6), torchdim_einsum((X,Y,Z), (d4,d5)).order(d6)).all()
-
-    #assert t.isclose(XYZ, torchdim_einsum((X,Y,Z), (d4,d5,d6))).all()
-
-    #XYZ = sum_dims(X*Y*Z, (d4,d5))
-    #assert t.isclose(XYZ.order(d6), torchdim_einsum((X,Y,Z), (d4,d5)).order(d6)).all()
-#
-#def test_reduce_Ks():
-#    lX = t.randn(4,5,6)[d4,d5,d6]
-#    lY = t.randn(4,5)[d4,d5]
-#    lZ = t.randn(6)[d6]
-#    X,Y,Z = lX.exp(), lY.exp(), lZ.exp()
-#    XYZ = sum_dims(X*Y*Z, (d4,d5)) / d4.size / d5.size
-#    assert t.isclose(XYZ, reduce_Ks((X,Y,Z), (d4,d5))).all()
+    XYZ = sum_dims(X*Y*Z, (d4,d5))
+    XYZd = XYZ / d4.size / d5.size
+    assert t.isclose(XYZ, torchdim_einsum((X,Y,Z), (d4,d5))).order(d6).all()
+    assert t.isclose(XYZd.log(), reduce_Ks((lX,lY,lZ), (d4,d5))).order(d6).all()
