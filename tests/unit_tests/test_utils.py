@@ -43,7 +43,7 @@ def test_sum_dims():
 
     with pytest.raises(Exception, match='dims must be a list or tuple'):
         f(t.ones(4,5,1)[d4,d5], d4)
-    with pytest.raises(Exception, match='dims provided, but x'):
+    with pytest.raises(Exception, match="dims provided that aren't in x"):
         1 == f(1, (d4,))
 
 def test_is_dimtensor():
@@ -138,3 +138,33 @@ def test_chain_logmmexp():
     ms = t.stack([log_X1, log_X2, log_X3, log_X4], 0)[Tdim, Kprev, Kcurr]
 
     assert t.isclose(log_X1234, chain_logmmexp(ms, Tdim, Kprev, Kcurr).order(Kprev, Kcurr)).all()
+
+
+def test_torchdim_einsum_reduce():
+    lX = t.randn(4,5,6)[d4,d5,d6]
+    lY = t.randn(4,5)[d4,d5]
+    lZ = t.randn(6)[d6]
+    X,Y,Z = lX.exp(), lY.exp(), lZ.exp()
+
+    XYZ = sum_dims(X*Y*Z, (d4,d5,d6))
+    XYZd = XYZ / d4.size / d5.size / d6.size
+
+    assert t.isclose(XYZ, torchdim_einsum((X,Y,Z), (d4,d5,d6))).all()
+    breakpoint()
+    assert t.isclose(XYZd.log(), reduce_Ks((X,Y,Z), (d4,d5,d6))).all()
+
+    #XYZ = sum_dims(X*Y*Z, (d4,d5))
+    #assert t.isclose(XYZ.order(d6), torchdim_einsum((X,Y,Z), (d4,d5)).order(d6)).all()
+
+    #assert t.isclose(XYZ, torchdim_einsum((X,Y,Z), (d4,d5,d6))).all()
+
+    #XYZ = sum_dims(X*Y*Z, (d4,d5))
+    #assert t.isclose(XYZ.order(d6), torchdim_einsum((X,Y,Z), (d4,d5)).order(d6)).all()
+#
+#def test_reduce_Ks():
+#    lX = t.randn(4,5,6)[d4,d5,d6]
+#    lY = t.randn(4,5)[d4,d5]
+#    lZ = t.randn(6)[d6]
+#    X,Y,Z = lX.exp(), lY.exp(), lZ.exp()
+#    XYZ = sum_dims(X*Y*Z, (d4,d5)) / d4.size / d5.size
+#    assert t.isclose(XYZ, reduce_Ks((X,Y,Z), (d4,d5))).all()

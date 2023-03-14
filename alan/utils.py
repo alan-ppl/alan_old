@@ -43,11 +43,17 @@ def reduce_dims(func):
     Reduces over specified torchdim dimensions.
     Returns itself if no dims given.
     """
-    def inner(x, dims):
+    def inner(x, dims, ignore_extra_dims=False):
         assert_unique_dim_iter(dims)
+
+        set_x_dims = set(generic_dims(x)) 
+        if ignore_extra_dims:
+            dims = tuple(dim for dim in dims if dim in set_x_dims)
+
+        if not all(dim in set_x_dims for dim in dims):
+            raise Exception("dims provided that aren't in x; can ignore them by providing ignore_extra_dims=True kwarg")
+
         if 0<len(dims):
-            if not isinstance(x, functorch.dim.Tensor):
-                raise Exception("dims provided, but x is not a torchdim tensor.")
             x = func(x.order(dims), 0)
         return x
     return inner
@@ -315,7 +321,8 @@ def reduce_Ks(tensors, Ks_to_sum):
     """
     Fundamental method that sums over Ks
     """
-    maxes = [max_dims(tensor, Ks_to_sum) for tensor in tensors]
+    #Dims in Ks_to_sum not in tensor!!!
+    maxes = [max_dims(tensor, Ks_to_sum, ignore_extra_dims=True) for tensor in tensors]
     # add a tiny amount for numerical stability
     tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
     result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
@@ -323,7 +330,6 @@ def reduce_Ks(tensors, Ks_to_sum):
     if 0<len(Ks_to_sum):
         result = result - sum(math.log(K.size) for K in Ks_to_sum) #t.log(t.tensor([K.size for K in Ks_to_sum])).sum()#.to(device=result.device)
     return sum([result, *maxes])
-
 
 def torchdim_einsum(tensors, sum_dims):
     #There shouldn't be any non-torchdim dimensions.
