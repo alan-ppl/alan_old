@@ -141,6 +141,7 @@ def test_chain_logmmexp():
 
 
 def test_torchdim_einsum_reduce():
+    t.manual_seed(0)
     lX = t.randn(4,5,6)[d4,d5,d6]
     lY = t.randn(4,5)[d4,d5]
     lZ = t.randn(6)[d6]
