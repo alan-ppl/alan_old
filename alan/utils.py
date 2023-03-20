@@ -411,7 +411,8 @@ def reduce_Ks(tensors, Ks_to_sum):
         #tensors.append(logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True))
 
         #Instantiates but doesn't save tensor with _Ks_to_sum dims
-        tensors.append(checkpoint(logsumexp_sum, tensors_to_reduce, _Ks_to_sum))
+        tensors.append(checkpoint(logsumexp_sum, _Ks_to_sum, *tensors_to_reduce, use_reentrant=False))
+        #tensors.append(logsumexp_sum(_Ks_to_sum, *tensors_to_reduce))
 
     assert 1==len(tensors)
     result = tensors[0]
@@ -420,7 +421,8 @@ def reduce_Ks(tensors, Ks_to_sum):
         result = result - sum(math.log(K.size) for K in Ks_to_sum)
     return result
 
-def logsumexp_sum(tensors_to_reduce, _Ks_to_sum):
+def logsumexp_sum(_Ks_to_sum, *tensors_to_reduce):
+    #Needs a strange argument order, because checkpoint doesn't work with lists of tensors.
     return logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True)
 
 ##### Does the normalization for the whole plate.

@@ -77,7 +77,7 @@ class SampleMixin():
         """
         return self.sample_tensor(traces.TraceQGlobal, *args, **kwargs)
 
-    def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
+    def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu'), lp_dtype=t.float64, lp_device=None):
         r"""
         Internal method that actually runs *P* and *Q*.
 
@@ -114,7 +114,7 @@ class SampleMixin():
         trp = traces.TraceP(trq)
         self.P(trp, **inputs)
 
-        return Sample(trp)
+        return Sample(trp, lp_dtype=lp_dtype, lp_device=lp_device)
 
     def sample_prior(self, N=None, reparam=True, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
         """Draw samples from a generative model (with no data).
