@@ -1,5 +1,6 @@
 import math
 import torch as t
+from torch.utils.checkpoint import checkpoint
 import functorch
 from functorch.dim import Dim
 
@@ -407,7 +408,10 @@ def reduce_Ks(tensors, Ks_to_sum):
         tensors = [tensors[i] for i in range(len(tensors)) if i not in tensor_idxs]
 
         _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(tensors)))
-        tensors.append(logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True))
+        #tensors.append(logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True))
+
+        #Instantiates but doesn't save tensor with _Ks_to_sum dims
+        tensors.append(checkpoint(logsumexp_sum, tensors_to_reduce, _Ks_to_sum))
 
     assert 1==len(tensors)
     result = tensors[0]
@@ -415,6 +419,9 @@ def reduce_Ks(tensors, Ks_to_sum):
     if 0<len(Ks_to_sum):
         result = result - sum(math.log(K.size) for K in Ks_to_sum)
     return result
+
+def logsumexp_sum(tensors_to_reduce, _Ks_to_sum):
+    return logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True)
 
 ##### Does the normalization for the whole plate.
 #def reduce_Ks(tensors, Ks_to_sum):

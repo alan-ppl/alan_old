@@ -1,7 +1,7 @@
-Better reductions:
-  * use oe to give a path.
-  * the path is just indicies of tensors to reduce from a list (https://optimized-einsum.readthedocs.io/en/stable/path_finding.html)
-  * but we can do this reduction with torchdim tensors!
+* memory efficient sum_logsumexp.
+  * if you add everything up at the start, you end up with a _huge_ tensor.
+  * keeping that tensor is bad, but may be okay if you throw it away.
+  * gradients from result to sum should be easy?
 
 * non-deterministic for .sample_cat
 * ML with MvNormal (different sizes for different parameters).
