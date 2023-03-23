@@ -10,8 +10,8 @@ def generate_model(N,M,device, ML=1):
       Heirarchical Model
       '''
 
-      tr('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-      tr('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+      tr('mu_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
+      tr('psi_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
 
       tr('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
@@ -57,14 +57,14 @@ def generate_model(N,M,device, ML=1):
                 tr('z', self.z())
 
 
-    covariates = {'x':t.load('movielens/data/weights_{0}_{1}.pt'.format(N,M)).to(device)}
-    test_covariates = {'x':t.load('movielens/data/test_weights_{0}_{1}.pt'.format(N,M)).to(device)}
+    covariates = {'x':t.load('movielens/data/weights_{0}_{1}.pt'.format(N,M))}
+    test_covariates = {'x':t.load('movielens/data/test_weights_{0}_{1}.pt'.format(N,M))}
     all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']],-2).rename('plate_1','plate_2',...)}
     covariates['x'] = covariates['x'].rename('plate_1','plate_2',...)
     test_covariates['x'] = test_covariates['x'].rename('plate_1','plate_2',...)
 
-    data = {'obs':t.load('movielens/data/data_y_{0}_{1}.pt'.format(N, M)).to(device)}
-    test_data = {'obs':t.load('movielens/data/test_data_y_{0}_{1}.pt'.format(N, M)).to(device)}
+    data = {'obs':t.load('movielens/data/data_y_{0}_{1}.pt'.format(N, M))}
+    test_data = {'obs':t.load('movielens/data/test_data_y_{0}_{1}.pt'.format(N, M))}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
     data['obs'] = data['obs'].rename('plate_1','plate_2')
     test_data['obs'] = test_data['obs'].rename('plate_1','plate_2')
