@@ -13,7 +13,7 @@ class Sample():
       Check that data appears in logps but not logqs
       Check that all dims are something (plate, timeseries, K)
     """
-    def __init__(self, trp):
+    def __init__(self, trp, lp_dtype, lp_device):
         self.trp = trp
 
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
@@ -48,9 +48,16 @@ class Sample():
         self.logq = [*trp.logq_group.values(), *trp.logq_var.values()]
 
 
-        ### TEMPORARY
-        # self.logp = [lp.double() for lp in self.logp]
-        # self.logq = [lp.double() for lp in self.logq]
+        lp_kwargs = {}
+        if lp_device is not None:
+            lp_kwargs['device'] = lp_device
+        self.trp.samples = {k: x.to(**lp_kwargs) for (k, x) in self.trp.samples.items()}
+
+        if lp_dtype is not None:
+            lp_kwargs['dtype']  = lp_dtype
+        self.logp = [x.to(**lp_kwargs) for x in self.logp]
+        self.logq = [x.to(**lp_kwargs) for x in self.logq]
+
 
         #Assumes that self.lps come in ordered
         self.set_platedims = set(trp.platedims.values())

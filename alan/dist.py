@@ -1,6 +1,7 @@
 import torch as t
 import torch.distributions as td
 import functorch.dim
+import alan
 from alan.utils import *
 
 Tensor = (t.Tensor, functorch.dim.Tensor)
@@ -157,7 +158,9 @@ def new_dist(name, dist, result_ndim, param_ndim):
         result_ndim: minimal number of dimensions for a sample (e.g. 1 for vector samples from a Multivariate Gaussian).
         param_ndim: minimal number of dimensions in each parameter, as a dictionary.
     """
-    globals()[name] = type(name, (TorchDimDist,), {'dist': dist, 'param_ndim': param_ndim, 'result_ndim': result_ndim})
+    NewDist = type(name, (TorchDimDist,), {'dist': dist, 'param_ndim': param_ndim, 'result_ndim': result_ndim})
+    globals()[name] = NewDist
+    setattr(alan, name, NewDist)
 
 def new_torch_dist(name, result_ndim, param_ndim):
     """
