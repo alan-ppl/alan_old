@@ -32,6 +32,7 @@ def generate_model(N,M,device,ML=1):
       '''
 
       #Year level
+
       tr('sigma_beta', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)))
       tr('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))
       tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')

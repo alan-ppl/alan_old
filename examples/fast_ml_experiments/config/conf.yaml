@@ -2,10 +2,10 @@
   dataset: ???
   model: ???
   training:
-    num_iters: 200
+    num_iters: 500
     N: 2
     M: 2
-    Ks: [3,10,30]
+    Ks: [30]
     num_runs: 5
     pred_ll:
       do_pred_ll: False
