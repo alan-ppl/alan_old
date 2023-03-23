@@ -10,8 +10,8 @@ def generate_model(N,M,device, ML=1):
       Heirarchical Model
       '''
 
-      tr('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-      tr('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+      tr('mu_z', alan.Normal(tr.zeros((d_z,)).to(device), tr.ones((d_z,)).to(device)))
+      tr('psi_z', alan.Normal(tr.zeros((d_z,)).to(device), tr.ones((d_z,)).to(device)))
 
       tr('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
