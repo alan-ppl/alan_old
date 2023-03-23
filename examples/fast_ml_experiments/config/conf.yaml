@@ -2,7 +2,7 @@
   dataset: ???
   model: ???
   training:
-    num_iters: 500
+    num_iters: 2500
     N: 2
     M: 2
     Ks: [30]
