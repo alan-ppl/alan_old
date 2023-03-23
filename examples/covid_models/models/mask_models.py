@@ -9,8 +9,12 @@ import alan
 import numpy as np
 import math
 
+from .TruncatedNormal import TruncatedNormal
 from .epi_params import EpidemiologicalParameters
 # from epimodel.pymc3_distributions.asymmetric_laplace import AsymmetricLaplace
+
+
+alan.new_dist("TruncatedNormal", TruncatedNormal, 0, {'loc': 0, 'scale': 0, "a":0, "b":0})
 
 def model_data(data):
     """
@@ -37,7 +41,7 @@ def model_data(data):
     return all_observed_active, nRs, nDs, nCMs
 
 class RandomWalkMobilityModel(nn.Module):
-    def __init__(self,all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs, proposal=False):
+    def __init__(self,all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs, log_init_mean, log_init_sd, proposal=False):
         """
         Constructor.
 
@@ -49,6 +53,8 @@ class RandomWalkMobilityModel(nn.Module):
         self.all_observed_active = all_observed_active
         self.ActiveCMs = t.from_numpy(ActiveCMs)
         self.CMs = CMs
+        self.log_init_mean = log_init_mean
+        self.log_init_sd = log_init_sd
         self.proposal=proposal
 
 
@@ -58,7 +64,7 @@ class RandomWalkMobilityModel(nn.Module):
         r_walk_period=7,
         r_walk_noise_scale_prior=0.15,
         intervention_prior="Gauss",
-        cm_prior_scale=10,
+        cm_prior_scale=0.2,
         wearing_parameterisation="exp",
         wearing_mean=0,
         wearing_mean_linear=0,
@@ -152,53 +158,42 @@ class RandomWalkMobilityModel(nn.Module):
             tr("Wearing_Alpha", alan.Normal(wearing_mean, wearing_sigma), #shape=(1,)
             )
             self.WearingReduction = t.exp((-1.0) * tr['Wearing_Alpha'])
-        # if wearing_parameterisation == "log_linear":
-        #     tr("Wearing_Alpha", alan.Normal(wearing_mean_linear, wearing_sigma_linear), #shape=(1,)
-        #     )
-        #     self.WearingReduction = 1.0 - tr['Wearing_Alpha']
-        # if wearing_parameterisation == "log_quadratic":
-        #     tr("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(1,)
-        #     )
-        #     self.WearingReduction = 1.0 - 2.0 * tr['Wearing_Alpha']
-        # if wearing_parameterisation == "log_quadratic_2":
-        #     tr("Wearing_Alpha", alan.Normal(wearing_mean_quadratic, wearing_sigma_quadratic), #shape=(2,)
-        #     )
-        #     self.WearingReduction = 1.0 - tr['Wearing_Alpha'][0] - tr['Wearing_Alpha'][1]
+
+
         tr('Mobility_Alpha', alan.Normal(
             mobility_mean, mobility_sigma), # shape=(1,)
         )
         self.MobilityReduction = (2.0 * (t.exp(-1.0 * tr['Mobility_Alpha']))) / (1.0 + t.exp(-1.0 * tr['Mobility_Alpha']))
 
-        tr("HyperRMean", alan.TruncatedNormal(
+        tr("HyperRMean", alan.dist.TruncatedNormal(
             R_prior_mean_mean, R_prior_mean_scale, a=0.1
         ))
 
         tr("HyperRVar", alan.HalfNormal(R_noise_scale))
 
-        # tr("RegionR_noise", alan.Normal(0, 1), plates='plate_nRs')# shape=(self.nRs,))
         tr("RegionR_noise", alan.Normal(t.zeros((self.nRs,)), 1))
         self.RegionR = tr['HyperRMean'] + tr['RegionR_noise'] * tr['HyperRVar']
-
 
         # load CMs active without wearing, compute log-R reduction and region log-R based on NPIs active
         if wearing_parameterisation is not None:
             #DATA
-            self.ActiveCMs = self.ActiveCMs[:, :-2, :]
-            # self.ActiveCMReduction = tr['CM_Alpha'] * self.ActiveCMs
+            ActiveCMs = self.ActiveCMs[:, :-2, :]
+
             self.ActiveCMReduction = (
-                                t.reshape(tr['CM_Alpha'], (1, self.nCMs - 2, 1)) * self.ActiveCMs
+                                t.reshape(tr['CM_Alpha'], (1, self.nCMs - 2, 1)) * ActiveCMs
                             )
 
             self.ActiveCMs_wearing = self.ActiveCMs[:, -1, :]
 
         else:
-            self.ActiveCMs = self.ActiveCMs[:, :-1, :]
+            ActiveCMs = self.ActiveCMs[:, :-1, :]
 
-            self.ActiveCMReduction = tr['CM_Alpha'] * self.ActiveCMs
+            self.ActiveCMReduction = (
+                T.reshape(tr['CM_Alpha'], (1, self.nCMs - 1, 1)) * ActiveCMs
+            )
 
 
         growth_reduction = t.sum(self.ActiveCMReduction, axis=1)
-
         if mob_and_wearing_only:
             growth_reduction = 0
 
@@ -253,11 +248,10 @@ class RandomWalkMobilityModel(nn.Module):
         if wearing_parameterisation is None:
             growth_reduction_wearing = 0
         else:
-            sgrowth_reduction_wearing = growth_reduction_wearing
+            growth_reduction_wearing = growth_reduction_wearing
 
         # make reduction for mobility
         self.ActiveCMs_mobility =  self.ActiveCMs[:, -2, :]
-
 
         self.ActiveCMReduction_mobility = t.reshape(
                 tr['Mobility_Alpha'], (1, 1, 1)
@@ -273,7 +267,6 @@ class RandomWalkMobilityModel(nn.Module):
                 axis=1,
             )
         )
-
         if mobility_leaveout:
             growth_reduction_mobility = 0
             initial_mobility_reduction = 0
@@ -286,10 +279,10 @@ class RandomWalkMobilityModel(nn.Module):
         nNP = int(self.nDs / r_walk_period) - 1
 
         tr("r_walk_noise_scale", alan.HalfNormal(r_walk_noise_scale_prior))
+
         # rescaling variables by 10 for better NUTS adaptation
         # tr("r_walk_noise", alan.Normal(0, 1.0 / 10), plates=('plate_nRs','plate_nNP'))
         tr("r_walk_noise", alan.Normal(t.zeros((self.nRs,nNP)), 1.0 / 10))
-
         expanded_r_walk_noise = t.repeat_interleave(
             tr['r_walk_noise_scale'] * 10.0 * t.cumsum(tr['r_walk_noise'], axis=-1),
             r_walk_period,
@@ -306,22 +299,12 @@ class RandomWalkMobilityModel(nn.Module):
 #         transition = lambda x: alan.Normal(tr["r_walk_noise_scale"]*x, 0.1)
 #         tr('r_walk_noise', alan.Timeseries(0, transition), T='plate_nNP')
 
-
         self.ExpectedLogR = t.reshape(t.log(self.RegionR), (self.nRs, 1)) \
             - growth_reduction \
             - growth_reduction_wearing \
             - (growth_reduction_mobility - initial_mobility_reduction) \
             + full_log_Rt_noise
 
-
-        self.Rt_walk = t.exp(t.log(self.RegionR.reshape((self.nRs, 1))) + full_log_Rt_noise)
-
-
-        self.Rt_cm = t.exp(
-                t.log(self.RegionR.reshape((self.nRs, 1)))
-                - growth_reduction
-                - growth_reduction_wearing
-            )
 
 
         # convert R into growth rates
@@ -336,19 +319,19 @@ class RandomWalkMobilityModel(nn.Module):
                 - t.ones_like(self.ExpectedLogR)
             )
 
+
+
         self.Growth = self.ExpectedGrowth
         print(self.Growth)
         # Originally N(0, 50)
-        tr("InitialSize_log", alan.Normal(t.tensor(log_init_mean).repeat(self.nRs), log_init_sd))
+
+        tr("InitialSize_log", alan.Normal(t.tensor(self.log_init_mean).repeat(self.nRs), self.log_init_sd))
         self.Infected_log = t.reshape(tr['InitialSize_log'], (self.nRs, 1)) \
             + self.Growth.cumsum(axis=1)
 
 
         self.Infected = t.exp(self.Infected_log)
         print(self.Infected)
-        print(self.Infected.shape)
-        print(self.Infected.isnan().sum())
-        print(self.Infected.max())
         r = cases_delay_disp_mean
         mu = cases_delay_mean_mean
         p = r/(r+mu)
@@ -365,9 +348,11 @@ class RandomWalkMobilityModel(nn.Module):
 
         ## Border=full?
 
+        print(self.Infected.type())
+        print(reporting_delay.type())
         expected_confirmed = t.nn.functional.conv2d(
             self.Infected.reshape(1,1,self.Infected.shape[0],self.Infected.shape[1]),
-            reporting_delay.reshape(1,1,reporting_delay.shape[0],reporting_delay.shape[1]), padding='same',
+            reporting_delay.double().reshape(1,1,reporting_delay.shape[0],reporting_delay.shape[1]), padding='same',
             bias = t.ones(1)*1e-8
         )#[:, : self.nDs]
         self.ExpectedCases = expected_confirmed.reshape((self.nRs, self.nDs))
@@ -506,7 +491,7 @@ class MandateMobilityModel(nn.Module):
             # self.HyperRMean = pm.TruncatedNormal(
             #     "HyperRMean", R_prior_mean_mean, sigma=R_prior_mean_scale, lower=0.1
             # )
-            tr('HyperRMean', alan.TruncatedNormal(R_prior_mean_mean, R_prior_mean_scale, 0.1))
+            tr('HyperRMean', alan.dist.TruncatedNormal(R_prior_mean_mean, R_prior_mean_scale, 0.1))
 
             # self.HyperRVar = pm.HalfNormal("HyperRVar", sigma=R_noise_scale)
             tr('HyperRVar', alan.HalfNormal(R_noise_scale))
@@ -605,14 +590,15 @@ class MandateMobilityModel(nn.Module):
                 + full_log_Rt_noise
 
 
-            self.Rt_walk = t.exp(t.log(self.RegionR.reshape((self.nRs, 1))) + full_log_Rt_noise),
 
-
-            self.Rt_cm = t.exp(
-                    t.log(self.RegionR.reshape((self.nRs, 1)))
-                    - growth_reduction
-                    - growth_reduction_mandate
-                )
+            # self.Rt_walk = t.exp(t.log(self.RegionR.reshape((self.nRs, 1))) + full_log_Rt_noise),
+            #
+            #
+            # self.Rt_cm = t.exp(
+            #         t.log(self.RegionR.reshape((self.nRs, 1)))
+            #         - growth_reduction
+            #         - growth_reduction_mandate
+            #     )
 
 
             # convert R into growth rates

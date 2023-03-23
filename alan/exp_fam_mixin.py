@@ -178,13 +178,15 @@ class NormalMixin(AbstractMixin):
         return Ex, Ex2
     @staticmethod
     def mean2conv(Ex, Ex2):
-        loc   = Ex 
-        scale = (Ex2 - loc**2).sqrt()
+        loc   = Ex
+        scale = (Ex2 - loc**2).sqrt() + 1e-8
+        # print(scale.isnan)
+        # print('scale: {}'.format(scale))
         return {'loc': loc, 'scale': scale}
 
     @staticmethod
     def conv2nat(loc, scale):
-        prec = 1/scale**2
+        prec = 1/(scale**2 + 1e-8)
         mu_prec = loc * prec
         return mu_prec, -0.5*prec
     @staticmethod
@@ -211,7 +213,7 @@ class ExponentialMixin(AbstractMixin):
     @staticmethod
     def mean2conv(mean):
         return {'rate': t.reciprocal(mean)}
-    
+
     @staticmethod
     def nat2conv(nat):
         return {'rate': -nat}
@@ -273,7 +275,7 @@ class DirichletMixin(AbstractMixin):
 class BetaMixin(AbstractMixin):
     dist = staticmethod(Beta)
     sufficient_stats = (t.log, lambda x: t.log(1-x))
-    
+
     @staticmethod
     def conv2nat(concentration1, concentration0):
         return (concentration1-1, concentration0-1)
@@ -298,7 +300,7 @@ class BetaMixin(AbstractMixin):
     def canonical_conv(concentration1, concentration0):
         return {'concentration1': concentration1, 'concentration0': concentration0}
 
-    
+
 
 class GammaMixin(AbstractMixin):
     """
@@ -339,7 +341,7 @@ class GammaMixin(AbstractMixin):
             num = diff + alpha.log() - t.digamma(alpha)
             denom = 1 - alpha * grad_digamma(alpha)
             alpha = alpha * t.reciprocal(1 + num/denom)
-        beta = alpha / Ex 
+        beta = alpha / Ex
         return {'concentration': alpha, 'rate': beta}
 
     @staticmethod

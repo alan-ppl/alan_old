@@ -47,7 +47,7 @@ def run_experiment(cfg):
     M = cfg.training.M
     N = cfg.training.N
 
-    spec = importlib.util.spec_from_file_location(cfg.model, cfg.dataset + '/' + cfg.model + '.py')
+    spec = importlib.util.spec_from_file_location(cfg.model, cfg.dataset + '/' + cfg.model + '_VI.py')
     foo = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = foo
     spec.loader.exec_module(foo)
@@ -55,6 +55,7 @@ def run_experiment(cfg):
     # experiment = importlib.import_module(cfg.model.model, 'Deeper_Hier_Regression')
 
     P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML)
+
     for K in Ks:
         print(K,M,N)
         results_dict[N] = results_dict.get(N, {})
@@ -64,25 +65,23 @@ def run_experiment(cfg):
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters))
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters))
         for i in range(cfg.training.num_runs):
-            per_seed_elbos = []
+            # per_seed_obj = []
             start = time.time()
             seed_torch(i)
 
             model = alan.Model(P, Q())#.condition(data=data)
             model.to(device)
-
+            #model.double()
+            opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr, betas=(0.5,0.5))
 
             for j in range(cfg.training.num_iters):
                 sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
-                elbo = sample.elbo().item()
-                per_seed_obj[i,j] = (elbo)
-                model.update(cfg.training.lr, sample)
-
-                times[i,j] = ((time.time() - start)/cfg.training.num_iters)
+                elbo = sample.elbo()
+                per_seed_obj[i,j] = elbo.item()
+                (elbo).backward()
+                opt.step()
+                times[i,j] = (time.time() - start)/cfg.training.num_iters
                 # writer.add_scalar('Objective/Run number {}/{}'.format(i, K), elbo, j)
-                if j % 10 == 0:
-                    print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
-
                 if cfg.training.pred_ll.do_pred_ll:
                     sample = model.sample_perm(K, data=test_data, inputs=test_covariates, reparam=False, device=device)
                     try:
@@ -92,7 +91,12 @@ def run_experiment(cfg):
                         print('nan pred likelihood!')
                         pred_liks[i,j] = np.nan
                 else:
-                    pred_liks[i,j] = (0)
+                    pred_liks.append(0)
+                if j % 10 == 0:
+                    print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
+
+
+
 
 
             # writer.add_scalar('Time/Run number {}'.format(i,K), times[-1], K)
@@ -105,10 +109,9 @@ def run_experiment(cfg):
                 os.makedirs(cfg.dataset + '/' + 'results/' + cfg.model + '/')
             #
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
-
         results_dict[N][M][K] = {'objs':np.nanmean(per_seed_obj, axis=0, keepdims=False).tolist(), 'obj_stds':np.nanstd(per_seed_obj, axis=0, keepdims=False).tolist(), 'pred_likelihood':np.nanmean(pred_liks, axis=0, keepdims=False).tolist(), 'pred_likelihood_std':np.nanstd(pred_liks, axis=0, keepdims=False).tolist(), 'avg_time':np.nanmean(times, axis=0, keepdims=False).tolist(), 'time':np.cumsum(np.nanmean(times, axis=0, keepdims=False), axis=-1).tolist()}
 
-    file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML) + '_{}_'.format(cfg.training.lr) + '_' + 'N{0}_M{1}.json'.format(N,M)
+    file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.ML) + '_{}_'.format(cfg.training.lr) + '_' + 'N{0}_M{1}.json'.format(N,M)
     with open(file, 'w') as f:
         json.dump(results_dict, f)
 
