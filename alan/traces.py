@@ -375,7 +375,8 @@ class TraceP(AbstractTrace):
 
         if (key not in self.samples_q) and (key not in self.data):
             raise Exception(
-                f"{key} not in either data or samples"
+                f"Trying to compute log-prob for '{key}' in the generative model (P), "
+                f"but '{key}' is not in data, and was not sampled in Q"
             )
 
         self.used_platenames = self.used_platenames.intersection(plates)

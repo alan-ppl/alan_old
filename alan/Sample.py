@@ -20,6 +20,16 @@ class Sample():
             assert lp.shape == ()
 
         Q_keys = [*trp.group, *trp.logq_var]
+        variables_in_Q_but_not_P = tuple(set(Q_keys).difference(trp.samples.keys()))
+        if 0 != len(variables_in_Q_but_not_P):
+            raise Exception(
+                f"Variables {variables_in_Q_but_not_P} sampled in Q but not present in P"
+            )
+        data_with_no_logp = set(trp.data.keys()).difference(trp.logp.keys())
+        if 0 != len(data_with_no_logp):
+            raise Exception(
+                f"Data {data_with_no_logp} provided, but not specified in P"
+            )
         assert set(Q_keys) == set(trp.samples.keys())
 
         for (rv, lp) in trp.logp.items():
