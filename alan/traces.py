@@ -147,12 +147,6 @@ class AbstractTraceQ(AbstractTrace):
         if (multi_sample==False) and (group is not None):
             raise Exception(f"Doesn't make sense to group the variable {key} when multi_sample=False")
 
-        if key in self:
-            raise Exception(
-                f"Trying to sample {key} from an approximate posterior, "
-                f"but we have already have a variable with this name."
-            )
-
         if (T is not None) and (group is not None):
             raise Exception("Timeseries cannot currently be grouped")
 
@@ -293,12 +287,6 @@ class TraceSample(AbstractTrace):
 
     def sample_(self, key, dist, plates=(), T=None, group=None, sum_discrete=False):
         del group, sum_discrete
-
-        if key in self:
-            raise Exception(
-                f"Trying to sample {key} from an approximate posterior, "
-                f"but we have already have a variable with this name."
-            )
 
         if T is not None:
             dist.set_trace_Tdim(self, self.platedims[T])

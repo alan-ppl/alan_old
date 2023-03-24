@@ -80,4 +80,13 @@ def test_missing_data():
 
 
 
+#Plate related errors
+  #Plate size not provided.
+  #Plate size conflicts between inputs / inputs + params
+  #
+#Timeseries errors
+#Sum discrete errors
+#Prediction errors
+
+
 
