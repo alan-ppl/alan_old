@@ -238,8 +238,10 @@ def extend_plates_with_sizes(plates, size_dict):
         if (name not in plates):
             new_dict[name] = Dim(name, size)
         elif size != plates[name].size:
-            raise Exception(f"""Mismatch in sizes for plate '{name}',
-             data has size '{size}' but model indicates size '{plates[name].size}'""")
+            raise Exception(
+                f"Mismatch in sizes for plate '{name}', "
+                f"tensor has size {size} but we already have the plate-size as {plates[name].size}"
+            )
     return {**plates, **new_dict}
 
 def extend_plates_with_named_tensor(plates, tensor):

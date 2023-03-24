@@ -25,7 +25,7 @@ def _test_ap(P=P, Q=Q, data=data, inputs={}):
     cond_model = model.condition(data=data, inputs=inputs)
     cond_model.sample_cat(10)
 
-def _test_prior(P=P, inputs={}):
+def _test_prior(P=P, platesizes=platesizes, inputs={}):
     model = alan.Model(P, P)
     data = model.sample_prior(varnames='obs', platesizes=platesizes, inputs=inputs)
 
@@ -80,13 +80,39 @@ def test_missing_data():
 
 
 
+def test_no_plate_size_sample():
+    with pytest.raises(Exception, match="size of plate"):
+        _test_prior(platesizes={'plate_2':4, 'plate_3':5})
+    with pytest.raises(Exception, match="size of plate"):
+        _test_prior(platesizes={})
+
+
+
+def prog_input_inconsistent_plate(tr, inp):
+    tr('a',   alan.Normal(tr.zeros(()), 1))
+    tr('b',   alan.Normal(tr['a'], 1))
+    tr('c',   alan.Normal(tr['b'], 1), plates='plate_1')
+    tr('d',   alan.Normal(tr['c'], 1), plates='plate_2')
+    tr('obs', alan.Normal(tr['d'], 1), plates='plate_3')
+inp = t.ones(6, names=('plate_1',))
+def test_input_inconsistent_plate():
+    with pytest.raises(Exception, match="Mismatch in sizes for"):
+        _test_prior(P=prog_input_inconsistent_plate, inputs={'inp': inp})
+
+
+
+
 #Plate related errors
-  #Plate size not provided.
-  #Plate size conflicts between inputs / inputs + params
-  #
+  #Plate size conflicts from params
 #Timeseries errors
 #Sum discrete errors
 #Prediction errors
+#Reparameterised sampling
 
 
 
+#Happy-path tests:
+#  Test plates:
+#    Pick up plate-size from inputs
+#    Pick up plate-size from data
+#    Pick up plate-size from Q params

@@ -42,7 +42,10 @@ class AbstractTrace(GetItem):
 
         for plate in plates:
             if plate not in self.platedims:
-                raise Exception(f"Unknown plate {plate}.")
+                raise Exception(
+                    f"Trying to sample '{key}' with plate '{plate}', but"
+                    f"size of plate {plate} is unknown"
+                )
 
         if key in self.samples:
             raise Exception("Trying to sample '{key}', but '{key}' has already been sampled")
