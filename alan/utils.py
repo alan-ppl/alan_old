@@ -207,7 +207,7 @@ def named2dim_tensor(d, x):
     assert isinstance(x, t.Tensor)
 
     for name in x.names:
-        if name not in d:
+        if (name is not None) and (name not in d):
             raise Exception(f"No torchdim dimension for named dimension {name} in named2dim_tensor")
 
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]

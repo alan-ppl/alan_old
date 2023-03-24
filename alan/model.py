@@ -108,7 +108,7 @@ class SampleMixin():
         #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = trace_type(K, data, inputs, platedims, reparam, device)
+        trq = trace_type(K, data, platedims, reparam, device)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TraceP(trq)
@@ -135,7 +135,7 @@ class SampleMixin():
         platedims, data, inputs = self.dims_data_inputs({}, inputs, platesizes, device)
 
         with t.no_grad():
-            tr = traces.TraceSample(N, inputs, platedims, device)
+            tr = traces.TraceSample(N, platedims, device)
             self.P(tr, **inputs)
 
         if isinstance(varnames, str):

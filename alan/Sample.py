@@ -31,7 +31,7 @@ class Sample():
 
             #check that any rv in logqs is also in logps
             if key not in trp.logp:
-                raise Exception(f"The latent variable '{rv}' is sampled in Q but not P.")
+                raise Exception(f"The latent variable '{key}' is sampled in Q but not P.")
 
             lp = trp.logp[key]
             lq = trp.logq_var[key] if (key in trp.logq_var) else trp.logq_group[trp.group[key]]
