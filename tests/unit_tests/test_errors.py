@@ -130,32 +130,3 @@ def test_sum_discrete_inQ():
     with pytest.raises(Exception, match="We don't need an approximate posterior if"):
         _test_ap(P=P_sum_discrete_inQ, Q=Q_sum_discrete_inQ)
 
-
-#Plate related errors
-#  Plate size conflicts from params
-#Reparam errors
-#Timeseries errors
-#  Don't give a string key.
-#  Try to sample multiple timeseries (or similar).
-#  Try to sample multiple timeseries (or similar).
-#Sum discrete errors
-#  Already sampled in Q
-#Prediction errors
-#  Data is no bigger.
-#  A single data-dimension is smaller.
-#Reparameterised sampling
-
-
-
-#Happy-path tests:
-#Sum discrete:
-#  Analytic summation.
-#  Analytic posteriors.
-#Test plates:
-#  Pick up plate-size from inputs
-#  Pick up plate-size from data
-#  Pick up plate-size from Q params
-#Timeseries
-#Sum discrete
-#Prediction
-#Inputs / data not tensors
