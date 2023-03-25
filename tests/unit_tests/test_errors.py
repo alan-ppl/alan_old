@@ -31,6 +31,7 @@ def _test_prior(P=P, platesizes=platesizes, inputs={}):
 
 
 
+#### We use a variable tr['a'], before its sampled.
 def prog_use_before_define(tr):
     tr['a']
 def test_use_before_define_P():
@@ -45,6 +46,7 @@ def test_use_before_define_prior():
 
 
         
+#### We sample a single variable twice
 def prog_sample_twice(tr):
     tr('a',   alan.Normal(tr.zeros(()), 1))
     tr('a',   alan.Normal(tr.zeros(()), 1))
@@ -60,6 +62,7 @@ def test_sample_twice_prior():
 
 
 
+#### A latent variable appears in P/Q but not in Q/P
 def prog_missing_latent(tr):
     tr('a',   alan.Normal(tr.zeros(()), 1))
     tr('b',   alan.Normal(tr['a'], 1))
@@ -74,12 +77,14 @@ def test_missing_latent_Q():
 
 
 
+#### Data not provided.
 def test_missing_data():
     with pytest.raises(Exception, match="provided, but not specified in P"):
         _test_ap(P=Q)
 
 
 
+#### Required platesizes are not provided
 def test_no_plate_size_sample():
     with pytest.raises(Exception, match="size of plate"):
         _test_prior(platesizes={'plate_2':4, 'plate_3':5})
@@ -88,6 +93,8 @@ def test_no_plate_size_sample():
 
 
 
+#### A single plate is provided with inconsistent sizes from inputs and platesizes
+#### (which is a default argument in _test_prior
 def prog_input_inconsistent_plate(tr, inp):
     tr('a',   alan.Normal(tr.zeros(()), 1))
     tr('b',   alan.Normal(tr['a'], 1))
@@ -100,7 +107,7 @@ def test_input_inconsistent_plate():
         _test_prior(P=prog_input_inconsistent_plate, inputs={'inp': inp})
 
 
-
+#### Try to analytically sum over a continuous distribution
 def prog_sum_discrete_normal(tr):
     tr('a',   alan.Normal(tr.zeros(()), 1), sum_discrete=True)
     tr('b',   alan.Normal(tr['a'], 1))
@@ -113,8 +120,20 @@ def test_sum_discrete_normal_P():
 
 
 
+#### Try to analytically sum over a random variable, when we've
+#### already sampled that variable in Q
+def P_sum_discrete_inQ(tr):
+    tr('a', alan.Bernoulli(0.5))
+def Q_sum_discrete_inQ(tr):
+    tr('a', alan.Bernoulli(0.5), sum_discrete=True)
+def test_sum_discrete_inQ():
+    with pytest.raises(Exception, match="We don't need an approximate posterior if"):
+        _test_ap(P=P_sum_discrete_inQ, Q=Q_sum_discrete_inQ)
+
+
 #Plate related errors
-  #Plate size conflicts from params
+#  Plate size conflicts from params
+#Reparam errors
 #Timeseries errors
 #  Don't give a string key.
 #  Try to sample multiple timeseries (or similar).
