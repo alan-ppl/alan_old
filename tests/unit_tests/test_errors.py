@@ -101,18 +101,42 @@ def test_input_inconsistent_plate():
 
 
 
+def prog_sum_discrete_normal(tr):
+    tr('a',   alan.Normal(tr.zeros(()), 1), sum_discrete=True)
+    tr('b',   alan.Normal(tr['a'], 1))
+    tr('c',   alan.Normal(tr['b'], 1), plates='plate_1')
+    tr('d',   alan.Normal(tr['c'], 1), plates='plate_2')
+    tr('obs', alan.Normal(tr['d'], 1), plates='plate_3')
+def test_sum_discrete_normal_P():
+    with pytest.raises(Exception, match="Can only sum over"):
+        _test_ap(P=prog_sum_discrete_normal)
+
+
 
 #Plate related errors
   #Plate size conflicts from params
 #Timeseries errors
+#  Don't give a string key.
+#  Try to sample multiple timeseries (or similar).
+#  Try to sample multiple timeseries (or similar).
 #Sum discrete errors
+#  Already sampled in Q
 #Prediction errors
+#  Data is no bigger.
+#  A single data-dimension is smaller.
 #Reparameterised sampling
 
 
 
 #Happy-path tests:
-#  Test plates:
-#    Pick up plate-size from inputs
-#    Pick up plate-size from data
-#    Pick up plate-size from Q params
+#Sum discrete:
+#  Analytic summation.
+#  Analytic posteriors.
+#Test plates:
+#  Pick up plate-size from inputs
+#  Pick up plate-size from data
+#  Pick up plate-size from Q params
+#Timeseries
+#Sum discrete
+#Prediction
+#Inputs / data not tensors

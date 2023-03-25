@@ -327,11 +327,11 @@ class TraceP(AbstractTrace):
         """
         Enumerates discrete variables.
         """
-        if dist.dist_name not in ["Bernoulli", "Categorical"]:
+        if dist.dist not in [t.distributions.Bernoulli, t.distributions.Categorical]:
             raise Exception(
                 f'Can only sum over discrete random variables with a '
                 f'Bernoulli or Categorical distribution.  Trying to ' 
-                f'sum over a "{dist.dist_name}" distribution.'
+                f'sum over a "{dist}" distribution.'
             )
 
         dim_plates    = set(dim for dim in dist.dims if (dim in self.platedims))
@@ -364,7 +364,7 @@ class TraceP(AbstractTrace):
                 f"either data or samples"
             )
 
-        if (key not in self.samples_q) and (key not in self.data):
+        if (key not in self.samples_q) and (key not in self.data) and (not sum_discrete):
             raise Exception(
                 f"Trying to compute log-prob for '{key}' in the generative model (P), "
                 f"but '{key}' is not in data, and was not sampled in Q"
