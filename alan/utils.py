@@ -361,7 +361,7 @@ def torchdim_einsum(tensors, sum_dims):
 #### Less efficient (can use matmul, less exp'ing).
 #### Less numerically stable (result can be zero).
 import opt_einsum
-def reduce_Ks(tensors, Ks_to_sum):
+def reduce_Ks(tensors, Ks_to_sum, Es):
     """
     Fundamental method that sums over Ks
     opt_einsum gives an "optimization path", i.e. the indicies of tensors to reduce.
@@ -386,8 +386,9 @@ def reduce_Ks(tensors, Ks_to_sum):
     assert 1==len(tensors)
     result = tensors[0]
 
+    Ks_to_sum_not_Es = set(Ks_to_sum).difference(Es)
     if 0<len(Ks_to_sum):
-        result = result - sum(math.log(K.size) for K in Ks_to_sum)
+        result = result - sum(math.log(K.size) for K in Ks_to_sum_not_Es)
     return result
 
 #### Does the normalization separately for each reduction step.
@@ -395,7 +396,7 @@ def reduce_Ks(tensors, Ks_to_sum):
 #### Less efficient (can't use matmul, more exp'ing)
 #### More numerically stable (but how much does that matter given that )
 #import opt_einsum
-#def reduce_Ks(tensors, Ks_to_sum):
+#def reduce_Ks(tensors, Ks_to_sum, Es):
 #    """
 #    Fundamental method that sums over Ks
 #    opt_einsum gives an "optimization path", i.e. the indicies of tensors to reduce.
@@ -421,8 +422,9 @@ def reduce_Ks(tensors, Ks_to_sum):
 #    assert 1==len(tensors)
 #    result = tensors[0]
 #
+#    Ks_to_sum_not_Es = set(Ks_to_sum).difference(Es)
 #    if 0<len(Ks_to_sum):
-#        result = result - sum(math.log(K.size) for K in Ks_to_sum)
+#        result = result - sum(math.log(K.size) for K in Ks_to_sum_not_Es)
 #    return result
 #
 #def logsumexp_sum(_Ks_to_sum, *tensors_to_reduce):
@@ -430,7 +432,7 @@ def reduce_Ks(tensors, Ks_to_sum):
 #    return logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True)
 
 ##### Does the normalization for the whole plate.
-#def reduce_Ks(tensors, Ks_to_sum):
+#def reduce_Ks(tensors, Ks_to_sum, Es):
 #    """
 #    Fundamental method that sums over Ks
 #    Does the normalization over the whole plate, which can
@@ -442,6 +444,7 @@ def reduce_Ks(tensors, Ks_to_sum):
 #    tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
 #    result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 #
+#    Ks_to_sum_not_Es = set(Ks_to_sum).difference(Es)
 #    if 0<len(Ks_to_sum):
-#        result = result - sum(math.log(K.size) for K in Ks_to_sum)
+#        result = result - sum(math.log(K.size) for K in Ks_to_sum_not_Es)
 #    return sum([result, *maxes])

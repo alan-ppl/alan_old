@@ -173,7 +173,7 @@ class Sample():
         all_dims = unify_dims(tensors)
         Ks_to_keep = set(Ks_to_keep)
         Ks_to_sum    = [dim for dim in all_dims if self.is_K(dim) and (dim not in Ks_to_keep)]
-        return reduce_Ks(tensors, Ks_to_sum)
+        return reduce_Ks(tensors, Ks_to_sum, self.Es)
 
 
     def elbo(self):
