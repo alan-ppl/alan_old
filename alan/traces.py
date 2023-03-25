@@ -317,6 +317,7 @@ class TraceP(AbstractTrace):
         self.samples = {}
         self.logp = {}
         self.Es = set()
+        self.sum_discrete_varnames = set()
 
         #set of timeseries dimensions (as strings)
         self.Tdim2Ks = {}
@@ -354,7 +355,7 @@ class TraceP(AbstractTrace):
         #Expand them to full size
         values = values.expand(*[plate.size for plate in plates])
         #And name them
-        values = values[plates]
+        values = generic_getitem(values, plates)
         return values, Edim
 
     def sample_(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
@@ -389,6 +390,8 @@ class TraceP(AbstractTrace):
             sample, Edim = self.sum_discrete(key, dist, plates)
             self.Es.add(Edim)
             self.logp[key] = dist.log_prob(sample, Kdim=Edim)
+            self.samples[key] = sample
+            self.sum_discrete_varnames.add(key)
         else:
             if key in self.samples_q:
                 self.samples[key] = self.samples_q[key]
