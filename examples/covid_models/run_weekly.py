@@ -19,6 +19,7 @@ from models.epi_params import EpidemiologicalParameters
 from preprocessing.preprocess_mask_data import Preprocess_masks
 from models.mask_models_weekly import (
     RandomWalkMobilityModel,
+    RandomWalkMobilityModel_Q,
     model_data
 )
 
@@ -121,7 +122,7 @@ plate_sizes = {'plate_nRs':nRs,
                'nWs':nWs}
 
 #New weekly cases
-newcases_weekly = np.add.reduceat(data.NewCases, np.arange(0, nDs, 7), 1)
+newcases_weekly = np.nan_to_num(np.add.reduceat(data.NewCases, np.arange(0, nDs, 7), 1))
 newcases_weekly = t.from_numpy(newcases_weekly).rename('plate_nRs', 'nWs' )
 #NPI active CMs
 ActiveCMs_NPIs = ActiveCMs[:, :, :-2].rename('plate_nRs', 'nWs', None)
@@ -132,10 +133,10 @@ ActiveCMs_mobility = ActiveCMs[:, :, -2].rename('plate_nRs', 'nWs')
 covariates = {'ActiveCMs_NPIs':ActiveCMs_NPIs, 'ActiveCMs_wearing':ActiveCMs_wearing, 'ActiveCMs_mobility':ActiveCMs_mobility}
 if MASKS == "wearing":
     P = RandomWalkMobilityModel(nRs, nWs, nCMs, CMs,log_init_mean, log_init_sd)
-    Q = RandomWalkMobilityModel_Q(nRs, nWs, nCMs, CMs,log_init_mean, log_init_sd, proposal=True)
-elif MASKS == "mandate":
-    P = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd)
-    Q = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd, proposal=True)
+    Q = RandomWalkMobilityModel_Q(nRs, nWs, nCMs)# CMs)#log_init_mean, log_init_sd)
+# elif MASKS == "mandate":
+#     P = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd)
+#     Q = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd, proposal=True)
 
 
 
@@ -144,31 +145,33 @@ elif MASKS == "mandate":
 model = alan.Model(P)
 data = model.sample_prior(varnames='obs', inputs=covariates, platesizes=plate_sizes)
 print(data)
-print(newcases_weekly.shape)
-cond_model = alan.Model(P, Q).condition(data={'obs':newcases_weekly}, inputs=covariates)
+print(newcases_weekly)
+cond_model = alan.Model(P, Q).condition(data={'obs':newcases_weekly.int()}, inputs=covariates)
 
-opt = t.optim.Adam(model.parameters(), lr=1E-3)
+#opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=10
+K=1
 print("K={}".format(K))
-for i in range(20000):
-  opt.zero_grad()
-  elbo = cond_model.sample_perm(K, True).elbo()
-  (-elbo).backward()
-  opt.step()
+lr = 0.1
+for i in range(50000):
+    sample = cond_model.sample_perm(K, False)
+    elbo = sample.elbo().item()
+    model.update(lr, sample)
 
-  if 0 == i%1000:
-      print(elbo.item())
+    if i%10000 == 0:
+        lr = lr // 10
+    if 0 == i%100:
+        print(elbo)
 
 
-dt = datetime.datetime.now().strftime("%m-%d-%H:%M")
-
-if MASKS == "wearing":
-    idstr = f"pickles/{MASKS}_{W_PAR}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
-else:
-    idstr = f"pickles/{MASKS}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
-
-pickle.dump(model.trace, open(idstr + ".pkl", "wb"))
-
-with open(idstr + "_cols", "w") as f:
-    f.write(", ".join(data.CMs))
+# dt = datetime.datetime.now().strftime("%m-%d-%H:%M")
+#
+# if MASKS == "wearing":
+#     idstr = f"pickles/{MASKS}_{W_PAR}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
+# else:
+#     idstr = f"pickles/{MASKS}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
+#
+# pickle.dump(model.trace, open(idstr + ".pkl", "wb"))
+#
+# with open(idstr + "_cols", "w") as f:
+#     f.write(", ".join(data.CMs))

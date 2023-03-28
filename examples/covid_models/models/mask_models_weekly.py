@@ -146,50 +146,50 @@ class RandomWalkMobilityModel(nn.Module):
         )
         # self.MobilityReduction = (2.0 * (t.exp(-1.0 * tr['Mobility_Alpha']))) / (1.0 + t.exp(-1.0 * tr['Mobility_Alpha']))
 
-        tr("HyperRMean", alan.dist.TruncatedNormal(
-            R_prior_mean_mean, R_prior_mean_scale, a=0.1
-        ))
+        # tr("HyperRMean", alan.dist.TruncatedNormal(
+        #     R_prior_mean_mean, R_prior_mean_scale, a=0.1
+        # ))
+        #
+        # tr("HyperRVar", alan.HalfNormal(R_noise_scale))
 
-        tr("HyperRVar", alan.HalfNormal(R_noise_scale))
-
-        tr("RegionR_noise", alan.Normal(0, 0.1), plates='plate_nRs')
-        # tr("RegionR_noise", alan.Normal(t.zeros((self.nRs,)), 1))
-        self.RegionR = tr['HyperRMean'] + tr['RegionR_noise'] * tr['HyperRVar']
+        tr("RegionR", alan.Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale))
+        # # tr("RegionR_noise", alan.Normal(0, 0.1), plates='plate_nRs')
+        # # tr("RegionR_noise", alan.Normal(t.zeros((self.nRs,)), 1))
+        # RegionR = tr['HyperRMean'] + tr['RegionR_noise'] * tr['HyperRVar']
 
 
         # load CMs active without wearing, compute log-R reduction and region log-R based on NPIs active
 
-        self.ActiveCMReduction = tr['CM_Alpha'] * ActiveCMs_NPIs
+        ActiveCMReduction = tr['CM_Alpha'] * ActiveCMs_NPIs
 
         #Write script to do this quickly
         #growth_reduction = t.sum(generic_order(self.ActiveCMReduction, generic_dims(self.ActiveCMReduction))[generic_dims(self.ActiveCMReduction)[:-1]], axis=-1)
-        growth_reduction = t.sum(self.ActiveCMReduction, axis=-1)
+        growth_reduction = t.sum(ActiveCMReduction)
         # calculating reductions for each of the wearing parameterisations
 
-        self.ActiveCMReduction_wearing = tr['Wearing_Alpha'] * ActiveCMs_wearing
+        ActiveCMReduction_wearing = tr['Wearing_Alpha'] * ActiveCMs_wearing
 
-        growth_reduction_wearing = self.ActiveCMReduction_wearing
+        growth_reduction_wearing = ActiveCMReduction_wearing
 
 
 
 
         # make reduction for mobility
 
-        self.ActiveCMReduction_mobility = tr['Mobility_Alpha'] * ActiveCMs_mobility
+        ActiveCMReduction_mobility = tr['Mobility_Alpha'] * ActiveCMs_mobility
 
         growth_reduction_mobility = -1.0 * t.log(
-                (2.0 * t.exp(-1.0 * self.ActiveCMReduction_mobility))
-                / (1.0 + t.exp(-1.0 * self.ActiveCMReduction_mobility)),
+                (2.0 * t.exp(-1.0 * ActiveCMReduction_mobility))
+                / (1.0 + t.exp(-1.0 * ActiveCMReduction_mobility)),
         )
 
 
-        initial_mobility_reduction = generic_order(growth_reduction_mobility, generic_dims(growth_reduction_mobility))[:, 0][generic_dims(growth_reduction_mobility)[0]]
-
+        initial_mobility_reduction = generic_order(growth_reduction_mobility, generic_dims(growth_reduction_mobility)).select(-1,0)[generic_dims(growth_reduction_mobility)[:-1]]
 
         # tr("r_walk_noise_scale", alan.HalfNormal(r_walk_noise_scale_prior))
 
 
-        self.ExpectedLogR = t.log(self.RegionR) \
+        ExpectedLogR = tr['RegionR'] \
             - growth_reduction \
             - growth_reduction_wearing \
             - (growth_reduction_mobility - initial_mobility_reduction) \
@@ -197,10 +197,10 @@ class RandomWalkMobilityModel(nn.Module):
 
 
         # convert R into growth rates
-        tr('GI_mean', alan.Normal(gi_mean_mean, gi_mean_sd))
+        tr('GI_mean', alan.Normal(np.log(gi_mean_mean), gi_mean_sd))
         tr("GI_sd", alan.Normal(gi_sd_mean, gi_sd_sd))
 
-        gi_beta = tr['GI_mean'] / tr['GI_sd'] ** 2
+        gi_beta = t.exp(tr['GI_mean'] / tr['GI_sd'] ** 2)
         gi_alpha = tr['GI_mean'] ** 2 / tr['GI_sd'] ** 2
 
 
@@ -208,42 +208,59 @@ class RandomWalkMobilityModel(nn.Module):
 
         def transition(x, inputs):
             ExpectedLogR = inputs
-            ExpectedGrowth = gi_beta * (
-                    t.exp(ExpectedLogR / gi_alpha)
-                    - t.ones_like(ExpectedLogR)
+            ExpectedGrowth = gi_beta + (
+                    (ExpectedLogR / gi_alpha)
+                    - t.log(t.ones_like(ExpectedLogR))
                 )
-            return alan.Normal(x * ExpectedGrowth, 0.1)
+            return alan.Normal(x + ExpectedGrowth, 1)
 
-        tr('Log_Infected', alan.Timeseries("InitialSize_log", transition, t.exp(self.ExpectedLogR)), T="nWs")
-        self.Infected = tr['Log_Infected']
+        #print(t.exp(ExpectedLogR))
+        tr('Log_Infected', alan.Timeseries("InitialSize_log", transition, t.exp(ExpectedLogR)), T="nWs")
+        Infected = t.exp(tr['Log_Infected'])
 
-        tr('psi', alan.HalfNormal(5000))
+        tr('psi', alan.Normal(np.log(5),1))
         # effectively handle missing values ourselves
         # likelihood
-        r = tr['psi']
-        mu = self.Infected
+        r = t.exp(tr['psi'])
+        mu = Infected
         p = r/(r+mu) + 1e-8
 
 
         if not self.proposal:
             tr('obs', alan.NegativeBinomial(total_count=r, logits=p))
 
-class RandomWalkMobilityModel_Q(alan.QModule):
-    def __init__(self):
-        self.CM_alpha = alan.MLNormal((self.nCMs-2,))
+class RandomWalkMobilityModel_Q(alan.AlanModule):
+    def __init__(self, nRs, nWs, nCMs):
+        super().__init__()
+        self.CM_Alpha = alan.MLNormal(sample_shape=(nCMs-2,))
 
         self.Wearing_Alpha = alan.MLNormal()
 
         self.Mobility_Alpha = alan.MLNormal()
 
-        self.HyperRMean = alan.MLNormal()
-
-        self.HyperRVar = alan.MLNormal()
-
-        self.RegionR_noise = alan.MLNormal()
+        self.RegionR = alan.MLNormal({'plate_nRs': nRs})
 
         self.GI_mean = alan.MLNormal()
 
         self.GI_sd = alan.MLNormal()
 
-        self.
+        self.InitialSize_log = alan.MLNormal({'plate_nRs': nRs})
+
+        self.Log_Infected = alan.MLNormal({'plate_nRs': nRs, 'nWs':nWs})
+
+        self.psi = alan.MLNormal()
+
+    def forward(self, tr,
+                ActiveCMs_NPIs,
+                ActiveCMs_wearing,
+                ActiveCMs_mobility,):
+
+        tr('CM_Alpha', self.CM_Alpha())
+        tr('Wearing_Alpha', self.Wearing_Alpha())
+        tr('Mobility_Alpha', self.Mobility_Alpha())
+        tr('RegionR', self.RegionR())
+        tr('GI_mean', self.GI_mean())
+        tr('GI_sd', self.GI_sd())
+        tr('InitialSize_log', self.InitialSize_log())
+        tr('Log_Infected', self.Log_Infected())
+        tr('psi', self.psi())

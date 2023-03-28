@@ -72,13 +72,13 @@ def run_experiment(cfg):
             model = alan.Model(P, Q())#.condition(data=data)
             model.to(device)
             #model.double()
-            opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr, betas=(0.5,0.5))
+            opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr)
 
             for j in range(cfg.training.num_iters):
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
+                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=device)
                 elbo = sample.elbo()
                 per_seed_obj[i,j] = elbo.item()
-                (elbo).backward()
+                (-elbo).backward()
                 opt.step()
                 times[i,j] = (time.time() - start)/cfg.training.num_iters
                 # writer.add_scalar('Objective/Run number {}/{}'.format(i, K), elbo, j)
