@@ -1,9 +1,5 @@
 import os
 
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-
 import numpy as np
 import torch as t
 np.random.seed(123456)
@@ -19,6 +15,7 @@ from models.epi_params import EpidemiologicalParameters
 from preprocessing.preprocess_mask_data import Preprocess_masks
 from models.mask_models_weekly import (
     RandomWalkMobilityModel,
+    RandomWalkMobilityModel_ML,
     RandomWalkMobilityModel_Q,
     model_data
 )
@@ -33,9 +30,7 @@ argparser.add_argument("--mob", dest="mob", type=str, help="How to include mobil
 
 # argparser.add_argument('--filter', dest='filtered', type=str, help='How to remove regions')
 # argparser.add_argument('--gatherings', dest='gatherings', type=int, help='how many gatherings features')
-argparser.add_argument("--tuning", dest="tuning", type=int, help="tuning samples")
-argparser.add_argument("--draws", dest="draws", type=int, help="draws")
-argparser.add_argument("--chains", dest="chains", type=int, help="chains")
+argparser.add_argument("--ML", dest="ml", type=bool, help="Whether to run ML update")
 # argparser.add_argument('--hide_ends', dest='hide_ends', type=str)
 args, _ = argparser.parse_known_args()
 
@@ -43,9 +38,7 @@ MODEL = args.model
 MASKS = args.masks
 W_PAR = args.w_par if args.w_par else "exp"
 MOBI = args.mob
-TUNING = args.tuning if args.tuning else 1000
-DRAWS = args.draws if args.draws else 500
-CHAINS = args.chains if args.chains else 4
+ML = args.ml
 # FILTERED = args.filtered
 
 US = True
@@ -133,7 +126,8 @@ ActiveCMs_mobility = ActiveCMs[:, :, -2].rename('plate_nRs', 'nWs')
 covariates = {'ActiveCMs_NPIs':ActiveCMs_NPIs, 'ActiveCMs_wearing':ActiveCMs_wearing, 'ActiveCMs_mobility':ActiveCMs_mobility}
 if MASKS == "wearing":
     P = RandomWalkMobilityModel(nRs, nWs, nCMs, CMs,log_init_mean, log_init_sd)
-    Q = RandomWalkMobilityModel_Q(nRs, nWs, nCMs)# CMs)#log_init_mean, log_init_sd)
+    Q_ML = RandomWalkMobilityModel_ML(nRs, nWs, nCMs)# CMs)#log_init_mean, log_init_sd)
+    Q_Adam = RandomWalkMobilityModel_Q(nRs, nWs, nCMs)# CMs)#log_init_mean, log_init_sd)
 # elif MASKS == "mandate":
 #     P = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd)
 #     Q = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd, proposal=True)
@@ -149,19 +143,31 @@ print(newcases_weekly)
 cond_model = alan.Model(P, Q).condition(data={'obs':newcases_weekly.int()}, inputs=covariates)
 
 #opt = t.optim.Adam(model.parameters(), lr=1E-3)
-
 K=1
 print("K={}".format(K))
-lr = 0.1
-for i in range(50000):
-    sample = cond_model.sample_perm(K, False)
-    elbo = sample.elbo().item()
-    model.update(lr, sample)
+if ml:
 
-    if i%10000 == 0:
-        lr = lr // 10
-    if 0 == i%100:
-        print(elbo)
+    lr = 0.1
+    for i in range(50000):
+        sample = cond_model.sample_perm(K, False)
+        elbo = sample.elbo().item()
+        model.update(lr, sample)
+
+        if i%10000 == 0:
+            lr = lr // 10
+        if 0 == i%100:
+            print(elbo)
+else:
+    opt = t.optim.Adam(cond_model.parameters(), lr=0.01)
+    lr = 0.1
+    for i in range(50000):
+        opt.zero_grad()
+        sample = cond_model.sample_perm(K, True)
+        elbo = sample.elbo()
+        (-elbo).backward()
+        opt.step()
+        if 0 == i%100:
+            print(elbo)
 
 
 # dt = datetime.datetime.now().strftime("%m-%d-%H:%M")

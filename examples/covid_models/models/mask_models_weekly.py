@@ -218,7 +218,7 @@ class RandomWalkMobilityModel(nn.Module):
         tr('Log_Infected', alan.Timeseries("InitialSize_log", transition, t.exp(ExpectedLogR)), T="nWs")
         Infected = t.exp(tr['Log_Infected'])
 
-        tr('psi', alan.Normal(np.log(5),1))
+        tr('psi', alan.Normal(0,np.log(45)))
         # effectively handle missing values ourselves
         # likelihood
         r = t.exp(tr['psi'])
@@ -229,7 +229,7 @@ class RandomWalkMobilityModel(nn.Module):
         if not self.proposal:
             tr('obs', alan.NegativeBinomial(total_count=r, logits=p))
 
-class RandomWalkMobilityModel_Q(alan.AlanModule):
+class RandomWalkMobilityModel_ML(alan.AlanModule):
     def __init__(self, nRs, nWs, nCMs):
         super().__init__()
         self.CM_Alpha = alan.MLNormal(sample_shape=(nCMs-2,))
@@ -264,3 +264,49 @@ class RandomWalkMobilityModel_Q(alan.AlanModule):
         tr('InitialSize_log', self.InitialSize_log())
         tr('Log_Infected', self.Log_Infected())
         tr('psi', self.psi())
+
+
+class RandomWalkMobilityModel_Q(alan.AlanModule):
+    def __init__(self, nRs, nWs, nCMs):
+        super().__init__()
+        self.CM_Alpha_mean = nn.Parameter(t.zeros((nCMs-2,)))
+        self.log_CM_Alpha_sigma = nn.Parameter(t.zeros((nCMs-2,)))
+
+        self.Wearing_Alpha_mean = nn.Parameter(t.zeros(()))
+        self.log_Wearing_Alpha_sigma = nn.Parameter(t.zeros(()))
+
+        self.Mobility_Alpha_mean = nn.Parameter(t.zeros(()))
+        self.log_Mobility_Alpha_sigma = nn.Parameter(t.zeros(()))
+
+        self.RegionR_mean = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
+        self.log_RegionR_sigma = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
+
+        self.GI_mean_mean = nn.Parameter(t.zeros(()))
+        self.log_GI_mean_sigma = nn.Parameter(t.zeros(()))
+
+        self.GI_sd_mean = nn.Parameter(t.zeros(()))
+        self.log_GI_sd_sigma = nn.Parameter(t.zeros(()))
+
+        self.InitialSize_log_mean = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
+        self.log_InitialSize_log_sigma = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
+
+        self.Log_Infected_mean = nn.Parameter(t.zeros((nRs,nWs),names=('plate_nRs','nWs')))
+        self.log_Log_Infected_sigma = nn.Parameter(t.zeros((nRs,nWs),names=('plate_nRs','nWs')))
+
+        self.psi_mean = nn.Parameter(t.zeros(()))
+        self.log_psi_sigma = nn.Parameter(t.zeros(()))
+
+    def forward(self, tr,
+                ActiveCMs_NPIs,
+                ActiveCMs_wearing,
+                ActiveCMs_mobility,):
+
+        tr('CM_Alpha', alan.Normal(self.CM_Alpha_mean, self.log_CM_Alpha_sigma.exp()))
+        tr('Wearing_Alpha', alan.Normal(self.Wearing_Alpha_mean, self.log_Wearing_Alpha_sigma.exp()))
+        tr('Mobility_Alpha', alan.Normal(self.Mobility_Alpha_mean, self.log_Mobility_Alpha_sigma.exp()))
+        tr('RegionR', alan.Normal(self.RegionR_mean, self.log_RegionR_sigma.exp()))
+        tr('GI_mean', alan.Normal(self.GI_mean_mean, self.log_GI_mean_sigma.exp()))
+        tr('GI_sd', alan.Normal(self.GI_sd_mean, self.log_GI_sd_sigma.exp()))
+        tr('InitialSize_log', alan.Normal(self.InitialSize_log_mean, self.log_InitialSize_log_sigma.exp()))
+        tr('Log_Infected', alan.Normal(self.Log_Infected_mean, self.log_Log_Infected_sigma.exp()))
+        tr('psi', alan.Normal(self.psi_mean, self.log_psi_sigma.exp()))

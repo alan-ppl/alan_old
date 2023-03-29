@@ -75,6 +75,7 @@ def run_experiment(cfg):
             opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr)
 
             for j in range(cfg.training.num_iters):
+                opt.zero_grad()
                 sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=device)
                 elbo = sample.elbo()
                 per_seed_obj[i,j] = elbo.item()
