@@ -190,6 +190,7 @@ class SampleMixin():
         for varname in lls_all:
             ll_all   = lls_all[varname]
             ll_train = lls_train[varname]
+
             #print(varname)
 
             dims_all   = [dim for dim in ll_all.dims   if dim is not N]
@@ -298,7 +299,6 @@ class ConditionedModel(SampleMixin):
         self.model.to(*args, **kwargs)
         self.data   = {k: v.to(*args, **kwargs) for (k, v) in self.data.items()}
         self.inputs = {k: v.to(*args, **kwargs) for (k, v) in self.inputs.items()}
-
 
     def check_device(self, device):
         self.model.check_device(device)

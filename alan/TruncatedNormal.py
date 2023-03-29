@@ -10,13 +10,11 @@ import torch
 from torch.distributions import Distribution, constraints
 from torch.distributions.utils import broadcast_all
 
-
 CONST_SQRT_2 = math.sqrt(2)
 CONST_INV_SQRT_2PI = 1 / math.sqrt(2 * math.pi)
 CONST_INV_SQRT_2 = 1 / math.sqrt(2)
 CONST_LOG_INV_SQRT_2PI = math.log(CONST_INV_SQRT_2PI)
 CONST_LOG_SQRT_2PI_E = 0.5 * math.log(2 * math.pi * math.e)
-
 
 
 class TruncatedStandardNormal(Distribution):

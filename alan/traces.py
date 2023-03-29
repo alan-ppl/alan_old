@@ -31,7 +31,7 @@ class GetItem():
         result = in_data + in_sample
         assert result != 2
         return result == 1
-
+    
 class AbstractTrace(GetItem):
     def __init__(self, device):
         self.device = device
@@ -142,9 +142,9 @@ class AbstractTraceQ(AbstractTrace):
         if multi_sample==False:
             warn(
                 "WARNING: multi_sample=False will break alot of things, "
-                "including importance sampling, importance weighting, "
+                "including importance sampling, importance weighting, " 
                 "and RWS. Prefer grouped K's wherever possible. Though "
-                "it is necessary to do Bayesian reasoning about parameters "
+                "it is necessary to do Bayesian reasoning about parameters " 
                 "when we minibatch across latent variables"
             )
         if (multi_sample==False) and (group is not None):
@@ -376,7 +376,7 @@ class TraceP(AbstractTrace):
         if T is not None:
             if T in self.used_platenames:
                 raise Exception(
-                    "Timeseries must be the first thing sampled with the T-dimension; "
+                    "Timeseries must be the first thing sampled with the T-dimension; " 
                     "you can sample plates later with T, but not earlier.  This is to "
                     "ensure that importance sampling works. "
                 )
@@ -441,7 +441,7 @@ class TracePred(AbstractTrace):
         plates_bigger = any(platedims_train[platename].size < plate.size for (platename, plate) in self.platedims.items())
         if not plates_bigger:
             raise Exception(f"None of the data tensors or plate sizes provided for prediction is bigger than those at training time.  Remember that the data/plate sizes are the sizes of train + 'test'")
-
+            
     def corresponding_plates(self, x_all, x_train):
         """
         x_all and x_train are tensors with plates, but the all and training plates
@@ -479,6 +479,7 @@ class TracePred(AbstractTrace):
     def _sample_sample(self, varname, dist, plates):
         sample_dims = platenames2platedims(self.platedims, plates)
         sample_dims.append(self.N)
+
         sample = dist.sample(reparam=self.reparam, sample_dims=sample_dims)
         sample_train = self.train[varname]
 
@@ -487,7 +488,7 @@ class TracePred(AbstractTrace):
         sample_train = generic_order(sample_train, dims_train) #Still torchdim, as it has N!
 
         #idxs = [slice(0, l) for l in sample_train.shape[:len(dims_all)]]
-        idxs = [slice(0, dim.size) for dim in dims_train]
+        idxs = [slice(0, dim.size) for dim in dims_train] 
 
         #Actually do the replacement in-place
         #sample[idxs] = sample_train
@@ -516,7 +517,6 @@ class TracePred(AbstractTrace):
             sample_test = test_dist.sample(reparam=self.reparam, sample_dims=sample_dims)
             sample = t.cat([sample_train.order(T_train), sample_test.order(T_test)], 0)[T_all]
 
-
         self.samples[varname] = sample
 
     def _sample_logp(self, varname, dist, plates):
@@ -528,7 +528,7 @@ class TracePred(AbstractTrace):
         sample_ordered       = generic_order(sample,       dims_all)
         sample_train_ordered = generic_order(sample_train, dims_train)
 
-        idxs = [slice(0, dim.size) for dim in dims_train]
+        idxs = [slice(0, dim.size) for dim in dims_train] 
 
         ll_all                 = dist.log_prob(sample)
         self.ll_all[varname]   = ll_all
