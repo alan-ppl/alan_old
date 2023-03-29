@@ -150,9 +150,9 @@ def test_torchdim_einsum_reduce():
     XYZ = sum_dims(X*Y*Z, (d4,d5,d6))
     XYZd = XYZ / d4.size / d5.size / d6.size
     assert t.isclose(XYZ, torchdim_einsum((X,Y,Z), (d4,d5,d6))).all()
-    assert t.isclose(XYZd.log(), reduce_Ks((lX,lY,lZ), (d4,d5,d6))).all()
+    assert t.isclose(XYZd.log(), reduce_Ks((lX,lY,lZ), (d4,d5,d6), ())).all()
 
     XYZ = sum_dims(X*Y*Z, (d4,d5))
     XYZd = XYZ / d4.size / d5.size
     assert t.isclose(XYZ, torchdim_einsum((X,Y,Z), (d4,d5))).order(d6).all()
-    assert t.isclose(XYZd.log(), reduce_Ks((lX,lY,lZ), (d4,d5))).order(d6).all()
+    assert t.isclose(XYZd.log(), reduce_Ks((lX,lY,lZ), (d4,d5), ())).order(d6).all()

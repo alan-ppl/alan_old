@@ -1,11 +1,35 @@
-* memory efficient sum_logsumexp.
-  * if you add everything up at the start, you end up with a _huge_ tensor.
-  * keeping that tensor is bad, but may be okay if you throw it away.
-  * gradients from result to sum should be easy?
+Plate related errors
+  Plate size conflicts from params
+Reparam errors
+Timeseries errors
+  Don't give a string key.
+  Try to sample multiple timeseries (or similar).
+  Try to sample multiple timeseries (or similar).
+Sum discrete errors
+  Already sampled in Q
+Prediction errors
+  Data is no bigger.
+  A single data-dimension is smaller.
+Reparameterised sampling
+
+
+
+Happy-path tests:
+Sum discrete:
+  Analytic summation.
+  Analytic posteriors.
+Test plates:
+  Pick up plate-size from inputs
+  Pick up plate-size from data
+  Pick up plate-size from Q params
+Timeseries
+Sum discrete
+Prediction
+Inputs / data not tensors
+
 
 * non-deterministic for .sample_cat
 * ML with MvNormal (different sizes for different parameters).
-* Sum discrete
 * Prevent groups being shared across plates (all variables within the same group should have the same plates).
 * What happens when a K-group is shared across plates?
   * problem: the parents for sampling:

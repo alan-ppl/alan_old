@@ -10,19 +10,16 @@ from .dist import Categorical, Uniform
 from . import model
 
 class GetItem():
-    def __init__(self, data, inputs, samples, platedims):
+    def __init__(self, data, samples, platedims):
         self.data = data
-        self.inputs = inputs
         self.samples = samples
         self.platedims = platedims
 
     def __getitem__(self, key):
         if not key in self:
-            raise Exception(f"{key} not present in data, inputs or samples")
+            raise Exception(f"Called tr['{key}'], but {key} not present in data or samples")
         if key in self.data:
             return self.data[key]
-        elif key in self.inputs:
-            return self.inputs[key]
         elif key in self.samples:
             return self.samples[key]
         else:
@@ -30,10 +27,9 @@ class GetItem():
 
     def __contains__(self, key):
         in_data   = key in self.data
-        in_inputs = key in self.inputs
         in_sample = key in self.samples
-        result = in_data + in_inputs + in_sample
-        assert result in [0, 1]
+        result = in_data + in_sample
+        assert result != 2
         return result == 1
 
 class AbstractTrace(GetItem):
@@ -46,10 +42,13 @@ class AbstractTrace(GetItem):
 
         for plate in plates:
             if plate not in self.platedims:
-                raise Exception(f"Unknown plate {plate}.")
+                raise Exception(
+                    f"Trying to sample '{key}' with plate '{plate}', but"
+                    f"size of plate {plate} is unknown"
+                )
 
-        if key in self.inputs:
-            raise Exception("Trying to sample {key}, but {key} provided as an input")
+        if key in self.samples:
+            raise Exception("Trying to sample '{key}', but '{key}' has already been sampled")
 
         if (T is not None) and not isinstance(dist, Timeseries):
             raise Exception("T provided, but dist is not a Timeseries")
@@ -106,12 +105,11 @@ class AbstractTrace(GetItem):
 
 
 class AbstractTraceQ(AbstractTrace):
-    def __init__(self, K, data, inputs, platedims, reparam, device):
+    def __init__(self, K, data, platedims, reparam, device):
         super().__init__(device)
         self.K = K
 
         self.data = data
-        self.inputs = inputs
         self.platedims = platedims
 
         self.reparam = reparam
@@ -151,12 +149,6 @@ class AbstractTraceQ(AbstractTrace):
             )
         if (multi_sample==False) and (group is not None):
             raise Exception(f"Doesn't make sense to group the variable {key} when multi_sample=False")
-
-        if key in self:
-            raise Exception(
-                f"Trying to sample {key} from an approximate posterior, "
-                f"but we have already have a variable with this name."
-            )
 
         if (T is not None) and (group is not None):
             raise Exception("Timeseries cannot currently be grouped")
@@ -285,10 +277,9 @@ class TraceSample(AbstractTrace):
 
     If we want to draw multiple samples, we use samples.
     """
-    def __init__(self, N, inputs, platedims, device):
+    def __init__(self, N, platedims, device):
         super().__init__(device)
         self.Ns = () if (N is None) else (Dim('N', N),)
-        self.inputs = inputs
         self.platedims = platedims
 
         self.reparam = False
@@ -299,12 +290,6 @@ class TraceSample(AbstractTrace):
 
     def sample_(self, key, dist, plates=(), T=None, group=None, sum_discrete=False):
         del group, sum_discrete
-
-        if key in self:
-            raise Exception(
-                f"Trying to sample {key} from an approximate posterior, "
-                f"but we have already have a variable with this name."
-            )
 
         if T is not None:
             dist.set_trace_Tdim(self, self.platedims[T])
@@ -322,16 +307,17 @@ class TraceP(AbstractTrace):
         super().__init__(trq.device)
         self.platedims = trq.platedims
         self.data = trq.data
-        self.inputs = trq.inputs
-        self.samples = trq.samples
+        self.samples_q = trq.samples
         self.logq_group, self.logq_var = trq.finalize_logq()
         self.K_group = trq.K_group
         self.K_var = trq.K_var
         self.group = trq.group
         self.reparam = trq.reparam
 
+        self.samples = {}
         self.logp = {}
         self.Es = set()
+        self.sum_discrete_varnames = set()
 
         #set of timeseries dimensions (as strings)
         self.Tdim2Ks = {}
@@ -342,11 +328,11 @@ class TraceP(AbstractTrace):
         """
         Enumerates discrete variables.
         """
-        if dist.dist_name not in ["Bernoulli", "Categorical"]:
+        if dist.dist not in [t.distributions.Bernoulli, t.distributions.Categorical]:
             raise Exception(
                 f'Can only sum over discrete random variables with a '
-                f'Bernoulli or Categorical distribution.  Trying to '
-                f'sum over a "{dist.dist_name}" distribution.'
+                f'Bernoulli or Categorical distribution.  Trying to ' 
+                f'sum over a "{dist}" distribution.'
             )
 
         dim_plates    = set(dim for dim in dist.dims if (dim in self.platedims))
@@ -369,24 +355,20 @@ class TraceP(AbstractTrace):
         #Expand them to full size
         values = values.expand(*[plate.size for plate in plates])
         #And name them
-        values = values[plates]
+        values = generic_getitem(values, plates)
         return values, Edim
 
     def sample_(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
         if sum_discrete and (key in self):
             raise Exception(
                 f"Trying to sum over {key}, but variable already present in"
-                f"Either data, inputs, or samples"
+                f"either data or samples"
             )
 
-        if (key not in self.samples) and (key not in self.data):
+        if (key not in self.samples_q) and (key not in self.data) and (not sum_discrete):
             raise Exception(
-                f"{key} not in either data or samples"
-            )
-
-        if key in self.logp:
-            raise Exception(
-                f"{key} already sampled"
+                f"Trying to compute log-prob for '{key}' in the generative model (P), "
+                f"but '{key}' is not in data, and was not sampled in Q"
             )
 
         self.used_platenames = self.used_platenames.intersection(plates)
@@ -405,12 +387,17 @@ class TraceP(AbstractTrace):
             self.Tvar2Tdim[key] = Tdim
 
         if sum_discrete:
-            self.samples[key], Edim = self.sum_discrete(key, dist, plates)
+            sample, Edim = self.sum_discrete(key, dist, plates)
             self.Es.add(Edim)
             self.logp[key] = dist.log_prob(sample, Kdim=Edim)
+            self.samples[key] = sample
+            self.sum_discrete_varnames.add(key)
         else:
-            sample = self.samples[key] if (key in self.samples) else self.data[key]
+            if key in self.samples_q:
+                self.samples[key] = self.samples_q[key]
+            sample = self.samples_q[key] if (key in self.samples) else self.data[key]
             self.logp[key] = dist.log_prob(sample, Kdim=self.key2Kdim(key))
+
 
 
 class TracePred(AbstractTrace):
@@ -422,16 +409,15 @@ class TracePred(AbstractTrace):
       If we provide data, then we compute test_ll
       If we provide sizes, then we compute predictive samples
     """
-    def __init__(self, N, samples_train, data_train, data_all, inputs_train, inputs_all, platedims_train, platedims_all, device):
+    def __init__(self, N, samples_train, data_train, data_all, platedims_train, platedims_all, device):
         super().__init__(device)
         self.N = N
 
-        self.train = GetItem(data_train, inputs_train, samples_train, platedims_train)
+        self.train = GetItem(data_train, samples_train, platedims_train)
         self.platedims_train = platedims_train
 
         self.samples = {}
         self.data = data_all
-        self.inputs = inputs_all
         self.platedims = platedims_all
 
         self.samples  = {}
