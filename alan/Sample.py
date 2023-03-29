@@ -59,6 +59,7 @@ class Sample():
         self.logp = [*trp.logp.values()]
         self.logq = [*trp.logq_group.values(), *trp.logq_var.values()]
 
+
         lp_kwargs = {}
         if lp_device is not None:
             lp_kwargs['device'] = lp_device
@@ -68,6 +69,7 @@ class Sample():
             lp_kwargs['dtype']  = lp_dtype
         self.logp = [x.to(**lp_kwargs) for x in self.logp]
         self.logq = [x.to(**lp_kwargs) for x in self.logq]
+
 
         #Assumes that self.lps come in ordered
         self.set_platedims = set(trp.platedims.values())
@@ -120,7 +122,7 @@ class Sample():
 
         tensors = [*logp, *[-lq for lq in logq], *extra_log_factors]
 
-        ## Convert tensors to Float64
+        ## Convert tensors to Float64 <--- this needs moving somewhere...
         tensors = [x.to(dtype=t.float64) for x in tensors]
 
         #iterate from lowest plate
@@ -291,12 +293,13 @@ class Sample():
         #ordered in the order of generating under P
         var_names           = list(self.samples.keys())
         samples             = list(self.samples.values())
-        logps               = [self.varname2logp[var_name] for var_name in var_names]
+        logps               = [self.varname2logp[var_name].double() for var_name in var_names]
         dimss               = [lp.dims for lp in logps]
         undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps, dimss)]
 
         #Start with Js with no dimensions (like NN parameters)
         undim_Js = [t.zeros_like(ulp, requires_grad=True) for ulp in undim_logps]
+
         #Put torchdims back in.
         dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
         #Compute result with torchdim Js
@@ -369,6 +372,7 @@ def sample_cond(marg, K, K_post_idxs, N):
     cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
 
     #Check none of the conditional probabilites are big and negative
+
     assert cond.dtype == t.float64
     assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
     #Set any small and negative conditional probaiblities to zero.
@@ -378,6 +382,11 @@ def sample_cond(marg, K, K_post_idxs, N):
     cond = cond.order(K)
     cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
     #Sample new K's
+    test_cond = generic_order(cond, generic_dims(cond))
+    if (t.count_nonzero(test_cond,-1) == 0).any():
+        print(t.count_nonzero(test_cond,-1))
+        print('at least one zero')
+
     return Categorical(cond).sample(False, sample_dims=(N,))
 
 class SampleGlobal(Sample):

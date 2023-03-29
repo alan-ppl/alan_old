@@ -47,7 +47,7 @@ def reduce_dims(func):
     def inner(x, dims, ignore_extra_dims=False):
         assert_unique_dim_iter(dims)
 
-        set_x_dims = set(generic_dims(x)) 
+        set_x_dims = set(generic_dims(x))
         if ignore_extra_dims:
             dims = tuple(dim for dim in dims if dim in set_x_dims)
 
@@ -158,8 +158,8 @@ def singleton_order(x, dims):
     in `x`), and add singleton dimensions to the result for those
     dimensions.
     """
-    #This will be applied in dist.py to distribution arguments, 
-    #which may be non-tensors.  These non-tensors should broadcast 
+    #This will be applied in dist.py to distribution arguments,
+    #which may be non-tensors.  These non-tensors should broadcast
     #properly whatever happens, so we can return immediately.
     if not isinstance(x, Tensor):
         assert isinstance(x, Number)

@@ -5,7 +5,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 import numpy as np
-
+import torch as t
 np.random.seed(123456)
 
 import sys
@@ -17,9 +17,8 @@ import alan
 
 from models.epi_params import EpidemiologicalParameters
 from preprocessing.preprocess_mask_data import Preprocess_masks
-from models.mask_models import (
+from models.mask_models_weekly import (
     RandomWalkMobilityModel,
-    MandateMobilityModel,
     model_data
 )
 
@@ -56,7 +55,7 @@ GATHERINGS = 3  # args.gatherings if args.gatherings else 3
 
 # prep data object
 path = f"data/modelling_set/master_data_mob_{MOBI}_us_{US}_m_w.csv"
-
+print(path)
 masks_object = Preprocess_masks(path)
 masks_object.featurize(gatherings=GATHERINGS, masks=MASKS, smooth=SMOOTH, mobility=MOBI)
 masks_object.make_preprocessed_object()
@@ -65,11 +64,34 @@ data = masks_object.data
 all_observed_active, nRs, nDs, nCMs = model_data(masks_object.data)
 
 
-ActiveCMs = masks_object.data.ActiveCMs
+
+ActiveCMs = np.add.reduceat(masks_object.data.ActiveCMs, np.arange(0, nDs, 7), 2)
+
+print(ActiveCMs.shape)
+ActiveCMs = t.from_numpy(np.moveaxis(ActiveCMs,[0,2,1], [0,1,2]))
+print(ActiveCMs.shape)
 CMs = masks_object.data.CMs
+
+#Number of weeks
+nWs = int(np.ceil(nDs/7))
+
+
+print('nRs')
+print(nRs)
+
+print('nDs')
+print(nDs)
+
+print('nCMs')
+print(nCMs)
+
+print('nWs')
+print(nWs)
+
 # model specification
 ep = EpidemiologicalParameters()
 bd = ep.get_model_build_dict()
+
 
 
 def set_init_infections(data, d):
@@ -90,42 +112,40 @@ log_init_mean, log_init_sd = set_init_infections(data, bd)
 bd["wearing_parameterisation"] = W_PAR
 
 
-if MODEL == "cases":
-    del bd["deaths_delay_mean_mean"]
-    del bd["deaths_delay_mean_sd"]
-    del bd["deaths_delay_disp_mean"]
-    del bd["deaths_delay_disp_sd"]
-
-
-
-
-
-if MASKS == "wearing":
-    P = RandomWalkMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd)
-    Q = RandomWalkMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd, proposal=True)
-elif MASKS == "mandate":
-    P = MandateMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd)
-    Q = MandateMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd, proposal=True)
-
-
-MASS = "adapt_diag"  # Originally: 'jitter+adapt_diag'
 
 r_walk_period = 7
 nNP = int(nDs / r_walk_period) - 1
 
 
-plate_sizes = {'plate_CM_alpha':nCMs - 2, 'plate_nRs':nRs,
-               'Plate_obs':all_observed_active.shape[0],
-               'plate_nNP':nNP}
+plate_sizes = {'plate_nRs':nRs,
+               'nWs':nWs}
+
+#New weekly cases
+newcases_weekly = np.add.reduceat(data.NewCases, np.arange(0, nDs, 7), 1)
+newcases_weekly = t.from_numpy(newcases_weekly).rename('plate_nRs', 'nWs' )
+#NPI active CMs
+ActiveCMs_NPIs = ActiveCMs[:, :, :-2].rename('plate_nRs', 'nWs', None)
+
+ActiveCMs_wearing = ActiveCMs[:, :, -1].rename('plate_nRs', 'nWs' )
+ActiveCMs_mobility = ActiveCMs[:, :, -2].rename('plate_nRs', 'nWs')
+
+covariates = {'ActiveCMs_NPIs':ActiveCMs_NPIs, 'ActiveCMs_wearing':ActiveCMs_wearing, 'ActiveCMs_mobility':ActiveCMs_mobility}
+if MASKS == "wearing":
+    P = RandomWalkMobilityModel(nRs, nWs, nCMs, CMs,log_init_mean, log_init_sd)
+    Q = RandomWalkMobilityModel_Q(nRs, nWs, nCMs, CMs,log_init_mean, log_init_sd, proposal=True)
+elif MASKS == "mandate":
+    P = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd)
+    Q = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd, proposal=True)
+
+
+
 
 
 model = alan.Model(P)
-data = model.sample_prior(varnames='obs', platesizes=plate_sizes)
-
+data = model.sample_prior(varnames='obs', inputs=covariates, platesizes=plate_sizes)
 print(data)
-print(data['obs'].shape)
-print(all_observed_active.shape)
-cond_model = alan.Model(P, Q()).condition(data=data)
+print(newcases_weekly.shape)
+cond_model = alan.Model(P, Q).condition(data={'obs':newcases_weekly}, inputs=covariates)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
