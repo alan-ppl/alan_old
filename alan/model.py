@@ -76,6 +76,30 @@ class SampleMixin():
         Sample from the model where K samples are drawn from the whole latent space with no combinations
         """
         return self.sample_tensor(traces.TraceQGlobal, *args, **kwargs)
+    
+    def sample_MCMC(self, K, indexed_samples, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
+        r"""
+        Sample from the model where K-1 samples are drawn from the whole latent space based on the current (`indexed`) sample, given as `input`
+        """
+        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
+
+        #if 0==len(all_data):
+        #    raise Exception("No data provided either to the Model(...) or to e.g. model.elbo(...)")
+        #for dataname in self.data:
+        #    if dataname in data:
+        #        raise Exception(f"Data named '{dataname}' were provided to Model(...) and e.g. model.elbo(...).  You should provide data only once.  You should usually provide data to Model(...), unless you're minibatching, in which case it needs to be provided to e.g. model.elbo(...)")
+        #if 0 != len(self.data) and 0 != len(data):
+        #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
+
+        #sample from approximate posterior
+        trq = traces.TraceQMCMC(K, data, inputs, platedims, reparam, device, indexed_samples)
+        self.Q(trq, **inputs)
+        #compute logP
+        trp = traces.TraceP(trq)
+        self.P(trp, **inputs)
+
+        return Sample(trp)
+
 
     def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
         r"""
