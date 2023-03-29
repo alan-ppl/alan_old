@@ -129,7 +129,7 @@ class RandomWalkMobilityModel(nn.Module):
 
 
         # tr('CM_Alpha', alan.Normal(
-        #     t.zeros((self.nCMs -2,)), cm_prior_scale)
+        #     tr.zeros((self.nCMs -2,)), cm_prior_scale)
         # )
         tr('CM_Alpha', alan.Normal(
             tr.zeros((self.nCMs-2,)), cm_prior_scale))
@@ -154,7 +154,7 @@ class RandomWalkMobilityModel(nn.Module):
 
         tr("RegionR", alan.Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale))
         # # tr("RegionR_noise", alan.Normal(0, 0.1), plates='plate_nRs')
-        # # tr("RegionR_noise", alan.Normal(t.zeros((self.nRs,)), 1))
+        # # tr("RegionR_noise", alan.Normal(tr.zeros((self.nRs,)), 1))
         # RegionR = tr['HyperRMean'] + tr['RegionR_noise'] * tr['HyperRVar']
 
 
@@ -269,32 +269,32 @@ class RandomWalkMobilityModel_ML(alan.AlanModule):
 class RandomWalkMobilityModel_Q(alan.AlanModule):
     def __init__(self, nRs, nWs, nCMs):
         super().__init__()
-        self.CM_Alpha_mean = nn.Parameter(t.zeros((nCMs-2,)))
-        self.log_CM_Alpha_sigma = nn.Parameter(t.zeros((nCMs-2,)))
+        self.CM_Alpha_mean = nn.Parameter(tr.zeros((nCMs-2,)))
+        self.log_CM_Alpha_sigma = nn.Parameter(tr.zeros((nCMs-2,)))
 
-        self.Wearing_Alpha_mean = nn.Parameter(t.zeros(()))
-        self.log_Wearing_Alpha_sigma = nn.Parameter(t.zeros(()))
+        self.Wearing_Alpha_mean = nn.Parameter(tr.zeros(()))
+        self.log_Wearing_Alpha_sigma = nn.Parameter(tr.zeros(()))
 
-        self.Mobility_Alpha_mean = nn.Parameter(t.zeros(()))
-        self.log_Mobility_Alpha_sigma = nn.Parameter(t.zeros(()))
+        self.Mobility_Alpha_mean = nn.Parameter(tr.zeros(()))
+        self.log_Mobility_Alpha_sigma = nn.Parameter(tr.zeros(()))
 
-        self.RegionR_mean = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
-        self.log_RegionR_sigma = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
+        self.RegionR_mean = nn.Parameter(tr.zeros((nRs,),names=('plate_nRs',)))
+        self.log_RegionR_sigma = nn.Parameter(tr.zeros((nRs,),names=('plate_nRs',)))
 
-        self.GI_mean_mean = nn.Parameter(t.zeros(()))
-        self.log_GI_mean_sigma = nn.Parameter(t.zeros(()))
+        self.GI_mean_mean = nn.Parameter(tr.zeros(()))
+        self.log_GI_mean_sigma = nn.Parameter(tr.zeros(()))
 
-        self.GI_sd_mean = nn.Parameter(t.zeros(()))
-        self.log_GI_sd_sigma = nn.Parameter(t.zeros(()))
+        self.GI_sd_mean = nn.Parameter(tr.zeros(()))
+        self.log_GI_sd_sigma = nn.Parameter(tr.zeros(()))
 
-        self.InitialSize_log_mean = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
-        self.log_InitialSize_log_sigma = nn.Parameter(t.zeros((nRs,),names=('plate_nRs',)))
+        self.InitialSize_log_mean = nn.Parameter(tr.zeros((nRs,),names=('plate_nRs',)))
+        self.log_InitialSize_log_sigma = nn.Parameter(tr.zeros((nRs,),names=('plate_nRs',)))
 
-        self.Log_Infected_mean = nn.Parameter(t.zeros((nRs,nWs),names=('plate_nRs','nWs')))
-        self.log_Log_Infected_sigma = nn.Parameter(t.zeros((nRs,nWs),names=('plate_nRs','nWs')))
+        self.Log_Infected_mean = nn.Parameter(tr.zeros((nRs,nWs),names=('plate_nRs','nWs')))
+        self.log_Log_Infected_sigma = nn.Parameter(tr.zeros((nRs,nWs),names=('plate_nRs','nWs')))
 
-        self.psi_mean = nn.Parameter(t.zeros(()))
-        self.log_psi_sigma = nn.Parameter(t.zeros(()))
+        self.psi_mean = nn.Parameter(tr.zeros(()))
+        self.log_psi_sigma = nn.Parameter(tr.zeros(()))
 
     def forward(self, tr,
                 ActiveCMs_NPIs,
