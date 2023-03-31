@@ -153,7 +153,7 @@ class Sample():
 
         if plate_dim in self.trp.Tdim2Ks.keys():
             lower_lp = chain_logmmexp(lower_lp, plate_dim, Kprev, Kdim) #Kprev x Knext
-            lower_lp = reduce_Ks([lower_lp], [Kdim])
+            lower_lp = reduce_Ks([lower_lp], [Kdim], self.Es)
         elif plate_dim is not None:
             lower_lp = lower_lp.sum(plate_dim)
 

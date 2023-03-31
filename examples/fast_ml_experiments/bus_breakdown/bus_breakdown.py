@@ -17,10 +17,13 @@ def generate_model(N,M,device,ML=1):
         'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],-2)}
 
     data = {'obs':t.load('bus_breakdown/data/delay_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+    #data = {**data, **covariates}
     # data = {**covariates, **data}
     test_data = {'obs':t.load('bus_breakdown/data/delay_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+    #test_data = {**test_data, **test_covariates}
     # test_data = {**test_covariates, **test_data}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
+    #all_data = {**all_data, **all_covariates}
     # all_data = {**all_covariates, **all_data}
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]

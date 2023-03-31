@@ -1,9 +1,5 @@
 import os
 
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-
 import numpy as np
 import torch as t
 np.random.seed(123456)
@@ -19,6 +15,8 @@ from models.epi_params import EpidemiologicalParameters
 from preprocessing.preprocess_mask_data import Preprocess_masks
 from models.mask_models_weekly import (
     RandomWalkMobilityModel,
+    RandomWalkMobilityModel_ML,
+    RandomWalkMobilityModel_Q,
     model_data
 )
 
@@ -32,9 +30,7 @@ argparser.add_argument("--mob", dest="mob", type=str, help="How to include mobil
 
 # argparser.add_argument('--filter', dest='filtered', type=str, help='How to remove regions')
 # argparser.add_argument('--gatherings', dest='gatherings', type=int, help='how many gatherings features')
-argparser.add_argument("--tuning", dest="tuning", type=int, help="tuning samples")
-argparser.add_argument("--draws", dest="draws", type=int, help="draws")
-argparser.add_argument("--chains", dest="chains", type=int, help="chains")
+argparser.add_argument("--ML", dest="ml", action='store_true', help="Whether to run ML update")
 # argparser.add_argument('--hide_ends', dest='hide_ends', type=str)
 args, _ = argparser.parse_known_args()
 
@@ -42,9 +38,7 @@ MODEL = args.model
 MASKS = args.masks
 W_PAR = args.w_par if args.w_par else "exp"
 MOBI = args.mob
-TUNING = args.tuning if args.tuning else 1000
-DRAWS = args.draws if args.draws else 500
-CHAINS = args.chains if args.chains else 4
+ML = args.ml
 # FILTERED = args.filtered
 
 US = True
@@ -121,7 +115,7 @@ plate_sizes = {'plate_nRs':nRs,
                'nWs':nWs}
 
 #New weekly cases
-newcases_weekly = np.add.reduceat(data.NewCases, np.arange(0, nDs, 7), 1)
+newcases_weekly = np.nan_to_num(np.add.reduceat(data.NewCases, np.arange(0, nDs, 7), 1))
 newcases_weekly = t.from_numpy(newcases_weekly).rename('plate_nRs', 'nWs' )
 #NPI active CMs
 ActiveCMs_NPIs = ActiveCMs[:, :, :-2].rename('plate_nRs', 'nWs', None)
@@ -132,10 +126,11 @@ ActiveCMs_mobility = ActiveCMs[:, :, -2].rename('plate_nRs', 'nWs')
 covariates = {'ActiveCMs_NPIs':ActiveCMs_NPIs, 'ActiveCMs_wearing':ActiveCMs_wearing, 'ActiveCMs_mobility':ActiveCMs_mobility}
 if MASKS == "wearing":
     P = RandomWalkMobilityModel(nRs, nWs, nCMs, CMs,log_init_mean, log_init_sd)
-    Q = RandomWalkMobilityModel_Q(nRs, nWs, nCMs, CMs,log_init_mean, log_init_sd, proposal=True)
-elif MASKS == "mandate":
-    P = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd)
-    Q = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd, proposal=True)
+    Q_ML = RandomWalkMobilityModel_ML(nRs, nWs, nCMs)# CMs)#log_init_mean, log_init_sd)
+    Q_Adam = RandomWalkMobilityModel_Q(nRs, nWs, nCMs)# CMs)#log_init_mean, log_init_sd)
+# elif MASKS == "mandate":
+#     P = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd)
+#     Q = MandateMobilityModel(nRs, nWs, nCMs, CMs, log_init_mean, log_init_sd, proposal=True)
 
 
 
@@ -144,31 +139,46 @@ elif MASKS == "mandate":
 model = alan.Model(P)
 data = model.sample_prior(varnames='obs', inputs=covariates, platesizes=plate_sizes)
 print(data)
-print(newcases_weekly.shape)
-cond_model = alan.Model(P, Q).condition(data={'obs':newcases_weekly}, inputs=covariates)
+print(newcases_weekly)
 
-opt = t.optim.Adam(model.parameters(), lr=1E-3)
 
-K=10
+#opt = t.optim.Adam(model.parameters(), lr=1E-3)
+K=1
 print("K={}".format(K))
-for i in range(20000):
-  opt.zero_grad()
-  elbo = cond_model.sample_perm(K, True).elbo()
-  (-elbo).backward()
-  opt.step()
+if ML:
+    cond_model = alan.Model(P, Q_ML).condition(data={'obs':newcases_weekly.int()}, inputs=covariates)
+    lr = 0.1
+    for i in range(10000):
+        sample = cond_model.sample_perm(K, False)
+        elbo = sample.elbo().item()
+        model.update(lr, sample)
 
-  if 0 == i%1000:
-      print(elbo.item())
-
-
-dt = datetime.datetime.now().strftime("%m-%d-%H:%M")
-
-if MASKS == "wearing":
-    idstr = f"pickles/{MASKS}_{W_PAR}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
+        if i%1000 == 0:
+            lr = lr // 10
+        if 0 == i%100:
+            print(elbo)
 else:
-    idstr = f"pickles/{MASKS}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
+    cond_model = alan.Model(P, Q_Adam).condition(data={'obs':newcases_weekly.int()}, inputs=covariates)
+    opt = t.optim.Adam(cond_model.parameters(), lr=0.01)
+    for i in range(50000):
+        opt.zero_grad()
+        sample = cond_model.sample_perm(K, True)
+        elbo = sample.elbo()
+        print(elbo.item())
+        (-elbo).backward()
+        opt.step()
+        if 0 == i%100:
+            print(elbo.item())
 
-pickle.dump(model.trace, open(idstr + ".pkl", "wb"))
 
-with open(idstr + "_cols", "w") as f:
-    f.write(", ".join(data.CMs))
+# dt = datetime.datetime.now().strftime("%m-%d-%H:%M")
+#
+# if MASKS == "wearing":
+#     idstr = f"pickles/{MASKS}_{W_PAR}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
+# else:
+#     idstr = f"pickles/{MASKS}_{MODEL}_{len(data.Rs)}_{MOBI}_{dt}"
+#
+# pickle.dump(model.trace, open(idstr + ".pkl", "wb"))
+#
+# with open(idstr + "_cols", "w") as f:
+#     f.write(", ".join(data.CMs))

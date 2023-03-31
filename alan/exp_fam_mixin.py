@@ -178,8 +178,9 @@ class NormalMixin(AbstractMixin):
         return Ex, Ex2
     @staticmethod
     def mean2conv(Ex, Ex2):
-        loc   = Ex 
-        scale = (Ex2 - loc**2).sqrt() + 1e-8
+        loc   = Ex
+        scale = (((Ex2 - loc**2)**2).sqrt()).sqrt() + 1e-8
+        #scale = (Ex2 - loc**2).sqrt() + 1e-8
         return {'loc': loc, 'scale': scale}
 
     @staticmethod

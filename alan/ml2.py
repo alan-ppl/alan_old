@@ -53,8 +53,8 @@ class ML2(AlanModule):
 
     def extra_log_factor(self, sample):
         #Check the dimensions of sample are as expected.
-        if len(sample.dims) != len(self.platenames) + 1:
-            raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML2 proposals/approximate posteriors")
+        if len(generic_dims(sample)) != len(self.platenames) + 1:
+            raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {generic_dims(sample)}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML2 proposals/approximate posteriors")
         #The factor comes in through log Q, so must be negated!
         return sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
 

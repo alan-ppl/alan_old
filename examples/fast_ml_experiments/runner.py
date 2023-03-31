@@ -75,10 +75,11 @@ def run_experiment(cfg):
             opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr, betas=(0.5,0.5))
 
             for j in range(cfg.training.num_iters):
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
+                opt.zero_grad()
+                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=device)
                 elbo = sample.elbo()
                 per_seed_obj[i,j] = elbo.item()
-                (elbo).backward()
+                (-elbo).backward()
                 opt.step()
                 times[i,j] = (time.time() - start)/cfg.training.num_iters
                 # writer.add_scalar('Objective/Run number {}/{}'.format(i, K), elbo, j)
