@@ -72,7 +72,7 @@ def run_experiment(cfg):
             model = alan.Model(P, Q())#.condition(data=data)
             model.to(device)
             #model.double()
-            opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr, betas=(0.5,0.5))
+            opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr)
 
             for j in range(cfg.training.num_iters):
                 opt.zero_grad()
