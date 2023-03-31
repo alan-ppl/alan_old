@@ -12,7 +12,7 @@ Ks_tmc = ['10']#,'10','30']
 # Ms = ['50','150','300']
 Ns = ['5']
 Ms = ['300']
-lrs = ['0.1']# '0.01', '0.0001', '1e-05', '1e-06']
+lrs = ['0.15']# '0.01', '0.0001', '1e-05', '1e-06']
 # with open('results.json') as f:
 #     results = json.load(f)
 #
@@ -33,27 +33,27 @@ with plt.rc_context(bundles.icml2022()):
                 M = Ms[j]
     #            colour =
                 lr_ml = lrs[lr_ml]
-
-                with open('results/movielens/ML_1_{}__N{}_M{}.json'.format(lr_ml,N,M)) as f:
-                    results_ml_tmc_new = json.load(f)
-
-
+                for K in ['30', '100']:
+                    with open('results/movielens/ML_1_{}__N{}_M{}_K{}.json'.format(lr_ml,N,M,K)) as f:
+                        results_ml_tmc_new = json.load(f)
 
 
-                elbos_ml_tmc_new = [results_ml_tmc_new[N][M][k]['pred_likelihood'] for k in Ks_tmc]
-                stds_ml_tmc_new = [results_ml_tmc_new[N][M][k]['pred_likelihood_std']/np.sqrt(25) for k in Ks_tmc]
-                time_ml_tmc_new = [results_ml_tmc_new[N][M][k]['time'] for k in Ks_tmc][0]
-                ax.errorbar(time_ml_tmc_new,elbos_ml_tmc_new[0], linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='ML lr: {}'.format(lr_ml))
 
-                for lr in ['0.001', '0.0001', '1e-05', '1e-06', '1e-07']:
-                    with open('results/movielens/VI_1_{}__200iters_N{}_M{}.json'.format(lr,N,M)) as f:
+
+                    elbos_ml_tmc_new = results_ml_tmc_new[N][M][K]['pred_likelihood']
+                    stds_ml_tmc_new = results_ml_tmc_new[N][M][K]['pred_likelihood_std']
+                    time_ml_tmc_new = results_ml_tmc_new[N][M][K]['time']
+                    ax.errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='ML lr: {} K:{}'.format(lr_ml, K))
+
+                for lr in ['0.1']:
+                    with open('results/movielens/VI_1_{}__N{}_M{}_K30.json'.format(lr,N,M)) as f:
                         results_adam_tmc_new = json.load(f)
 
-                    elbos_adam_tmc_new = [results_adam_tmc_new[N][M][k]['pred_likelihood'] for k in Ks_tmc]
-                    stds_adam_tmc_new = [results_adam_tmc_new[N][M][k]['pred_likelihood_std']/np.sqrt(25) for k in Ks_tmc]
-                    time_adam_tmc_new = [results_adam_tmc_new[N][M][k]['time'] for k in Ks_tmc][0]
+                    elbos_adam_tmc_new = results_adam_tmc_new[N][M]['30']['pred_likelihood']
+                    stds_adam_tmc_new = results_adam_tmc_new[N][M]['30']['pred_likelihood_std']
+                    time_adam_tmc_new = results_adam_tmc_new[N][M]['30']['time']
 
-                    ax.errorbar(time_adam_tmc_new,elbos_adam_tmc_new[0], linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {}'.format(lr))
+                    ax.errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:30'.format(lr))
 
                 count =+ 1
     ax.set_title('ML vs MP VI')
@@ -78,21 +78,22 @@ with plt.rc_context(bundles.icml2022()):
     #            colour =
                 lr_ml = lrs[lr_ml]
 
-                with open('results/movielens/ML_1_{}__N{}_M{}.json'.format(lr_ml,N,M)) as f:
-                    results_ml_tmc_new = json.load(f)
+                for K in ['30', '100']:
+                    with open('results/movielens/ML_1_{}__N{}_M{}_K{}.json'.format(lr_ml,N,M,K)) as f:
+                        results_ml_tmc_new = json.load(f)
 
 
-                elbos_ml_tmc_new = [results_ml_tmc_new[N][M][k]['objs'] for k in Ks_tmc][0]
-                time_ml_tmc_new = [results_ml_tmc_new[N][M][k]['time'] for k in Ks_tmc][0]
-                ax.errorbar(np.arange(200),elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='ML lr: {}'.format(lr_ml))
+                    elbos_ml_tmc_new = results_ml_tmc_new[N][M][K]['objs']
+                    time_ml_tmc_new = results_ml_tmc_new[N][M][K]['time']
+                    ax.errorbar(np.arange(200),elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='ML lr: {} K:{}'.format(lr_ml, K))
 
-                for lr in ['0.001', '0.0001', '1e-05', '1e-06', '1e-07']:
-                    with open('results/movielens/VI_1_{}__200iters_N{}_M{}.json'.format(lr, N,M)) as f:
+                for lr in ['0.1']:
+                    with open('results/movielens/VI_1_{}__N{}_M{}_K30.json'.format(lr,N,M)) as f:
                         results_adam_tmc_new = json.load(f)
-                    elbos_adam_tmc_new = [results_adam_tmc_new[N][M][k]['objs'] for k in Ks_tmc][0]
-                    time_adam_tmc_new = [results_adam_tmc_new[N][M][k]['time']  for k in Ks_tmc][0]
+                    elbos_adam_tmc_new = results_adam_tmc_new[N][M]['30']['objs']
+                    time_adam_tmc_new = results_adam_tmc_new[N][M]['30']['time']
 
-                    ax.errorbar(np.arange(200),elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {}'.format(lr))
+                    ax.errorbar(np.arange(200),elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:30'.format(lr))
 
                 count =+ 1
 
@@ -117,22 +118,23 @@ with plt.rc_context(bundles.icml2022()):
     #            colour =
                 lr_ml = lrs[lr_ml]
 
-                with open('results/movielens/ML_1_{}__N{}_M{}.json'.format(lr_ml,N,M)) as f:
-                    results_ml_tmc_new = json.load(f)
+                for K in ['30', '100']:
+                    with open('results/movielens/ML_1_{}__N{}_M{}_K{}.json'.format(lr_ml,N,M,K)) as f:
+                        results_ml_tmc_new = json.load(f)
 
 
-                elbos_ml_tmc_new = [results_ml_tmc_new[N][M][k]['objs'] for k in Ks_tmc][0]
-                time_ml_tmc_new = [results_ml_tmc_new[N][M][k]['time'] for k in Ks_tmc][0]
+                    elbos_ml_tmc_new = results_ml_tmc_new[N][M][K]['objs']
+                    time_ml_tmc_new = results_ml_tmc_new[N][M][K]['time']
 
-                ax.errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', c='blue', label='ML lr: {}'.format(lr_ml))
+                    ax.errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='ML lr: {} K:{}'.format(lr_ml, K))
 
-                for lr in ['0.001', '0.0001', '1e-05', '1e-06', '1e-07']:
-                    with open('results/movielens/VI_1_{}__200iters_N{}_M{}.json'.format(lr, N,M)) as f:
+                for lr in ['0.1']:
+                    with open('results/movielens/VI_1_{}__N{}_M{}_K30.json'.format(lr,N,M)) as f:
                         results_adam_tmc_new = json.load(f)
-                    elbos_adam_tmc_new = [results_adam_tmc_new[N][M][k]['objs'] for k in Ks_tmc][0]
-                    time_adam_tmc_new = [results_adam_tmc_new[N][M][k]['time']  for k in Ks_tmc][0]
+                    elbos_adam_tmc_new = results_adam_tmc_new[N][M]['30']['objs']
+                    time_adam_tmc_new = results_adam_tmc_new[N][M]['30']['time']
 
-                    ax.errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {}'.format(lr))
+                    ax.errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:30'.format(lr))
 
                 count =+ 1
 
