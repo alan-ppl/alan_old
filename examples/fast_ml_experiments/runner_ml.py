@@ -71,20 +71,21 @@ def run_experiment(cfg):
             model = alan.Model(P, Q())#.condition(data=data)
             model.to(device)
 
-
+            lr = cfg.training.lr
             for j in range(cfg.training.num_iters):
-                sample = model.sample_same(K, data=data, inputs=covariates, reparam=False, device=device)
+                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
                 elbo = sample.elbo().item()
                 per_seed_obj[i,j] = (elbo)
-                model.update(cfg.training.lr, sample)
+                model.update(lr, sample)
 
                 times[i,j] = ((time.time() - start)/cfg.training.num_iters)
                 # writer.add_scalar('Objective/Run number {}/{}'.format(i, K), elbo, j)
-                if j % 10 == 0:
+                if j % 100 == 0:
+                    lr = lr // 2
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
 
                 if cfg.training.pred_ll.do_pred_ll:
-                    sample = model.sample_same(K, data=test_data, inputs=test_covariates, reparam=False, device=device)
+                    sample = model.sample_perm(K, data=test_data, inputs=test_covariates, reparam=False, device=device)
                     try:
                         pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
                         pred_liks[i,j] = pred_likelihood['obs'].item()
