@@ -112,7 +112,7 @@ def run_experiment(cfg):
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
         results_dict[N][M][K] = {'objs':np.nanmean(per_seed_obj, axis=0, keepdims=False).tolist(), 'obj_stds':np.nanstd(per_seed_obj, axis=0, keepdims=False).tolist(), 'pred_likelihood':np.nanmean(pred_liks, axis=0, keepdims=False).tolist(), 'pred_likelihood_std':np.nanstd(pred_liks, axis=0, keepdims=False).tolist(), 'avg_time':np.nanmean(times, axis=0, keepdims=False).tolist(), 'time':np.cumsum(np.nanmean(times, axis=0, keepdims=False), axis=-1).tolist()}
 
-    file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.ML) + '_{}_'.format(cfg.training.lr) + '_' + 'N{0}_M{1}.json'.format(N,M)
+    file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.ML) + '_{}_'.format(cfg.training.lr) + '_' + 'N{0}_M{1}_K{2}.json'.format(N,M,K)
     with open(file, 'w') as f:
         json.dump(results_dict, f)
 
