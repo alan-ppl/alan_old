@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 import alan
 
-def generate_model(N,M,device, ML=1):
+def generate_model(N,M,device, ML=1, run=0):
     sizes = {'plate_1':M, 'plate_2':N}
     d_z = 18
     def P(tr, x):
@@ -57,14 +57,14 @@ def generate_model(N,M,device, ML=1):
                 tr('z', self.z())
 
 
-    covariates = {'x':t.load('movielens/data/weights_{0}_{1}.pt'.format(N,M)).to(device)}
-    test_covariates = {'x':t.load('movielens/data/test_weights_{0}_{1}.pt'.format(N,M)).to(device)}
+    covariates = {'x':t.load('movielens/data/weights_{0}_{1}_{2}.pt'.format(N, M,run)).to(device)}
+    test_covariates = {'x':t.load('movielens/data/test_weights_{0}_{1}_{2}.pt'.format(N, M,run)).to(device)}
     all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']],-2).rename('plate_1','plate_2',...)}
     covariates['x'] = covariates['x'].rename('plate_1','plate_2',...)
     test_covariates['x'] = test_covariates['x'].rename('plate_1','plate_2',...)
 
-    data = {'obs':t.load('movielens/data/data_y_{0}_{1}.pt'.format(N, M)).to(device)}
-    test_data = {'obs':t.load('movielens/data/test_data_y_{0}_{1}.pt'.format(N, M)).to(device)}
+    data = {'obs':t.load('movielens/data/data_y_{0}_{1}_{2}.pt'.format(N, M,run)).to(device)}
+    test_data = {'obs':t.load('movielens/data/test_data_y_{0}_{1}_{2}.pt'.format(N, M,run)).to(device)}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
     data['obs'] = data['obs'].rename('plate_1','plate_2')
     test_data['obs'] = test_data['obs'].rename('plate_1','plate_2')

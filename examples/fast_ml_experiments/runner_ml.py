@@ -54,7 +54,6 @@ def run_experiment(cfg):
     # foo.MyClass()
     # experiment = importlib.import_module(cfg.model.model, 'Deeper_Hier_Regression')
 
-    P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML)
     for K in Ks:
         print(K,M,N)
         results_dict[N] = results_dict.get(N, {})
@@ -64,6 +63,8 @@ def run_experiment(cfg):
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters))
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters))
         for i in range(cfg.training.num_runs):
+            P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML, i)
+
             per_seed_elbos = []
             start = time.time()
             seed_torch(i)

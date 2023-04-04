@@ -6,7 +6,7 @@
     N: 2
     M: 2
     Ks: [10]
-    num_runs: 5
+    num_runs: 10
     pred_ll:
       do_pred_ll: False
       num_pred_ll_samples: 1000
