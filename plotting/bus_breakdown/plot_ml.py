@@ -57,9 +57,9 @@ with plt.rc_context(bundles.icml2022()):
                     except:
                         None
                 for K in ['1', '3', '10', '30', '100']:
-                    for lr in ['0.1', '0.01']:
+                     for lr in ['0.1', '0.01']:
                         try:
-                            with open('results/bus_breakdown/VI_1_{}__N{}_M{}_K{}.json'.format(lr,N,M,K)) as f:
+                            with open('results/bus_breakdown/VI_3000_{}_N{}_M{}_K{}.json'.format(lr,N,M,K)) as f:
                                 results_adam_tmc_new = json.load(f)
 
                             elbos_adam_tmc_new = results_adam_tmc_new[N][M][K]['pred_likelihood']
@@ -110,14 +110,14 @@ with plt.rc_context(bundles.icml2022()):
                 for K in ['1', '3', '10', '30', '100']:
                     for lr in ['0.1', '0.01']:
                         try:
-                            with open('results/bus_breakdown/VI_1_{}__N{}_M{}_K{}.json'.format(lr,N,M,K)) as f:
+                            with open('results/bus_breakdown/VI_3000_{}_N{}_M{}_K{}.json'.format(lr,N,M,K)) as f:
                                 results_adam_tmc_new = json.load(f)
 
                             elbos_adam_tmc_new = results_adam_tmc_new[N][M][K]['objs']
                             elbos_adam_tmc_new = n_mean(elbos_adam_tmc_new)
                             time_adam_tmc_new = results_adam_tmc_new[N][M][K]['time']
 
-                            ax.errorbar(np.arange(5000, step=mean_no),elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:{}'.format(lr,K))
+                            ax.errorbar(np.arange(3000, step=mean_no),elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:{}'.format(lr,K))
                         except:
                             None
                 count =+ 1
@@ -160,7 +160,7 @@ with plt.rc_context(bundles.icml2022()):
                 for K in ['1', '3', '10', '30', '100']:
                     for lr in ['0.1', '0.01']:
                         try:
-                            with open('results/bus_breakdown/VI_1_{}__N{}_M{}_K{}.json'.format(lr,N,M,K)) as f:
+                            with open('results/bus_breakdown/VI_3000_{}_N{}_M{}_K{}.json'.format(lr,N,M,K)) as f:
                                 results_adam_tmc_new = json.load(f)
 
                             elbos_adam_tmc_new = results_adam_tmc_new[N][M][K]['objs']
