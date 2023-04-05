@@ -56,7 +56,7 @@ GATHERINGS = 3  # args.gatherings if args.gatherings else 3
 
 # prep data object
 path = f"data/modelling_set/master_data_mob_{MOBI}_us_{US}_m_w.csv"
-print(path)
+
 masks_object = Preprocess_masks(path)
 masks_object.featurize(gatherings=GATHERINGS, masks=MASKS, smooth=SMOOTH, mobility=MOBI)
 masks_object.make_preprocessed_object()
@@ -64,7 +64,7 @@ data = masks_object.data
 
 all_observed_active, nRs, nDs, nCMs = model_data(masks_object.data)
 
-print(all_observed_active)
+
 ActiveCMs = masks_object.data.ActiveCMs
 CMs = masks_object.data.CMs
 # model specification
@@ -77,16 +77,15 @@ def set_init_infections(data, d):
     first_day_new = data.NewCases[:, n_masked_days]
     first_day_new = first_day_new[first_day_new.mask == False]
     median_init_size = np.median(first_day_new)
-    print(median_init_size)
+
 
     if median_init_size == 0:
         median_init_size = 50
 
-    d["log_init_mean"] = np.log(median_init_size)
-    d["log_init_sd"] = np.log(median_init_size)
+    return np.log(median_init_size), np.log(median_init_size)
 
 
-set_init_infections(data, bd)
+log_init_mean, log_init_sd = set_init_infections(data, bd)
 
 bd["wearing_parameterisation"] = W_PAR
 
@@ -98,15 +97,15 @@ if MODEL == "cases":
     del bd["deaths_delay_disp_sd"]
 
 
-print(bd)
+
 
 
 if MASKS == "wearing":
-    P = RandomWalkMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs)
-    Q = RandomWalkMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs, proposal=True)
+    P = RandomWalkMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd)
+    Q = RandomWalkMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd, proposal=True)
 elif MASKS == "mandate":
-    P = MandateMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs)
-    Q = MandateMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs, proposal=True)
+    P = MandateMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd)
+    Q = MandateMobilityModel(all_observed_active, nRs, nDs, nCMs, ActiveCMs, CMs,log_init_mean, log_init_sd, proposal=True)
 
 
 MASS = "adapt_diag"  # Originally: 'jitter+adapt_diag'
@@ -114,10 +113,7 @@ MASS = "adapt_diag"  # Originally: 'jitter+adapt_diag'
 r_walk_period = 7
 nNP = int(nDs / r_walk_period) - 1
 
-print('nDs')
-print(nDs)
-print('nNP')
-print(nNP)
+
 plate_sizes = {'plate_CM_alpha':nCMs - 2, 'plate_nRs':nRs,
                'Plate_obs':all_observed_active.shape[0],
                'plate_nNP':nNP}
@@ -126,6 +122,9 @@ plate_sizes = {'plate_CM_alpha':nCMs - 2, 'plate_nRs':nRs,
 model = alan.Model(P)
 data = model.sample_prior(varnames='obs', platesizes=plate_sizes)
 
+print(data)
+print(data['obs'].shape)
+print(all_observed_active.shape)
 cond_model = alan.Model(P, Q()).condition(data=data)
 
 opt = t.optim.Adam(model.parameters(), lr=1E-3)
