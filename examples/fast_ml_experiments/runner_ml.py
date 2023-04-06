@@ -65,9 +65,10 @@ def run_experiment(cfg):
                 sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
                 elbo = sample.elbo().item()
                 per_seed_obj[i,j] = (elbo)
-                model.update(cfg.training.lr, sample)
+                model.update(lr, sample)
 
                 times[i,j] = ((time.time() - start)/cfg.training.num_iters)
+
                 if j % 100 == 0:
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
 

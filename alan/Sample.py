@@ -13,25 +13,37 @@ class Sample():
       Check that data appears in logps but not logqs
       Check that all dims are something (plate, timeseries, K)
     """
-    def __init__(self, trp):
+    def __init__(self, trp, lp_dtype, lp_device):
         self.trp = trp
 
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
             assert lp.shape == ()
 
-        Q_keys = [*trp.group, *trp.logq_var]
-        assert set(Q_keys) == set(trp.samples.keys())
+        Q_non_sum_varnames = [*trp.group, *trp.logq_var]
+        Q_sum_varnames = [*Q_non_sum_varnames, *trp.sum_discrete_varnames]
+
+        variables_in_Q_but_not_P = tuple(set(Q_sum_varnames).difference(trp.samples.keys()))
+        if 0 != len(variables_in_Q_but_not_P):
+            raise Exception(
+                f"Variables {variables_in_Q_but_not_P} sampled in Q but not present in P"
+            )
+        data_with_no_logp = set(trp.data.keys()).difference(trp.logp.keys())
+        if 0 != len(data_with_no_logp):
+            raise Exception(
+                f"Data {data_with_no_logp} provided, but not specified in P"
+            )
+        assert set(Q_sum_varnames) == set(trp.samples.keys())
 
         for (rv, lp) in trp.logp.items():
-            assert (rv in Q_keys) or (rv in trp.data)
+            assert (rv in Q_sum_varnames) or (rv in trp.data)
 
 
         #All keys in Q
-        for key in Q_keys:
+        for key in Q_non_sum_varnames:
 
             #check that any rv in logqs is also in logps
             if key not in trp.logp:
-                raise Exception(f"The latent variable '{rv}' is sampled in Q but not P.")
+                raise Exception(f"The latent variable '{key}' is sampled in Q but not P.")
 
             lp = trp.logp[key]
             lq = trp.logq_var[key] if (key in trp.logq_var) else trp.logq_group[trp.group[key]]
@@ -48,14 +60,26 @@ class Sample():
         self.logq = [*trp.logq_group.values(), *trp.logq_var.values()]
 
 
-        ### TEMPORARY
-        # self.logp = [lp.double() for lp in self.logp]
-        # self.logq = [lp.double() for lp in self.logq]
+        lp_kwargs = {}
+        if lp_device is not None:
+            lp_kwargs['device'] = lp_device
+        self.trp.samples = {k: x.to(**lp_kwargs) for (k, x) in self.trp.samples.items()}
+
+        if lp_dtype is not None:
+            lp_kwargs['dtype']  = lp_dtype
+        self.logp = [x.to(**lp_kwargs) for x in self.logp]
+        self.logq = [x.to(**lp_kwargs) for x in self.logq]
+
 
         #Assumes that self.lps come in ordered
         self.set_platedims = set(trp.platedims.values())
         self.ordered_plate_dims = [dim for dim in unify_dims(self.logp) if self.is_platedim(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
+
+        #Returns Ks + Es (for discrete variables we're summing out), as we need to sum over both!
+        self.Ks = set([*self.trp.Ks, *self.trp.Es])
+        #Just Es (need to distinguish, because we normalize when summing over Ks, but we don't when summing over Es)
+        self.Es = set(self.trp.Es)
 
     @property
     def samples(self):
@@ -68,10 +92,6 @@ class Sample():
     @property
     def reparam(self):
         return self.trp.reparam
-
-    @property
-    def Ks(self):
-        return self.trp.Ks
 
     @property
     def device(self):
@@ -133,7 +153,7 @@ class Sample():
 
         if plate_dim in self.trp.Tdim2Ks.keys():
             lower_lp = chain_logmmexp(lower_lp, plate_dim, Kprev, Kdim) #Kprev x Knext
-            lower_lp = reduce_Ks([lower_lp], [Kdim])
+            lower_lp = reduce_Ks([lower_lp], [Kdim], self.Es)
         elif plate_dim is not None:
             lower_lp = lower_lp.sum(plate_dim)
 
@@ -155,7 +175,7 @@ class Sample():
         all_dims = unify_dims(tensors)
         Ks_to_keep = set(Ks_to_keep)
         Ks_to_sum    = [dim for dim in all_dims if self.is_K(dim) and (dim not in Ks_to_keep)]
-        return reduce_Ks(tensors, Ks_to_sum)
+        return reduce_Ks(tensors, Ks_to_sum, self.Es)
 
 
     def elbo(self):

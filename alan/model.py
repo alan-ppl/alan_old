@@ -77,7 +77,7 @@ class SampleMixin():
         """
         return self.sample_tensor(traces.TraceQGlobal, *args, **kwargs)
 
-    def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
+    def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu'), lp_dtype=t.float64, lp_device=None):
         r"""
         Internal method that actually runs *P* and *Q*.
 
@@ -108,13 +108,13 @@ class SampleMixin():
         #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = trace_type(K, data, inputs, platedims, reparam, device)
+        trq = trace_type(K, data, platedims, reparam, device)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TraceP(trq)
         self.P(trp, **inputs)
 
-        return Sample(trp)
+        return Sample(trp, lp_dtype=lp_dtype, lp_device=lp_device)
 
     def sample_prior(self, N=None, reparam=True, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
         """Draw samples from a generative model (with no data).
@@ -135,7 +135,7 @@ class SampleMixin():
         platedims, data, inputs = self.dims_data_inputs({}, inputs, platesizes, device)
 
         with t.no_grad():
-            tr = traces.TraceSample(N, inputs, platedims, device)
+            tr = traces.TraceSample(N, platedims, device)
             self.P(tr, **inputs)
 
         if isinstance(varnames, str):
@@ -157,7 +157,6 @@ class SampleMixin():
         tr = traces.TracePred(
             N, post_samples,
             sample.trp.data, data_all,
-            sample.trp.inputs, inputs_all,
             sample.trp.platedims, platedims_all,
             device=sample.device
         )

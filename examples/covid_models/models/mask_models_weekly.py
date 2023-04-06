@@ -218,7 +218,8 @@ class RandomWalkMobilityModel(nn.Module):
         tr('Log_Infected', alan.Timeseries("InitialSize_log", transition, t.exp(ExpectedLogR)), T="nWs")
         Infected = t.exp(tr['Log_Infected'])
 
-        tr('psi', alan.Normal(0,np.log(45)))
+
+        tr('psi', alan.Normal(np.log(45), np.log(45)))
         # effectively handle missing values ourselves
         # likelihood
         r = t.exp(tr['psi'])

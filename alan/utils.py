@@ -1,5 +1,6 @@
 import math
 import torch as t
+from torch.utils.checkpoint import checkpoint
 import functorch
 from functorch.dim import Dim
 
@@ -206,7 +207,7 @@ def named2dim_tensor(d, x):
     assert isinstance(x, t.Tensor)
 
     for name in x.names:
-        if name not in d and name is not None:
+        if (name is not None) and (name not in d):
             raise Exception(f"No torchdim dimension for named dimension {name} in named2dim_tensor")
 
     torchdims = [(slice(None) if (name is None) else d[name]) for name in x.names]
@@ -237,8 +238,10 @@ def extend_plates_with_sizes(plates, size_dict):
         if (name not in plates):
             new_dict[name] = Dim(name, size)
         elif size != plates[name].size:
-            raise Exception(f"""Mismatch in sizes for plate '{name}',
-             data has size '{size}' but model indicates size '{plates[name].size}'""")
+            raise Exception(
+                f"Mismatch in sizes for plate '{name}', "
+                f"tensor has size {size} but we already have the plate-size as {plates[name].size}"
+            )
     return {**plates, **new_dict}
 
 def extend_plates_with_named_tensor(plates, tensor):
@@ -353,71 +356,84 @@ def torchdim_einsum(tensors, sum_dims):
 
     return result
 
-#### Does the normalization separately for each reduction.
-#### Normalizes the arguments
-#### More efficient (e.g. can use matmul), but potentially numerically unstable.
+
+#### Does the normalization separately for each reduction step.
+#### Normalizes each input tensor individually.
+#### Less efficient (can use matmul, less exp'ing).
+#### Less numerically stable (result can be zero).
 # import opt_einsum
-# def reduce_Ks(tensors, Ks_to_sum):
-#    """
-#    Fundamental method that sums over Ks
-#    opt_einsum gives an "optimization path", i.e. the indicies of tensors to reduce.
-#    We use this path to do our reductions, handing everything off to a simple t.einsum
-#    call (which ensures a reasonably efficient implementation for each reduction).
-#    """
-#    assert_unique_dim_iter(Ks_to_sum)
+# def reduce_Ks(tensors, Ks_to_sum, Es):
+#     """
+#     Fundamental method that sums over Ks
+#     opt_einsum gives an "optimization path", i.e. the indicies of tensors to reduce.
+#     We use this path to do our reductions, handing everything off to a simple t.einsum
+#     call (which ensures a reasonably efficient implementation for each reduction).
+#     """
+#     assert_unique_dim_iter(Ks_to_sum)
 #
-#    args, out_dims = einsum_args(tensors, Ks_to_sum)
-#    path = opt_einsum.contract_path(*args)[0]
+#     args, out_dims = einsum_args(tensors, Ks_to_sum)
+#     path = opt_einsum.contract_path(*args)[0]
 #
-#    for tensor_idxs in path:
-#        tensors_to_reduce = tuple(tensors[i] for i in tensor_idxs)
-#        tensors = [tensors[i] for i in range(len(tensors)) if i not in tensor_idxs]
+#     for tensor_idxs in path:
+#         tensors_to_reduce = tuple(tensors[i] for i in tensor_idxs)
+#         tensors = [tensors[i] for i in range(len(tensors)) if i not in tensor_idxs]
 #
-#        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(tensors)))
-#        maxes = [max_dims(x, _Ks_to_sum, ignore_extra_dims=True) for x in tensors_to_reduce]
-#        tensors_minus_max = [(tensor - m).exp() for (tensor, m) in zip(tensors_to_reduce, maxes)]
-#        result = torchdim_einsum(tensors_minus_max, _Ks_to_sum).log()
-#        result = sum([result, *maxes])
-#        tensors.append(result)
-#    assert 1==len(tensors)
-#    result = tensors[0]
+#         _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(tensors)))
+#         maxes = [max_dims(x, _Ks_to_sum, ignore_extra_dims=True) for x in tensors_to_reduce]
+#         tensors_minus_max = [(tensor - m).exp() for (tensor, m) in zip(tensors_to_reduce, maxes)]
+#         result = torchdim_einsum(tensors_minus_max, _Ks_to_sum).log()
+#         result = sum([result, *maxes])
+#         tensors.append(result)
+#     assert 1==len(tensors)
+#     result = tensors[0]
 #
-#    if 0<len(Ks_to_sum):
-#        result = result - sum(math.log(K.size) for K in Ks_to_sum)
-#    return result
+#     Ks_to_sum_not_Es = set(Ks_to_sum).difference(Es)
+#     if 0<len(Ks_to_sum):
+#         result = result - sum(math.log(K.size) for K in Ks_to_sum_not_Es)
+#     return result
 
-#### Does the normalization separately for each reduction.
-#### Normalizes the result
-#### Less efficient (e.g. can't use matmul), but definitely more numerically stable.
+#### Does the normalization separately for each reduction step.
+#### Normalizes the single tensor resulting from summing the input tensors.
+#### Less efficient (can't use matmul, more exp'ing)
+#### More numerically stable (but how much does that matter given that )
 import opt_einsum
-def reduce_Ks(tensors, Ks_to_sum):
-    """
-    Fundamental method that sums over Ks
-    opt_einsum gives an "optimization path", i.e. the indicies of tensors to reduce.
-    We use this path to do our reductions, handing everything off to a simple t.einsum
-    call (which ensures a reasonably efficient implementation for each reduction).
-    """
-    assert_unique_dim_iter(Ks_to_sum)
+def reduce_Ks(tensors, Ks_to_sum, Es):
+   """
+   Fundamental method that sums over Ks
+   opt_einsum gives an "optimization path", i.e. the indicies of tensors to reduce.
+   We use this path to do our reductions, handing everything off to a simple t.einsum
+   call (which ensures a reasonably efficient implementation for each reduction).
+   """
+   assert_unique_dim_iter(Ks_to_sum)
 
-    args, out_dims = einsum_args(tensors, Ks_to_sum)
-    path = opt_einsum.contract_path(*args)[0]
+   args, out_dims = einsum_args(tensors, Ks_to_sum)
+   path = opt_einsum.contract_path(*args)[0]
 
-    for tensor_idxs in path:
-        tensors_to_reduce = tuple(tensors[i] for i in tensor_idxs)
-        tensors = [tensors[i] for i in range(len(tensors)) if i not in tensor_idxs]
+   for tensor_idxs in path:
+       tensors_to_reduce = tuple(tensors[i] for i in tensor_idxs)
+       tensors = [tensors[i] for i in range(len(tensors)) if i not in tensor_idxs]
 
-        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(tensors)))
-        tensors.append(logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True))
+       _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(tensors)))
+       #tensors.append(logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True))
 
-    assert 1==len(tensors)
-    result = tensors[0]
+       #Instantiates but doesn't save tensor with _Ks_to_sum dims
+       tensors.append(checkpoint(logsumexp_sum, _Ks_to_sum, *tensors_to_reduce, use_reentrant=False))
+       #tensors.append(logsumexp_sum(_Ks_to_sum, *tensors_to_reduce))
 
-    if 0<len(Ks_to_sum):
-        result = result - sum(math.log(K.size) for K in Ks_to_sum)
-    return result
+   assert 1==len(tensors)
+   result = tensors[0]
+
+   Ks_to_sum_not_Es = set(Ks_to_sum).difference(Es)
+   if 0<len(Ks_to_sum):
+       result = result - sum(math.log(K.size) for K in Ks_to_sum_not_Es)
+   return result
+
+def logsumexp_sum(_Ks_to_sum, *tensors_to_reduce):
+   #Needs a strange argument order, because checkpoint doesn't work with lists of tensors.
+   return logsumexp_dims(sum(tensors_to_reduce), _Ks_to_sum, ignore_extra_dims=True)
 
 ##### Does the normalization for the whole plate.
-#def reduce_Ks(tensors, Ks_to_sum):
+#def reduce_Ks(tensors, Ks_to_sum, Es):
 #    """
 #    Fundamental method that sums over Ks
 #    Does the normalization over the whole plate, which can
@@ -429,6 +445,7 @@ def reduce_Ks(tensors, Ks_to_sum):
 #    tensors_minus_max = [(tensor - m).exp() + 1e-15 for (tensor, m) in zip(tensors, maxes)]
 #    result = torchdim_einsum(tensors_minus_max, Ks_to_sum).log()
 #
+#    Ks_to_sum_not_Es = set(Ks_to_sum).difference(Es)
 #    if 0<len(Ks_to_sum):
-#        result = result - sum(math.log(K.size) for K in Ks_to_sum)
+#        result = result - sum(math.log(K.size) for K in Ks_to_sum_not_Es)
 #    return sum([result, *maxes])

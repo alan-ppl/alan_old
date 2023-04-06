@@ -1,11 +1,35 @@
-Better reductions:
-  * use oe to give a path.
-  * the path is just indicies of tensors to reduce from a list (https://optimized-einsum.readthedocs.io/en/stable/path_finding.html)
-  * but we can do this reduction with torchdim tensors!
+Plate related errors
+  Plate size conflicts from params
+Reparam errors
+Timeseries errors
+  Don't give a string key.
+  Try to sample multiple timeseries (or similar).
+  Try to sample multiple timeseries (or similar).
+Sum discrete errors
+  Already sampled in Q
+Prediction errors
+  Data is no bigger.
+  A single data-dimension is smaller.
+Reparameterised sampling
+
+
+
+Happy-path tests:
+Sum discrete:
+  Analytic summation.
+  Analytic posteriors.
+Test plates:
+  Pick up plate-size from inputs
+  Pick up plate-size from data
+  Pick up plate-size from Q params
+Timeseries
+Sum discrete
+Prediction
+Inputs / data not tensors
+
 
 * non-deterministic for .sample_cat
 * ML with MvNormal (different sizes for different parameters).
-* Sum discrete
 * Prevent groups being shared across plates (all variables within the same group should have the same plates).
 * What happens when a K-group is shared across plates?
   * problem: the parents for sampling:

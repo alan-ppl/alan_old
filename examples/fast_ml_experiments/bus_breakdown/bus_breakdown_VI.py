@@ -16,11 +16,14 @@ def generate_model(N,M,device,ML=1, run=0):
     all_covariates = {'run_type': t.cat([covariates['run_type'],test_covariates['run_type']],-2),
         'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],-2)}
 
+
     data = {'obs':t.load('bus_breakdown/data/delay_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
     # data = {**covariates, **data}
     test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+
     # test_data = {**test_covariates, **test_data}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
+    #all_data = {**all_data, **all_covariates}
     # all_data = {**all_covariates, **all_data}
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
@@ -44,7 +47,9 @@ def generate_model(N,M,device,ML=1, run=0):
       tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_ID')
       tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
-      tr('obs', alan.NegativeBinomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))
+
+      tr('obs', alan.NegativeBinomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+
 
 
 

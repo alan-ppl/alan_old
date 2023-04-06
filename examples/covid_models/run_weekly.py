@@ -30,7 +30,9 @@ argparser.add_argument("--mob", dest="mob", type=str, help="How to include mobil
 
 # argparser.add_argument('--filter', dest='filtered', type=str, help='How to remove regions')
 # argparser.add_argument('--gatherings', dest='gatherings', type=int, help='how many gatherings features')
-argparser.add_argument("--ML", dest="ml", type=bool, help="Whether to run ML update")
+
+argparser.add_argument("--ML", dest="ml", action='store_true', help="Whether to run ML update")
+
 # argparser.add_argument('--hide_ends', dest='hide_ends', type=str)
 args, _ = argparser.parse_known_args()
 
@@ -38,7 +40,7 @@ MODEL = args.model
 MASKS = args.masks
 W_PAR = args.w_par if args.w_par else "exp"
 MOBI = args.mob
-ML = args.ml
+ml = args.ml
 # FILTERED = args.filtered
 
 US = True
@@ -140,7 +142,9 @@ model = alan.Model(P)
 data = model.sample_prior(varnames='obs', inputs=covariates, platesizes=plate_sizes)
 print(data)
 print(newcases_weekly)
+
 cond_model = alan.Model(P, Q).condition(data={'obs':newcases_weekly.int()}, inputs=covariates)
+
 
 #opt = t.optim.Adam(model.parameters(), lr=1E-3)
 K=1
@@ -149,17 +153,20 @@ if ml:
 
     lr = 0.1
     for i in range(50000):
+
         sample = cond_model.sample_perm(K, False)
         elbo = sample.elbo().item()
         model.update(lr, sample)
 
-        if i%10000 == 0:
+
+        if i%1000 == 0:
             lr = lr // 10
         if 0 == i%100:
             print(elbo)
 else:
     opt = t.optim.Adam(cond_model.parameters(), lr=0.01)
     lr = 0.1
+
     for i in range(50000):
         opt.zero_grad()
         sample = cond_model.sample_perm(K, True)
@@ -168,6 +175,7 @@ else:
         opt.step()
         if 0 == i%100:
             print(elbo)
+
 
 
 # dt = datetime.datetime.now().strftime("%m-%d-%H:%M")

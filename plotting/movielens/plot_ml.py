@@ -6,13 +6,16 @@ from tueplots import cycler
 from tueplots.constants import markers
 from tueplots.constants.color import palettes
 
+
 Ks_global = ['3','10','30','100','300', '1000', '3000', "10000", "30000"]
 Ks_tmc = ['10']#,'10','30']
 # Ns = ['5','10']
 # Ms = ['50','150','300']
 Ns = ['5']
 Ms = ['300']
+
 lrs = ['0.15']# '0.01', '0.0001', '1e-05', '1e-06']
+
 # with open('results.json') as f:
 #     results = json.load(f)
 #
@@ -26,6 +29,8 @@ with plt.rc_context(bundles.icml2022()):
 
     count = 0
     fig, ax = plt.subplots(1,1, figsize=(5.5/2, 2.0))
+
+
     for i in range(len(Ns)):
         for j in range(len(Ms)):
             for lr_ml in range(len(lrs)):
@@ -33,9 +38,11 @@ with plt.rc_context(bundles.icml2022()):
                 M = Ms[j]
     #            colour =
                 lr_ml = lrs[lr_ml]
+
                 for K in ['10', '30', '100']:
                     with open('results/movielens/ML_1_{}__N{}_M{}_K{}.json'.format(lr_ml,N,M,K)) as f:
                         results_ml_tmc_new = json.load(f)
+
 
 
 
@@ -56,14 +63,17 @@ with plt.rc_context(bundles.icml2022()):
 
                         ax.errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:{}'.format(lr,K))
 
+
                 count =+ 1
     ax.set_title('ML vs MP VI')
     ax.set_ylabel('Predictive Log Likelihood')
 
     ax.set_xlabel('Time (Seconds)')
+
     ax.set_ylim(-960,-940)
     ax.set_xlim(-1,20)
     plt.legend()
+
     plt.savefig('charts/chart_movielens_ml1_predll_N{}_M{}.png'.format(N, M))
     plt.savefig('charts/chart_movielens_ml1_predll_N{}_M{}.pdf'.format(N, M))
 
@@ -72,6 +82,7 @@ with plt.rc_context(bundles.icml2022()):
 
     count = 0
     fig, ax = plt.subplots(1,1, figsize=(5.5/2, 2.0))
+
     for i in range(len(Ns)):
         for j in range(len(Ms)):
             for lr_ml in range(len(lrs)):
@@ -98,15 +109,18 @@ with plt.rc_context(bundles.icml2022()):
 
                         ax.errorbar(np.arange(200),elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:{}'.format(lr,K))
 
+
                 count =+ 1
 
     ax.set_title('ML vs MP VI')
     ax.set_ylabel('Elbo')
 
     ax.set_xlabel('Iterations')
+
     ax.set_ylim(-2000,-900)
 
     plt.legend()
+
     plt.savefig('charts/chart_movielens_ml1_elbo_N{}_M{}.png'.format(N, M))
     plt.savefig('charts/chart_movielens_ml1_elbo_N{}_M{}.pdf'.format(N, M))
 
@@ -114,6 +128,7 @@ with plt.rc_context(bundles.icml2022()):
 
     count = 0
     fig, ax = plt.subplots(1,1, figsize=(5.5/2, 2.0))
+
     for i in range(len(Ns)):
         for j in range(len(Ms)):
             for lr_ml in range(len(lrs)):
@@ -121,6 +136,7 @@ with plt.rc_context(bundles.icml2022()):
                 M = Ms[j]
     #            colour =
                 lr_ml = lrs[lr_ml]
+
 
                 for K in ['10', '30', '100']:
                     with open('results/movielens/ML_1_{}__N{}_M{}_K{}.json'.format(lr_ml,N,M,K)) as f:
@@ -141,13 +157,16 @@ with plt.rc_context(bundles.icml2022()):
 
                         ax.errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o', label='MP VI lr: {} K:{}'.format(lr,K))
 
+
                 count =+ 1
 
     ax.set_title('ML vs MP VI')
     ax.set_ylabel('Elbo')
 
     ax.set_xlabel('Time (Seconds)')
+
     ax.set_ylim(-2000,-900)
     plt.legend()
+
     plt.savefig('charts/chart_time_movielens_ml1_elbo_N{}_M{}.png'.format(N, M))
     plt.savefig('charts/chart_time_movielens_ml1_elbo_N{}_M{}.pdf'.format(N, M))
