@@ -61,7 +61,8 @@ with plt.rc_context(bundles.icml2022()):
     ax.set_ylabel('Predictive Log Likelihood')
 
     ax.set_xlabel('Time (Seconds)')
-    ax.set_ylim(-1000,-940)
+    ax.set_ylim(-960,-940)
+    ax.set_xlim(-1,20)
     plt.legend()
     plt.savefig('charts/chart_movielens_ml1_predll_N{}_M{}.png'.format(N, M))
     plt.savefig('charts/chart_movielens_ml1_predll_N{}_M{}.pdf'.format(N, M))
@@ -104,6 +105,7 @@ with plt.rc_context(bundles.icml2022()):
 
     ax.set_xlabel('Iterations')
     ax.set_ylim(-2000,-900)
+
     plt.legend()
     plt.savefig('charts/chart_movielens_ml1_elbo_N{}_M{}.png'.format(N, M))
     plt.savefig('charts/chart_movielens_ml1_elbo_N{}_M{}.pdf'.format(N, M))
