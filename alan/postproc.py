@@ -62,7 +62,8 @@ def mean(x):
     """
     if isinstance(x, tuple):
         sample, w = x
-        assert sample.names == w.names
+        assert [name for name in sample.names if name is not None] == [name for name in w.names if name is not None]
+        w = w.align_as(sample)
         dim = 'K'
     else:
         sample = x
@@ -84,7 +85,7 @@ def stderr(x):
 def ess(x):
     if not isinstance(x, tuple):
         raise Exception(
-            "Trying to compute the ESS for an unweighted sample."  
+            "Trying to compute the ESS for an unweighted sample."
             "It only makes sense to compute the ESS for a weighted sample"
         )
     _, w = x
