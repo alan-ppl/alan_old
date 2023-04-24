@@ -10,51 +10,35 @@ def generate_model(N,M,device, ML=1, run=0):
       Heirarchical Model
       '''
 
-      tr('mu_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
-      tr('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+      tr('mu_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
+      tr('psi_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
 
       tr('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
       tr('obs', alan.Bernoulli(logits = tr['z'] @ x))
 
 
-    if ML == 1:
-        class Q(alan.AlanModule):
-            def __init__(self):
-                super().__init__()
-                #mu_z
-                self.mu = alan.MLNormal(sample_shape=(d_z,))
-                #psi_z
-                self.psi_z = alan.MLNormal(sample_shape=(d_z,))
+    class Q(alan.AlanModule):
+        def __init__(self):
+            super().__init__()
+            #mu_z
+            self.m_mu_z = nn.Parameter(t.zeros((d_z,)))
+            self.log_theta_mu_z = nn.Parameter(t.zeros((d_z,)))
+            #psi_z
+            self.m_psi_z = nn.Parameter(t.zeros((d_z,)))
+            self.log_theta_psi_z = nn.Parameter(t.zeros((d_z,)))
 
-                #z
-                self.z = alan.MLNormal({'plate_1': M},sample_shape=(d_z,))
-
-
-            def forward(self, tr,x):
-                tr('mu_z', self.mu())
-                tr('psi_z', self.psi_z())
-
-                tr('z', self.z())
-
-    elif ML == 2:
-        class Q(alan.AlanModule):
-            def __init__(self):
-                super().__init__()
-                #mu_z
-                self.mu = alan.ML2Normal(sample_shape=(d_z,))
-                #psi_z
-                self.psi_z = alan.ML2Normal(sample_shape=(d_z,))
-
-                #z
-                self.z = alan.ML2Normal({'plate_1': M},sample_shape=(d_z,))
+            #z
+            self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
+            self.log_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
 
 
-            def forward(self, tr,x):
-                tr('mu_z', self.mu())
-                tr('psi_z', self.psi_z())
+        def forward(self, tr, x):
+            tr('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
+            tr('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
 
-                tr('z', self.z())
+            tr('z', alan.Normal(self.mu, self.log_sigma.exp()))
+
 
 
     covariates = {'x':t.load('movielens/data/weights_{0}_{1}_{2}.pt'.format(N, M,run)).to(device)}

@@ -23,9 +23,10 @@ seed_torch(0)
 
 print('...', flush=True)
 
+
 @hydra.main(version_base=None, config_path='config', config_name='conf')
 def run_experiment(cfg):
-    print('ML')
+    print('VI')
     print(cfg)
     # writer = SummaryWriter(log_dir='runs/' + cfg.dataset + '/' + cfg.model + '/')
     device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
@@ -37,10 +38,11 @@ def run_experiment(cfg):
     M = cfg.training.M
     N = cfg.training.N
 
-    spec = importlib.util.spec_from_file_location(cfg.model, cfg.dataset + '/' + cfg.model + '.py')
+    spec = importlib.util.spec_from_file_location(cfg.model, cfg.dataset + '/' + cfg.model + '_VI.py')
     foo = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = foo
     spec.loader.exec_module(foo)
+
 
 
     for K in Ks:
@@ -57,7 +59,6 @@ def run_experiment(cfg):
         for i in range(cfg.training.num_runs):
             P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i)
 
-            per_seed_elbos = []
 
             seed_torch(i)
 
@@ -68,14 +69,18 @@ def run_experiment(cfg):
                 data_prior = model.sample_prior(platesizes = sizes, inputs = covariates, device=device)
                 data = {'obs': data_prior['obs']}
 
+            opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr)
+
             for j in range(cfg.training.num_iters):
                 start = time.time()
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
-                elbo = sample.elbo().item()
-                per_seed_obj[i,j] = (elbo)
-                model.update(cfg.training.lr, sample)
-
+                opt.zero_grad()
+                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=device)
+                elbo = sample.elbo()
+                per_seed_obj[i,j] = elbo.item()
+                (-elbo).backward()
+                opt.step()
                 times[i,j] = (time.time() - start)
+
 
                 #Predictive Log Likelihoods
                 if cfg.training.pred_ll.do_pred_ll and cfg.use_data:
@@ -114,7 +119,6 @@ def run_experiment(cfg):
                 if j % 100 == 0:
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
                     print("Iteration: {0}, Predll: {1:.2f}".format(j,pred_liks[i,j]))
-
 
             for k in range(10):
                 try:
@@ -163,7 +167,7 @@ def run_experiment(cfg):
                                      'final_pred_lik_K=30':np.nanmean(final_pred_lik, axis=0, keepdims=False).tolist(),
                                      'final_pred_lik_K=30_stderr':(np.nanstd(final_pred_lik, axis=0, keepdims=False)/ np.sqrt(cfg.training.num_runs)).tolist(),}
 
-        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'N{0}_M{1}_K{2}_{3}.json'.format(N,M,K,cfg.use_data)
+        file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'N{0}_M{1}_K{2}_{3}.json'.format(N,M,K,cfg.use_data)
         with open(file, 'w') as f:
             json.dump(results_dict, f)
 
