@@ -52,6 +52,7 @@ def run_experiment(cfg):
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         nans = np.asarray([0]*cfg.training.num_runs)
         final_pred_lik = np.zeros((cfg.training.num_runs,), dtype=np.float32)
+        final_pred_lik_for_K = np.zeros((cfg.training.num_runs,len(Ks)), dtype=np.float32)
         for i in range(cfg.training.num_runs):
             P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i)
 
@@ -127,6 +128,17 @@ def run_experiment(cfg):
                     final_pred_lik[i] = np.nan
                     print('nan pred likelihood!')
 
+            for K_run in range(len(Ks)):
+                for k in range(10):
+                    try:
+                        sample = model.sample_perm(Ks[K_run], data=data, inputs=covariates, reparam=False, device=device)
+                        pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
+                        final_pred_lik_for_K[i, K_run] = pred_likelihood['obs'].item()
+                        # print(pred_liks[i,j])
+                        break
+                    except:
+                        final_pred_lik_for_K[i, K_run] = np.nan
+                        print('nan pred likelihood!')
             ###
             # SAVING MODELS DOESN'T WORK YET
             ###
@@ -140,7 +152,8 @@ def run_experiment(cfg):
                                  'times':times,
                                  'nans':(nans/cfg.training.num_runs).tolist(),
                                  'sq_errs':sq_errs,
-                                 'final_pred_lik_K=30':final_pred_lik}
+                                 'final_pred_lik_K=30':final_pred_lik,
+                                 'final_pred_lik_for_K':final_pred_lik_for_K}
 
 
         file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
