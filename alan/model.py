@@ -204,7 +204,8 @@ class SampleMixin():
                 ll_train = ll_train.sum(dims_train)
             #print(ll_all)
             #print(ll_train)
-            result[varname] = (ll_all - ll_train).mean(N)
+            #result[varname] = (ll_all - ll_train).mean(N)
+            result[varname] = logmeanexp_dims(ll_all - ll_train, (N,))
 
         return result
 
