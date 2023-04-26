@@ -157,7 +157,6 @@ class SampleMixin():
         tr = traces.TracePred(
             N, post_samples,
             sample.trp.data, data_all,
-            sample.trp.inputs, inputs_all,
             sample.trp.platedims, platedims_all,
             device=sample.device
         )

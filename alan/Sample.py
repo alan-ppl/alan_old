@@ -55,7 +55,7 @@ class Sample():
             lq_notK = trp.extract_platedims(lq)
             assert set(lp_notK) == set(lq_notK)
 
-        self.varname2logp = trp.logp
+        # self.varname2logp = trp.logp
         self.logp = [*trp.logp.values()]
         self.logq = [*trp.logq_group.values(), *trp.logq_var.values()]
 
@@ -69,6 +69,7 @@ class Sample():
         self.logp = [x.to(**lp_kwargs) for x in self.logp]
         self.logq = [x.to(**lp_kwargs) for x in self.logq]
 
+        self.varname2logp = dict(zip(trp.logp.keys(), self.logp)) 
         #Assumes that self.lps come in ordered
         self.set_platedims = set(trp.platedims.values())
         self.ordered_plate_dims = [dim for dim in unify_dims(self.logp) if self.is_platedim(dim)]
