@@ -12,7 +12,4 @@
       num_pred_ll_samples: 1000
     lr: 1e-3
     ML: 1
-  plotting:
-    average: False
-    n_avg: 50
   use_data: True

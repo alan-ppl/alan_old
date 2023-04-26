@@ -12,7 +12,7 @@ import random
 import hydra
 import importlib.util
 import sys
-import json
+import pickle
 
 from alan.experiment_utils import seed_torch, n_mean
 
@@ -30,7 +30,6 @@ def run_experiment(cfg):
     # writer = SummaryWriter(log_dir='runs/' + cfg.dataset + '/' + cfg.model + '/')
     device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
 
-    results_dict = {}
 
     Ks = cfg.training.Ks
 
@@ -44,10 +43,7 @@ def run_experiment(cfg):
 
 
     for K in Ks:
-        print(K,M,N)
-        results_dict[N] = results_dict.get(N, {})
-        results_dict[N][M] = results_dict[N].get(M, {})
-        results_dict[N][M][K] = results_dict[N][M].get(K, {})
+        print(K)
         per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
@@ -134,38 +130,18 @@ def run_experiment(cfg):
                 os.makedirs(cfg.dataset + '/' + 'results/' + cfg.model + '/')
 
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
-        if cfg.plotting.average:
-            per_seed_obj = n_mean(per_seed_obj, cfg.plotting.n_avg)
-            pred_liks = n_mean(pred_liks, cfg.plotting.n_avg)
-            sq_errs = n_mean(sq_errs, cfg.plotting.n_avg)
-            results_dict[N][M][K] = {'objs':np.nanmean(per_seed_obj, axis=0, keepdims=False).tolist(),
-                                     'obj_stds':(np.nanstd(per_seed_obj, axis=0, keepdims=False) / np.sqrt(cfg.training.num_runs)).tolist(),
-                                     'pred_likelihood':np.nanmean(pred_liks, axis=0, keepdims=False).tolist(),
-                                     'pred_likelihood_std':(np.nanstd(pred_liks, axis=0, keepdims=False) / np.sqrt(cfg.training.num_runs)).tolist(),
-                                     'avg_time':np.nanmean(times, axis=0, keepdims=False).tolist()[::cfg.plotting.n_avg],
-                                     'time':np.cumsum(np.nanmean(times, axis=0, keepdims=False), axis=-1).tolist()[::cfg.plotting.n_avg],
-                                     'nans':(nans/cfg.training.num_runs).tolist(),
-                                     'sq_errs':np.nanmean(sq_errs, axis=0, keepdims=False).tolist(),
-                                     'sq_errs_std':(np.nanstd(sq_errs, axis=0, keepdims=False) / np.sqrt(cfg.training.num_runs)).tolist(),
-                                     'final_pred_lik_K=30':np.nanmean(final_pred_lik, axis=0, keepdims=False).tolist(),
-                                     'final_pred_lik_K=30_stderr':(np.nanstd(final_pred_lik, axis=0, keepdims=False)/ np.sqrt(cfg.training.num_runs)).tolist(),}
+        results_dict = {'objs':per_seed_obj,
+                                 'pred_likelihood':pred_liks,
+                                 'times':times,
+                                 'nans':(nans/cfg.training.num_runs).tolist(),
+                                 'sq_errs':sq_errs,
+                                 'final_pred_lik_K=30':final_pred_lik}
 
-        else:
-            results_dict[N][M][K] = {'objs':np.nanmean(per_seed_obj, axis=0, keepdims=False).tolist(),
-                                     'obj_stds':(np.nanstd(per_seed_obj, axis=0, keepdims=False) / np.sqrt(cfg.training.num_runs)).tolist(),
-                                     'pred_likelihood':np.nanmean(pred_liks, axis=0, keepdims=False).tolist(),
-                                     'pred_likelihood_std':(np.nanstd(pred_liks, axis=0, keepdims=False) / np.sqrt(cfg.training.num_runs)).tolist(),
-                                     'avg_time':np.nanmean(times, axis=0, keepdims=False).tolist(),
-                                     'time':np.cumsum(np.nanmean(times, axis=0, keepdims=False), axis=-1).tolist(),
-                                     'nans':(nans/cfg.training.num_runs).tolist(),
-                                     'sq_errs':np.nanmean(sq_errs, axis=0, keepdims=False).tolist(),
-                                     'sq_errs_std':(np.nanstd(sq_errs, axis=0, keepdims=False) / np.sqrt(cfg.training.num_runs)).tolist(),
-                                     'final_pred_lik_K=30':np.nanmean(final_pred_lik, axis=0, keepdims=False).tolist(),
-                                     'final_pred_lik_K=30_stderr':(np.nanstd(final_pred_lik, axis=0, keepdims=False)/ np.sqrt(cfg.training.num_runs)).tolist(),}
 
-        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'N{0}_M{1}_K{2}_{3}.json'.format(N,M,K,cfg.use_data)
-        with open(file, 'w') as f:
-            json.dump(results_dict, f)
+        file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
+        with open(file, 'wb') as f:
+            pickle.dump(results_dict, f)
+
 
 if __name__ == "__main__":
     run_experiment()
