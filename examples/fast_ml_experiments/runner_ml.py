@@ -77,15 +77,14 @@ def run_experiment(cfg):
                 if cfg.training.pred_ll.do_pred_ll and cfg.use_data:
                     success=False
                     for k in range(10):
-                        # try:
-                        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
-                        pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
-                        pred_liks[i,j] = pred_likelihood['obs'].item()
-                        success=True
-                            # print(pred_liks[i,j])
-                        # except:
-                        #     print('nan pred likelihood!')
-                        #     nans[i] += 1
+                        try:
+                            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
+                            pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
+                            pred_liks[i,j] = pred_likelihood['obs'].item()
+                            success=True
+                        except:
+                            print('nan pred likelihood!')
+                            nans[i] += 1
                         if success:
                             break
                     if not success:
