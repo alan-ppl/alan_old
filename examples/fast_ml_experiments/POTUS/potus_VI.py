@@ -164,19 +164,30 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
 
         tr('mu_b_T', alan.MultivariateNormal(mu_b_prior, ss_cov_mu_b_T)
 
-        # tr('mu_b_T', alan.Normal(tr.zeros((S,T)), tr.ones(())))
+        def mu_b_transition(x):
+            return alan.MultivariateNormal(x, ss_cov_mu_b_walk)
 
-        tr('raw_mu_c', alan.Normal(tr.zeros((P_int,)), tr.ones(())))
+        tr('mu_b_T', alan.Timeseries('mu_b_T', mu_b_transition), T="T"))
 
-        tr('raw_mu_m', alan.Normal(tr.zeros((M,)), tr.ones(())))
+        tr('mu_c', alan.Normal(tr.zeros((P_int,)), sigma_c*tr.ones(())))
 
-        tr('raw_mu_pop', alan.Normal(tr.zeros((Pop,)), tr.ones(())))
+        tr('mu_m', alan.Normal(tr.zeros((M,)), sigma_m*tr.ones(())))
+
+        tr('mu_pop', alan.Normal(tr.zeros((Pop,)), sigma_pop*tr.ones(())))
 
         tr('mu_e_bias', alan.Normal(tr.zeros(()), 0.02*tr.ones(())))
 
         tr('rho_e_bias', alan.Normal(0.7*tr.ones(()), 0.1*tr.ones(())))
 
-        tr('raw_e_bias', alan.Normal(tr.zeros((T,)), tr.ones(())))
+        tr('e_bias', alan.Normal(tr.zeros(()), (1/(1-t.square(tr['rho_e_bias']))*tr.ones(())))
+
+        def e_transition(x):
+            return alan.Normal(tr['rho_e_bias']*x, sigma_e_bias)
+
+        tr('e', alan.timeseries('e_bias', e_transition), T="T")
+
+
+
 
         tr('raw_measure_noise_national', alan.Normal(tr.zeros((N_national_polls,)), tr.ones(())))
 
@@ -184,25 +195,14 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
 
         tr('raw_polling_bias', alan.Normal(tr.zeros((S,)), tr.ones(())))
 
-
-        # polling_bias = cholesky_ss_cov_poll_bias @ tr['raw_polling_bias']
-        # national_polling_bias_average = polling_bias @ state_weights
-        #
-        # mu_b = cholesky_ss_cov_mu_b_T @ tr['raw_mu_b_T'] + mu_b_prior
-        #
-        # mu_b = mu_b.repeat(T,1).T
-        #
-        # #REWRITE AS TIMESERIES
-        # for i in range(1,T):
-        #      mu_b[:,T - 1 - i] = cholesky_ss_cov_mu_b_walk @ tr['raw_mu_b'][:,T -1 - i] + mu_b[:, T - i];
-
-        def mu_b_transition(x, inputs):
-            return alan.MultivariateNormal(x, ss_cov_mu_b_walk)
-
-
-
-
-
+        def n_democrat_state_transition(x):
+            logit_pi_democrat_state[i] = mu_b[state[i], day_state[i]] + \
+              mu_c[poll_state[i]] + \
+              mu_m[poll_mode_state[i]] + \
+              mu_pop[poll_pop_state[i]] + \
+              unadjusted_state[i] * e_bias[day_state[i]] + \
+              tr['raw_measure_noise_state'][i] * sigma_measure_noise_state + \
+              generic_order(polling_bias, generic_dims(polling_bias))[state[i]]
 
 
 
