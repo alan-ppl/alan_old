@@ -24,7 +24,7 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
 
         covariates[name] = var
 
-    transform_data(covariates)
+    #transform_data(covariates)
 
     data = {}
     for d in glob.glob( 'data/**.pt' ):
@@ -49,7 +49,6 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
     M = covariates.pop('M')[0].int().item()    # Number of poll modes
     Pop = covariates.pop('Pop')[0].int().item()    # Number of poll populations
 
-    print(M)
     sizes = {'plate_State': S, 'plate_National_Polls':N_national_polls, 'plate_State_Polls':N_state_polls,
              'T':T, 'plate_P':P_int, 'plate_M':M, 'plate_Pop':Pop}
 
@@ -103,14 +102,14 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
             mu_c = tr['raw_mu_c'] * sigma_c
             mu_m = tr['raw_mu_m'] * sigma_m
             mu_pop = tr['raw_mu_pop'] * sigma_pop
-            e_bias = t.zeros((T,))
+            e_bias = tr.zeros((T,))
             e_bias[0] = tr['raw_e_bias'][0] * sigma_e_bias;
             sigma_rho = t.sqrt(1-t.nn.functional.softmax(tr['rho_e_bias'])) * sigma_e_bias;
             for ti in range(1,T):
                 e_bias[ti] = tr['mu_e_bias'] + tr['rho_e_bias'] * (e_bias[ti - 1] - tr['mu_e_bias']) + tr['raw_e_bias'][ti] * sigma_rho;
     #       //*** fill pi_democrat
             logit_pi_democrat_state = t.zeros((N_state_polls,))
-            print(polling_bias)
+
             for i in range(N_state_polls):
                 logit_pi_democrat_state[i] = mu_b[state[i]-1, day_state[i]-1] + \
                   mu_c[poll_state[i]-1] + \
@@ -163,9 +162,9 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         Hierarchical Model
         '''
 
-        tr('raw_mu_b_T', alan.Normal(tr.zeros((S,)), tr.ones(())))
+        tr('mu_b_T', alan.MultivariateNormal(mu_b_prior, ss_cov_mu_b_T)
 
-        tr('raw_mu_b', alan.Normal(tr.zeros((S,T)), tr.ones(())))
+        # tr('mu_b_T', alan.Normal(tr.zeros((S,T)), tr.ones(())))
 
         tr('raw_mu_c', alan.Normal(tr.zeros((P_int,)), tr.ones(())))
 
@@ -186,8 +185,27 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         tr('raw_polling_bias', alan.Normal(tr.zeros((S,)), tr.ones(())))
 
 
+        # polling_bias = cholesky_ss_cov_poll_bias @ tr['raw_polling_bias']
+        # national_polling_bias_average = polling_bias @ state_weights
+        #
+        # mu_b = cholesky_ss_cov_mu_b_T @ tr['raw_mu_b_T'] + mu_b_prior
+        #
+        # mu_b = mu_b.repeat(T,1).T
+        #
+        # #REWRITE AS TIMESERIES
+        # for i in range(1,T):
+        #      mu_b[:,T - 1 - i] = cholesky_ss_cov_mu_b_walk @ tr['raw_mu_b'][:,T -1 - i] + mu_b[:, T - i];
 
-        print(cholesky_ss_cov_mu_b_T @ tr['raw_mu_b_T'] + mu_b_prior)
+        def mu_b_transition(x, inputs):
+            return alan.MultivariateNormal(x, ss_cov_mu_b_walk)
+
+
+
+
+
+
+
+
         logit_pi_democrat_state, logit_pi_democrat_national = transformed_parameters(tr, state_weights,
                                        sigma_measure_noise_national,
                                        n_two_share_state,
@@ -229,21 +247,101 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
     class Q(alan.AlanModule):
         def __init__(self):
             super().__init__()
-            #sigma
-            self.raw_mu_b_T_mean = nn.Parameter(t.zeros(()))
-            self.raw_mu_b_T_scale = nn.Parameter(t.zeros(()))
+            #raw_mu_b_T
+            self.raw_mu_b_T_mean = nn.Parameter(t.zeros((S,)))
+            self.raw_mu_b_T_scale = nn.Parameter(t.zeros((S,)))
 
 
-            #theta
-            self.theta_mean = nn.Parameter(t.zeros((M,), names=('plate_Players',)))
-            self.theta_scale = nn.Parameter(t.zeros((M,), names=('plate_Players',)))
+            #raw_mu_b
+            self.raw_mu_b_mean = nn.Parameter(t.zeros((S,T)))
+            self.raw_mu_b_scale = nn.Parameter(t.zeros((S,T)))
 
+            #raw_mu_c
+            self.raw_mu_c_mean = nn.Parameter(t.zeros((P_int,)))
+            self.raw_mu_c_scale = nn.Parameter(t.zeros((P_int,)))
 
-        def forward(self, tr, run_type, bus_company_name):
+            #raw_mu_m
+            self.raw_mu_m_mean = nn.Parameter(t.zeros((M,)))
+            self.raw_mu_m_scale = nn.Parameter(t.zeros((M,)))
+
+            #raw_mu_pop
+            self.raw_mu_pop_mean = nn.Parameter(t.zeros((Pop,)))
+            self.raw_mu_pop_scale = nn.Parameter(t.zeros((Pop,)))
+
+            #mu_e_bias
+            self.mu_e_bias_mean = nn.Parameter(t.zeros(()))
+            self.mu_e_bias_scale = nn.Parameter(t.zeros(()))
+
+            #rho_e_bias
+            self.rho_e_bias_mean = nn.Parameter(t.zeros(()))
+            self.rho_e_bias_scale = nn.Parameter(t.zeros(()))
+
+            #raw_e_bias
+            self.raw_e_bias_mean = nn.Parameter(t.zeros((T,)))
+            self.raw_e_bias_scale = nn.Parameter(t.zeros((T,)))
+
+            #raw_measure_noise_national
+            self.raw_measure_noise_national_mean = nn.Parameter(t.zeros((N_national_polls,)))
+            self.raw_measure_noise_national_scale = nn.Parameter(t.zeros((N_national_polls,)))
+
+            #raw_measure_noise_national
+            self.raw_measure_noise_state_mean = nn.Parameter(t.zeros((N_state_polls,)))
+            self.raw_measure_noise_state_scale = nn.Parameter(t.zeros((N_state_polls,)))
+
+            #raw_polling_bias
+            self.raw_polling_bias_mean = nn.Parameter(t.zeros((S,)))
+            self.raw_polling_bias_scale = nn.Parameter(t.zeros((S,)))
+
+        def forward(self, tr, state_weights,
+                  sigma_measure_noise_national,
+                  n_two_share_state,
+                  unadjusted_national,
+                  state,
+                  poll_mode_national,
+                  sigma_e_bias,
+                  polling_bias_scale,
+                  mu_b_T_scale,
+                  day_national,
+                  poll_mode_state,
+                  poll_state,
+                  random_walk_scale,
+                  poll_pop_national,
+                  day_state,
+                  poll_national,
+                  sigma_measure_noise_state,
+                  n_two_share_national,
+                  sigma_c,
+                  unadjusted_state,
+                  mu_b_prior,
+                  sigma_m,
+                  state_covariance_0,
+                  poll_pop_state,
+                  sigma_pop,
+                  cholesky_ss_cov_poll_bias,
+                  cholesky_ss_cov_mu_b_T,
+                  cholesky_ss_cov_mu_b_walk):
             #Year level
 
-            tr('sigma', alan.Normal(self.raw_mu_b_T_mean, self.sigma_scale.exp()))
-            tr('theta', alan.Normal(self.theta_mean, self.theta_scale.exp()))
+            tr('raw_mu_b_T', alan.Normal(self.raw_mu_b_T_mean, self.raw_mu_b_T_scale.exp()))
+            tr('raw_mu_b', alan.Normal(self.raw_mu_b_mean, self.raw_mu_b_scale.exp()))
+
+            tr('raw_mu_c', alan.Normal(self.raw_mu_c_mean, self.raw_mu_c_scale.exp()))
+
+            tr('raw_mu_m', alan.Normal(self.raw_mu_m_mean, self.raw_mu_m_scale.exp()))
+
+            tr('raw_mu_pop', alan.Normal(self.raw_mu_pop_mean, self.raw_mu_pop_scale.exp()))
+
+            tr('mu_e_bias', alan.Normal(self.mu_e_bias_mean, self.mu_e_bias_scale.exp()))
+
+            tr('rho_e_bias', alan.Normal(self.rho_e_bias_mean, self.rho_e_bias_scale.exp()))
+
+            tr('raw_e_bias', alan.Normal(self.raw_e_bias_mean, self.raw_e_bias_scale.exp()))
+
+            tr('raw_measure_noise_national', alan.Normal(self.raw_measure_noise_national_mean, self.raw_measure_noise_national_scale.exp()))
+
+            tr('raw_measure_noise_state', alan.Normal(self.raw_measure_noise_state_mean, self.raw_measure_noise_state_scale.exp()))
+
+            tr('raw_polling_bias', alan.Normal(self.raw_polling_bias_mean, self.raw_polling_bias_scale.exp()))
 
     return P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes
 
@@ -251,17 +349,17 @@ def transform_data(covariates):
     national_cov_matrix_error_sd = t.sqrt(covariates['state_weights'] @ covariates['state_covariance_0'] @ covariates['state_weights']);
 
     ## scale covariance
-    ss_cov_poll_bias = covariates['state_covariance_0'] * t.square(covariates['polling_bias_scale']/national_cov_matrix_error_sd);
-    ss_cov_mu_b_T = covariates['state_covariance_0'] * t.square(covariates['mu_b_T_scale']/national_cov_matrix_error_sd);
-    ss_cov_mu_b_walk = covariates['state_covariance_0'] * t.square(covariates['random_walk_scale']/national_cov_matrix_error_sd);
+    covariates['ss_cov_poll_bias'] = covariates['state_covariance_0'] * t.square(covariates['polling_bias_scale']/national_cov_matrix_error_sd);
+    covariates['ss_cov_mu_b_T'] = covariates['state_covariance_0'] * t.square(covariates['mu_b_T_scale']/national_cov_matrix_error_sd);
+    covariates['ss_cov_mu_b_walk'] = covariates['state_covariance_0'] * t.square(covariates['random_walk_scale']/national_cov_matrix_error_sd);
     ## transformation
 
-    names = ss_cov_poll_bias.names
-    covariates['cholesky_ss_cov_poll_bias'] = t.linalg.cholesky(ss_cov_poll_bias.rename(None)).rename(names[0],...);
-    names = ss_cov_mu_b_T.names
-    covariates['cholesky_ss_cov_mu_b_T'] = t.linalg.cholesky(ss_cov_mu_b_T.rename(None)).rename(names[0],...);
-    names = ss_cov_mu_b_walk.names
-    covariates['cholesky_ss_cov_mu_b_walk'] = t.linalg.cholesky(ss_cov_mu_b_walk.rename(None)).rename(names[0],...);
+    # names = ss_cov_poll_bias.names
+    # covariates['cholesky_ss_cov_poll_bias'] = t.linalg.cholesky(ss_cov_poll_bias.rename(None)).rename(names[0],...);
+    # names = ss_cov_mu_b_T.names
+    # covariates['cholesky_ss_cov_mu_b_T'] = t.linalg.cholesky(ss_cov_mu_b_T.rename(None)).rename(names[0],...);
+    # names = ss_cov_mu_b_walk.names
+    # covariates['cholesky_ss_cov_mu_b_walk'] = t.linalg.cholesky(ss_cov_mu_b_walk.rename(None)).rename(names[0],...);
 
 
 if '__main__':
@@ -269,5 +367,9 @@ if '__main__':
 
     model = alan.Model(P, Q())
     data_prior = model.sample_prior(platesizes = sizes, inputs = covariates)
+    data = {'n_democrat_state': data_prior['n_democrat_state'], 'n_democrat_national':data_prior['n_democrat_state']}
+    K = 10
+    sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+    elbo = sample.elbo().item()
 
-    print(data_prior)
+    print(elbo)

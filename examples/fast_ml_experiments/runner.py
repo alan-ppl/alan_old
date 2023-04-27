@@ -157,7 +157,7 @@ def run_experiment(cfg):
 
 
         file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
-        with open(file, 'w') as f:
+        with open(file, 'wb') as f:
             pickle.dump(results_dict, f)
 
 if __name__ == "__main__":

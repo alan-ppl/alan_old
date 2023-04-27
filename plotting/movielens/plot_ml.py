@@ -42,21 +42,24 @@ def plot():
             except:
                 None
             #VI
-            try:
-                with open('results/movielens/VI_1000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
-                    results_adam_tmc_new = json.load(f)
-                #Pred_ll
-                elbos_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
-                stds_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
-                time_adam_tmc_new = n_mean(results_adam_tmc_new['times'], mean_no).mean(axis=0).cumsum(axis=0)
-                ax_pll[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr], Ks[K]))
-                #Elbo
-                elbos_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).mean(axis=0)
-                elbos_stds_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
+            # try:
+            with open('results/movielens/VI_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000,lrs[lr],Ks[K]), 'rb') as f:
+                results_adam_tmc_new = pickle.load(f)
+            #Pred_ll
+            elbos_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
+            stds_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
+            time_adam_tmc_new = n_mean(results_adam_tmc_new['times'], mean_no).mean(axis=0).cumsum(axis=0)
+            ax_pll[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr], Ks[K]))
+            #Elbo
+            elbos_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).mean(axis=0)
+            elbos_stds_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
+            if not lrs[lr] == '0.1':
                 ax_elbo[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=elbos_stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr]))
+            else:
+                ax_elbo[K].errorbar(time_adam_tmc_new.tolist() + [np.nan]*(250//mean_no),elbos_adam_tmc_new.tolist() + [np.nan]*(250//mean_no), yerr=elbos_stds_adam_tmc_new.tolist() + [np.nan]*(250//mean_no), linewidth=0.55, markersize = 0.75, fmt='-',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
 
-            except:
-                None
+            # except:
+            #     None
 
         if K == 0:
             ax_pll[K].set_ylabel('Predictive Log Likelihood')
@@ -92,7 +95,7 @@ def plot_moments():
             #ML
             try:
                 with open('results/movielens/ML_{}_{}_K{}_False.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
-                    results_ml_tmc_new = json.load(f)
+                    results_ml_tmc_new = pickle.load(f)
 
                 #moments
                 elbos_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).mean(axis=0)
@@ -107,7 +110,7 @@ def plot_moments():
             #VI
             try:
                 with open('results/movielens/VI_1000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
-                    results_adam_tmc_new = json.load(f)
+                    results_adam_tmc_new = pickle.load(f)
                 #moments
                 elbos_adam_tmc_new = n_mean(results_adam_tmc_new['sq_errs'], mean_no).mean(axis=0)
                 stds_adam_tmc_new = n_mean(results_adam_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
@@ -154,7 +157,7 @@ def plot_bars():
             #ML
             try:
                 with open('results/movielens/ML_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
-                    results_ml_tmc_new = json.load(f)
+                    results_ml_tmc_new = pickle.load(f)
 
                 #moments
                 final_pred_lik_ml = results_ml_tmc_new['final_pred_lik_K=30'].mean(axis=0)
@@ -168,7 +171,7 @@ def plot_bars():
             #VI
             try:
                 with open('results/movielens/VI_1000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
-                    results_adam_tmc_new = json.load(f)
+                    results_adam_tmc_new = pickle.load(f)
                 #moments
                 final_pred_lik_adam = results_adam_tmc_new['final_pred_lik_K=30'].mean(axis=0)
                 final_pred_lik_std_err_adam = results_adam_tmc_new['final_pred_lik_K=30'].std(axis=0) / np.sqrt(10)

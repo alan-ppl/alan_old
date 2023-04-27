@@ -105,7 +105,7 @@ class AbstractTrace(GetItem):
 
 
 class AbstractTraceQ(AbstractTrace):
-    def __init__(self, K, data, platedims, reparam, device):
+    def __init__(self, K, data, platedims, reparam, device, lp_dtype):
         super().__init__(device)
         self.K = K
 
@@ -114,6 +114,7 @@ class AbstractTraceQ(AbstractTrace):
 
         self.reparam = reparam
 
+        self.lp_dtype = lp_dtype
         self.samples = {}
         self.logq_var = {}
         self.logq_group = {}
@@ -180,7 +181,7 @@ class AbstractTraceQ(AbstractTrace):
         sample = self.index_sample(sample, Kdim, group)
 
         logq = dist.log_prob(sample, Kdim=Kdim)
-        self.samples[key] = sample
+        self.samples[key] = sample.to(self.lp_dtype)
 
         if group is not None:
             self.logq_group[group] = self.logq_group.get(key, 0.) + logq
