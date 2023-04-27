@@ -33,8 +33,8 @@ class SampleMixin():
         platesizes = none_empty_dict(platesizes)
 
         #place on device
-        data   = {k: v.to(device=device) for (k, v) in data.items()}
-        inputs = {k: v.to(device=device) for (k, v) in inputs.items()}
+        data   = {k: v.to(device=device, dtype=t.float64) for (k, v) in data.items()}
+        inputs = {k: v.to(device=device, dtype=t.float64) for (k, v) in inputs.items()}
 
         platedims = self.platedims if use_model else {}
         platedims = extend_plates_with_named_tensors(platedims, [*data.values(), *inputs.values()])
