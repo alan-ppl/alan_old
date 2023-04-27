@@ -134,11 +134,3 @@ def generate_model(N,M,device,ML=1, run=0):
                 tr('phi', self.phi())
 
     return P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes
-
-if '__main__':
-    P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = generate_model(0,0, t.device('cpu'))
-
-    model = alan.Model(P, Q())
-    data_prior = model.sample_prior(platesizes = sizes, inputs = covariates)
-
-    print(data_prior)
