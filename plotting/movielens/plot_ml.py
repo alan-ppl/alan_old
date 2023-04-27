@@ -12,7 +12,7 @@ Ks = ['3','10','30','100']
 N = '5'
 M = '300'
 lrs = ['0.1', '0.03', '0.01', '0.003', '0.001']
-mean_no = 10
+mean_no = 1
 def plot():
     fig_pll, ax_pll = plt.subplots(1,len(Ks), figsize=(5.5, 2.0), sharey=True)
     fig_elbo, ax_elbo = plt.subplots(1,len(Ks), figsize=(5.5, 2.0), sharey=True)
@@ -20,39 +20,40 @@ def plot():
 
         for lr in range(len(lrs)):
             #ML
-            # try:
-            with open('results/movielens/ML_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K])) as f:
-                results_ml_tmc_new = pickle.load(f)
+            try:
+                with open('results/movielens/ML_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
+                    results_ml_tmc_new = pickle.load(f)
 
-            #pred_ll
-            elbos_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
-            stds_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
-            time_ml_tmc_new = n_mean(results_ml_tmc_new['time'], mean_no).mean(axis=0).cumsum(axis=0)
-            ax_pll[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, yerr=stds_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
 
-            #elbos
-            elbos_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).mean(axis=0)
-            elbos_stds_ml_tmc_new = n_mean(results_ml_tmc_new['obj'], mean_no).std(axis=0) / np.sqrt(10)
-            if not lrs[lr] == '0.1':
-                ax_elbo[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, yerr=elbos_stds_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
-            else:
-                ax_elbo[K].errorbar(time_ml_tmc_new + [np.nan]*250,elbos_ml_tmc_new+ [np.nan]*250, yerr=elbos_stds_ml_tmc_new+ [np.nan]*250, linewidth=0.55, markersize = 0.75, fmt='-o',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
+                #pred_ll
+                elbos_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
+                stds_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
+                time_ml_tmc_new = n_mean(results_ml_tmc_new['times'], mean_no).mean(axis=0).cumsum(axis=0)
+                ax_pll[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, yerr=stds_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
 
-            # except:
-            #     None
+                #elbos
+                elbos_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).mean(axis=0)
+                elbos_stds_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
+                if not lrs[lr] == '0.1':
+                    ax_elbo[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, yerr=elbos_stds_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
+                else:
+                    ax_elbo[K].errorbar(time_ml_tmc_new.tolist() + [np.nan]*250/mean_no,elbos_ml_tmc_new.tolist() + [np.nan]*250/mean_no, yerr=elbos_stds_ml_tmc_new.tolist() + [np.nan]*250/mean_no, linewidth=0.55, markersize = 0.75, fmt='-',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
+
+            except:
+                None
             #VI
             try:
-                with open('results/movielens/VI_1000_{}_N{}_M{}_K{}_True.pkl'.format(lrs[lr],N,M,Ks[K])) as f:
+                with open('results/movielens/VI_1000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
                     results_adam_tmc_new = json.load(f)
                 #Pred_ll
                 elbos_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
                 stds_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
-                time_adam_tmc_new = n_mean(results_adam_tmc_new['time'], mean_no).mean(axis=0).cumsum(axis=0)
-                ax_pll[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr], Ks[K]))
+                time_adam_tmc_new = n_mean(results_adam_tmc_new['times'], mean_no).mean(axis=0).cumsum(axis=0)
+                ax_pll[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr], Ks[K]))
                 #Elbo
                 elbos_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).mean(axis=0)
-                elbos_stds_adam_tmc_new = n_mean(results_adam_tmc_new['obj'], mean_no).std(axis=0) / np.sqrt(10)
-                ax_elbo[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=elbos_stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr]))
+                elbos_stds_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
+                ax_elbo[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=elbos_stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr]))
 
             except:
                 None
@@ -90,28 +91,28 @@ def plot_moments():
         for lr in range(len(lrs)):
             #ML
             try:
-                with open('results/movielens/ML_{}_{}_K{}_False.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K])) as f:
+                with open('results/movielens/ML_{}_{}_K{}_False.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
                     results_ml_tmc_new = json.load(f)
 
                 #moments
                 elbos_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).mean(axis=0)
                 stds_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
-                time_ml_tmc_new = n_mean(results_ml_tmc_new['time'], mean_no).mean(axis=0).cumsum()
+                time_ml_tmc_new = n_mean(results_ml_tmc_new['times'], mean_no).mean(axis=0).cumsum()
                 if not lrs[lr] == '0.1':
-                    ax_pll[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
+                    ax_pll[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
                 else:
-                    ax_pll[K].errorbar(time_ml_tmc_new + [np.nan]*250,elbos_ml_tmc_new+ [np.nan]*250, linewidth=0.55, markersize = 0.75, fmt='-o',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
+                    ax_pll[K].errorbar(time_ml_tmc_new + [np.nan]*250/mean_no,elbos_ml_tmc_new+ [np.nan]*250/mean_no, linewidth=0.55, markersize = 0.75, fmt='-',color='r', alpha=1/(lr+1), label='ML lr: {}'.format(lrs[lr], Ks[K]))
             except:
                 None
             #VI
             try:
-                with open('results/movielens/VI_1000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K])) as f:
+                with open('results/movielens/VI_1000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
                     results_adam_tmc_new = json.load(f)
                 #moments
                 elbos_adam_tmc_new = n_mean(results_adam_tmc_new['sq_errs'], mean_no).mean(axis=0)
                 stds_adam_tmc_new = n_mean(results_adam_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
-                time_adam_tmc_new = n_mean(results_adam_tmc_new['time'], mean_no).mean(axis=0).cumsum()
-                ax_pll[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-o',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr], Ks[K]))
+                time_adam_tmc_new = n_mean(results_adam_tmc_new['times'], mean_no).mean(axis=0).cumsum()
+                ax_pll[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color='c', alpha=1/(lr+1), label='MP VI lr: {}'.format(lrs[lr], Ks[K]))
 
             except:
                 None
@@ -152,7 +153,7 @@ def plot_bars():
         for lr in range(len(lrs)):
             #ML
             try:
-                with open('results/movielens/ML_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K])) as f:
+                with open('results/movielens/ML_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
                     results_ml_tmc_new = json.load(f)
 
                 #moments
@@ -166,7 +167,7 @@ def plot_bars():
                 pred_liks_ml_std.append(0)
             #VI
             try:
-                with open('results/movielens/VI_1000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K])) as f:
+                with open('results/movielens/VI_1000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
                     results_adam_tmc_new = json.load(f)
                 #moments
                 final_pred_lik_adam = results_adam_tmc_new['final_pred_lik_K=30'].mean(axis=0)
@@ -211,8 +212,8 @@ def plot_bars():
 
     fig_bar.legend(loc='lower center', bbox_to_anchor=(0.55, -0.15),
                    ncol=5)
-    fig_bar.savefig('charts/chart_movielens_bar_K{}.png'.format(Ks[K]))
-    fig_bar.savefig('charts/chart_movielens_bar_K{}.pdf'.format(Ks[K]))
+    fig_bar.savefig('charts/chart_movielens_bar.png')
+    fig_bar.savefig('charts/chart_movielens_bar.pdf')
 
 plt.rcParams.update({"figure.dpi": 1000})
 # plt.rcParams.update(cycler.cycler(color=palettes.muted))

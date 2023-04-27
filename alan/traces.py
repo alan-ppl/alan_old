@@ -83,13 +83,13 @@ class AbstractTrace(GetItem):
         """
         Passes through to the underlying PyTorch method, but gets the right device
         """
-        return t.ones(*args, **kwargs, device=self.device)
+        return t.ones(*args, **kwargs, device=self.device, dtype=t.float64)
 
     def zeros(self, *args, **kwargs):
         """
         Passes through to the underlying PyTorch method, but gets the right device
         """
-        return t.zeros(*args, **kwargs, device=self.device)
+        return t.zeros(*args, **kwargs, device=self.device, dtype=t.float64)
 
     @property
     def Ks(self):

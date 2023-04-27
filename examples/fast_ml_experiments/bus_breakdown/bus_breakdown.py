@@ -6,7 +6,7 @@ import numpy as np
 def generate_model(N,M,device,ML=1, run=0):
     M = 3
     J = 2
-    I = 60
+    I = 45
 
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
@@ -49,6 +49,7 @@ def generate_model(N,M,device,ML=1, run=0):
       tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       # tr('theta', alan.Normal(np.log(20) * tr.ones(()), np.log(50) * tr.ones(())), plates = 'plate_ID')
       # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+      print(bus_company_name)
       tr('obs', alan.NegativeBinomial(total_count=10, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
 
 
@@ -133,3 +134,11 @@ def generate_model(N,M,device,ML=1, run=0):
                 tr('phi', self.phi())
 
     return P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes
+
+if '__main__':
+    P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = generate_model(0,0, t.device('cpu'))
+
+    model = alan.Model(P, Q())
+    data_prior = model.sample_prior(platesizes = sizes, inputs = covariates)
+
+    print(data_prior)

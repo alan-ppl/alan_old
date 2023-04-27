@@ -6,7 +6,7 @@ import numpy as np
 def generate_model(N,M,device,ML=1, run=0):
     M = 3
     J = 2
-    I = 60
+    I = 45
 
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
