@@ -150,7 +150,7 @@ def run_experiment(cfg):
                                  'final_pred_lik_for_K':final_pred_lik_for_K}
 
 
-        file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
+        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
         with open(file, 'wb') as f:
             pickle.dump(results_dict, f)
 

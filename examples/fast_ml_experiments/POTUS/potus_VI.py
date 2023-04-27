@@ -40,14 +40,14 @@ def generate_model(N,M,device,ML=1, run=0):
 
         data[name] = var
 
-    def P(tr):
+    def P(tr, covariates):
         '''
         Hierarchical Model
         '''
 
-        tr('raw_mu_b_T', alan.Normal(tr.zeros(()), tr.ones(())))
+        tr('raw_mu_b_T', alan.Normal(tr.zeros((51,)), tr.ones(())))
 
-        tr('raw_mu_b', alan.Normal(tr.zeros(()), tr.ones(())))
+        tr('raw_mu_b', alan.Normal(tr.zeros((51,254)), tr.ones(())))
 
         tr('raw_mu_c', alan.Normal(tr.zeros(()), tr.ones(())))
 
@@ -68,21 +68,22 @@ def generate_model(N,M,device,ML=1, run=0):
         tr('raw_polling_bias', alan.Normal(tr.zeros(()), tr.ones(())))
 
         # def transformed parameters(tr):
-        #       //*** parameters
-        #       matrix[S, T] mu_b;
-        #       vector[P] mu_c;
-        #       vector[M] mu_m;
-        #       vector[Pop] mu_pop;
-        #       vector[T] e_bias;
-        #       vector[S] polling_bias = cholesky_ss_cov_poll_bias * raw_polling_bias;
-        #       vector[T] national_mu_b_average;
-        #       real national_polling_bias_average = transpose(polling_bias) * state_weights;
-        #       real sigma_rho;
-        #       //*** containers
-        #       vector[N_state_polls] logit_pi_democrat_state;
-        #       vector[N_national_polls] logit_pi_democrat_national;
+        #       # //*** parameters
+        #       # matrix[S, T] mu_b;
+        #       # vector[P] mu_c;
+        #       # vector[M] mu_m;
+        #       # vector[Pop] mu_pop;
+        #       # vector[T] e_bias;
+        #       # vector[S] polling_bias = cholesky_ss_cov_poll_bias * raw_polling_bias;
+        #       # vector[T] national_mu_b_average;
+        #       # real national_polling_bias_average = transpose(polling_bias) * state_weights;
+        #       # real sigma_rho;
+        #       # //*** containers
+        #       # vector[N_state_polls] logit_pi_democrat_state;
+        #       # vector[N_national_polls] logit_pi_democrat_national;
         #       //*** construct parameters
         #       mu_b[:,T] = cholesky_ss_cov_mu_b_T * raw_mu_b_T + mu_b_prior;  // * mu_b_T_model_estimation_error
+        #       mu_b
         #       for (i in 1:(T-1)) mu_b[:, T - i] = cholesky_ss_cov_mu_b_walk * raw_mu_b[:, T - i] + mu_b[:, T + 1 - i];
         #       national_mu_b_average = transpose(mu_b) * state_weights;
         #       mu_c = raw_mu_c * sigma_c;
