@@ -1,3 +1,4 @@
+import math 
 import torch as t
 from functorch.dim import Tensor, Dim
 
@@ -8,6 +9,50 @@ def sum_non_dim(x):
     Sums over all non-torchdim dimensions.
     """
     return x.sum() if x.ndim > 0 else x
+
+
+"""
+Defines a series of reduction functions that are called e.g. as
+sum_dims(x, (i, j)), where i, j are torchdims.
+"""
+def assert_iter(dims, varname='dims'):
+    if not isinstance(dims, (list, tuple)):
+        raise Exception(varname + ' must be a list or tuple')
+
+def assert_unique_iter(dims, varname='dims'):
+    assert_iter(dims, varname=varname)
+    if len(set(dims)) != len(dims):
+        raise Exception(f'Non-unique elements in {varname}')
+
+def assert_unique_dim_iter(dims, varname='dims'):
+    assert_unique_iter(dims, varname=varname)
+    for dim in dims:
+        if not isinstance(dim, Dim):
+            raise Exception(f'dim in {varname} is not torchdim dimension')
+
+def assert_no_ellipsis(dims):
+    if 0<len(dims):
+        assert dims[-1] is not Ellipsis
+
+def reduce_dims(func):
+    """
+    Reduces over specified torchdim dimensions.
+    Returns itself if no dims given.
+    """
+    def inner(x, dims, ignore_extra_dims=False):
+        assert_unique_dim_iter(dims)
+
+        set_x_dims = set(generic_dims(x)) 
+        if ignore_extra_dims:
+            dims = tuple(dim for dim in dims if dim in set_x_dims)
+
+        if not all(dim in set_x_dims for dim in dims):
+            raise Exception("dims provided that aren't in x; can ignore them by providing ignore_extra_dims=True kwarg")
+
+        if 0<len(dims):
+            x = func(x.order(dims), 0)
+        return x
+    return inner
 
 def sum_dims(x, dims):
     """
@@ -24,6 +69,17 @@ def mean_dims(x, dims):
     if 0<len(dims):
         x = x.order(dims).mean(0)
     return x
+
+# sum_dims        = reduce_dims(t.sum)
+prod_dims       = reduce_dims(t.prod)
+# mean_dims       = reduce_dims(t.mean)
+min_dims        = reduce_dims(lambda x, dim: t.min(x, dim).values)
+max_dims        = reduce_dims(lambda x, dim: t.max(x, dim).values)
+logsumexp_dims  = reduce_dims(t.logsumexp)
+
+def logmeanexp_dims(x, dims):
+    return logsumexp_dims(x, dims) - sum([math.log(dim.size) for dim in dims])
+
 
 def is_dimtensor(tensor):
     return isinstance(tensor, Tensor)
