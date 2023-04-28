@@ -11,8 +11,8 @@ Ks = ['3','10','30']
 
 N = '2'
 M = '2'
-lrs = ['0.01', '0.003', '0.001', '0.0003', '0.0001']
-mean_no = 1
+lrs = ['0.003', '0.001', '0.0003', '0.0001']
+mean_no = 50
 
 ml_colours = ['#f1eef6','#bdc9e1','#74a9cf','#2b8cbe','#045a8d'][::-1]
 adam_colours = ['#ffffb2','#fecc5c','#fd8d3c','#f03b20','#bd0026'][::-1]
@@ -204,7 +204,7 @@ def plot_bars():
             ax_bar[K].set_ylabel(r'Predictive log likelihood' + '\n' +'evaluated for K=30')
 
         ax_bar[K].set_title('{}'.format('abcd'[K]))
-        ax_bar[K].set_ylim(-1075,-920)
+        # ax_bar[K].set_ylim(-1075,-920)
     # ax_pll.set_xlim(-1,20)
 
     fig_bar.legend(loc='lower center', bbox_to_anchor=(0.55, -0.15),
@@ -217,5 +217,5 @@ plt.rcParams.update({"figure.dpi": 3500})
 with plt.rc_context(bundles.icml2022()):
 
     plot()
-    plot_moments()
-    plot_bars()
+    # plot_moments()
+    # plot_bars()

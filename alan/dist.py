@@ -12,8 +12,8 @@ def pad_nones(arg, ndim):
     Ignores torchdim dimensions
     """
     if isinstance(arg, Tensor):
-        return generic_getitem(arg, (ndim - arg.ndim)*[None]) 
-    else: 
+        return generic_getitem(arg, (ndim - arg.ndim)*[None])
+    else:
         return arg
 
 def parse(spec, args, kwargs):
@@ -43,7 +43,7 @@ def parse(spec, args, kwargs):
         raise Exception(f'Multiple values provided for {key_overlap} arguments in distribution.')
 
     return {**arg_dict, **kwargs}
-    
+
 
 class TorchDimDist():
     r"""
@@ -51,7 +51,7 @@ class TorchDimDist():
 
     :class:`TorchDimDist` allows for sampling (or evaluating the log probability of) TorchDim-ed tensors
     from distributions with non-dimmed arguments as well as sampling from distributions with dimmed arguments
-    
+
     Note that at present there is no sample_shape dimension, to do IID sampling over
     new non-torchdim dimensions.  To achieve the same effect, do something like
     ```
@@ -114,7 +114,7 @@ class TorchDimDist():
             sample (Tensor): sample with correct dimensions
         """
         assert_unique_dim_iter(sample_dims, 'sample_dims')
-       
+
         torch_dist = self.dist(**self.all_args)
         if reparam and not torch_dist.has_rsample:
             raise Exception(f'Trying to do reparameterised sampling of {type(self)}, which is not implemented by PyTorch (likely because {type(self)} is a distribution over discrete random variables).')

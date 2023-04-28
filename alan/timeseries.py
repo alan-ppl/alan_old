@@ -14,7 +14,7 @@ class Timeseries():
     def __init__(self, initial_state_key, transition, inputs=()):
         assert isinstance(initial_state_key, str)
         self.initial_state_key = initial_state_key
-        self.transition = transition 
+        self.transition = transition
         self.init_inputs(inputs)
 
     def set_trace_Tdim(self, trace, Tdim):
@@ -109,4 +109,3 @@ class Timeseries():
         rest  = self.transition(x_prev, *inputs_rest).log_prob(x_curr)
 
         return t.cat([first[None], rest.order(Tm1)], 0)[T]
-
