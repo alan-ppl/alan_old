@@ -1,7 +1,7 @@
 import torch
 import functorch.dim
 Tensor = (torch.Tensor, functorch.dim.Tensor)
-Leaf = (str, *Tensor)
+Leaf = (str, functorch.dim.Dim, *Tensor)
 from collections.abc import Iterable
 
 def isleaf(xs):
