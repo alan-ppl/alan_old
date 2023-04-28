@@ -69,7 +69,7 @@ class Sample():
         self.logp = [x.to(**lp_kwargs) for x in self.logp]
         self.logq = [x.to(**lp_kwargs) for x in self.logq]
 
-        self.varname2logp = dict(zip(trp.logp.keys(), self.logp)) 
+        self.varname2logp = dict(zip(trp.logp.keys(), self.logp))
         #Assumes that self.lps come in ordered
         self.set_platedims = set(trp.platedims.values())
         self.ordered_plate_dims = [dim for dim in unify_dims(self.logp) if self.is_platedim(dim)]
@@ -152,7 +152,7 @@ class Sample():
 
         if plate_dim in self.trp.Tdim2Ks.keys():
             lower_lp = chain_logmmexp(lower_lp, plate_dim, Kprev, Kdim) #Kprev x Knext
-            lower_lp = reduce_Ks([lower_lp], [Kdim])
+            lower_lp = reduce_Ks([lower_lp], [Kdim], self.Es)
         elif plate_dim is not None:
             lower_lp = lower_lp.sum(plate_dim)
 
