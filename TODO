@@ -1,3 +1,14 @@
+Memory efficient tensors overall goal:
+  Wrap all dist params + samples in a ValueTensor (only in backend, in frontend always standard Tensors).
+  When we do computations on ValueTensors, we get back LazyTensors.
+  LazyTensors wrap up the ValueTensor/LazyTensor arguments with the operation.
+  LazyTensors compute their value only when indexed (but they don't explicitly represent an index range).
+Plan:
+  Design a Tensor wrapper that can cope with e.g. dim tensors and dim tensor operations.
+  Wrap log-prob in this tensor, and check that we can wrap all computations on the backend.
+  Split LazyTensor and ValueTensor.
+
+
 Plate related errors
   Plate size conflicts from params
 Reparam errors
