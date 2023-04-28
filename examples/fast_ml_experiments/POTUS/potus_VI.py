@@ -55,79 +55,79 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
     print(sizes)
     test_data, test_covariates, all_data, all_covariates = None, None, None, None
 
-    def transformed_parameters(tr, state_weights,
-                                   sigma_measure_noise_national,
-                                   n_two_share_state,
-                                   unadjusted_national,
-                                   state,
-                                   poll_mode_national,
-                                   sigma_e_bias,
-                                   N_national_polls,
-                                   polling_bias_scale,
-                                   mu_b_T_scale,
-                                   day_national,
-                                   poll_mode_state,
-                                   poll_state,
-                                   random_walk_scale,
-                                   poll_pop_national,
-                                   day_state,
-                                   poll_national,
-                                   sigma_measure_noise_state,
-                                   n_two_share_national,
-                                   sigma_c,
-                                   unadjusted_state,
-                                   mu_b_prior,
-                                   sigma_m,
-                                   state_covariance_0,
-                                   poll_pop_state,
-                                   sigma_pop,
-                                   cholesky_ss_cov_poll_bias,
-                                   cholesky_ss_cov_mu_b_T,
-                                   cholesky_ss_cov_mu_b_walk):
-
-            polling_bias = cholesky_ss_cov_poll_bias @ tr['raw_polling_bias']
-            national_polling_bias_average = polling_bias @ state_weights
-
-            mu_b = cholesky_ss_cov_mu_b_T @ tr['raw_mu_b_T'] + mu_b_prior
-
-            mu_b = mu_b.repeat(T,1).T
-
-            #REWRITE AS TIMESERIES
-            for i in range(1,T):
-                 mu_b[:,T - 1 - i] = cholesky_ss_cov_mu_b_walk @ tr['raw_mu_b'][:,T -1 - i] + mu_b[:, T - i];
-
-
-            national_mu_b_average = state_weights @ mu_b;
-            mu_c = tr['raw_mu_c'] * sigma_c
-            mu_m = tr['raw_mu_m'] * sigma_m
-            mu_pop = tr['raw_mu_pop'] * sigma_pop
-            e_bias = tr.zeros((T,))
-            e_bias[0] = tr['raw_e_bias'][0] * sigma_e_bias;
-            sigma_rho = t.sqrt(1-t.nn.functional.softmax(tr['rho_e_bias'])) * sigma_e_bias;
-            for ti in range(1,T):
-                e_bias[ti] = tr['mu_e_bias'] + tr['rho_e_bias'] * (e_bias[ti - 1] - tr['mu_e_bias']) + tr['raw_e_bias'][ti] * sigma_rho;
-    #       //*** fill pi_democrat
-            logit_pi_democrat_state = t.zeros((N_state_polls,))
-
-            for i in range(N_state_polls):
-                logit_pi_democrat_state[i] = mu_b[state[i]-1, day_state[i]-1] + \
-                  mu_c[poll_state[i]-1] + \
-                  mu_m[poll_mode_state[i]-1] + \
-                  mu_pop[poll_pop_state[i]-1] + \
-                  unadjusted_state[i] * e_bias[day_state[i]-1] + \
-                  tr['raw_measure_noise_state'][i] * sigma_measure_noise_state + \
-                  generic_order(polling_bias, generic_dims(polling_bias))[state[i]-1]
-
-            logit_pi_democrat_national = national_mu_b_average[day_national-1] + \
-            mu_c[poll_national-1] + \
-            mu_m[poll_mode_national-1] + \
-            mu_pop[poll_pop_national-1] + \
-            unadjusted_national * e_bias[day_national-1] + \
-            tr['raw_measure_noise_national'] * sigma_measure_noise_national + \
-            national_polling_bias_average
-
-
-            return logit_pi_democrat_state,  logit_pi_democrat_national
+    # def transformed_parameters(tr, state_weights,
+    #                                sigma_measure_noise_national,
+    #                                n_two_share_state,
+    #                                unadjusted_national,
+    #                                state,
+    #                                poll_mode_national,
+    #                                sigma_e_bias,
+    #                                N_national_polls,
+    #                                polling_bias_scale,
+    #                                mu_b_T_scale,
+    #                                day_national,
+    #                                poll_mode_state,
+    #                                poll_state,
+    #                                random_walk_scale,
+    #                                poll_pop_national,
+    #                                day_state,
+    #                                poll_national,
+    #                                sigma_measure_noise_state,
+    #                                n_two_share_national,
+    #                                sigma_c,
+    #                                unadjusted_state,
+    #                                mu_b_prior,
+    #                                sigma_m,
+    #                                state_covariance_0,
+    #                                poll_pop_state,
+    #                                sigma_pop,
+    #                                cholesky_ss_cov_poll_bias,
+    #                                cholesky_ss_cov_mu_b_T,
+    #                                cholesky_ss_cov_mu_b_walk):
+    #
+    #         polling_bias = cholesky_ss_cov_poll_bias @ tr['raw_polling_bias']
+    #         national_polling_bias_average = polling_bias @ state_weights
+    #
+    #         mu_b = cholesky_ss_cov_mu_b_T @ tr['raw_mu_b_T'] + mu_b_prior
+    #
+    #         mu_b = mu_b.repeat(T,1).T
+    #
+    #         #REWRITE AS TIMESERIES
+    #         for i in range(1,T):
+    #              mu_b[:,T - 1 - i] = cholesky_ss_cov_mu_b_walk @ tr['raw_mu_b'][:,T -1 - i] + mu_b[:, T - i];
+    #
+    #
+    #         national_mu_b_average = state_weights @ mu_b;
+    #         mu_c = tr['raw_mu_c'] * sigma_c
+    #         mu_m = tr['raw_mu_m'] * sigma_m
+    #         mu_pop = tr['raw_mu_pop'] * sigma_pop
+    #         e_bias = tr.zeros((T,))
+    #         e_bias[0] = tr['raw_e_bias'][0] * sigma_e_bias;
+    #         sigma_rho = t.sqrt(1-t.nn.functional.softmax(tr['rho_e_bias'])) * sigma_e_bias;
+    #         for ti in range(1,T):
+    #             e_bias[ti] = tr['mu_e_bias'] + tr['rho_e_bias'] * (e_bias[ti - 1] - tr['mu_e_bias']) + tr['raw_e_bias'][ti] * sigma_rho;
+    # #       //*** fill pi_democrat
+    #         logit_pi_democrat_state = t.zeros((N_state_polls,))
+    #
+    #         for i in range(N_state_polls):
+    #             logit_pi_democrat_state[i] = mu_b[state[i]-1, day_state[i]-1] + \
+    #               mu_c[poll_state[i]-1] + \
+    #               mu_m[poll_mode_state[i]-1] + \
+    #               mu_pop[poll_pop_state[i]-1] + \
+    #               unadjusted_state[i] * e_bias[day_state[i]-1] + \
+    #               tr['raw_measure_noise_state'][i] * sigma_measure_noise_state + \
+    #               generic_order(polling_bias, generic_dims(polling_bias))[state[i]-1]
+    #
+    #         logit_pi_democrat_national = national_mu_b_average[day_national-1] + \
+    #         mu_c[poll_national-1] + \
+    #         mu_m[poll_mode_national-1] + \
+    #         mu_pop[poll_pop_national-1] + \
+    #         unadjusted_national * e_bias[day_national-1] + \
+    #         tr['raw_measure_noise_national'] * sigma_measure_noise_national + \
+    #         national_polling_bias_average
+    #
+    #
+    #         return logit_pi_democrat_state,  logit_pi_democrat_national
 
     def P(tr, state_weights,
               sigma_measure_noise_national,
@@ -350,12 +350,6 @@ def transform_data(covariates):
     covariates['ss_cov_mu_b_walk'] = covariates['state_covariance_0'] * t.square(covariates['random_walk_scale']/national_cov_matrix_error_sd);
     ## transformation
 
-    # names = ss_cov_poll_bias.names
-    # covariates['cholesky_ss_cov_poll_bias'] = t.linalg.cholesky(ss_cov_poll_bias.rename(None)).rename(names[0],...);
-    # names = ss_cov_mu_b_T.names
-    # covariates['cholesky_ss_cov_mu_b_T'] = t.linalg.cholesky(ss_cov_mu_b_T.rename(None)).rename(names[0],...);
-    # names = ss_cov_mu_b_walk.names
-    # covariates['cholesky_ss_cov_mu_b_walk'] = t.linalg.cholesky(ss_cov_mu_b_walk.rename(None)).rename(names[0],...);
 
 
 if '__main__':
