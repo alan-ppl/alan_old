@@ -38,7 +38,7 @@ def plot():
                 elbos_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).mean(axis=0)
                 elbos_stds_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
                 ax_elbo[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, yerr=elbos_stds_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=ml_colours[lr], label='ML lr: {}'.format(lrs[lr], Ks[K]))
-
+                del results_ml_tmc_new
             except:
                 None
             #VI
@@ -54,7 +54,7 @@ def plot():
                 elbos_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).mean(axis=0)
                 elbos_stds_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
                 ax_elbo[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, yerr=elbos_stds_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=adam_colours[lr], label='MP VI lr: {}'.format(lrs[lr]))
-
+                del results_adam_tmc_new
             except:
                 None
 
@@ -99,6 +99,7 @@ def plot_moments():
                 stds_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
                 time_ml_tmc_new = n_mean(results_ml_tmc_new['times'], mean_no).mean(axis=0).cumsum()
                 ax_pll[K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=ml_colours[lr], label='ML lr: {}'.format(lrs[lr], Ks[K]))
+                del results_ml_tmc_new
             except:
                 None
             #VI
@@ -110,7 +111,7 @@ def plot_moments():
                 stds_adam_tmc_new = n_mean(results_adam_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
                 time_adam_tmc_new = n_mean(results_adam_tmc_new['times'], mean_no).mean(axis=0).cumsum()
                 ax_pll[K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=adam_colours[lr], label='MP VI lr: {}'.format(lrs[lr], Ks[K]))
-
+                del results_adam_tmc_new
             except:
                 None
         if K == 0:
@@ -159,6 +160,7 @@ def plot_bars():
 
                 pred_liks_ml.append(final_pred_lik_ml)
                 pred_liks_ml_std.append(final_pred_lik_std_err_ml)
+                del results_ml_tmc_new
             except:
                 pred_liks_ml.append(0)
                 pred_liks_ml_std.append(0)
@@ -172,7 +174,7 @@ def plot_bars():
 
                 pred_liks_adam.append(final_pred_lik_adam)
                 pred_liks_adam_std.append(final_pred_lik_std_err_adam)
-
+                del results_adam_tmc_new
             except:
                 pred_liks_adam.append(0)
                 pred_liks_adam_std.append(0)
@@ -217,5 +219,5 @@ plt.rcParams.update({"figure.dpi": 3500})
 with plt.rc_context(bundles.icml2022()):
 
     plot()
-    # plot_moments()
-    # plot_bars()
+    plot_moments()
+    plot_bars()
