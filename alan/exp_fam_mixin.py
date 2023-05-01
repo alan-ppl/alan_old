@@ -107,7 +107,7 @@ class BernoulliLogitsMixin(BernoulliMixin):
         return {'logits': inverse_sigmoid(probs)}
 
     @staticmethod
-    def canonical_conv(self, probs=None, logits=None):
+    def canonical_conv(logits=None, probs=None):
         assert (probs is None) != (logits is None)
         return {'logits': inverse_sigmoid(probs) if probs is not None else logits}
 
@@ -132,7 +132,7 @@ class BernoulliProbsMixin(BernoulliMixin):
         return {'probs': probs}
 
     @staticmethod
-    def canonical_conv(self, probs=None, logits=None):
+    def canonical_conv(logits=None, probs=None):
         assert (probs is None) != (logits is None)
         return {'probs': t.sigmoid(logits) if (logits is not None) else logits}
 
@@ -165,7 +165,7 @@ class PoissonMixin(AbstractMixin):
 
     @staticmethod
     def canonical_conv(rate):
-        return {'rate': rate}
+        return {'rate': rate.exp()}
 
 class NormalMixin(AbstractMixin):
     dist = staticmethod(Normal)
@@ -196,6 +196,7 @@ class NormalMixin(AbstractMixin):
 
     @staticmethod
     def canonical_conv(loc, scale):
+        ## exp so that its positive, is this the right place to do this?
         return {'loc': loc, 'scale': scale.exp()}
 
     @staticmethod

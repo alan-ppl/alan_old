@@ -1,7 +1,7 @@
 import torch as t
 import torch.nn as nn
 import alan
-from alan.glm import LinearRegression
+from alan.glm import LinearRegression, LogisticRegression, PoissonRegression
 t.manual_seed(0)
 
 J = 2
@@ -21,7 +21,7 @@ class Q(alan.AlanModule):
         self.Na = alan.MLNormal()
         self.Nb = alan.MLNormal()
         self.Nc = alan.MLNormal({'plate_1': J})
-        self.Nd = LinearRegression({'plate_1': J, 'plate_2': M})
+        self.Nd = LogisticRegression({'plate_1': J, 'plate_2': M})
 
     def forward(self, tr):
         tr('a',   self.Na())

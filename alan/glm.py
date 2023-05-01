@@ -17,8 +17,8 @@ class GLM(AlanModule):
     """
     def __init__(self, platesizes=None, sample_shape=(), init_beta=None):
         super().__init__()
-        # if init_beta is None:
-        #     init_beta = 0
+        if init_beta is None:
+            init_beta = 0.
 
         # self.inputs = inputs
 
@@ -29,7 +29,7 @@ class GLM(AlanModule):
 
         self.betanames = tuple(f'beta_{i}' for i in range(len(self.sufficient_stats)))
         for betaname in self.betanames:
-            self.register_parameter(betaname, nn.Parameter(t.zeros(shape).rename(*names)))
+            self.register_parameter(betaname, nn.Parameter(t.full(shape, init_beta).rename(*names)))
 
         # self.register_buffer('beta', t.full(shape, init_beta).rename(*names))
 
@@ -64,6 +64,7 @@ class GLM(AlanModule):
         mean = []
         for beta in self.dim_betas:
             mean.append(inputs * beta)
+
         return self.dist(**self.canonical_conv(*mean))
 
     def local_parameters(self):
@@ -72,7 +73,7 @@ class GLM(AlanModule):
 
 class LinearRegression(GLM, NormalMixin):
     pass
-class LogisticRegression(GLM, BernoulliMixin):
+class LogisticRegression(GLM, BernoulliLogitsMixin):
     pass
 class PoissonRegression(GLM, PoissonMixin):
     pass
