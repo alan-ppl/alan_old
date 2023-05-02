@@ -106,7 +106,7 @@ def run_experiment(cfg):
 
                 sq_err = 0
                 for rv in rvs:
-                    sq_errs[i,j] += ((expectation_means[rv] - exps[rv])**2).rename(None).sum().cpu()/(len(rvs))
+                    sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
 
 
                 if j % 100 == 0:
