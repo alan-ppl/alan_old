@@ -106,18 +106,18 @@ class Sample():
     def is_K(self, dim):
         return dim in self.Ks
 
-    def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):
+    def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=(), fn=lambda x:x):
         """
         Sums over plates, starting at the lowest plate.
         The key exported method.
         """
         logp = self.logp
         if detach_p:
-            logp = [lp.detach() for lp in logp]
+            logp = [fn(lp).detach() for lp in logp]
 
         logq = self.logq
         if detach_q:
-            logq = [lq.detach() for lq in logq]
+            logq = [fn(lq).detach() for lq in logq]
 
         tensors = [*logp, *[-lq for lq in logq], *extra_log_factors]
 
@@ -179,6 +179,9 @@ class Sample():
 
     def elbo(self):
         return self.tensor_product()
+
+    def cubo(self):
+        return self.tensor_product(fn=lambda x:x**2)
 
     def rws(self):
         # Wake-phase P update

@@ -31,18 +31,32 @@ class GMM(AlanModule):
         names = [*platesizes.keys(), *(len(sample_shape) * [None])]
 
         ## Need to find last platedim size?
-        self.partition_sizes = {}
-        size = platesizes.values()[-1]
-        for i in range(num_partitions-1):
+
+        self.mean_names = tuple(f'mean_{i}' for i in range(num_partitions))
+        self.sigma_names = tuple(f'sigma_{i}' for i in range(num_partitions))
+        for i in range(num_partitions):
             # self.partition_sizes['part_{}'.format(i)] = size//num_partitions}
-            self.register_parameter('mean_{}'.format(i), nn.Parameter(t.zeros(sample_shape).rename(*names)))
-            self.register_parameter('sigma_{}'.format(i),  nn.Parameter(t.zeros(sample_shape).rename(*names)))
-        self.reset_nats()
+            self.register_parameter('mean_{}'.format(i), nn.Parameter(t.zeros(shape).rename(*names)))
+            self.register_parameter('sigma_{}'.format(i),  nn.Parameter(t.zeros(shape).rename(*names)))
+
         # self.partition_sizes['part_{}'.format(num_partitions-1)] = size//num_partitions + size % num_partitions
 
-        self.register_parameter('pi', nn.Parameter((1/num_partitions) * t.ones(num_partitions, size).rename(*names)))
+        self.register_parameter('pi', nn.Parameter((1/num_partitions) * t.ones(num_partitions, shape).rename(*names)))
+
+    @property
+    def dim_betas(self):
+        return [getattr(self, betaname) for betaname in self.betanames]
+    @property
+    def named_betas(self):
+        return [self.get_named_tensor(betaname) for betaname in self.betanames]
+
+    @property
+    def named_grads(self):
+        return [self.get_named_grad(betaname) for betaname in self.betanames]
 
     @property
     def pi_prior(self):
         # return Dirichlet(self.pi)
         return Categorical(self.pi)
+
+    def
