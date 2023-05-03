@@ -26,12 +26,12 @@ def get_ratings():
     # print(ratings.head(5))
     return t.tensor(ratings.to_numpy())
 
-for i in range(10):
+for i in range(1):
     seed_torch(i)
     #Films
-    Ns = [5]
+    Ns = [20]
     #Users
-    Ms = [300]
+    Ms = [450]
 
 
 

@@ -101,19 +101,20 @@ def run_experiment(cfg):
                         pred_liks[i,j] = np.nan
 
 
-                #MSE/Variance of first moment
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
-                exps = pp.mean(sample.weights())
+                if cfg.do_moments:
+                    #MSE/Variance of first moment
+                    sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
+                    exps = pp.mean(sample.weights())
 
-                rvs = list(exps.keys())
-                if cfg.use_data:
-                    expectation_means = {rv: exps[rv]/cfg.training.num_runs for rv in rvs}
-                else:
-                    expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
+                    rvs = list(exps.keys())
+                    if cfg.use_data:
+                        expectation_means = {rv: exps[rv]/cfg.training.num_runs for rv in rvs}
+                    else:
+                        expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
 
-                sq_err = 0
-                for rv in rvs:
-                    sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
+                    sq_err = 0
+                    for rv in rvs:
+                        sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
 
 
                 if j % 100 == 0:
