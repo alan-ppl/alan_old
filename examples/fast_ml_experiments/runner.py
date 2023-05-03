@@ -54,14 +54,17 @@ def run_experiment(cfg):
         final_pred_lik = np.zeros((cfg.training.num_runs,), dtype=np.float32)
         final_pred_lik_for_K = np.zeros((cfg.training.num_runs,len(Ks)), dtype=np.float32)
         for i in range(cfg.training.num_runs):
+            seed_torch(i)
             P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+
 
             if not cfg.use_data:
                 data_prior = data
                 data = {'obs':data.pop('obs')}
                 test_data = {'obs':test_data.pop('obs')}
 
-            seed_torch(i)
+
+
 
             model = alan.Model(P, Q())
             model.to(device)

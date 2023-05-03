@@ -24,7 +24,7 @@ def plot():
         for lr in range(len(lrs)):
             #ML
             try:
-                with open('results/bus_breakdown/ML_3500_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+                with open('results/bus_breakdown/ML_3500_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
                     results_ml_tmc_new = pickle.load(f)
 
 
@@ -43,7 +43,7 @@ def plot():
                 None
             #VI
             try:
-                with open('results/bus_breakdown/VI_3500_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+                with open('results/bus_breakdown/VI_3500_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
                     results_adam_tmc_new = pickle.load(f)
                 #Pred_ll
                 elbos_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).mean(axis=0)

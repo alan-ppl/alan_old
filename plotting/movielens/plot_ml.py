@@ -24,7 +24,7 @@ def plot():
         for lr in range(len(lrs)):
             #ML
             try:
-                with open('results/movielens/ML_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
+                with open('results/movielens/ML_{}_{}_K{}_False.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
                     results_ml_tmc_new = pickle.load(f)
 
 
@@ -46,7 +46,7 @@ def plot():
                 None
             #VI
             try:
-                with open('results/movielens/VI_1000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+                with open('results/movielens/VI_1000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
                     results_adam_tmc_new = pickle.load(f)
                 #Pred_ll
                 elbos_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).mean(axis=0)

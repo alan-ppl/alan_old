@@ -3,6 +3,8 @@ import torch.nn as nn
 import alan
 import numpy as np
 
+from alan.experiment_utils import seed_torch
+
 def generate_model(N,M,device,ML=1, run=0, use_data=True):
     M = 3
     J = 3
@@ -39,9 +41,10 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
       tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_ID')
       tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
-      # tr('theta', alan.Normal(np.log(130) * tr.ones(()), np.log(20) * tr.ones(())))
-      # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))
-      tr('obs', alan.NegativeBinomial(total_count=10, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+      # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
+      # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+      tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+
 
 
 
@@ -98,6 +101,7 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
 
     if use_data:
         data = {'obs':t.load('bus_breakdown/data/delay_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+        # print(data)
         test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
         all_data = {'obs': t.cat([data['obs'],test_data['obs']],-2)}
     else:
@@ -105,7 +109,10 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
         data_prior = model.sample_prior(platesizes = sizes, inputs = covariates)
         data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = data_prior
+        # print(data['obs'])
         test_data = data_prior_test
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -2)}
+
+
 
     return P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes

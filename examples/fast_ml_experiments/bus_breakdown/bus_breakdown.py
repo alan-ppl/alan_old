@@ -42,7 +42,7 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
       tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
       # tr('theta', alan.Normal(np.log(20) * tr.ones(()), np.log(50) * tr.ones(())), plates = 'plate_ID')
       # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
-      tr('obs', alan.NegativeBinomial(total_count=10, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+      tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
 
 
 
