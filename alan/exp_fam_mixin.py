@@ -107,7 +107,7 @@ class BernoulliLogitsMixin(BernoulliMixin):
         return {'logits': inverse_sigmoid(probs)}
 
     @staticmethod
-    def canonical_conv(self, probs=None, logits=None):
+    def canonical_conv(logits=None, probs=None):
         assert (probs is None) != (logits is None)
         return {'logits': inverse_sigmoid(probs) if probs is not None else logits}
 
@@ -132,7 +132,7 @@ class BernoulliProbsMixin(BernoulliMixin):
         return {'probs': probs}
 
     @staticmethod
-    def canonical_conv(self, probs=None, logits=None):
+    def canonical_conv(logits=None, probs=None):
         assert (probs is None) != (logits is None)
         return {'probs': t.sigmoid(logits) if (logits is not None) else logits}
 
@@ -165,7 +165,7 @@ class PoissonMixin(AbstractMixin):
 
     @staticmethod
     def canonical_conv(rate):
-        return {'rate': rate}
+        return {'rate': rate.exp()}
 
 class NormalMixin(AbstractMixin):
     dist = staticmethod(Normal)
@@ -178,7 +178,7 @@ class NormalMixin(AbstractMixin):
         return Ex, Ex2
     @staticmethod
     def mean2conv(Ex, Ex2):
-        loc   = Ex 
+        loc   = Ex
         scale = (Ex2 - loc**2).sqrt() + 1e-8
         return {'loc': loc, 'scale': scale}
 
@@ -196,7 +196,8 @@ class NormalMixin(AbstractMixin):
 
     @staticmethod
     def canonical_conv(loc, scale):
-        return {'loc': loc, 'scale': scale}
+        ## exp so that its positive, is this the right place to do this?
+        return {'loc': loc, 'scale': scale.exp()}
 
     @staticmethod
     def test_conv(N):
@@ -211,7 +212,7 @@ class ExponentialMixin(AbstractMixin):
     @staticmethod
     def mean2conv(mean):
         return {'rate': t.reciprocal(mean)}
-    
+
     @staticmethod
     def nat2conv(nat):
         return {'rate': -nat}
@@ -273,7 +274,7 @@ class DirichletMixin(AbstractMixin):
 class BetaMixin(AbstractMixin):
     dist = staticmethod(Beta)
     sufficient_stats = (t.log, lambda x: t.log(1-x))
-    
+
     @staticmethod
     def conv2nat(concentration1, concentration0):
         return (concentration1-1, concentration0-1)
@@ -298,7 +299,7 @@ class BetaMixin(AbstractMixin):
     def canonical_conv(concentration1, concentration0):
         return {'concentration1': concentration1, 'concentration0': concentration0}
 
-    
+
 
 class GammaMixin(AbstractMixin):
     """
@@ -339,7 +340,7 @@ class GammaMixin(AbstractMixin):
             num = diff + alpha.log() - t.digamma(alpha)
             denom = 1 - alpha * grad_digamma(alpha)
             alpha = alpha * t.reciprocal(1 + num/denom)
-        beta = alpha / Ex 
+        beta = alpha / Ex
         return {'concentration': alpha, 'rate': beta}
 
     @staticmethod

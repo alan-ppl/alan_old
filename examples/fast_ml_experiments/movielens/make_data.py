@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
 import torch as t
+import alan
 
 from alan.experiment_utils import seed_torch
-
+from movielens import generate_model
 
 def get_features():
     feats = pd.read_csv('ml-100k/u.item', sep='|', index_col=0, header=None, encoding='latin-1')
@@ -25,12 +26,12 @@ def get_ratings():
     # print(ratings.head(5))
     return t.tensor(ratings.to_numpy())
 
-for i in range(10):
+for i in range(1):
     seed_torch(i)
     #Films
-    Ns = [5]
+    Ns = [20]
     #Users
-    Ms = [300]
+    Ms = [450]
 
 
 

@@ -54,17 +54,20 @@ def run_experiment(cfg):
         final_pred_lik = np.zeros((cfg.training.num_runs,), dtype=np.float32)
         final_pred_lik_for_K = np.zeros((cfg.training.num_runs,len(Ks)), dtype=np.float32)
         for i in range(cfg.training.num_runs):
-            P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i)
-
-
             seed_torch(i)
+            P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+
+
+            if not cfg.use_data:
+                data_prior = data
+                data = {'obs':data.pop('obs')}
+                test_data = {'obs':test_data.pop('obs')}
+
+
+
 
             model = alan.Model(P, Q())
             model.to(device)
-
-            if not cfg.use_data:
-                data_prior = model.sample_prior(platesizes = sizes, inputs = covariates, device=device)
-                data = {'obs': data_prior['obs']}
 
             opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr)
 
@@ -80,7 +83,7 @@ def run_experiment(cfg):
 
 
                 #Predictive Log Likelihoods
-                if cfg.training.pred_ll.do_pred_ll and cfg.use_data:
+                if cfg.training.pred_ll.do_pred_ll:
                     success=False
                     for k in range(10):
                         try:
@@ -98,19 +101,20 @@ def run_experiment(cfg):
                         pred_liks[i,j] = np.nan
 
 
-                #MSE/Variance of first moment
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
-                exps = pp.mean(sample.weights())
+                if cfg.do_moments:
+                    #MSE/Variance of first moment
+                    sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
+                    exps = pp.mean(sample.weights())
 
-                rvs = list(exps.keys())
-                if cfg.use_data:
-                    expectation_means = {rv: exps[rv]/cfg.training.num_runs for rv in rvs}
-                else:
-                    expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
+                    rvs = list(exps.keys())
+                    if cfg.use_data:
+                        expectation_means = {rv: exps[rv]/cfg.training.num_runs for rv in rvs}
+                    else:
+                        expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
 
-                sq_err = 0
-                for rv in rvs:
-                    sq_errs[i,j] += ((expectation_means[rv] - exps[rv])**2).rename(None).sum().cpu()/(len(rvs))
+                    sq_err = 0
+                    for rv in rvs:
+                        sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
 
 
                 if j % 100 == 0:
