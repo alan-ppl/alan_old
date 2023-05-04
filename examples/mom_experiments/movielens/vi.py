@@ -10,6 +10,7 @@ import gc
 import sys
 import argparse
 
+t.cuda.synchronize()
 script_start_time = time.time()
 
 parser = argparse.ArgumentParser()
@@ -53,11 +54,11 @@ def P(tr, x):
     Heirarchical Model
     '''
 
-    # tr('mu_z', alan.Normal(t.zeros((d_z,)).to(device),0.25*t.ones((d_z,)).to(device)))
-    # tr('psi_z', alan.Normal(t.zeros((d_z,)).to(device), 0.25*t.ones((d_z,)).to(device)))
+    tr('mu_z', alan.Normal(tr.zeros((d_z,)),0.25*tr.ones((d_z,))))
+    tr('psi_z', alan.Normal(tr.zeros((d_z,)), 0.25*tr.ones((d_z,))))
 
-    tr('mu_z', alan.Normal(t.zeros((d_z,)).to(device),t.ones((d_z,)).to(device)))
-    tr('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
+    # tr('mu_z', alan.Normal(t.zeros((d_z,)).to(device),t.ones((d_z,)).to(device)))
+    # tr('psi_z', alan.Normal(t.zeros((d_z,)).to(device), t.ones((d_z,)).to(device)))
 
     tr('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
@@ -112,6 +113,8 @@ for useData in [False, True]:
     expectation_times = {count:[] for count in range(num_vi_iters+1)}
 
     for i in range(num_runs):
+        seed_torch(i)
+
         # Make the model
         model = alan.Model(P, Q())#, data, covariates)
 
@@ -145,12 +148,16 @@ for useData in [False, True]:
                 print(f"run {i}")
 
         for vi_iter in range(num_vi_iters+1):
-            if verbose and vi_iter % 250 == 0: print(f"{vi_iter}/{num_vi_iters}")
+            if verbose and vi_iter % 500 == 0: print(f"{vi_iter}/{num_vi_iters}")
 
             # Compute the elbo
+            t.cuda.synchronize()
             start = time.time()
+
             sample = model.sample_perm(k, data=data, inputs=covariates, reparam=True, device=device)
             elbo = sample.elbo()
+
+            t.cuda.synchronize()
             end   = time.time()
             elbo_time = end-start
 
@@ -162,10 +169,14 @@ for useData in [False, True]:
                 error = True
                 while error:
                     try:
+                        t.cuda.synchronize()
                         start = time.time()
+
                         sample = model.sample_perm(k, data=data, inputs=covariates, reparam=False, device=device)
                         pred_likelihood = model.predictive_ll(sample, N = 100, data_all=all_data, inputs_all=all_covariates)
                         p_lls[vi_iter].append(pred_likelihood["obs"].item())
+
+                        t.cuda.synchronize()
                         end = time.time()
 
                         p_ll_times[vi_iter].append(end-start + train_time)
@@ -175,21 +186,29 @@ for useData in [False, True]:
                         pass
 
             # Compute (an estimate of) the expectation for each variable in the model
+            t.cuda.synchronize()
             start = time.time()
+
             sample = model.sample_perm(k, data=data, inputs=covariates, reparam=False, device=device)
             expectations[vi_iter].append(pp.mean(sample.weights()))
+            
+            t.cuda.synchronize()
             end = time.time()
+
             expectation_times[vi_iter].append(end-start + train_time)
 
             # input("Next run?")
-            
+            t.cuda.synchronize()
             train_time_start = time.time()
+
             opt.zero_grad()
             # elbo = model.elbo(K=1)
             (-elbo).backward()
             opt.step()
+
+            t.cuda.synchronize()
             train_time_end = time.time()
-            train_time += train_time_end - train_time_start
+            train_time += train_time_end - train_time_start + elbo_time
 
     # Compute variance/MSE of results, store w/ mean/std_err execution time 
     for vi_iter in range(num_vi_iters+1):
@@ -267,4 +286,5 @@ for useData in [False, True]:
 
     print(f"Finished lr={lr}, useData={useData}")
 
+t.cuda.synchronize()
 print(f"Took {time.time() - script_start_time}s.")
