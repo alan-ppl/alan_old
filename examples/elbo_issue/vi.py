@@ -66,17 +66,18 @@ def get_data(run):
 
 
 
-per_seed_elbo = np.zeros((5,3500), dtype=np.float32)
-times = np.zeros((5,3500), dtype=np.float32)
+per_seed_elbo = np.zeros((5,10000), dtype=np.float32)
+times = np.zeros((5,10000), dtype=np.float32)
 for i in range(5):
+    print(f'Run: {i+1}')
     seed_torch(i)
     model = alan.Model(P, Q())
     model.to(device)
 
-    opt = t.optim.Adam(model.parameters(), lr=0.1)
+    opt = t.optim.Adam(model.parameters(), lr=0.03)
 
     data, covariates, test_data, test_covariates, all_data, all_covariates = get_data(i)
-    for j in range(3500):
+    for j in range(10000):
         if t.cuda.is_available():
             t.cuda.synchronize()
         start = time.time()
@@ -101,6 +102,6 @@ elbos = per_seed_elbo.mean(axis=0)
 elbos_std = per_seed_elbo.std(axis=0) / np.sqrt(5)
 times = times.mean(axis=0).cumsum(axis=0)
 
-ax.errorbar(times.tolist(),elbos.tolist(), yerr=elbos_std.tolist(), linewidth=0.55, markersize = 0.75, fmt='-',)
-ax.set_ylim(-7000,-6000)
+ax.errorbar(times.tolist(),elbos.tolist(), linewidth=0.55, markersize = 0.75, fmt='-',)
+ax.set_ylim(-7000,-5800)
 fig.savefig('elbo.pdf')
