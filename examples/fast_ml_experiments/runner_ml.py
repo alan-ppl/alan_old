@@ -69,12 +69,15 @@ def run_experiment(cfg):
 
 
             for j in range(cfg.training.num_iters):
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
                 start = time.time()
                 sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
                 elbo = sample.elbo().item()
                 per_seed_obj[i,j] = (elbo)
                 model.update(cfg.training.lr, sample)
-
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
                 times[i,j] = (time.time() - start)
 
                 #Predictive Log Likelihoods

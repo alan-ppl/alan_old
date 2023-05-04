@@ -72,6 +72,8 @@ def run_experiment(cfg):
             opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr)
 
             for j in range(cfg.training.num_iters):
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
                 start = time.time()
                 opt.zero_grad()
                 sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=device)
@@ -79,6 +81,8 @@ def run_experiment(cfg):
                 per_seed_obj[i,j] = elbo.item()
                 (-elbo).backward()
                 opt.step()
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
                 times[i,j] = (time.time() - start)
 
 
