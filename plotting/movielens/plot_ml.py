@@ -5,7 +5,7 @@ from tueplots import axes, bundles
 from tueplots import cycler
 from tueplots.constants import markers
 from tueplots.constants.color import palettes
-
+import matplotlib.patches as mpatches
 from alan.experiment_utils import n_mean
 Ks = ['3','10','30']
 
@@ -202,3 +202,166 @@ with plt.rc_context(bundles.icml2022()):
     #                ncol=5)
     fig.savefig('charts/chart_movielens.png')
     fig.savefig('charts/chart_movielens.pdf')
+
+    fig, ax = plt.subplots(len(Ks),len(Ks), figsize=(5.5, 8.0), constrained_layout=True, sharey=True)
+
+    for K in range(len(Ks)):
+        for K_2 in range(len(Ks)):
+
+            width = 0.3  # the width of the bars
+            multiplier = 0
+
+            pred_liks_ml = []
+            pred_liks_ml_std = []
+            pred_liks_adam = []
+            pred_liks_adam_std = []
+            for lr in range(len(lrs)):
+
+                #ML
+                try:
+                    with open('results/movielens/ML_{}_{}_K{}_True.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K]), 'rb') as f:
+                        results_ml_tmc_new = pickle.load(f)
+
+                    #moments
+                    final_pred_lik_ml = results_ml_tmc_new['final_pred_lik_for_K'].mean(axis=0)
+                    final_pred_lik_std_err_ml = results_ml_tmc_new['final_pred_lik_for_K'].std(axis=0) / np.sqrt(10)
+
+                    pred_liks_ml.append(final_pred_lik_ml[K_2])
+                    pred_liks_ml_std.append(final_pred_lik_std_err_ml[K_2])
+                except:
+                    pred_liks_ml.append(0)
+                    pred_liks_ml_std.append(0)
+                #VI
+                try:
+                    with open('results/movielens/VI_1000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+                        results_adam_tmc_new = pickle.load(f)
+                    #moments
+                    final_pred_lik_adam = results_adam_tmc_new['final_pred_lik_for_K'].mean(axis=0)
+                    final_pred_lik_std_err_adam = results_adam_tmc_new['final_pred_lik_for_K'].std(axis=0) / np.sqrt(10)
+
+                    pred_liks_adam.append(final_pred_lik_adam[K])
+                    pred_liks_adam_std.append(final_pred_lik_std_err_adam[K])
+
+                except:
+                    pred_liks_adam.append(0)
+                    pred_liks_adam_std.append(0)
+
+
+
+            offset = width * multiplier
+            if K>0 and K_2>0:
+                rects = ax[K,K_2].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std, color=ml_colours[0])
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+
+                offset = width * multiplier
+                rects = ax[K,K_2].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0])
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+            else:
+                rects = ax[K,K_2].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std,color=ml_colours[0], label='ML')
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+
+                offset = width * multiplier
+                rects = ax[K,K_2].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0], label='MP VI')
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+
+            ax[K,K_2].set_xticks(x + width, lrs)
+            ax[2,1].set_xlabel('Evaluation K')
+
+            ax[1,0].set_ylabel(r'Training K')
+
+            ax[K,K_2].set_title(f'Training K: {Ks[K]}, Evaluation K: {Ks[K_2]}')
+
+
+
+    blue_patch = mpatches.Patch(color=ml_colours[0], label='ML')
+    red_patch = mpatches.Patch(color=adam_colours[0], label='MP VI')
+    fig.legend(handles = [blue_patch, red_patch], loc='lower center', ncol=6, bbox_to_anchor=(0.55, -0.02))
+    # ax[3,K].legend(loc='lower center', bbox_to_anchor=(0.55, -0.15),
+    #                ncol=5)
+    fig.savefig('charts/chart_movielens_Kplot.png')
+    fig.savefig('charts/chart_movielens_Kplot.pdf')
+
+
+    fig, ax = plt.subplots(len(Ks),len(Ks), figsize=(5.5, 8.5), sharey=True)
+
+    for K in range(len(Ks)):
+        for K_2 in range(len(Ks)):
+
+            width = 0.3  # the width of the bars
+            multiplier = 0
+
+            pred_liks_ml = []
+            pred_liks_ml_std = []
+            pred_liks_adam = []
+            pred_liks_adam_std = []
+            for lr in range(len(lrs)):
+
+                #ML
+                try:
+                    with open('results/movielens/ML_1000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+                        results_ml_tmc_new = pickle.load(f)
+
+                    #moments
+                    final_pred_lik_ml = results_ml_tmc_new['final_pred_lik_for_K'].mean(axis=0)
+                    final_pred_lik_std_err_ml = results_ml_tmc_new['final_pred_lik_for_K'].std(axis=0) / np.sqrt(10)
+
+                    pred_liks_ml.append(final_pred_lik_ml[K_2])
+                    pred_liks_ml_std.append(final_pred_lik_std_err_ml[K_2])
+                except:
+                    pred_liks_ml.append(0)
+                    pred_liks_ml_std.append(0)
+                #VI
+                try:
+                    with open('results/movielens/VI_1000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+                        results_adam_tmc_new = pickle.load(f)
+                    #moments
+                    final_pred_lik_adam = results_adam_tmc_new['final_pred_lik_for_K'].mean(axis=0)
+                    final_pred_lik_std_err_adam = results_adam_tmc_new['final_pred_lik_for_K'].std(axis=0) / np.sqrt(10)
+
+                    pred_liks_adam.append(final_pred_lik_adam[K])
+                    pred_liks_adam_std.append(final_pred_lik_std_err_adam[K])
+
+                except:
+                    pred_liks_adam.append(0)
+                    pred_liks_adam_std.append(0)
+
+
+
+            offset = width * multiplier
+            if K>0 and K_2>0:
+                rects = ax[K,K_2].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std, color=ml_colours[0])
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+
+                offset = width * multiplier
+                rects = ax[K,K_2].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0])
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+            else:
+                rects = ax[K,K_2].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std,color=ml_colours[0], label='ML')
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+
+                offset = width * multiplier
+                rects = ax[K,K_2].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0], label='MP VI')
+                # ax_bar.bar_label(rects, padding=3)
+                multiplier += 1
+
+            ax[K,K_2].set_xticks(x + width, lrs)
+            ax[2,1].set_xlabel('Evaluation K')
+
+            ax[1,0].set_ylabel(r'Training K')
+
+            ax[K,K_2].set_title(f'Training K: {Ks[K]}, Evaluation K: {Ks[K_2]}')
+
+    blue_patch = mpatches.Patch(color=ml_colours[0], label='ML')
+    red_patch = mpatches.Patch(color=adam_colours[0], label='MP VI')
+    fig.legend(handles = [blue_patch, red_patch], loc='lower center', ncol=6, bbox_to_anchor=(0.55, -0.02))
+    # ax[3,K].legend(loc='lower center', bbox_to_anchor=(0.55, -0.15),
+    #                ncol=5)
+    fig.savefig('charts/chart_movielens_Kplot_synthetic.png')
+    fig.savefig('charts/chart_movielens_Kplot_synthetic.pdf')

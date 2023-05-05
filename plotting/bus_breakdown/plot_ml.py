@@ -168,32 +168,32 @@ with plt.rc_context(bundles.icml2022()):
 
 
 
-    offset = width * multiplier
-    if K>0:
-        rects = ax[3,K].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std, color=ml_colours[0])
-        # ax_bar.bar_label(rects, padding=3)
-        multiplier += 1
-
         offset = width * multiplier
-        rects = ax[3,K].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0])
-        # ax_bar.bar_label(rects, padding=3)
-        multiplier += 1
-    else:
-        rects = ax[3,K].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std,color=ml_colours[0], label='ML')
-        # ax_bar.bar_label(rects, padding=3)
-        multiplier += 1
+        if K>0:
+            rects = ax[3,K].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std, color=ml_colours[0])
+            # ax_bar.bar_label(rects, padding=3)
+            multiplier += 1
 
-        offset = width * multiplier
-        rects = ax[3,K].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0], label='MP VI')
-        # ax_bar.bar_label(rects, padding=3)
-        multiplier += 1
-    ax[3,K].set_xticks(x + width, lrs)
-    ax[3,K].set_xlabel('Learning rate')
-    if K == 0:
-        ax[3,K].set_ylabel(r'Predictive log likelihood' + '\n' +'evaluated for K=30')
+            offset = width * multiplier
+            rects = ax[3,K].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0])
+            # ax_bar.bar_label(rects, padding=3)
+            multiplier += 1
+        else:
+            rects = ax[3,K].bar(x + offset, pred_liks_ml, width, yerr=pred_liks_ml_std,color=ml_colours[0], label='ML')
+            # ax_bar.bar_label(rects, padding=3)
+            multiplier += 1
 
-    ax[3,K].set_title('{}'.format('abcd'[K]))
-    # ax[3,K].set_ylim(-1075,-920)
+            offset = width * multiplier
+            rects = ax[3,K].bar(x + offset, pred_liks_adam, width, yerr=pred_liks_adam_std, color=adam_colours[0], label='MP VI')
+            # ax_bar.bar_label(rects, padding=3)
+            multiplier += 1
+        ax[3,K].set_xticks(x + width, lrs)
+        ax[3,K].set_xlabel('Learning rate')
+        if K == 0:
+            ax[3,K].set_ylabel(r'Predictive log likelihood' + '\n' +'evaluated for K=30')
+
+        ax[3,K].set_title('{}'.format('abcd'[K]))
+        # ax[3,K].set_ylim(-1075,-920)
 
 
     fig.legend(loc='lower center', ncol=6, bbox_to_anchor=(0.55, -0.05))

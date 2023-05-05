@@ -10,7 +10,8 @@ import gc
 import sys
 import argparse
 
-t.cuda.synchronize()
+if  t.cuda.is_available():
+    t.cuda.synchronize()
 script_start_time = time.time()
 
 parser = argparse.ArgumentParser()
@@ -109,7 +110,7 @@ for useData in [False, True]:
         p_lls = {count:[] for count in range(num_vi_iters+1)}
         p_ll_times = {count:[] for count in range(num_vi_iters+1)}
 
-    expectations = {count:[] for count in range(num_vi_iters+1)} 
+    expectations = {count:[] for count in range(num_vi_iters+1)}
     expectation_times = {count:[] for count in range(num_vi_iters+1)}
 
     for i in range(num_runs):
@@ -142,8 +143,8 @@ for useData in [False, True]:
 
         train_time = 0
 
-        if verbose: 
-            if i % 100 == 0: 
+        if verbose:
+            if i % 100 == 0:
                 # print(f"{i+1}/{num_runs}")
                 print(f"run {i}")
 
@@ -151,13 +152,15 @@ for useData in [False, True]:
             if verbose and vi_iter % 500 == 0: print(f"{vi_iter}/{num_vi_iters}")
 
             # Compute the elbo
-            t.cuda.synchronize()
+            if  t.cuda.is_available():
+                t.cuda.synchronize()
             start = time.time()
 
             sample = model.sample_perm(k, data=data, inputs=covariates, reparam=True, device=device)
             elbo = sample.elbo()
 
-            t.cuda.synchronize()
+            if  t.cuda.is_available():
+                t.cuda.synchronize()
             end   = time.time()
             elbo_time = end-start
 
@@ -169,14 +172,16 @@ for useData in [False, True]:
                 error = True
                 while error:
                     try:
-                        t.cuda.synchronize()
+                        if  t.cuda.is_available():
+                            t.cuda.synchronize()
                         start = time.time()
 
                         sample = model.sample_perm(k, data=data, inputs=covariates, reparam=False, device=device)
                         pred_likelihood = model.predictive_ll(sample, N = 100, data_all=all_data, inputs_all=all_covariates)
                         p_lls[vi_iter].append(pred_likelihood["obs"].item())
 
-                        t.cuda.synchronize()
+                        if  t.cuda.is_available():
+                            t.cuda.synchronize()
                         end = time.time()
 
                         p_ll_times[vi_iter].append(end-start + train_time)
@@ -186,19 +191,22 @@ for useData in [False, True]:
                         pass
 
             # Compute (an estimate of) the expectation for each variable in the model
-            t.cuda.synchronize()
+            if  t.cuda.is_available():
+                t.cuda.synchronize()
             start = time.time()
 
             sample = model.sample_perm(k, data=data, inputs=covariates, reparam=False, device=device)
             expectations[vi_iter].append(pp.mean(sample.weights()))
-            
-            t.cuda.synchronize()
+
+            if  t.cuda.is_available():
+                t.cuda.synchronize()
             end = time.time()
 
             expectation_times[vi_iter].append(end-start + train_time)
 
             # input("Next run?")
-            t.cuda.synchronize()
+            if  t.cuda.is_available():
+                t.cuda.synchronize()
             train_time_start = time.time()
 
             opt.zero_grad()
@@ -206,11 +214,12 @@ for useData in [False, True]:
             (-elbo).backward()
             opt.step()
 
-            t.cuda.synchronize()
+            if  t.cuda.is_available():
+                t.cuda.synchronize()
             train_time_end = time.time()
             train_time += train_time_end - train_time_start + elbo_time
 
-    # Compute variance/MSE of results, store w/ mean/std_err execution time 
+    # Compute variance/MSE of results, store w/ mean/std_err execution time
     for vi_iter in range(num_vi_iters+1):
         if useData:
             elbos[vi_iter] = {'mean': np.mean(elbos[vi_iter]),
@@ -218,12 +227,12 @@ for useData in [False, True]:
                                 'time_mean': np.mean(elbo_times[vi_iter]),
                                 'time_std_err': np.std(elbo_times[vi_iter])/np.sqrt(num_runs)}
 
-        
+
             p_lls[vi_iter] = {'mean': np.mean(p_lls[vi_iter]),
                                 'std_err': np.std(p_lls[vi_iter])/np.sqrt(num_runs),
                                 'time_mean': np.mean(p_ll_times[vi_iter]),
                                 'time_std_err': np.std(p_ll_times[vi_iter])/np.sqrt(num_runs)}
-    
+
         rvs = list(expectations[vi_iter][0].keys())
         mean_vars = {rv: [] for rv in rvs}  # average element variance for each rv
 
@@ -231,14 +240,14 @@ for useData in [False, True]:
             expectation_means = {rv: sum([x[rv] for x in expectations[vi_iter]])/num_runs for rv in rvs}
         else:
             expectation_means = {rv: sampledData[rv] for rv in rvs}  # use the true values for the sampled data
-            
+
         sq_errs = {rv: [] for rv in rvs}
 
         for est in expectations[vi_iter]:
             for rv in est:
                 sq_err = ((expectation_means[rv] - est[rv])**2).cpu()
                 sq_errs[rv].append(sq_err.rename(None))
-        
+
         for rv in rvs:
             mean_vars[rv] = float(t.mean(t.stack(sq_errs[rv])))
 
@@ -263,10 +272,11 @@ for useData in [False, True]:
                 y.to("cpu")
                 del y
 
-        t.cuda.empty_cache()
+        if  t.cuda.is_available():
+            t.cuda.synchronize()
         gc.collect()
 
-      
+
     if useData:
         file = f'{results_folder}/vi_movielens_elbo_lr{lr}.json'
         with open(file, 'w') as f:
@@ -286,5 +296,6 @@ for useData in [False, True]:
 
     print(f"Finished lr={lr}, useData={useData}")
 
-t.cuda.synchronize()
+if  t.cuda.is_available():
+    t.cuda.synchronize()
 print(f"Took {time.time() - script_start_time}s.")
