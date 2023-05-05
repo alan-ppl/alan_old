@@ -162,8 +162,9 @@ if ml:
         if 0 == i%100:
             print(elbo)
 else:
-    opt = t.optim.Adam(cond_model.parameters(), lr=0.01)
     lr = 0.000000000000001
+    opt = t.optim.Adam(cond_model.parameters(), lr=lr)
+
     for i in range(50000):
         opt.zero_grad()
         sample = cond_model.sample_perm(K, True)

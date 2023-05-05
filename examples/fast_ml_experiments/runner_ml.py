@@ -49,8 +49,6 @@ def run_experiment(cfg):
         sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         nans = np.asarray([0]*cfg.training.num_runs)
-        final_pred_lik = np.zeros((cfg.training.num_runs,), dtype=np.float32)
-        final_pred_lik_for_K = np.zeros((cfg.training.num_runs,len(Ks)), dtype=np.float32)
         for i in range(cfg.training.num_runs):
             seed_torch(i)
             P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
@@ -104,14 +102,17 @@ def run_experiment(cfg):
                     exps = pp.mean(sample.weights())
 
                     rvs = list(exps.keys())
-                    if cfg.use_data:
-                        expectation_means = {rv: exps[rv]/cfg.training.num_runs for rv in rvs}
-                    else:
+                    if not cfg.use_data:
                         expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
 
-                    sq_err = 0
-                    for rv in rvs:
-                        sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
+                        sq_err = 0
+                        for rv in rvs:
+                            sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
+                    else:
+                        if cfg.model == 'bus_breakdown':
+                            sq_errs[i,j] = exps['alpha'].cpu().var()
+                        if cfg.model == 'movielens':
+                            sq_errs[i,j] = exps['z'].cpu().var()
 
 
                 if j % 100 == 0:
@@ -119,28 +120,6 @@ def run_experiment(cfg):
                     print("Iteration: {0}, Predll: {1:.2f}".format(j,pred_liks[i,j]))
 
 
-            for k in range(10):
-                try:
-                    sample = model.sample_perm(30, data=data, inputs=covariates, reparam=False, device=device)
-                    pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
-                    final_pred_lik[i] = pred_likelihood['obs'].item()
-                    # print(pred_liks[i,j])
-                    break
-                except:
-                    final_pred_lik[i] = np.nan
-                    print('nan pred likelihood!')
-
-            for K_run in range(len(Ks)):
-                for k in range(10):
-                    try:
-                        sample = model.sample_perm(Ks[K_run], data=data, inputs=covariates, reparam=False, device=device)
-                        pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
-                        final_pred_lik_for_K[i, K_run] = pred_likelihood['obs'].item()
-                        # print(pred_liks[i,j])
-                        break
-                    except:
-                        final_pred_lik_for_K[i, K_run] = np.nan
-                        print('nan pred likelihood!')
             ###
             # SAVING MODELS DOESN'T WORK YET
             ###
@@ -152,9 +131,7 @@ def run_experiment(cfg):
                                  'pred_likelihood':pred_liks,
                                  'times':times,
                                  'nans':(nans/cfg.training.num_runs).tolist(),
-                                 'sq_errs':sq_errs,
-                                 'final_pred_lik_K=30':final_pred_lik,
-                                 'final_pred_lik_for_K':final_pred_lik_for_K}
+                                 'sq_errs':sq_errs}
 
 
         file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)

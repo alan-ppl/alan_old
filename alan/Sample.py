@@ -367,6 +367,7 @@ def sample_cond(marg, K, K_post_idxs, N):
     prev_Ks = [dim for dim in generic_dims(marg) if (dim in K_post_idxs)]
 
     marg = generic_order(marg, prev_Ks)
+
     #index into marg for the previous Ks, which gives an unnormalized posterior.
     #note that none of the previous Ks have a T dimension, so we don't need to
     #do any time indexing...
