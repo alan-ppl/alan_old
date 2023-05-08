@@ -124,6 +124,11 @@ with plt.rc_context(bundles.icml2022()):
 
 
             ax[2,K].set_xlabel('Time (s)')
+            if data == 'False':
+                ax[2,K].set_ylim(12000,16000)
+                ax[1,K].set_ylim(-1200,-1040)
+            else:
+                ax[2,K].set_ylim(0,1.5)
 
         fig.legend(loc='lower center', ncol=6, bbox_to_anchor=(0.55, -0.025))
         # ax[2,1].legend(loc='lower center', bbox_to_anchor=(0.55, -0.15),

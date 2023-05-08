@@ -21,9 +21,9 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         #     var = var.rename('plate_State',...)
         if var.shape[0] == 1258:
             v = var
-            var, test_var = t.chunk(v, 2, 0)
+            var, test_var = t.chunk(v.clone(), 2, 0)
             var = var.rename('plate_State_Polls',...)
-            all_var = v
+            all_var = v.rename('plate_State_Polls',...)
         if var.shape[0] == 254:
             var = var.rename('T',...)
 
@@ -34,6 +34,7 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
             all_covariates[name] = var
 
     transform_data(covariates)
+    transform_data(all_covariates)
 
     data = {}
     all_data = {}
@@ -47,9 +48,9 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         #     var = var.rename('plate_State',...)
         if var.shape[0] == 1258:
             v = var
-            var, test_var = t.chunk(v, 2, 0)
+            var, test_var = t.chunk(v.clone(), 2, 0)
             var = var.rename('plate_State_Polls',...)
-            all_var = v
+            all_var = v.rename('plate_State_Polls',...)
         # if var.shape[0] == 254:
         #     var = var.rename('T',...)
 
@@ -59,6 +60,7 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         else:
             all_data[name] = var
 
+
     N_national_polls = covariates.pop('N_national_polls')[0].int().item()   # Number of polls
     N_state_polls = covariates.pop('N_state_polls')[0].int().item() // 2 # Number of polls
     T = covariates.pop('T')[0].int().item()   # Number of days
@@ -66,6 +68,14 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
     P_int = covariates.pop('P')[0].int().item()    # Number of pollsters
     M = covariates.pop('M')[0].int().item()    # Number of poll modes
     Pop = covariates.pop('Pop')[0].int().item()    # Number of poll populations
+
+    N_national_polls = all_covariates.pop('N_national_polls')[0].int().item()   # Number of polls
+    N_state_polls = all_covariates.pop('N_state_polls')[0].int().item() // 2 # Number of polls
+    T = all_covariates.pop('T')[0].int().item()   # Number of days
+    S = all_covariates.pop('S')[0].int().item()    # Number of states (for which at least 1 poll is available) + 1
+    P_int = all_covariates.pop('P')[0].int().item()    # Number of pollsters
+    M = all_covariates.pop('M')[0].int().item()    # Number of poll modes
+    Pop = all_covariates.pop('Pop')[0].int().item()    # Number of poll populations
 
     sizes = {'plate_State': S, 'plate_National_Polls':N_national_polls, 'plate_State_Polls':N_state_polls,
              'T1':T, 'T2':T, 'plate_P':P_int, 'plate_M':M, 'plate_Pop':Pop}
@@ -102,11 +112,14 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         '''
         Hierarchical Model
         '''
+        # tr('mu_b_T', alan.MultivariateNormal(mu_b_prior, ss_cov_mu_b_T))
 
-        tr('mu_b_T', alan.MultivariateNormal(mu_b_prior, ss_cov_mu_b_T))
+        tr('mu_b_T', alan.Normal(mu_b_prior, 0.01))
+        # def mu_b_transition(x):
+        #     return alan.MultivariateNormal(x, ss_cov_mu_b_walk)
 
         def mu_b_transition(x):
-            return alan.MultivariateNormal(x, ss_cov_mu_b_walk)
+            return alan.Normal(x, 0.01)
 
         tr('mu_b', alan.Timeseries('mu_b_T', mu_b_transition), T="T1")
 
@@ -265,13 +278,13 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
 
     return P, Q, data, covariates, all_data, all_covariates, sizes
 
-def transform_data(covariates):
-    national_cov_matrix_error_sd = t.sqrt(covariates['state_weights'] @ covariates['state_covariance_0'] @ covariates['state_weights']);
+def transform_data(cov):
+    national_cov_matrix_error_sd = t.sqrt(cov['state_weights'] @ cov['state_covariance_0'] @ cov['state_weights']);
 
     ## scale covariance
-    covariates['ss_cov_poll_bias'] = covariates['state_covariance_0'] * t.square(covariates['polling_bias_scale']/national_cov_matrix_error_sd);
-    covariates['ss_cov_mu_b_T'] = covariates['state_covariance_0'] * t.square(covariates['mu_b_T_scale']/national_cov_matrix_error_sd);
-    covariates['ss_cov_mu_b_walk'] = covariates['state_covariance_0'] * t.square(covariates['random_walk_scale']/national_cov_matrix_error_sd);
+    cov['ss_cov_poll_bias'] = cov['state_covariance_0'] * t.square(cov['polling_bias_scale']/national_cov_matrix_error_sd);
+    cov['ss_cov_mu_b_T'] = cov['state_covariance_0'] * t.square(cov['mu_b_T_scale']/national_cov_matrix_error_sd);
+    cov['ss_cov_mu_b_walk'] = cov['state_covariance_0'] * t.square(cov['random_walk_scale']/national_cov_matrix_error_sd);
     ## transformation
 
 
@@ -282,10 +295,13 @@ if '__main__':
     model = alan.Model(P, Q())
     #data_prior = model.sample_prior(platesizes = sizes, inputs = covariates)
     data = {'n_democrat_state': data['n_democrat_state']}#, 'n_democrat_national':data_prior['n_democrat_state']}
+
     all_data = {'n_democrat_state': all_data['n_democrat_state']}
+
+
     K = 3
-    opt = t.optim.Adam(model.parameters(), lr=0.01)
-    for j in range(20):
+    opt = t.optim.Adam(model.parameters(), lr=0.1)
+    for j in range(200):
         opt.zero_grad()
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=t.device('cpu'))
         elbo = sample.elbo()
@@ -295,10 +311,10 @@ if '__main__':
         print(elbo)
 
         for i in range(10):
-            try:
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-                pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
-                break
-            except:
-                pred_likelihood = 0
+            # try:
+                # sample = model.sample_same(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+            pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
+            #     break
+            # except:
+            #     pred_likelihood = 0
         print(pred_likelihood)

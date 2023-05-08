@@ -19,8 +19,9 @@ def get_features():
 def get_ratings():
     ratings = pd.read_csv('ml-100k/u.data', sep='\t', header=None)
     ratings.columns = ['user id', 'item id',  'rating',  'timestamp']
-    ratings['rating'].loc[ratings['rating'] >= 4] = 1
     ratings['rating'].loc[ratings['rating'] < 4] = 0
+    ratings['rating'].loc[ratings['rating'] >= 4] = 1
+
     ratings = ratings.pivot(index='user id', columns='item id', values='rating').fillna(0)
     # print(ratings.head(5))
     return t.tensor(ratings.to_numpy())

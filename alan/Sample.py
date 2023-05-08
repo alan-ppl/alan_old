@@ -310,7 +310,6 @@ class Sample():
         #Put dims back,
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
         #Normalized, marg gives the "posterior marginals" over Ks
-
         #Delete everything that's not necessary for the rest
         del logps, dimss, undim_logps, undim_Js, dim_Js, result
 
@@ -336,9 +335,9 @@ class Sample():
                 if var_names[i] in self.trp.Tvar2Tdim.keys():
                     Tdim = self.trp.Tvar2Tdim[var_names[i]]
                     Kprev, Kdim = self.trp.Tdim2Ks[Tdim]
-
                     marg = marg.order(Tdim)
-
+                    # print(var_names[i])
+                    # print(marg)
                     #Tensor to record all the K's
                     init_K_post = sample_cond(marg[0], Kdim, K_post_idxs, N)
                     K_posts    = init_K_post[None, ...].expand(Tdim.size)
@@ -365,12 +364,11 @@ def sample_cond(marg, K, K_post_idxs, N):
     and returns N (torchdim Dim) samples of the current K (torchdim Dim).
     """
     prev_Ks = [dim for dim in generic_dims(marg) if (dim in K_post_idxs)]
-
     marg = generic_order(marg, prev_Ks)
-
     #index into marg for the previous Ks, which gives an unnormalized posterior.
     #note that none of the previous Ks have a T dimension, so we don't need to
     #do any time indexing...
+
     cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
 
     #Check none of the conditional probabilites are big and negative
@@ -382,8 +380,11 @@ def sample_cond(marg, K, K_post_idxs, N):
     #Put current K at the back for the sampling,
     cond = cond.order(K)
     cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
+
     #Sample new K's
-    return Categorical(cond).sample(False, sample_dims=(N,))
+
+    ## Shouldn't need to add 1e-10
+    return Categorical(cond + 1e-10).sample(False, sample_dims=(N,))
 
 class SampleGlobal(Sample):
     def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):

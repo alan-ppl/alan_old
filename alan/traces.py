@@ -508,15 +508,16 @@ class TracePred(AbstractTrace):
             T_all = dist.Tdim
             T_idx = next(i for (i, dim) in enumerate(dims_all) if dim is T_all)
             T_train = dims_train[T_idx]
-            T_test = Dim('T_test', T_all.size - T_train.size)
+            if T_all.size - T_train.size > 0:
+                T_test = Dim('T_test', T_all.size - T_train.size)
 
-            sample_train, _ = split_train_test(sample, T_all, T_train, T_test)
-            sample_init = sample_train.order(T_train)[-1]
+                sample_train, _ = split_train_test(sample, T_all, T_train, T_test)
+                sample_init = sample_train.order(T_train)[-1]
 
-            inputs_test = tuple(split_train_test(x, T_all, T_train, T_test)[1] for x in dist._inputs)
-            test_dist = Timeseries.pred_init(sample_init, dist.transition, T_test, inputs_test)
-            sample_test = test_dist.sample(reparam=self.reparam, sample_dims=sample_dims)
-            sample = t.cat([sample_train.order(T_train), sample_test.order(T_test)], 0)[T_all]
+                inputs_test = tuple(split_train_test(x, T_all, T_train, T_test)[1] for x in dist._inputs)
+                test_dist = Timeseries.pred_init(sample_init, dist.transition, T_test, inputs_test)
+                sample_test = test_dist.sample(reparam=self.reparam, sample_dims=sample_dims)
+                sample = t.cat([sample_train.order(T_train), sample_test.order(T_test)], 0)[T_all]
 
         self.samples[varname] = sample
 
