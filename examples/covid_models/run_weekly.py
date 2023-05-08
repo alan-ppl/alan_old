@@ -42,7 +42,7 @@ W_PAR = args.w_par if args.w_par else "exp"
 # MOBI = args.mob
 MOBI='include'
 # ML = args.ml
-ml = False
+ml = True
 # FILTERED = args.filtered
 
 US = True
@@ -147,7 +147,7 @@ print(newcases_weekly)
 cond_model = alan.Model(P, Q_Adam).condition(data={'obs':newcases_weekly.int()}, inputs=covariates)
 #cond_model = alan.Model(P, Q_ML).condition(data=data, inputs=covariates)
 #opt = t.optim.Adam(model.parameters(), lr=1E-3)
-K=1
+K=3
 print("K={}".format(K))
 if ml:
 
