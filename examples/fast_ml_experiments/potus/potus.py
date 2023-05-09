@@ -7,12 +7,13 @@ import glob
 from alan.utils import *
 def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
 
+
+    names = ['sigma_measure_noise_national', 'poll_pop_national', 'poll_pop_state', 'mu_b_T_scale', 'day_state', 'mu_b_prior', 'sigma_m', 'sigma_measure_noise_state', 'sigma_e_bias', 'S', 'polling_bias_scale', 'poll_mode_national', 'T', 'Pop', 'sigma_pop', 'N_national_polls', 'day_national', 'state_weights', 'random_walk_scale', 'N_state_polls', 'sigma_c', 'unadjusted_state', 'state_covariance_0', 'state', 'n_two_share_national', 'P', 'poll_state', 'n_two_share_state', 'M', 'unadjusted_national', 'poll_national', 'poll_mode_state']
     covariates = {}
     all_covariates = {}
 #    sizes = {'plate_State': 51, 'plate_National_Polls':361, 'plate_State_Polls':1258, 'T':254, 'plate_P':161, 'plate_M':3, 'plate_Pop':3}
 
-    for data in glob.glob( 'potus/data/covariates/**.pt' ):
-        name = data.split('/')[-1].split('.')[0]
+    for name in names:
         var = t.load('potus/data/covariates/{}_{}.pt'.format(name,run))
         all_var = None
         if var.shape[0] == 361:
@@ -38,8 +39,7 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
 
     data = {}
     all_data = {}
-    for d in glob.glob( 'potus/data/**.pt' ):
-        name = d.split('/')[-1].split('.')[0]
+    for name in ['n_democrat_national', 'n_democrat_state']:
         var = t.load('potus/data/{}_{}.pt'.format(name,run))
         all_var = None
         # if var.shape[0] == 361:
