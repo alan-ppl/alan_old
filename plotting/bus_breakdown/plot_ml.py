@@ -22,13 +22,15 @@ plt.rcParams.update({"figure.dpi": 1000})
 # plt.rcParams.update(cycler.cycler(color=palettes.muted))
 with plt.rc_context(bundles.icml2022()):
     for data in ['True', 'False']:
+        if data == 'False':
+            mean_no = 200
         fig, ax = plt.subplots(3,len(Ks), figsize=(5.5, 8.0))
         for K in range(len(Ks)):
 
             for lr in range(len(lrs)):
                 #ML
                 try:
-                    with open('results/bus_breakdown/ML_5000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
+                    with open('results/bus_breakdown/ML_10000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
                         results_ml_tmc_new = pickle.load(f)
 
 
@@ -36,7 +38,7 @@ with plt.rc_context(bundles.icml2022()):
                     elbos_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
                     stds_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
                     time_ml_tmc_new = results_ml_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
-                    time_ml_tmc_new[time_ml_tmc_new > 140] = np.nan
+                    time_ml_tmc_new[time_ml_tmc_new > 300] = np.nan
                     ax[1,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=ml_colours[lr])
 
                     #elbos
@@ -49,13 +51,13 @@ with plt.rc_context(bundles.icml2022()):
                     None
                 #VI
                 try:
-                    with open('results/bus_breakdown/VI_5000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
+                    with open('results/bus_breakdown/VI_10000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
                         results_adam_tmc_new = pickle.load(f)
                     #Pred_ll
                     elbos_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
                     stds_adam_tmc_new = n_mean(results_adam_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
                     time_adam_tmc_new = results_adam_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
-                    time_adam_tmc_new[time_adam_tmc_new > 140] = np.nan
+                    time_adam_tmc_new[time_adam_tmc_new > 300] = np.nan
                     ax[1,K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=adam_colours[lr], label='MP VI lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
                     #Elbo
                     elbos_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).mean(axis=0)
@@ -88,26 +90,26 @@ with plt.rc_context(bundles.icml2022()):
             for lr in range(len(lrs)):
                 #ML
                 try:
-                    with open('results/bus_breakdown/ML_5000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
+                    with open('results/bus_breakdown/ML_10000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
                         results_ml_tmc_new = pickle.load(f)
 
                     #moments
                     elbos_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).mean(axis=0)
                     stds_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
                     time_ml_tmc_new = results_ml_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
-                    time_ml_tmc_new[time_ml_tmc_new > 140] = np.nan
+                    time_ml_tmc_new[time_ml_tmc_new > 300] = np.nan
                     ax[2,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=ml_colours[lr], label='ML lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
                 except:
                     None
                 #VI
                 try:
-                    with open('results/bus_breakdown/VI_5000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
+                    with open('results/bus_breakdown/VI_10000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
                         results_adam_tmc_new = pickle.load(f)
                     #moments
                     elbos_adam_tmc_new = n_mean(results_adam_tmc_new['sq_errs'], mean_no).mean(axis=0)
                     stds_adam_tmc_new = n_mean(results_adam_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
                     time_adam_tmc_new = results_adam_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
-                    time_adam_tmc_new[time_adam_tmc_new > 140] = np.nan
+                    time_adam_tmc_new[time_adam_tmc_new > 300] = np.nan
                     ax[2,K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=adam_colours[lr])
 
                 except:
@@ -149,7 +151,7 @@ with plt.rc_context(bundles.icml2022()):
     #     for lr in range(len(lrs)):
     #         #ML
     #         try:
-    #             with open('results/bus_breakdown/ML_5000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+    #             with open('results/bus_breakdown/ML_10000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
     #                 results_ml_tmc_new = pickle.load(f)
     #
     #             #moments
@@ -163,7 +165,7 @@ with plt.rc_context(bundles.icml2022()):
     #             pred_liks_ml_std.append(0)
     #         #VI
     #         try:
-    #             with open('results/bus_breakdown/VI_5000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+    #             with open('results/bus_breakdown/VI_10000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
     #                 results_adam_tmc_new = pickle.load(f)
     #             #moments
     #             final_pred_lik_adam = results_adam_tmc_new['final_pred_lik_K=30'].mean(axis=0)
@@ -228,7 +230,7 @@ with plt.rc_context(bundles.icml2022()):
     #
     #             #ML
     #             try:
-    #                 with open('results/bus_breakdown/ML_5000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+    #                 with open('results/bus_breakdown/ML_10000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
     #                     results_ml_tmc_new = pickle.load(f)
     #
     #                 #moments
@@ -242,7 +244,7 @@ with plt.rc_context(bundles.icml2022()):
     #                 pred_liks_ml_std.append(0)
     #             #VI
     #             try:
-    #                 with open('results/bus_breakdown/VI_5000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+    #                 with open('results/bus_breakdown/VI_10000_{}_K{}_True.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
     #                     results_adam_tmc_new = pickle.load(f)
     #                 #moments
     #                 final_pred_lik_adam = results_adam_tmc_new['final_pred_lik_for_K'].mean(axis=0)
@@ -311,7 +313,7 @@ with plt.rc_context(bundles.icml2022()):
     #
     #             #ML
     #             try:
-    #                 with open('results/bus_breakdown/ML_5000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+    #                 with open('results/bus_breakdown/ML_10000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
     #                     results_ml_tmc_new = pickle.load(f)
     #
     #                 #moments
@@ -325,7 +327,7 @@ with plt.rc_context(bundles.icml2022()):
     #                 pred_liks_ml_std.append(0)
     #             #VI
     #             try:
-    #                 with open('results/bus_breakdown/VI_5000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
+    #                 with open('results/bus_breakdown/VI_10000_{}_K{}_False.pkl'.format(lrs[lr],Ks[K]), 'rb') as f:
     #                     results_adam_tmc_new = pickle.load(f)
     #                 #moments
     #                 final_pred_lik_adam = results_adam_tmc_new['final_pred_lik_for_K'].mean(axis=0)
