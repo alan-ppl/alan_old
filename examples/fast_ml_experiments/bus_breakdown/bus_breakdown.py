@@ -143,11 +143,11 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             data[latent], test_data[latent] = t.split(all_data[latent].clone(), [I,I], -2)
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
 
-    return P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes
+    return P, Q, data, covariates, all_data, all_covariates, sizes
 
 if __name__ == "__main__":
 
-    P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), run=0, use_data=False)
+    P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), run=0, use_data=False)
 
 
     model = alan.Model(P, Q())

@@ -76,6 +76,17 @@ with plt.rc_context(bundles.icml2022()):
             #                ncol=2)
 
             ax[0,K].set_title(f'Training K: {Ks[K]}')
+            if data == 'False':
+                ax[0,0].set_ylim(-3500,-1800)
+                ax[0,1].set_ylim(-1650,-1400)
+                ax[0,2].set_ylim(-1550,-1400)
+                ax[1,0].set_ylim(-16000,-13500)
+                ax[1,1].set_ylim(-16000,-13500)
+                ax[1,2].set_ylim(-16000,-13500)
+            else:
+                ax[0,0].set_ylim(-2550,-1700)
+                ax[0,1].set_ylim(-1625,-1525)
+
             # ax[1,K].set_title(f'Training K: {Ks[K]}')
             #
             # ax[0,K].set_xlabel('Time (s)')
@@ -116,6 +127,9 @@ with plt.rc_context(bundles.icml2022()):
                     None
             if data == 'True':
                 ax[2,0].set_ylabel('Variance for latent: ``alpha"')
+                ax[2,0].set_ylim(0.025,0.2)
+                ax[2,1].set_ylim(0.03,0.125)
+                ax[2,2].set_ylim(0.03,0.06)
             else:
                 ax[2,0].set_ylabel('Average latent MSE')
 

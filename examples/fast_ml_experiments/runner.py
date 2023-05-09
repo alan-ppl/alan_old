@@ -53,13 +53,15 @@ def run_experiment(cfg):
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
             seed_torch(i)
-            P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+            P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
 
 
             if not cfg.use_data:
                 data_prior = data
-                data = {'obs':data.pop('obs')}
-                test_data = {'obs':test_data.pop('obs')}
+                if not cfg.dataset == 'potus':
+                    data = {'obs':data.pop('obs')}
+                else:
+                    data = {'n_democrat_state':data.pop('n_democrat_state')}
 
 
 
@@ -91,7 +93,10 @@ def run_experiment(cfg):
                         try:
                             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
                             pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
-                            pred_liks[i,j] = pred_likelihood['obs'].item()
+                            if not cfg.dataset == 'potus':
+                                pred_liks[i,j] = pred_likelihood['obs'].item()
+                            else:
+                                pred_liks[i,j] = pred_likelihood['n_democrat_state'].item()
                             success=True
                             # print(pred_liks[i,j])
                         except:
@@ -120,6 +125,8 @@ def run_experiment(cfg):
                             sq_errs[i,j] = exps['alpha'].cpu().var()
                         if cfg.model == 'movielens':
                             sq_errs[i,j] = exps['z'].cpu().var()
+                        if cfg.model == 'potus':
+                            sq_errs[i,j] = exps['mu_pop'].cpu().var()
 
                 if j % 100 == 0:
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))

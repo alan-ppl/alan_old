@@ -5,15 +5,15 @@ import numpy as np
 import glob
 
 from alan.utils import *
-def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
+def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
 
     covariates = {}
     all_covariates = {}
 #    sizes = {'plate_State': 51, 'plate_National_Polls':361, 'plate_State_Polls':1258, 'T':254, 'plate_P':161, 'plate_M':3, 'plate_Pop':3}
 
-    for data in glob.glob( 'data/covariates/**.pt' ):
+    for data in glob.glob( 'potus/data/covariates/**.pt' ):
         name = data.split('/')[-1].split('.')[0]
-        var = t.load('data/covariates/{}.pt'.format(name))
+        var = t.load('potus/data/covariates/{}.pt'.format(name))
         all_var = None
         if var.shape[0] == 361:
             var = var.rename('plate_National_Polls',...)
@@ -38,9 +38,9 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
 
     data = {}
     all_data = {}
-    for d in glob.glob( 'data/**.pt' ):
+    for d in glob.glob( 'potus/data/**.pt' ):
         name = d.split('/')[-1].split('.')[0]
-        var = t.load('data/{}.pt'.format(name))
+        var = t.load('potus/data/{}.pt'.format(name))
         all_var = None
         # if var.shape[0] == 361:
         #     var = var.rename('plate_National_Polls',...)
@@ -77,6 +77,9 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
     M = all_covariates.pop('M')[0].int().item()    # Number of poll modes
     Pop = all_covariates.pop('Pop')[0].int().item()    # Number of poll populations
 
+
+    data.pop('n_democrat_national')
+    all_data.pop('n_democrat_national')
     sizes = {'plate_State': S, 'plate_National_Polls':N_national_polls, 'plate_State_Polls':N_state_polls,
              'T1':T, 'T2':T, 'plate_P':P_int, 'plate_M':M, 'plate_Pop':Pop}
 
@@ -176,53 +179,42 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         def __init__(self):
             super().__init__()
             #raw_mu_b_T
-            self.raw_mu_b_T_mean = nn.Parameter(t.zeros((S,)))
-            self.raw_mu_b_T_scale = nn.Parameter(t.zeros((S,)))
+            self.mu_b_T = alan.MLNormal(sample_shape=(S,))
 
 
             #raw_mu_b
-            self.raw_mu_b_mean = nn.Parameter(t.zeros((T,S), names=('T1', None)))
-            self.raw_mu_b_scale = nn.Parameter(t.zeros((T,S), names=('T1', None)))
+            self.mu_b = alan.MLNormal({'T1': T},sample_shape=(S,))
+
 
             #raw_mu_c
-            self.raw_mu_c_mean = nn.Parameter(t.zeros((P_int,)))
-            self.raw_mu_c_scale = nn.Parameter(t.zeros((P_int,)))
+            self.mu_c = alan.MLNormal(sample_shape=(P_int,))
 
             #raw_mu_m
-            self.raw_mu_m_mean = nn.Parameter(t.zeros((M,)))
-            self.raw_mu_m_scale = nn.Parameter(t.zeros((M,)))
+            self.mu_m = alan.MLNormal(sample_shape=(M,))
 
             #raw_mu_pop
-            self.raw_mu_pop_mean = nn.Parameter(t.zeros((Pop,)))
-            self.raw_mu_pop_scale = nn.Parameter(t.zeros((Pop,)))
+            self.mu_pop = alan.MLNormal(sample_shape=(Pop,))
 
             #mu_e_bias
-            self.mu_e_bias_mean = nn.Parameter(t.zeros(()))
-            self.mu_e_bias_scale = nn.Parameter(t.zeros(()))
+            self.mu_e_bias = alan.MLNormal()
 
             #rho_e_bias
-            self.rho_e_bias_mean = nn.Parameter(t.zeros(()))
-            self.rho_e_bias_scale = nn.Parameter(t.zeros(()))
+            self.rho_e_bias = alan.MLNormal()
 
             #raw_e_bias
-            self.raw_e_bias_mean = nn.Parameter(t.zeros(()))
-            self.raw_e_bias_scale = nn.Parameter(t.zeros(()))
+            self.e_bias = alan.MLNormal()
 
             #e
-            self.e_mean = nn.Parameter(t.zeros((T,), names=('T2',)))
-            self.e_scale = nn.Parameter(t.zeros((T,), names=('T2',)))
+            self.e = alan.MLNormal({'T2': T})
+
+            # #raw_measure_noise_national
+            # self.raw_measure_noise_national = alan.MLNormal(sample_shape=(N_national_polls,))
 
             #raw_measure_noise_national
-            self.raw_measure_noise_national_mean = nn.Parameter(t.zeros((N_national_polls,)))
-            self.raw_measure_noise_national_scale = nn.Parameter(t.zeros((N_national_polls,)))
-
-            #raw_measure_noise_national
-            self.raw_measure_noise_state_mean = nn.Parameter(t.zeros((N_state_polls,), names=('plate_State_Polls',)))
-            self.raw_measure_noise_state_scale = nn.Parameter(t.zeros((N_state_polls,), names=('plate_State_Polls',)))
+            self.measure_noise_state = alan.MLNormal({'plate_State_Polls': N_state_polls})
 
             #raw_polling_bias
-            self.raw_polling_bias_mean = nn.Parameter(t.zeros((S,)))
-            self.raw_polling_bias_scale = nn.Parameter(t.zeros((S,)))
+            self.polling_bias = alan.MLNormal(sample_shape=(S,))
 
         def forward(self, tr, state_weights,
                   sigma_measure_noise_national,
@@ -254,27 +246,27 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
                   ss_cov_mu_b_walk):
             #Year level
 
-            tr('mu_b_T', alan.Normal(self.raw_mu_b_T_mean, self.raw_mu_b_T_scale.exp()))
+            tr('mu_b_T', self.mu_b_T())
 
-            tr('mu_b', alan.Normal(self.raw_mu_b_mean, self.raw_mu_b_scale.exp()))
+            tr('mu_b', self.mu_b())
 
-            tr('mu_c', alan.Normal(self.raw_mu_c_mean, self.raw_mu_c_scale.exp()))
+            tr('mu_c', self.mu_c())
 
-            tr('mu_m', alan.Normal(self.raw_mu_m_mean, self.raw_mu_m_scale.exp()))
+            tr('mu_m', self.mu_m())
 
-            tr('mu_pop', alan.Normal(self.raw_mu_pop_mean, self.raw_mu_pop_scale.exp()))
+            tr('mu_pop', self.mu_pop())
 
-            tr('mu_e_bias', alan.Normal(self.mu_e_bias_mean, self.mu_e_bias_scale.exp()))
+            tr('mu_e_bias', self.mu_e_bias())
 
-            tr('rho_e_bias', alan.Normal(self.rho_e_bias_mean, self.rho_e_bias_scale.exp()))
+            tr('rho_e_bias', self.rho_e_bias())
 
-            tr('e_bias', alan.Normal(self.raw_e_bias_mean, self.raw_e_bias_scale.exp()))
+            tr('e_bias', self.e_bias())
 
-            tr('e', alan.Normal(self.e_mean, self.e_scale.exp()))
+            tr('e', self.e())
 
-            tr('measure_noise_state', alan.Normal(self.raw_measure_noise_state_mean, self.raw_measure_noise_state_scale.exp()))
+            tr('measure_noise_state', self.measure_noise_state())
 
-            tr('polling_bias', alan.Normal(self.raw_polling_bias_mean, self.raw_polling_bias_scale.exp()))
+            tr('polling_bias', self.polling_bias())
 
     return P, Q, data, covariates, all_data, all_covariates, sizes
 
@@ -287,8 +279,6 @@ def transform_data(cov):
     cov['ss_cov_mu_b_walk'] = cov['state_covariance_0'] * t.square(cov['random_walk_scale']/national_cov_matrix_error_sd);
     ## transformation
 
-
-
 if __name__ == '__main__':
     P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(0,0)
 
@@ -300,21 +290,18 @@ if __name__ == '__main__':
 
 
     K = 3
-    opt = t.optim.Adam(model.parameters(), lr=0.1)
     for j in range(200):
-        opt.zero_grad()
-        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=t.device('cpu'))
+        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        (-elbo).backward()
-        opt.step()
+        model.update(0.3, sample)
 
         print(elbo)
 
         for i in range(10):
-            # try:
-                # sample = model.sample_same(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
-            #     break
-            # except:
-            #     pred_likelihood = 0
+            try:
+                sample = model.sample_same(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+                pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
+                break
+            except:
+                pred_likelihood = 0
         print(pred_likelihood)
