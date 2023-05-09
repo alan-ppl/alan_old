@@ -13,7 +13,7 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
 
     for data in glob.glob( 'potus/data/covariates/**.pt' ):
         name = data.split('/')[-1].split('.')[0]
-        var = t.load('potus/data/covariates/{}.pt'.format(name))
+        var = t.load('potus/data/covariates/{}_{}.pt'.format(name,run))
         all_var = None
         if var.shape[0] == 361:
             var = var.rename('plate_National_Polls',...)
@@ -40,7 +40,7 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
     all_data = {}
     for d in glob.glob( 'potus/data/**.pt' ):
         name = d.split('/')[-1].split('.')[0]
-        var = t.load('potus/data/{}.pt'.format(name))
+        var = t.load('potus/data/{}_{}.pt'.format(name,run))
         all_var = None
         # if var.shape[0] == 361:
         #     var = var.rename('plate_National_Polls',...)
