@@ -112,14 +112,14 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0):
         '''
         Hierarchical Model
         '''
-        # tr('mu_b_T', alan.MultivariateNormal(mu_b_prior, ss_cov_mu_b_T))
+        tr('mu_b_T', alan.MultivariateNormal(mu_b_prior, ss_cov_mu_b_T))
 
-        tr('mu_b_T', alan.Normal(mu_b_prior, 0.01))
-        # def mu_b_transition(x):
-        #     return alan.MultivariateNormal(x, ss_cov_mu_b_walk)
-
+        # tr('mu_b_T', alan.Normal(mu_b_prior, 0.01))
         def mu_b_transition(x):
-            return alan.Normal(x, 0.01)
+            return alan.MultivariateNormal(x, ss_cov_mu_b_walk)
+
+        # def mu_b_transition(x):
+        #     return alan.Normal(x, 0.01)
 
         tr('mu_b', alan.Timeseries('mu_b_T', mu_b_transition), T="T1")
 
