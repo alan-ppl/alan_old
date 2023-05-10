@@ -16,6 +16,7 @@ mean_no = 10
 
 ml_colours = ['#f1eef6','#bdc9e1','#74a9cf','#2b8cbe','#045a8d'][::-1]
 adam_colours = ['#ffffb2','#fecc5c','#fd8d3c','#f03b20','#bd0026'][::-1]
+tilted_colours = ['#edf8e9','#bae4b3','#74c476','#31a354','#006d2c'][::-1]
 
 plt.rcParams.update({"figure.dpi": 1000})
 # plt.rcParams.update(cycler.cycler(color=palettes.muted))
@@ -62,6 +63,29 @@ with plt.rc_context(bundles.icml2022()):
                     elbos_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).mean(axis=0)
                     elbos_stds_adam_tmc_new = n_mean(results_adam_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
                     ax[0,K].errorbar(time_adam_tmc_new,elbos_adam_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=adam_colours[lr])
+
+                except:
+                    None
+
+                try:
+                    with open('results/movielens_tilted/ML_{}_{}_K{}_{}.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K], data), 'rb') as f:
+                        results_ml_tmc_new = pickle.load(f)
+
+
+                    #pred_ll
+                    elbos_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
+                    stds_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
+                    time_ml_tmc_new = results_ml_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
+                    time_ml_tmc_new[time_ml_tmc_new > 12] = np.nan
+                    ax[1,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
+
+                    #elbos
+                    elbos_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).mean(axis=0)
+                    elbos_stds_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
+                    if not lrs[lr] == '0.1':
+                        ax[0,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr], label='Tilted lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
+                    else:
+                        ax[0,K].errorbar(time_ml_tmc_new.tolist() + [np.nan]*(250//mean_no),elbos_ml_tmc_new.tolist() + [np.nan]*(250//mean_no), linewidth=0.55, markersize = 0.75, fmt='-',color=ml_colours[lr], label='Tilted lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
 
                 except:
                     None
@@ -121,6 +145,25 @@ with plt.rc_context(bundles.icml2022()):
 
                 except:
                     None
+
+                try:
+                    with open('results/movielens_tilted/ML_{}_{}_K{}_{}.pkl'.format(750 if lrs[lr]=='0.1' else 1000, lrs[lr],Ks[K], data), 'rb') as f:
+                        results_ml_tmc_new = pickle.load(f)
+
+                    #moments
+                    elbos_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).mean(axis=0)
+                    stds_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
+                    time_ml_tmc_new = results_ml_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
+                    time_ml_tmc_new[time_ml_tmc_new > 12] = np.nan
+                    if not lrs[lr] == '0.1':
+                        ax[2,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
+                    else:
+                        ax[2,K].errorbar(time_ml_tmc_new + [np.nan]*250/mean_no,elbos_ml_tmc_new+ [np.nan]*250/mean_no, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
+                except:
+                    None
+
+
+
             if data == 'True':
                 ax[2,0].set_ylabel('Variance for latent: ``z"')
             else:
@@ -133,11 +176,11 @@ with plt.rc_context(bundles.icml2022()):
 
 
             ax[2,K].set_xlabel('Time (s)')
-            if data == 'False':
-                ax[2,K].set_ylim(12000,16000)
-                ax[1,K].set_ylim(-1200,-1040)
-            else:
-                ax[2,K].set_ylim(0,1.5)
+            # if data == 'False':
+            #     ax[2,K].set_ylim(12000,16000)
+            #     ax[1,K].set_ylim(-1200,-1040)
+            # else:
+            #     ax[2,K].set_ylim(0,1.5)
 
         fig.legend(loc='lower center', ncol=6, bbox_to_anchor=(0.55, -0.025))
         # ax[2,1].legend(loc='lower center', bbox_to_anchor=(0.55, -0.15),

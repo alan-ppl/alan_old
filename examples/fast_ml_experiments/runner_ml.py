@@ -117,7 +117,7 @@ def run_experiment(cfg):
                     else:
                         if cfg.model == 'bus_breakdown':
                             sq_errs[i,j] = exps['alpha'].cpu().var()
-                        if cfg.model == 'movielens':
+                        if cfg.model == 'movielens' or cfg.model == 'movielens_tilted':
                             sq_errs[i,j] = exps['z'].cpu().var()
                         if cfg.model == 'potus':
                             sq_errs[i,j] = exps['mu_pop'].cpu().var()
