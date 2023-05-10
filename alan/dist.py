@@ -145,7 +145,7 @@ class TorchDimDist():
         if self.unnamed_batch_dims > 0:
             log_prob = log_prob.sum()
 
-        
+
         return log_prob + elf
 
     def log_prob_Q(self, x, Kdim=None):

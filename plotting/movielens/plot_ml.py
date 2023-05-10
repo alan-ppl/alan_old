@@ -77,15 +77,15 @@ with plt.rc_context(bundles.icml2022()):
                     stds_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
                     time_ml_tmc_new = results_ml_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
                     time_ml_tmc_new[time_ml_tmc_new > 12] = np.nan
-                    ax[1,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
+                    ax[1,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr], label='Tilted lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
 
                     #elbos
                     elbos_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).mean(axis=0)
                     elbos_stds_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
                     if not lrs[lr] == '0.1':
-                        ax[0,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr], label='Tilted lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
+                        ax[0,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
                     else:
-                        ax[0,K].errorbar(time_ml_tmc_new.tolist() + [np.nan]*(250//mean_no),elbos_ml_tmc_new.tolist() + [np.nan]*(250//mean_no), linewidth=0.55, markersize = 0.75, fmt='-',color=ml_colours[lr], label='Tilted lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
+                        ax[0,K].errorbar(time_ml_tmc_new.tolist() + [np.nan]*(250//mean_no),elbos_ml_tmc_new.tolist() + [np.nan]*(250//mean_no), linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
 
                 except:
                     None
