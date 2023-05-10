@@ -1,6 +1,7 @@
 import torch as t
 import torch.nn as nn
 import alan
+from alan.experiment_utils import seed_torch
 
 def generate_model(N,M,device, ML=1, run=0, use_data=True):
     sizes = {'plate_1':M, 'plate_2':N}
@@ -23,19 +24,19 @@ def generate_model(N,M,device, ML=1, run=0, use_data=True):
             def __init__(self):
                 super().__init__()
                 #mu_z
-                self.mu = alan.MLNormal(sample_shape=(d_z,))
+                self.mu = alan.TiltedNormal(sample_shape=(d_z,))
                 #psi_z
-                self.psi_z = alan.MLNormal(sample_shape=(d_z,))
+                self.psi_z = alan.TiltedNormal(sample_shape=(d_z,))
 
                 #z
-                self.z = alan.MLNormal({'plate_1': M},sample_shape=(d_z,))
+                self.z = alan.TiltedNormal({'plate_1': M},sample_shape=(d_z,))
 
 
             def forward(self, tr,x):
-                tr('mu_z', self.mu())
-                tr('psi_z', self.psi_z())
+                tr('mu_z', self.mu(0,1))
+                tr('psi_z', self.psi_z(0,1))
 
-                tr('z', self.z())
+                tr('z', self.z(tr['mu_z'], 1))
 
     elif ML == 2:
         class Q(alan.AlanModule):
@@ -82,7 +83,7 @@ def generate_model(N,M,device, ML=1, run=0, use_data=True):
 
 
 if __name__ == "__main__":
-
+    seed_torch(0)
     P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(5,300, t.device("cpu"), run=0, use_data=False)
 
 

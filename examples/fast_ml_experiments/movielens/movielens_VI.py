@@ -1,6 +1,7 @@
 import torch as t
 import torch.nn as nn
 import alan
+from alan.experiment_utils import seed_torch
 
 def generate_model(N,M,device, ML=1, run=0, use_data=True):
     sizes = {'plate_1':M, 'plate_2':N}
@@ -66,13 +67,12 @@ def generate_model(N,M,device, ML=1, run=0, use_data=True):
 
 
 if __name__ == "__main__":
-
+    seed_torch(0)
     P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(5,300, t.device("cpu"), run=0, use_data=False)
 
 
     model = alan.Model(P, Q())
     data = {'obs':data.pop('obs')}
-    test_data = {'obs':test_data.pop('obs')}
     K = 1
     opt = t.optim.Adam(model.parameters(), lr=0.1)
     for j in range(2000):

@@ -2,6 +2,7 @@ import torch as t
 import torch.nn as nn
 import alan
 import numpy as np
+from alan.experiment_utils import seed_torch
 
 def generate_model(N,M,device,ML=1, run=0, use_data=True):
     M = 3
@@ -19,7 +20,6 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
-
 
     def P(tr, run_type, bus_company_name):
       '''
@@ -146,13 +146,12 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
     return P, Q, data, covariates, all_data, all_covariates, sizes
 
 if __name__ == "__main__":
-
+    seed_torch(0)
     P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), run=0, use_data=False)
 
 
     model = alan.Model(P, Q())
     data = {'obs':data.pop('obs')}
-    test_data = {'obs':test_data.pop('obs')}
     K = 10
 
     for j in range(2000):

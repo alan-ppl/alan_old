@@ -54,6 +54,7 @@ class Tilted(AlanModule):
     def tilted(self, *args, **kwargs):
         with t.no_grad():
             prior = self.dist(*args, **kwargs)
+
             prior_convs = self.canonical_conv(**prior.dim_args)
             prior_nats = self.conv2nat(**prior_convs)
 

@@ -179,11 +179,11 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
         def __init__(self):
             super().__init__()
             #raw_mu_b_T
-            self.mu_b_T = alan.MLNormal(sample_shape=(S,))
+            self.mu_b_T = alan.MLMvNormal(init_conv={'loc':t.zeros((S,)),'covariance_matrix':t.eye(S)})
 
 
             #raw_mu_b
-            self.mu_b = alan.MLNormal({'T1': T},sample_shape=(S,))
+            self.mu_b = alan.MLMvNormal({'T1': T},sample_shape=(S,))
 
 
             #raw_mu_c
@@ -290,10 +290,10 @@ if __name__ == '__main__':
 
 
     K = 3
-    for j in range(200):
+    for j in range(4000):
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.3, sample)
+        model.update(0.1, sample)
 
         print(elbo)
 

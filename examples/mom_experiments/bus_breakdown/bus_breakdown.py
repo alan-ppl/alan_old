@@ -3,7 +3,7 @@ import torch.nn as nn
 import alan
 
 def generate_model(M, J, I, device, local=False, AlanModule=False, run=0):
-    
+
     # sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
     # covariates = {'run_type': t.load('data/run_type_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
@@ -38,6 +38,7 @@ def generate_model(M, J, I, device, local=False, AlanModule=False, run=0):
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
+
 
     def P(tr, run_type, bus_company_name):
         '''
@@ -81,7 +82,7 @@ def generate_model(M, J, I, device, local=False, AlanModule=False, run=0):
             tr('psi', alan.Normal(t.zeros((run_type_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')          # J
             tr('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')  # C
             # tr('obs', alan.NegativeBinomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))  # Delay
-        
+
     else:
         class Q(alan.AlanModule):
             def __init__(self):

@@ -37,7 +37,6 @@ def parse(spec, args, kwargs):
     #convert all args to kwargs, assuming that the arguments in param_event_ndim have the right order
     arg_dict = {spec[i]: arg for (i, arg) in enumerate(args)}
 
-
     key_overlap = set(arg_dict.keys()).intersection(kwargs.keys())
     if 0 < len(key_overlap):
         raise Exception(f'Multiple values provided for {key_overlap} arguments in distribution.')
@@ -132,10 +131,13 @@ class TorchDimDist():
         assert x.ndim == self.result_ndim + self.unnamed_batch_dims  #or x.ndim == self.result_ndim + self.unnamed_batch_dims + 1
         #if not (x.ndim == self.result_ndim + self.unnamed_batch_dims):
         #    breakpoint()
+
+        elf = self.extra_log_factor(x)
         x_dims = generic_dims(x)
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims]
         x = singleton_order(x, all_dims)
+
         assert not is_dimtensor(x)
         log_prob = self.dist(**self.all_args).log_prob(x)
         log_prob = generic_getitem(log_prob, all_dims)
@@ -143,7 +145,8 @@ class TorchDimDist():
         if self.unnamed_batch_dims > 0:
             log_prob = log_prob.sum()
 
-        return log_prob + self.extra_log_factor(x)
+        
+        return log_prob + elf
 
     def log_prob_Q(self, x, Kdim=None):
         return self.log_prob(x, Kdim=Kdim)

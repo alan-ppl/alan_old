@@ -76,13 +76,11 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
     M = all_covariates.pop('M')[0].int().item()    # Number of poll modes
     Pop = all_covariates.pop('Pop')[0].int().item()    # Number of poll populations
 
-    sizes = {'plate_State': S, 'plate_National_Polls':N_national_polls, 'plate_State_Polls':N_state_polls,
-             'T1':T, 'T2':T, 'plate_P':P_int, 'plate_M':M, 'plate_Pop':Pop}
-
-
 
     data.pop('n_democrat_national')
     all_data.pop('n_democrat_national')
+    sizes = {'plate_State': S, 'plate_National_Polls':N_national_polls, 'plate_State_Polls':N_state_polls,
+             'T1':T, 'T2':T, 'plate_P':P_int, 'plate_M':M, 'plate_Pop':Pop}
 
     def P(tr, state_weights,
               sigma_measure_noise_national,

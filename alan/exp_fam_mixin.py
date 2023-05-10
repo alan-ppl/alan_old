@@ -197,7 +197,7 @@ class NormalMixin(AbstractMixin):
     @staticmethod
     def canonical_conv(loc, scale):
         ## exp so that its positive, is this the right place to do this?
-        return {'loc': loc, 'scale': scale.exp()}
+        return {'loc': loc, 'scale': scale}
 
     @staticmethod
     def test_conv(N):
@@ -387,7 +387,7 @@ def bmv(m, v):
 class MvNormalMixin(AbstractMixin):
     dist = staticmethod(MultivariateNormal)
     sufficient_stats = (identity,vec_square)
-
+    # default_init_conv = {'loc': 0., 'covariance_matrix': t.eye(1)}
     @staticmethod
     def conv2nat(loc, covariance_matrix):
         P = posdef_matrix_inverse(covariance_matrix)
