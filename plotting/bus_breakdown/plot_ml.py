@@ -67,7 +67,25 @@ with plt.rc_context(bundles.icml2022()):
                 except:
                     None
 
+                try:
+                    with open('results/bus_breakdown_tilted/ML_10000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
+                        results_ml_tmc_new = pickle.load(f)
 
+
+                    #pred_ll
+                    elbos_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).mean(axis=0)
+                    stds_ml_tmc_new = n_mean(results_ml_tmc_new['pred_likelihood'], mean_no).std(axis=0) / np.sqrt(10)
+                    time_ml_tmc_new = results_ml_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
+                    time_ml_tmc_new[time_ml_tmc_new > 12] = np.nan
+                    ax[1,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr], label='Tilted lr: {}'.format(lrs[lr], Ks[K]) if K==0 else None)
+
+                    #elbos
+                    elbos_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).mean(axis=0)
+                    elbos_stds_ml_tmc_new = n_mean(results_ml_tmc_new['objs'], mean_no).std(axis=0) / np.sqrt(10)
+                    ax[0,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
+
+                except:
+                    None
             ax[1,0].set_ylabel('Predictive Log Likelihood')
             ax[0,0].set_ylabel('Elbo')
 
@@ -125,6 +143,20 @@ with plt.rc_context(bundles.icml2022()):
 
                 except:
                     None
+
+                try:
+                    with open('results/bus_breakdown_tilted/ML_10000_{}_K{}_{}.pkl'.format(lrs[lr],Ks[K],data), 'rb') as f:
+                        results_ml_tmc_new = pickle.load(f)
+
+                    #moments
+                    elbos_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).mean(axis=0)
+                    stds_ml_tmc_new = n_mean(results_ml_tmc_new['sq_errs'], mean_no).std(axis=0) / np.sqrt(10)
+                    time_ml_tmc_new = results_ml_tmc_new['times'].mean(axis=0).cumsum(axis=0)[::mean_no]
+                    time_ml_tmc_new[time_ml_tmc_new > 12] = np.nan
+                    ax[2,K].errorbar(time_ml_tmc_new,elbos_ml_tmc_new, linewidth=0.55, markersize = 0.75, fmt='-',color=tilted_colours[lr])
+                except:
+                    None
+
             if data == 'True':
                 ax[2,0].set_ylabel('Variance for latent: ``alpha"')
                 ax[2,0].set_ylim(0.025,0.2)

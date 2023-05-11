@@ -54,7 +54,7 @@ while i < 20:
 
         new_boros = []
         for m in df_new['School_Year'].unique():
-            new_boros.extend(np.random.choice(df_new.loc[df['School_Year'] == m].loc[df_new['Boro'].isin(boros) & ~df_new['Boro'].isin(new_boros)]['Boro'].unique(), J, replace=False))
+            new_boros.extend(np.random.choice(df_new.loc[df_new['School_Year'] == m].loc[df_new['Boro'].isin(boros) & ~df_new['Boro'].isin(new_boros)]['Boro'].unique(), J, replace=False))
 
         df_new = df_new.loc[df_new['Boro'].isin(new_boros)]
         num_boros = len(df_new['Boro'].unique())
