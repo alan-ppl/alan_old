@@ -36,9 +36,9 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
       tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
 
       #ID level
-      tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_ID')
-      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
-      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
+      tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())))
+      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()))
+      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()))
       # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
       # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
       tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
@@ -61,11 +61,11 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
                 #alpha
                 self.alpha = alan.TiltedNormal({'plate_Year': M,'plate_Borough': J})
                 #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi = alan.TiltedNormal({'plate_ID':I})
+                self.log_sigma_phi_psi = alan.TiltedNormal()
                 #psi
-                self.psi = alan.TiltedNormal({'plate_ID':I}, sample_shape=(run_type_dim,))
+                self.psi = alan.TiltedNormal(sample_shape=(run_type_dim,))
                 #phi
-                self.phi = alan.TiltedNormal({'plate_ID':I}, sample_shape=(bus_company_name_dim,))
+                self.phi = alan.TiltedNormal(sample_shape=(bus_company_name_dim,))
                 #theta
                 # self.theta = alan.MLNormal({'plate_ID':I})
 
@@ -101,11 +101,11 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
                 #alpha
                 self.alpha = alan.ML2Normal({'plate_Year': M,'plate_Borough': J})
                 #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi = alan.ML2Normal({'plate_ID':I})
+                self.log_sigma_phi_psi = alan.ML2Normal()
                 #psi
-                self.psi = alan.ML2Normal({'plate_ID':I}, sample_shape=(run_type_dim,))
+                self.psi = alan.ML2Normal(sample_shape=(run_type_dim,))
                 #phi
-                self.phi = alan.ML2Normal({'plate_ID':I}, sample_shape=(bus_company_name_dim,))
+                self.phi = alan.ML2Normal(sample_shape=(bus_company_name_dim,))
 
 
             def forward(self, tr, run_type, bus_company_name):
@@ -129,18 +129,18 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
 
     if use_data:
         data = {'obs':t.load('bus_breakdown/data/delay_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+        # print(data)
         test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
         all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
+
     else:
         model = alan.Model(P)
         all_data = model.sample_prior(inputs = all_covariates)
         #data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = all_data
         test_data = {}
-        data['log_sigma_phi_psi'], test_data['log_sigma_phi_psi'] = t.split(all_data['log_sigma_phi_psi'].clone(), [I,I], -1)
         data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], -1)
-        for latent in ['psi', 'phi']:
-            data[latent], test_data[latent] = t.split(all_data[latent].clone(), [I,I], -2)
+
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
 
     return P, Q, data, covariates, all_data, all_covariates, sizes
@@ -152,24 +152,24 @@ if __name__ == "__main__":
 
     model = alan.Model(P, Q())
     data = {'obs':data.pop('obs')}
-    K = 10
+    K = 3
 
     for j in range(2000):
 
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.003, sample)
+        model.update(0.001, sample)
 
 
 
 
         for i in range(10):
-            try:
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-                pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
-                break
-            except:
-                pred_likelihood = 0
+            # try:
+            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+            pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
+            #     break
+            # except:
+            #     pred_likelihood = 0
 
         if j % 100 == 0:
             print(f'Elbo: {elbo.item()}')

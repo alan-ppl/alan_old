@@ -38,9 +38,9 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
       tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
 
       #ID level
-      tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_ID')
-      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
-      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')
+      tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())))
+      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()))
+      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()))
       # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
       # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
       tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
@@ -69,14 +69,14 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             #log_sigma_phi_psi logits
-            self.log_sigma_phi_psi_mean = nn.Parameter(t.zeros((I,), names=('plate_ID',)))
-            self.log_sigma_phi_psi_sigma = nn.Parameter(t.zeros((I,), names=('plate_ID',)))
+            self.log_sigma_phi_psi_mean = nn.Parameter(t.zeros(()))
+            self.log_sigma_phi_psi_sigma = nn.Parameter(t.zeros(()))
             #psi
-            self.psi_mean = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
-            self.log_psi_sigma = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
+            self.psi_mean = nn.Parameter(t.zeros((run_type_dim,)))
+            self.log_psi_sigma = nn.Parameter(t.zeros((run_type_dim,)))
             #phi
-            self.phi_mean = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
-            self.log_phi_sigma = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
+            self.phi_mean = nn.Parameter(t.zeros((bus_company_name_dim,)))
+            self.log_phi_sigma = nn.Parameter(t.zeros((bus_company_name_dim,)))
             #theta
             # self.theta_mean = nn.Parameter(t.zeros(()))
             # self.log_theta_sigma = nn.Parameter(t.zeros(()))
@@ -111,10 +111,8 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
         #data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = all_data
         test_data = {}
-        data['log_sigma_phi_psi'], test_data['log_sigma_phi_psi'] = t.split(all_data['log_sigma_phi_psi'].clone(), [I,I], -1)
         data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], -1)
-        for latent in ['psi', 'phi']:
-            data[latent], test_data[latent] = t.split(all_data[latent].clone(), [I,I], -2)
+
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
 
     return P, Q, data, covariates, all_data, all_covariates, sizes
