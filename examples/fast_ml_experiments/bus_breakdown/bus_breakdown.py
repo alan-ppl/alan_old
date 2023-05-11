@@ -129,18 +129,18 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
 
     if use_data:
         data = {'obs':t.load('bus_breakdown/data/delay_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+        # print(data)
         test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
         all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
+
     else:
         model = alan.Model(P)
         all_data = model.sample_prior(inputs = all_covariates)
         #data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = all_data
         test_data = {}
-        data['log_sigma_phi_psi'], test_data['log_sigma_phi_psi'] = t.split(all_data['log_sigma_phi_psi'].clone(), [I,I], -1)
         data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], -1)
-        for latent in ['psi', 'phi']:
-            data[latent], test_data[latent] = t.split(all_data[latent].clone(), [I,I], -2)
+
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
 
     return P, Q, data, covariates, all_data, all_covariates, sizes
