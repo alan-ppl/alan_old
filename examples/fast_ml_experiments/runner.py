@@ -48,7 +48,14 @@ def run_experiment(cfg):
         print(K)
         per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
-        sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+
+        if cfg.dataset == 'movielens':
+            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,300,18), dtype=np.float32)
+        elif cfg.dataset == 'bus_breakdown':
+            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3,3), dtype=np.float32)
+        elif cfg.dataset == 'potus':
+            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
+
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
@@ -122,11 +129,11 @@ def run_experiment(cfg):
                             sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
                     else:
                         if cfg.model == 'bus_breakdown':
-                            sq_errs[i,j] = exps['alpha'].cpu().var()
+                            sq_errs[i,j] = exps['alpha'].cpu()
                         if cfg.model == 'movielens':
-                            sq_errs[i,j] = exps['z'].cpu().var()
+                            sq_errs[i,j] = exps['z'].cpu()
                         if cfg.model == 'potus':
-                            sq_errs[i,j] = exps['mu_pop'].cpu().var()
+                            sq_errs[i,j] = exps['mu_pop'].cpu()
 
                 if j % 100 == 0:
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
@@ -145,7 +152,6 @@ def run_experiment(cfg):
                                  'times':times,
                                  'nans':(nans/cfg.training.num_runs).tolist(),
                                  'sq_errs':sq_errs}
-
 
         file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
         with open(file, 'wb') as f:

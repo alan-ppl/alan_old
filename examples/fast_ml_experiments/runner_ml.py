@@ -46,7 +46,13 @@ def run_experiment(cfg):
         print(K)
         per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
-        sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+
+        if cfg.dataset == 'movielens':
+            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,300,18), dtype=np.float32)
+        elif cfg.dataset == 'bus_breakdown':
+            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3,3), dtype=np.float32)
+        elif cfg.dataset == 'potus':
+            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
@@ -115,12 +121,13 @@ def run_experiment(cfg):
                         for rv in rvs:
                             sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
                     else:
-                        if cfg.model == 'bus_breakdown':
-                            sq_errs[i,j] = exps['alpha'].cpu().var()
-                        if cfg.model == 'movielens' or cfg.model == 'movielens_tilted':
-                            sq_errs[i,j] = exps['z'].cpu().var()
-                        if cfg.model == 'potus':
-                            sq_errs[i,j] = exps['mu_pop'].cpu().var()
+                        if cfg.dataset == 'bus_breakdown':
+                            sq_errs[i,j] = exps['alpha'].cpu()
+                        if cfg.dataset == 'movielens':
+                            sq_errs[i,j] = exps['z'].cpu()
+                        if cfg.dataset == 'potus':
+                            print(exps['mu_pop'].shape)
+                            sq_errs[i,j] = exps['mu_pop'].cpu()
 
 
                 if j % 100 == 0:

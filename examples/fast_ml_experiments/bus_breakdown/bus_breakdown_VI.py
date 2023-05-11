@@ -103,7 +103,7 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
         data = {'obs':t.load('bus_breakdown/data/delay_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
         # print(data)
         test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
-        all_data = {'obs': t.cat([data['obs'],test_data['obs']],-2)}
+        all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
 
     else:
         model = alan.Model(P)
