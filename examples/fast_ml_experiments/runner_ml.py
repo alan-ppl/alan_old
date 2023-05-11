@@ -53,6 +53,7 @@ def run_experiment(cfg):
             sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3,3), dtype=np.float32)
         elif cfg.dataset == 'potus':
             sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
+            
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
@@ -126,7 +127,6 @@ def run_experiment(cfg):
                         if cfg.dataset == 'movielens':
                             sq_errs[i,j] = exps['z'].cpu()
                         if cfg.dataset == 'potus':
-                            print(exps['mu_pop'].shape)
                             sq_errs[i,j] = exps['mu_pop'].cpu()
 
 
