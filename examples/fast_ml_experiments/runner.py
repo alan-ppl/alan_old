@@ -150,6 +150,13 @@ def run_experiment(cfg):
 
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
 
+
+        if cfg.use_data:
+            sz = sq_errs.ndim
+            sz = tuple(range(2,sz))
+            sq_errs = sq_errs.var(0, keepdims=True).mean(sz)
+
+        
         results_dict = {'objs':per_seed_obj,
                                  'pred_likelihood':pred_liks,
                                  'times':times,
