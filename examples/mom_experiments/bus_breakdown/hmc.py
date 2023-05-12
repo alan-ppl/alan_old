@@ -144,7 +144,7 @@ for dataset_seed in args.dataset_seeds:
 
             logits = pm.Deterministic('logits', (alpha + (phi @ bus_company_name.transpose(0,1,3,2) + psi @ run_type.transpose(0,1,3,2)).transpose(2,0,1)).transpose(1,2,0))
 
-            obs = pm.NegativeBinomial('obs', n=130, p=1/(1+np.exp(logits)), shape=(M, J, I))
+            obs = pm.NegativeBinomial('obs', n=130, p=1/(1+np.exp(-logits)), shape=(M, J, I))
             
             breakpoint()
             varnames=['obs','phi','psi','log_sigma_phi_psi', 'alpha', 'sigma_alpha', 'beta', 'mu_beta', 'sigma_beta']
