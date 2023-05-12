@@ -7,7 +7,7 @@ import json
 from alan.experiment_utils import seed_torch
 import alan.postproc as pp
 import gc
-from bus_breakdown import generate_model
+from occupancy import generate_model
 import sys
 import argparse
 
@@ -46,10 +46,11 @@ print(device)
 
 seed_torch(0)
 
-M = 3
-J = 3
-I = 30
-sizes = {'plate_Year': M, 'plate_Borough': J, 'plate_ID': I}
+M = 6
+J = 12
+I = 50
+Returns = 5
+sizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I, 'plate_Replicate': 5}
 
 for dataset_seed in dataset_seeds:
     print(f"Dataset seed: {dataset_seed}")
@@ -58,13 +59,13 @@ for dataset_seed in dataset_seeds:
         for useData in [False, True]:
             seed_torch(dataset_seed)
 
-            P, Q, data, covariates, all_data, all_covariates = generate_model(M, J, I, device, QModule=True, dataset_seed=dataset_seed)
+            P, Q, data, covariates, all_data, all_covariates, _ = generate_model(0,0, device, QModule=True, dataset_seed=dataset_seed)
 
             if not useData:
                 # Generate data
-                sampledData = alan.sample(P, varnames=('obs','phi','psi','log_sigma_phi_psi', 'alpha', 'sigma_alpha', 'beta', 'mu_beta', 'sigma_beta'), platesizes=sizes, covariates=covariates)
+                sampledData = alan.sample(P, platesizes=sizes, covariates=covariates)
                 data = {'obs': sampledData['obs']}
-                data['obs'] = data['obs'].rename('plate_Year', 'plate_Borough', 'plate_ID')
+                data['obs'] = data['obs']
 
             if useData:
                 elbos = {e_k: {count :[] for count in range(num_vi_iters+1)} for e_k in eval_ks}
@@ -84,7 +85,8 @@ for dataset_seed in dataset_seeds:
                 opt = t.optim.Adam(model.parameters(), lr=lr)
                 train_time = 0
 
-                if verbose and i % 100 == 0: print(f"{i+1}/{num_runs}")
+                print('Hello')
+                if verbose and i % 1 == 0: print(f"{i+1}/{num_runs}")
 
                 for vi_iter in range(num_vi_iters+1):
                     if verbose and vi_iter % ((num_vi_iters // 4)) == 0: print(f"VI {vi_iter}/{num_vi_iters}")
@@ -97,7 +99,8 @@ for dataset_seed in dataset_seeds:
                                 t.cuda.synchronize()
                             start = time.time()
 
-                            elbo = model.elbo(k)
+                            obj = model.rws(k)
+                            elbo = model.elbo(k, reparam=False)
 
                             if t.cuda.is_available():
                                 t.cuda.synchronize()
@@ -119,7 +122,7 @@ for dataset_seed in dataset_seeds:
                                             t.cuda.synchronize()
                                         start = time.time()
 
-                                        elbo = model.elbo(e_k)
+                                        elbo = model.elbo(e_k, reparam=False)
 
                                         if t.cuda.is_available():
                                             t.cuda.synchronize()
@@ -193,7 +196,7 @@ for dataset_seed in dataset_seeds:
 
                     opt.zero_grad()
                     # elbo = model.elbo(K=1)
-                    (-elbo).backward()
+                    (-obj).backward()
                     opt.step()
 
                     if t.cuda.is_available():
@@ -229,6 +232,7 @@ for dataset_seed in dataset_seeds:
 
                     for est in expectations[e_k][vi_iter]:
                         for rv in est:
+                            est[rv] = est[rv].align_as(expectation_means[rv])
                             sq_err = ((expectation_means[rv] - est[rv])**2).cpu()
                             sq_errs[rv].append(sq_err.rename(None))
 
@@ -258,19 +262,19 @@ for dataset_seed in dataset_seeds:
             gc.collect()
 
             if useData:
-                file = f'{resultsFolder}/vi_bus_breakdown{results_tag}_elbo_lr{lr}_{dataset_seed}.json'
+                file = f'{resultsFolder}/vi_occupancy{results_tag}_elbo_lr{lr}_{dataset_seed}.json'
                 with open(file, 'w') as f:
                     json.dump({f"vi_{lr}": elbos}, f, indent=4)
 
-                file = f'{resultsFolder}/vi_bus_breakdown{results_tag}_p_ll_lr{lr}_{dataset_seed}.json'
+                file = f'{resultsFolder}/vi_occupancy{results_tag}_p_ll_lr{lr}_{dataset_seed}.json'
                 with open(file, 'w') as f:
                     json.dump({f"vi_{lr}": p_lls}, f, indent=4)
 
-                file = f'{resultsFolder}/vi_bus_breakdown{results_tag}_variance_lr{lr}_{dataset_seed}.json'
+                file = f'{resultsFolder}/vi_occupancy{results_tag}_variance_lr{lr}_{dataset_seed}.json'
                 with open(file, 'w') as f:
                     json.dump({f"vi_{lr}": expectations}, f, indent=4)
             else:
-                file = f'{resultsFolder}/vi_bus_breakdown{results_tag}_MSE_lr{lr}_{dataset_seed}.json'
+                file = f'{resultsFolder}/vi_occupancy{results_tag}_MSE_lr{lr}_{dataset_seed}.json'
                 with open(file, 'w') as f:
                     json.dump({f"vi_{lr}": expectations}, f, indent=4)
 
