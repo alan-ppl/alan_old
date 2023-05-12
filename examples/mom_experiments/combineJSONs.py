@@ -13,19 +13,26 @@ def combine(f1, f2, out):
     with open(out, 'w') as f:
         json.dump(j1, f, indent=4)
 
-def combineMultiple(fs, out):
+def combineMultiple(fs, out, sublayer=None):
     js = []
     for f_in in fs:
         with open(f_in) as f:
             js.append(json.load(f))
 
-    j0 = js[0]
-    for j in js[1:]:
-        for k in j:
-            j0[k] = j[k]
+    if sublayer is None:
+        j0 = js[0]
+        for j in js[1:]:
+            for k in j:
+                j0[k] = j[k]
+    else:
+        j0 = {}#js[0]
+        for j in js:
+            for k in j:
+                j0[k] = j[k][sublayer]
 
     with open(out, 'w') as f:
         json.dump(j0, f, indent=4)
+
 
 if __name__ == "__main__":
     # experiment = input("Experiment (movielens/bus_breakdown/both):")
