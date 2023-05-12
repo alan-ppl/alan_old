@@ -8,41 +8,34 @@ from alan.experiment_utils import seed_torch
 import alan.postproc as pp
 import gc
 import sys
+import argparse
 
-num_datasets = 3
+if t.cuda.is_available():
+    t.cuda.synchronize()
+script_start_time = time.time()
 
-nArgs = len(sys.argv)
-verbose = False
-forceCPU = False
-num_runs = 1000
+parser = argparse.ArgumentParser()
+parser.add_argument('--cpu',           '-c',   type=bool,  nargs='?', default=False)
+parser.add_argument('--verbose',       '-v',   type=bool,  nargs='?', default=False)
+parser.add_argument('--num_runs',      '-n',   type=int,   nargs='?', default=1000,  help="number of runs")
+parser.add_argument('--dataset_seeds', '-d',   type=int,   nargs='+', default=[0],  help="seeds for test/train split")
+parser.add_argument('--results_tag',   '-t',   type=str,   nargs='?', default="",   help="string to attach to end of results filenames")
 
-if nArgs == 1:
-    pass
-elif nArgs == 2:
-    if sys.argv[1].isnumeric():
-        num_runs = int(sys.argv[1])
-    else:
-        if sys.argv[1] in ("-v", "-c", "-vc", "-cv"):
-            verbose = "v" in sys.argv[1]
-            forceCPU = "c" in sys.argv[1] 
-        else:
-            raise ValueError("Non-numeric number of runs entered.\nUsage: python argtest.py [-vc] num_runs\n  -v:\tverbose output\n  -c:\t\tforce cpu use")
-elif nArgs == 3:
-    if sys.argv[2].isnumeric():
-        num_runs = int(sys.argv[2])
-    else:
-        raise ValueError("Non-numeric number of runs entered.\nUsage: python argtest.py [-vc] num_runs\n  -v:\tverbose output\n  -c:\t\tforce cpu use")
-    verbose = "v" in sys.argv[1]
-    forceCPU = "c" in sys.argv[1]
-else:
-        raise ValueError("Too many arguments.\nUsage: python argtest.py [-vc] num_runs\n  -v:\tverbose output\n  -c:\t\tforce cpu use")
+arglist = sys.argv[1:]
+args = parser.parse_args(arglist)
+print(args)
+
+forceCPU = args.cpu
+verbose = args.verbose
+num_runs = args.num_runs
+dataset_seeds = args.dataset_seeds
+results_tag = args.results_tag
 
 resultsFolder = "results"
 
 device = "cpu" if forceCPU else t.device("cuda" if t.cuda.is_available() else "cpu")
 print(device)
 
-seed_torch(0)
 
 M, N = 450, 20
 sizes = {'plate_1':M, 'plate_2':N}
@@ -51,8 +44,7 @@ d_z = 18
 # "tmc_new" is the massively parallel approach 
 methods = ["tmc_new", "global_k"]
 
-Ks = {"tmc_new": [1,3,10,30], "global_k": [1,3,10,30,100,300,1000,3000,10000]}#,30000]}
-Ks = {"tmc_new": [1,3,10], "global_k": [1,3,10,30,100,300,1000]}#,30000]}
+Ks = {"tmc_new": [1,3,10,30,100], "global_k": [1,3,10,30,100,300,1000,3000,10000,30000,100000]}#,300000]}
 
 
 def P(tr):
@@ -79,23 +71,23 @@ def Q(tr):
 
     # tr.sample('obs', alan.Bernoulli(logits = tr['z'] @ tr['x']))
 
-# Run the experiment
-for useData in [True, False]:
-    expectationsPerDataset = []
+for dataset_seed in dataset_seeds:
+    print(f"Dataset seed: {dataset_seed}")
 
-    for datasetSeed in range(num_datasets):
-        # print(f"Dataset {datasetSeed+1}/{num_datasets}")
+    # Run the experiment
+    for useData in [True, False]:
+        seed_torch(dataset_seed)
 
         ## Load covariates
-        covariates = {'x':t.load(f'data/weights_{N}_{M}_{datasetSeed}.pt').to(device)}
-        test_covariates = {'x':t.load(f'data/test_weights_{N}_{M}_{datasetSeed}.pt').to(device)}
+        covariates = {'x':t.load(f'data/weights_{N}_{M}_{dataset_seed}.pt').to(device)}
+        test_covariates = {'x':t.load(f'data/test_weights_{N}_{M}_{dataset_seed}.pt').to(device)}
         all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']],-2).rename('plate_1','plate_2',...)}
         covariates['x'] = covariates['x'].rename('plate_1','plate_2',...)
 
         if useData:
             # Load data
-            data = {'obs':t.load(f'data/data_y_{N}_{M}_{datasetSeed}.pt').to(device)}
-            test_data = {'obs':t.load(f'data/test_data_y_{N}_{M}_{datasetSeed}.pt').to(device)}
+            data = {'obs':t.load(f'data/data_y_{N}_{M}_{dataset_seed}.pt').to(device)}
+            test_data = {'obs':t.load(f'data/test_data_y_{N}_{M}_{dataset_seed}.pt').to(device)}
             all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
             data['obs'] = data['obs'].rename('plate_1','plate_2')
         else:
@@ -103,7 +95,7 @@ for useData in [True, False]:
             sampledData = alan.sample(P, varnames=('obs','z','mu_z','psi_z'), platesizes=sizes, covariates=covariates)
 
             data = {'obs': sampledData['obs']}
-            test_data = {'obs':t.load(f'data/test_data_y_{N}_{M}_{datasetSeed}.pt').to(device)}
+            test_data = {'obs':t.load(f'data/test_data_y_{N}_{M}_{dataset_seed}.pt').to(device)}
             all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
             data['obs'] = data['obs'].rename('plate_1','plate_2')
 
@@ -132,14 +124,28 @@ for useData in [True, False]:
                     # Compute the elbos
 
                     if k in Ks["tmc_new"]:
+                        if t.cuda.is_available():
+                            t.cuda.synchronize()
                         start = time.time()
+
                         elbos["tmc_new"][k].append(model.elbo_tmc_new(k).item())
+
+                        if t.cuda.is_available():
+                            t.cuda.synchronize()
                         end = time.time()
+
                         elbo_times["tmc_new"][k].append(end-start)
 
+                    if t.cuda.is_available():
+                        t.cuda.synchronize()
                     start = time.time()
+
                     elbos["global_k"][k].append(model.elbo_global(k).item())
+
+                    if t.cuda.is_available():
+                        t.cuda.synchronize()
                     end = time.time()
+                    
                     elbo_times["global_k"][k].append(end-start)
 
                     # Compute the predictive log-likelihood
@@ -148,26 +154,47 @@ for useData in [True, False]:
                             error = True
                             while error:
                                 try:
+                                    if t.cuda.is_available():
+                                        t.cuda.synchronize()
                                     start = time.time()
+
                                     p_lls[method][k].append(model.predictive_ll(k, 100, data_all=all_data, covariates_all=all_covariates, sample_method=method)["obs"].item())
+
+                                    if t.cuda.is_available():
+                                        t.cuda.synchronize()
                                     end = time.time()
 
                                     p_ll_times[method][k].append(end-start)
 
                                     error = False
                                 except ValueError:
+                                    print("NaN p_ll!")
                                     pass
 
                 # Compute (an estimate of) the expectation for each variable in the model
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
                 start = time.time()
+
                 expectations["global_k"][k].append(pp.mean(model.weights_global(k)))
+                
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
                 end=time.time()
+
                 expectation_times["global_k"][k].append(end-start)
 
                 if k in Ks["tmc_new"]:
+                    if t.cuda.is_available():
+                        t.cuda.synchronize()
                     start = time.time()
+
                     expectations["tmc_new"][k].append(pp.mean(model.weights_tmc_new(k)))
+                    
+                    if t.cuda.is_available():
+                        t.cuda.synchronize()
                     end=time.time()
+
                     expectation_times["tmc_new"][k].append(end-start)
 
                 # input("Next run?")
@@ -175,6 +202,19 @@ for useData in [True, False]:
             # Compute mean/std_err/variance/MSE of results, store w/ mean/std_err execution time 
             for method in methods:
                 if method != "tmc_new" or k in Ks["tmc_new"]:
+                    if useData:
+                        elbos[method][k] = {'mean': np.mean(elbos[method][k]),
+                                            'std_err': np.std(elbos[method][k])/np.sqrt(num_runs),
+                                            'time_mean': np.mean(elbo_times[method][k]),
+                                            'time_std_err': np.std(elbo_times[method][k])/np.sqrt(num_runs)}
+
+                    
+                        p_lls[method][k] = {'mean': np.mean(p_lls[method][k]),
+                                            'std_err': np.std(p_lls[method][k])/np.sqrt(num_runs),
+                                            'time_mean': np.mean(p_ll_times[method][k]),
+                                            'time_std_err': np.std(p_ll_times[method][k])/np.sqrt(num_runs)}
+
+
                     rvs = list(expectations[method][k][0].keys())
                     mean_vars = {rv: [] for rv in rvs}  # average element variance for each rv
 
@@ -204,58 +244,37 @@ for useData in [True, False]:
                     for rv in rvs:
                         expectations[method][k][rv] = {"mean_var": mean_vars[rv]}
 
-            expectationsPerDataset.append(expectations.copy())
+        # Clean up memory
+        model = model.to("cpu")
 
-            # Clean up memory
-            model.to("cpu")
+        for x in [data, test_data, all_data, covariates, test_covariates, all_covariates]:
+            for y in x:
+                x[y] = x[y].to("cpu")
+            del x
 
-            for x in [data, test_data, all_data, covariates, test_covariates, all_covariates]:
-                for y in x.values():
-                    y.to("cpu")
-                    del y
+        t.cuda.empty_cache()
+        gc.collect()
 
-            t.cuda.empty_cache()
-            gc.collect()
+        if useData:
+            file = f'{resultsFolder}/movielens{results_tag}_elbo_{dataset_seed}.json'
+            with open(file, 'w') as f:
+                json.dump(elbos, f, indent=4)
 
-    # Average out over datasets and write out results
-    for k in Ks["global_k"]:
-        for method in methods:
-            if method != "tmc_new" or k in Ks["tmc_new"]:
-                if useData:
-                    elbos[method][k] = {'mean': np.mean(elbos[method][k]),
-                                        'std_err': np.std(elbos[method][k])/np.sqrt(num_runs),
-                                        'time_mean': np.mean(elbo_times[method][k]),
-                                        'time_std_err': np.std(elbo_times[method][k])/np.sqrt(num_runs)}
+            file = f'{resultsFolder}/movielens{results_tag}_p_ll_{dataset_seed}.json'
+            with open(file, 'w') as f:
+                json.dump(p_lls, f, indent=4)
 
-                
-                    p_lls[method][k] = {'mean': np.mean(p_lls[method][k]),
-                                        'std_err': np.std(p_lls[method][k])/np.sqrt(num_runs),
-                                        'time_mean': np.mean(p_ll_times[method][k]),
-                                        'time_std_err': np.std(p_ll_times[method][k])/np.sqrt(num_runs)}
-                    
-                # rvs = list(expectations[vi_iter][0].keys())
-                expectations[method][k] = {}
-                expectations[method][k]["time_mean"] = np.mean([expectationsPerDataset[d][method][k]["time_mean"] for d in range(num_datasets)])
-                expectations[method][k]["time_std_err"] = np.mean([expectationsPerDataset[d][method][k]["time_std_err"] for d in range(num_datasets)])
-                for rv in rvs:
-                    expectations[method][k][rv] = {"mean_var": np.mean([expectationsPerDataset[d][method][k][rv]["mean_var"] for d in range(num_datasets)])}
-            
+            file = f'{resultsFolder}/movielens{results_tag}_variance_{dataset_seed}.json'
+            with open(file, 'w') as f:
+                json.dump(expectations, f, indent=4)
+        else:
+            file = f'{resultsFolder}/movielens{results_tag}_MSE_{dataset_seed}.json'
+            with open(file, 'w') as f:
+                json.dump(expectations, f, indent=4)
 
-    if useData:
-        file = f'{resultsFolder}/movielens_elbo_N{N}_M{M}.json'
-        with open(file, 'w') as f:
-            json.dump(elbos, f, indent=4)
+        print(f"Finished useData={useData}")
 
-        file = f'{resultsFolder}/movielens_p_ll_N{N}_M{M}.json'
-        with open(file, 'w') as f:
-            json.dump(p_lls, f, indent=4)
-
-        file = f'{resultsFolder}/movielens_variance_N{N}_M{M}.json'
-        with open(file, 'w') as f:
-            json.dump(expectations, f, indent=4)
-    else:
-        file = f'{resultsFolder}/movielens_MSE_N{N}_M{M}.json'
-        with open(file, 'w') as f:
-            json.dump(expectations, f, indent=4)
-
-    print(f"Finished useData={useData}")
+if t.cuda.is_available():
+    t.cuda.synchronize()
+script_end_time = time.time()
+print(f"Finished. Took {script_end_time - script_start_time}s.")

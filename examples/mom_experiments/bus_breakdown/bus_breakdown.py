@@ -2,19 +2,19 @@ import torch as t
 import torch.nn as nn
 import alan
 
-def generate_model(M, J, I, device, local=False, QModule=False):
+def generate_model(M, J, I, device, local=False, QModule=False, dataset_seed=0):
     
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
-    covariates = {'run_type': t.load('data/run_type_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
-        'bus_company_name': t.load('data/bus_company_name_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
-    test_covariates = {'run_type': t.load('data/run_type_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
-        'bus_company_name': t.load('data/bus_company_name_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
+    covariates = {'run_type': t.load(f'data/run_type_train_{dataset_seed}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
+        'bus_company_name': t.load(f'data/bus_company_name_train_{dataset_seed}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
+    test_covariates = {'run_type': t.load(f'data/run_type_test_{dataset_seed}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device),
+        'bus_company_name': t.load(f'data/bus_company_name_test_{dataset_seed}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float().to(device)}
     all_covariates = {'run_type': t.cat([covariates['run_type'],test_covariates['run_type']],-2),
         'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],-2)}
 
-    data = {'obs':t.load('data/delay_train.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
-    test_data = {'obs':t.load('data/delay_test.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
+    data = {'obs':t.load(f'data/delay_train_{dataset_seed}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
+    test_data = {'obs':t.load(f'data/delay_test_{dataset_seed}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).to(device)}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
@@ -25,18 +25,18 @@ def generate_model(M, J, I, device, local=False, QModule=False):
         Hierarchical Model
         '''
         #Year level
-        tr.sample('sigma_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year') # YearVariance
-        tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year')    # YearMean
-        tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates='plate_Year')                          # BoroughMean
+        tr.sample('sigma_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year') # GlobalVariance
+        tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year')    # GlobalMean
+        tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates='plate_Year')                          # YearMean
 
         #Borough level
         tr.sample('sigma_alpha', alan.Normal(t.zeros(()).to(device), 0.25*t.ones(()).to(device)), plates = 'plate_Borough') # BoroughVariance
-        tr.sample('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))                                                # IDMean
+        tr.sample('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))                                                # BoroughMean
 
         #ID level
-        tr.sample('log_sigma_phi_psi', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_ID')          # WeightVariance
-        tr.sample('psi', alan.Normal(t.zeros((run_type_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')          # J
-        tr.sample('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')  # C
+        tr.sample('log_sigma_phi_psi', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_ID')          # WeightVariance
+        tr.sample('psi', alan.Normal(t.zeros((run_type_dim,)).to(device), tr['log_sigma_phi_psi'].exp()))#, plates = 'plate_ID')          # J
+        tr.sample('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()))#, plates = 'plate_ID')  # C
         tr.sample('obs', alan.NegativeBinomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))  # Delay
 
     if not QModule:
@@ -45,18 +45,18 @@ def generate_model(M, J, I, device, local=False, QModule=False):
             Hierarchical Model
             '''
             #Year level
-            tr.sample('sigma_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year') # YearVariance
-            tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year')    # YearMean
-            tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates='plate_Year')                          # BoroughMean
+            tr.sample('sigma_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year') # GlobalVariance
+            tr.sample('mu_beta', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_Year')    # GlobalMean
+            tr.sample('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates='plate_Year')                          # YearMean
 
             #Borough level
             tr.sample('sigma_alpha', alan.Normal(t.zeros(()).to(device), 0.25*t.ones(()).to(device)), plates = 'plate_Borough') # BoroughVariance
-            tr.sample('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))                                                # IDMean
+            tr.sample('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))                                                # BoroughMean
 
             #ID level
-            tr.sample('log_sigma_phi_psi', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)), plates = 'plate_ID')          # WeightVariance
-            tr.sample('psi', alan.Normal(t.zeros((run_type_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')          # J
-            tr.sample('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()), plates = 'plate_ID')  # C
+            tr.sample('log_sigma_phi_psi', alan.Normal(t.zeros(()).to(device), 0.0001*t.ones(()).to(device)))#, plates = 'plate_ID')          # WeightVariance
+            tr.sample('psi', alan.Normal(t.zeros((run_type_dim,)).to(device), tr['log_sigma_phi_psi'].exp()))#, plates = 'plate_ID')          # J
+            tr.sample('phi', alan.Normal(t.zeros((bus_company_name_dim,)).to(device), tr['log_sigma_phi_psi'].exp()))#, plates = 'plate_ID')  # C
             # tr.sample('obs', alan.NegativeBinomial(total_count=130, logits=tr['alpha'] + tr['phi'] @ tr['bus_company_name'] + tr['psi'] @ tr['run_type']))  # Delay
         
     else:
@@ -79,14 +79,20 @@ def generate_model(M, J, I, device, local=False, QModule=False):
                 self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
                 self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
                 #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi_mean = nn.Parameter(t.zeros((I,), names=('plate_ID',)))
-                self.log_sigma_phi_psi_sigma = nn.Parameter(t.zeros((I,), names=('plate_ID',)))
+                # self.log_sigma_phi_psi_mean = nn.Parameter(t.zeros((I,), names=('plate_ID',)))
+                # self.log_sigma_phi_psi_sigma = nn.Parameter(t.zeros((I,), names=('plate_ID',)))
+                self.log_sigma_phi_psi_mean = nn.Parameter(t.zeros(()))
+                self.log_sigma_phi_psi_sigma = nn.Parameter(t.zeros(()))
                 #psi
-                self.psi_mean = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
-                self.log_psi_sigma = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
+                # self.psi_mean = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
+                # self.log_psi_sigma = nn.Parameter(t.zeros((I,run_type_dim), names=('plate_ID',None)))
+                self.psi_mean = nn.Parameter(t.zeros((run_type_dim,)))
+                self.log_psi_sigma = nn.Parameter(t.zeros((run_type_dim,)))
                 #phi
-                self.phi_mean = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
-                self.log_phi_sigma = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
+                # self.phi_mean = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
+                # self.log_phi_sigma = nn.Parameter(t.zeros((I,bus_company_name_dim), names=('plate_ID',None)))
+                self.phi_mean = nn.Parameter(t.zeros((bus_company_name_dim,)))
+                self.log_phi_sigma = nn.Parameter(t.zeros((bus_company_name_dim,)))
 
                 self.high = t.tensor(10.0).to(device)
                 self.low = t.tensor(0.0).to(device)
