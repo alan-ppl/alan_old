@@ -158,18 +158,18 @@ if __name__ == "__main__":
 
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.001, sample)
+        model.update(0.1, sample)
 
 
 
 
         for i in range(10):
-            # try:
-            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
-            #     break
-            # except:
-            #     pred_likelihood = 0
+            try:
+                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+                pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
+                break
+            except:
+                pred_likelihood = 0
 
         if j % 100 == 0:
             print(f'Elbo: {elbo.item()}')

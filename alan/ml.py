@@ -77,7 +77,7 @@ class MLNormal(ML, NormalMixin):
     pass
 class MLMvNormal(ML, MvNormalMixin):
     pass
-class MLBernoulli(ML, BernoulliMixin):
+class MLBernoulliLogits(ML, BernoulliLogitsMixin):
     pass
 class MLPoisson(ML, PoissonMixin):
     pass

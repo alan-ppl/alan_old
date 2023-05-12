@@ -9,7 +9,7 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
 
     M = 6
     J = 12
-    I = 150
+    I = 50
     Returns = 5
     sizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I, 'plate_Replicate': 5}
 
@@ -110,13 +110,13 @@ if __name__ == "__main__":
 
     model = alan.Model(P, Q())
     data = {'obs':data.pop('obs')}
-    K = 10
-    opt = t.optim.Adam(model.parameters(), lr=0.1)
+    K = 3
+    opt = t.optim.Adam(model.parameters(), lr=0.03)
     for j in range(2000):
         opt.zero_grad()
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         p_obj, q_obj = sample.rws()
-        (p_obj - q_obj).backward()
+        (-q_obj).backward()
         opt.step()
 
 
@@ -129,6 +129,6 @@ if __name__ == "__main__":
             except:
                 pred_likelihood = 0
 
-        if j % 100 == 0:
+        if j % 10 == 0:
             print(f'Elbo: {p_obj.item()}')
             print(f'Pred_ll: {pred_likelihood}')

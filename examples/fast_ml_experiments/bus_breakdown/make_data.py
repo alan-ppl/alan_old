@@ -10,14 +10,18 @@ k = 0
 def get_data():
     data = pd.read_csv('Bus_Breakdown_and_Delays.csv', header=0, encoding='latin-1')
     data = data.drop(['Schools_Serviced','Number_Of_Students_On_The_Bus','Has_Contractor_Notified_Schools','Has_Contractor_Notified_Parents','Have_You_Alerted_OPT','Informed_On','Incident_Number','Last_Updated_On', 'School_Age_or_PreK'], axis=1)
+    data = data.loc[~data['How_Long_Delayed'].str.contains('/', na=False)]
     data['How_Long_Delayed'] = data['How_Long_Delayed'].map(lambda x: re.sub("[^0-9]", "", str(x)))
     data = data.loc[data['How_Long_Delayed'] != '']
     data['How_Long_Delayed'] = data['How_Long_Delayed'].map(lambda x: float(x))
+    # print(len(data['How_Long_Delayed']))
     data = data.loc[data['How_Long_Delayed'] < 130]
+    # print(len(data['How_Long_Delayed']))
     data = data.dropna().reset_index(drop=True)
     return data
 
 df = get_data()
+
 
 while i < 20:
     print(i)

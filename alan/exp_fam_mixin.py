@@ -1,7 +1,10 @@
 import torch as t
 import torch.autograd.forward_ad as fwAD
 from torch.distributions.multivariate_normal import _precision_to_scale_tril
+from torch.nn.functional import threshold
 from .dist import *
+
+Tensor = (functorch.dim.Tensor, t.Tensor)
 
 def grad_digamma(x):
     return t.special.polygamma(1, x)
@@ -92,6 +95,8 @@ class BernoulliMixin(AbstractMixin):
 
 class BernoulliLogitsMixin(BernoulliMixin):
     #Conventional and natural parameters are both logits
+    default_init_conv = {'logits':t.zeros(())}
+
     @staticmethod
     def conv2nat(logits):
         return (logits,)
@@ -179,19 +184,29 @@ class NormalMixin(AbstractMixin):
     @staticmethod
     def mean2conv(Ex, Ex2):
         loc   = Ex
-        scale = (Ex2 - loc**2).sqrt() + 1e-8
+        print('mean2conv func')
+        print(t.isnan(Ex).sum())
+        print(t.isnan(Ex2).sum())
+        print(threshold(Ex2 - loc**2, 0, 1e-4).min())
+        scale = (threshold(Ex2 - loc**2, 0, 1e-4)).sqrt()
+        print('Is nan mean2conv')
+        print(t.isnan(scale).sum())
         return {'loc': loc, 'scale': scale}
 
     @staticmethod
     def conv2nat(loc, scale):
-        prec = 1/scale**2
+        if not isinstance(scale, Tensor):
+            scale = t.tensor(scale)
+        prec = 1/threshold(scale, 0, 1e-4)**2
         mu_prec = loc * prec
         return mu_prec, -0.5*prec
     @staticmethod
     def nat2conv(mu_prec, minus_half_prec):
+
         prec = -2*minus_half_prec
-        loc = mu_prec / prec
-        scale = prec.rsqrt()
+        print(prec.min())
+        loc = mu_prec / threshold(prec, 0, 1e-4)
+        scale = threshold(prec, 0 , 1e-4).rsqrt()
         return {'loc': loc, 'scale': scale}
 
     @staticmethod
