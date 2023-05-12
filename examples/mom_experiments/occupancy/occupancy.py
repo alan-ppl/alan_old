@@ -94,10 +94,10 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
 
 
 
-    covariates = {'weather': t.load('data/weather_train_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float(),
-        'quality': t.load('data/quality_train_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float()}
-    test_covariates = {'weather': t.load('data/weather_test_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float(),
-        'quality': t.load('data/quality_test_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float()}
+    covariates = {'weather': t.load('data/weather_train_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float().to(device),
+        'quality': t.load('data/quality_train_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float().to(device)}
+    test_covariates = {'weather': t.load('data/weather_test_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float().to(device),
+        'quality': t.load('data/quality_test_{}.pt'.format(dataset_seed)).rename('plate_Years', 'plate_Birds', 'plate_Ids').float().to(device)}
     all_covariates = {'weather': t.cat([covariates['weather'],test_covariates['weather']],-1),
         'quality': t.cat([covariates['quality'],test_covariates['quality']],-1)}
 
@@ -105,9 +105,9 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
 
 
 
-    data = {'obs':t.load('data/birds_train_{}.pt'.format(dataset_seed)).float().rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
+    data = {'obs':t.load('data/birds_train_{}.pt'.format(dataset_seed)).float().rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate').to(device)}
     # print(data)
-    test_data = {'obs':t.load('data/birds_test_{}.pt'.format(dataset_seed)).float().rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
+    test_data = {'obs':t.load('data/birds_test_{}.pt'.format(dataset_seed)).float().rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate').to(device)}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']],-2)}
 
 
