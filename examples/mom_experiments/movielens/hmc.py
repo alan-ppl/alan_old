@@ -28,8 +28,8 @@ parser.add_argument('--verbose',       '-v',   default=False, action="store_true
 parser.add_argument('--num_runs',      '-n',   type=int,   nargs='?', default=1000,  help="number of runs")
 parser.add_argument('--dataset_seeds', '-d',   type=int,   nargs='+', default=[0],  help="seeds for test/train split")
 parser.add_argument('--results_tag',   '-t',   type=str,   nargs='?', default="",   help="string to attach to end of results filenames")
-parser.add_argument('--num_samples',   '-s',   type=int,   nargs='?', default=25,  help="number of HMC samples to generate")
-parser.add_argument('--num_tuning_samples',    type=int,   nargs='?', default=-1,  help="number of HMC tuning samples to generate (and discard)")
+parser.add_argument('--num_samples',   '-s',   type=int,   nargs='?', default=10,  help="number of HMC samples to generate")
+parser.add_argument('--num_tuning_samples',    type=int,   nargs='?', default=1,  help="number of HMC tuning samples to generate (and discard)")
 parser.add_argument('--target_accept', '-a',   type=float, nargs='?', default=0.8,  help="target acceptance rate for HMC")  
 
 arglist = sys.argv[1:]
@@ -40,6 +40,8 @@ num_runs = args.num_runs
 num_samples = args.num_samples
 if args.num_tuning_samples == -1:
     num_tuning_samples = num_samples
+else:
+    num_tuning_samples = args.num_tuning_samples
 use_data = args.use_data
 target_accept = args.target_accept
 
@@ -124,11 +126,14 @@ for dataset_seed in args.dataset_seeds:
             
             obs = pm.Bernoulli('obs', logit_p = logits, observed=true_obs, shape=(M, N))
 
-            var_names = ["mu_z", "psi_z", "z", "logits", "obs"]
+            p_ll = pm.Deterministic('p_ll', model.observedlogp)
+
+            var_names = ["p_ll", "mu_z", "psi_z", "z", "logits", "obs"]
 
             print("Sampling posterior WITH JAX!")
             trace = pmjax.sample_blackjax_nuts(draws=num_samples, tune=num_tuning_samples, chains=1, random_seed=i, target_accept=target_accept)#, random_seed=rng)#, discard_tuned_samples=False)
-            train_times[i] = np.linspace(0,trace.attrs["sampling_time"],num_samples+1)[1:]
+            train_times[i] = np.linspace(0,trace.attrs["sampling_time"],num_samples+num_tuning_samples+1)[num_tuning_samples+1:]
+            # train_times[i] = np.linspace(0,trace.attrs["sampling_time"],num_samples+1)[1:]
 
             z_means[i] = [trace.posterior.z[:,:j].mean(("chain", "draw")) for j in range(1, num_samples+1)]
 
@@ -141,9 +146,10 @@ for dataset_seed in args.dataset_seeds:
                     t.cuda.synchronize()
                 start = time.time()
 
-                pp_trace = pm.sample_posterior_predictive(trace, var_names=var_names, random_seed=i)#, return_inferencedata=True)
+                pp_trace = pm.sample_posterior_predictive(trace, var_names=var_names, random_seed=i, predictions=True)#, return_inferencedata=True)
 
-                test_ll = getPredLL(pp_trace.posterior_predictive, test_data['obs'])
+                # test_ll = getPredLL(pp_trace.posterior_predictive, test_data['obs'])
+                test_ll = pp_trace.predictions.p_ll
 
                 if t.cuda.is_available():
                     t.cuda.synchronize()

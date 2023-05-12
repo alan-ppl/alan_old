@@ -40,6 +40,8 @@ num_runs = args.num_runs
 num_samples = args.num_samples
 if args.num_tuning_samples == -1:
     num_tuning_samples = num_samples
+else:
+    num_tuning_samples = args.num_tuning_samples
 use_data = args.use_data
 target_accept = args.target_accept
 
@@ -55,8 +57,8 @@ J = 12
 I = 50
 Returns = 5
 
-def getPredLL(predictions, true_obs):
-    return(stats.nbnom(130, 1/(1+np.exp(-predictions["logits"]))).logpmf(true_obs).sum((-1,-2, -3)).mean(0))
+# def getPredLL(predictions, true_obs):
+#     return(stats.nbnom(130, 1/(1+np.exp(-predictions["logits"]))).logpmf(true_obs).sum((-1,-2, -3)).mean(0))
     # return(stats.bernoulli(1/(1+np.exp(-predictions["logits"]))).logpmf(true_obs).sum((-1,-2)).mean(0))
 
 
@@ -120,7 +122,7 @@ for dataset_seed in args.dataset_seeds:
         d['obs'] = d['obs'].numpy()
 
 
-    alpha_means = np.zeros((num_runs, num_samples, M, J))
+    alpha_means = np.zeros((num_runs, num_samples, M, J, I))
     train_times = np.zeros((num_runs, num_samples))
 
     p_lls = np.zeros((num_runs, num_samples))
@@ -156,14 +158,16 @@ for dataset_seed in args.dataset_seeds:
 
             zp = pm.Deterministic('zp', z*p)
 
-            obs = pm.Bernoulli('obs', p=1/(1+np.exp(-zp)), shape=(M, J, I, R))
+            obs = pm.Bernoulli('obs', p=1/(1+np.exp(-zp)), shape=(M, J, I, Returns), observed=true_obs)
 
-            breakpoint()
-            varnames=['obs','z','beta','alpha', 'bird_mean', 'year_mean']
+            p_ll = pm.Deterministic('p_ll', model.observedlogp)
+
+            # breakpoint()
+            var_names=['p_ll', 'obs','z','beta','alpha', 'bird_mean', 'year_mean']
 
             print("Sampling posterior WITH JAX!")
             trace = pmjax.sample_blackjax_nuts(draws=num_samples, tune=num_tuning_samples, chains=1, random_seed=i, target_accept=target_accept)#, random_seed=rng)#, discard_tuned_samples=False)
-            train_times[i] = np.linspace(0,trace.attrs["sampling_time"],num_samples+1)[1:]
+            train_times[i] = np.linspace(0,trace.attrs["sampling_time"],num_samples+num_tuning_samples+1)[num_tuning_samples+1:]
 
             alpha_means[i] = [trace.posterior.alpha[:,:j].mean(("chain", "draw")) for j in range(1, num_samples+1)]
 
@@ -178,9 +182,10 @@ for dataset_seed in args.dataset_seeds:
                     t.cuda.synchronize()
                 start = time.time()
 
-                pp_trace = pm.sample_posterior_predictive(trace, var_names=var_names, random_seed=i)#, return_inferencedata=True)
+                pp_trace = pm.sample_posterior_predictive(trace, var_names=var_names, random_seed=i, predictions=True)#, return_inferencedata=True)
 
-                test_ll = getPredLL(pp_trace.posterior_predictive, test_data['obs'])
+                # test_ll = getPredLL(pp_trace.posterior_predictive, test_data['obs'])
+                test_ll = pp_trace.predictions.p_ll
 
                 if t.cuda.is_available():
                     t.cuda.synchronize()
@@ -211,7 +216,7 @@ for dataset_seed in args.dataset_seeds:
         train_time_mean = np.mean(train_times,0).tolist()
         train_time_std_err  = (np.std(train_times,0)/np.sqrt(num_runs)).tolist()
 
-        vars_mean = np.mean(np.std(alpha_means,0)**2, (-1, -2)).tolist()
+        vars_mean = np.mean(np.std(alpha_means,0)**2, (-1, -2,-3)).tolist()
 
         alpha_vars = {}
         for i in range(num_samples):
@@ -228,7 +233,7 @@ for dataset_seed in args.dataset_seeds:
         train_time_mean = np.mean(train_times,0).tolist()
         train_time_std_err  = (np.std(train_times,0)/np.sqrt(num_runs)).tolist()
 
-        mses_mean = ((alpha_means - sampledData['year_mean'].numpy())**2).mean((0,-1,-2))
+        mses_mean = ((alpha_means - sampledData['year_mean'].numpy())**2).mean((0,-1,-2,-3))
 
         alpha_mses = {}
         for i in range(num_samples):
