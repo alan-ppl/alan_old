@@ -21,9 +21,9 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
       '''
       tr.sample('year_mean', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_Years')
 
-      tr.sample('bird_mean', alan.Normal(tr['year_mean'], t.ones(()).to(device)), plates='plate_Birds')
+      tr.sample('bird_mean', alan.Normal(tr['year_mean'], np.sqrt(M) * t.ones(()).to(device)), plates='plate_Birds')
 
-      tr.sample('beta', alan.Normal(tr['bird_mean'], t.ones(()).to(device)), plates='plate_Ids')
+      tr.sample('beta', alan.Normal(tr['bird_mean'], np.sqrt(M*J) * t.ones(()).to(device)), plates='plate_Ids')
 
 
       Phi = tr['beta']*tr['weather']
@@ -31,7 +31,7 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
       tr.sample('z', alan.Bernoulli(logits = Phi))
 
 
-      tr.sample('alpha', alan.Normal(tr['bird_mean'], t.ones(()).to(device)), plates='plate_Ids')
+      tr.sample('alpha', alan.Normal(tr['bird_mean'], np.sqrt(M*J) * t.ones(()).to(device)), plates='plate_Ids')
       p = tr['alpha']*tr['quality']
 
       #Observation of birds

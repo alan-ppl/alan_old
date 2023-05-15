@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--cpu',           '-c',   type=bool,  nargs='?', default=False)
 parser.add_argument('--verbose',       '-v',   type=bool,  nargs='?', default=False)
 parser.add_argument('--num_runs',      '-n',   type=int,   nargs='?', default=1000,  help="number of runs")
-parser.add_argument('--dataset_seeds', '-d',   type=int,   nargs='+', default=[0],  help="seeds for test/train split")
+parser.add_argument('--dataset_seeds', '-d',   type=int,   nargs='+', default=[0,1,2],  help="seeds for test/train split")
 parser.add_argument('--results_tag',   '-t',   type=str,   nargs='?', default="",   help="string to attach to end of results filenames")
 
 arglist = sys.argv[1:]
