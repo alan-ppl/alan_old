@@ -46,9 +46,9 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
           '''
           tr.sample('year_mean', alan.Normal(t.zeros(()).to(device), t.ones(()).to(device)), plates='plate_Years')
 
-          tr.sample('bird_mean', alan.Normal(tr['year_mean'], t.ones(()).to(device)), plates='plate_Birds')
+          tr.sample('bird_mean', alan.Normal(tr['year_mean'], np.sqrt(M) * t.ones(()).to(device)), plates='plate_Birds')
 
-          tr.sample('beta', alan.Normal(tr['bird_mean'], t.ones(()).to(device)), plates='plate_Ids')
+          tr.sample('beta', alan.Normal(tr['bird_mean'], np.sqrt(M*J) * t.ones(()).to(device)), plates='plate_Ids')
 
 
           Phi = tr['beta']*tr['weather']
@@ -56,7 +56,7 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
           tr.sample('z', alan.Bernoulli(logits = Phi))
 
 
-          tr.sample('alpha', alan.Normal(tr['bird_mean'], t.ones(()).to(device)), plates='plate_Ids')
+          tr.sample('alpha', alan.Normal(tr['bird_mean'], np.sqrt(M*J) * t.ones(()).to(device)), plates='plate_Ids')
           p = tr['alpha']*tr['quality']
 
           #Observation of birds
@@ -85,12 +85,12 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
             def forward(self, tr):
 
                 tr.sample('year_mean', alan.Normal(self.year_m, self.year_scale.exp()))
-                tr.sample('bird_mean', alan.Normal(self.bird_m, self.bird_scale.exp()))
+                tr.sample('bird_mean', np.sqrt(M) * alan.Normal(self.bird_m, self.bird_scale.exp()))
 
-                tr.sample('beta', alan.Normal(self.beta_m, self.beta_scale.exp()))
+                tr.sample('beta', np.sqrt(M*J) * alan.Normal(self.beta_m, self.beta_scale.exp()))
                 tr.sample('z', alan.Bernoulli(logits = self.z_logits))
 
-                tr.sample('alpha', alan.Normal(self.alpha_m, self.alpha_scale.exp()))
+                tr.sample('alpha', np.sqrt(M*J) * alan.Normal(self.alpha_m, self.alpha_scale.exp()))
 
 
 
