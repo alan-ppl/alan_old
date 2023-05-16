@@ -85,7 +85,6 @@ for dataset_seed in dataset_seeds:
                 opt = t.optim.Adam(model.parameters(), lr=lr)
                 train_time = 0
 
-                print('Hello')
                 if verbose and i % 1 == 0: print(f"{i+1}/{num_runs}")
 
                 for vi_iter in range(num_vi_iters+1):
