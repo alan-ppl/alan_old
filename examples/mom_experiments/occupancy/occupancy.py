@@ -85,12 +85,12 @@ def generate_model(N,M,device, dataset_seed=0, QModule=False, use_data=True):
             def forward(self, tr):
 
                 tr.sample('year_mean', alan.Normal(self.year_m, self.year_scale.exp()))
-                tr.sample('bird_mean',  alan.Normal((1/np.sqrt(M)) *self.bird_m, self.bird_scale.exp()))
+                tr.sample('bird_mean',  alan.Normal(self.bird_m, (1/np.sqrt(M)) * self.bird_scale.exp()))
 
-                tr.sample('beta',  alan.Normal((1/np.sqrt(M*J)) * self.beta_m, self.beta_scale.exp()))
+                tr.sample('beta',  alan.Normal(self.beta_m, (1/np.sqrt(M*J)) * self.beta_scale.exp()))
                 tr.sample('z', alan.Bernoulli(logits = self.z_logits))
 
-                tr.sample('alpha',  alan.Normal((1/np.sqrt(M*J)) * self.alpha_m, self.alpha_scale.exp()))
+                tr.sample('alpha',  alan.Normal(self.alpha_m, (1/np.sqrt(M*J)) * self.alpha_scale.exp()))
 
 
 
