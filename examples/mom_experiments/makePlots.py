@@ -5,26 +5,33 @@ import combineJSONs
 import numpy as np
 
 def combineVIJsons(vi_lrs, experimentName, eval_k=1, dataset_seed=0):
+    # extra = "_10" if experimentName == "occupancy" else ""
+    extra = ""
+
     for metric in ["elbo", "MSE", "p_ll", "variance"]:
         combineJSONs.combineMultiple(
-            [f"{experimentName}/results/vi_{experimentName}_{metric}_lr{lr}_{dataset_seed}.json" for lr in vi_lrs],
+            [f"{experimentName}/results/vi_{experimentName}_{metric}_lr{lr}_{dataset_seed}{extra}.json" for lr in vi_lrs],
              f"{experimentName}/results/vi_{experimentName}_{metric}_{dataset_seed}.json", sublayer=str(eval_k))
             
-def combineALLJsons(experimentName, NUTS=False, dataset_seed=0):
-    fs = [f"{experimentName}/results/{experimentName}_elbo_{dataset_seed}.json",
-          f"{experimentName}/results/vi_{experimentName}_elbo_{dataset_seed}.json"]
+def combineALLJsons(experimentName, NUTS=False, dataset_seed=0, hmc_results_tag=""):
+    # extra = "_10" if experimentName == "occupancy" else ""
+    extra = ""
+    # print(experimentName)
+
+    fs = [f"{experimentName}/results/{experimentName}_elbo_{dataset_seed}{extra}.json",
+          f"{experimentName}/results/vi_{experimentName}_elbo_{dataset_seed}{extra}.json"]
 
     combineJSONs.combineMultiple(fs, f"{experimentName}/results/ALL_{experimentName}_elbo_{dataset_seed}.json")    
 
     for metric in ["MSE", "p_ll", "variance"]:
-        fs = [f"{experimentName}/results/{experimentName}_{metric}_{dataset_seed}.json",
-          f"{experimentName}/results/vi_{experimentName}_{metric}_{dataset_seed}.json"]
+        fs = [f"{experimentName}/results/{experimentName}_{metric}_{dataset_seed}{extra}.json",
+          f"{experimentName}/results/vi_{experimentName}_{metric}_{dataset_seed}{extra}.json"]
         if NUTS:
-            fs.append(f"{experimentName}/results/hmc_{experimentName}_{metric}_{dataset_seed}.json")
+            fs.append(f"{experimentName}/results/hmc_{experimentName}{hmc_results_tag}_{metric}_{dataset_seed}.json")
 
         combineJSONs.combineMultiple(fs, f"{experimentName}/results/ALL_{experimentName}_{metric}_{dataset_seed}.json")
         
-def averageALLResultsOverDatasets(experimentName, dataset_seeds):
+def averageALLResultsOverDatasets(experimentName, dataset_seeds, Ks):
     n = len(dataset_seeds)
 
     for metric in ["elbo", "MSE", "p_ll", "variance"]:
@@ -37,18 +44,23 @@ def averageALLResultsOverDatasets(experimentName, dataset_seeds):
 
         j_avg = js[0]
         for method in j_avg:
-            for K in j_avg[method]:
+            # for K in j_avg[method]:
+            for K in Ks[method]:
                 j_avg[method][K]["time_mean"] = sum([js[i][method][K]["time_mean"] for i in range(n)])/n
-                j_avg[method][K]["time_std_err"] = sum([js[i][method][K]["time_mean"] for i in range(n)])/n
+                j_avg[method][K]["time_std_err"] = sum([js[i][method][K]["time_std_err"] for i in range(n)])/n
 
                 try:
                     j_avg[method][K]["mean"] = sum([js[i][method][K]["mean"] for i in range(n)])/n
-                    j_avg[method][K]["std_err"] = sum([js[i][method][K]["std_err"] for i in range(n)])/n
+                    j_avg[method][K]["std_err"] = np.std([js[i][method][K]["mean"] for i in range(n)])#/np.sqrt(n)
+
+                    j_avg[method][K]["mean_std_err"] = sum([js[i][method][K]["std_err"] for i in range(n)])/n
 
                 except KeyError:
                     for rv in j_avg[method][K]:
                         if rv not in ("time_mean", "time_std_err"):
                             j_avg[method][K][rv]["mean_var"] = sum([js[i][method][K][rv]["mean_var"] for i in range(n)])/n
+                            j_avg[method][K][rv]["std_err"]  = np.std([js[i][method][K][rv]["mean_var"] for i in range(n)])#/np.sqrt(n)
+
 
         with open(f"{experimentName}/results/ALL_{experimentName}_{metric}.json", 'w') as f:
             json.dump(j_avg, f, indent=4)
@@ -82,9 +94,10 @@ def getMeanValues(data, method, Ks, rv=None, rolling_window=1):
     
 def getStdErrValues(data, method, Ks, rv=None, rolling_window=1):
     if rv is None:
-        return [x*(1000**0.5) for x in getSeriesValues(data, method, Ks, "std_err", rolling_window=rolling_window)]
+        # return [x*(1000**0.5) for x in getSeriesValues(data, method, Ks, "std_err", rolling_window=rolling_window)]
+        return [x for x in getSeriesValues(data, method, Ks, "std_err", rolling_window=rolling_window)]
     else:
-        return []
+        return [x for x in getSeriesValues(data, method, Ks, "std_err", rv=rv, rolling_window=rolling_window)]
 
 def getTimeValues(data, method, Ks, rv=None, rolling_window=1):
     if rv is None:
@@ -95,16 +108,18 @@ def getTimeValues(data, method, Ks, rv=None, rolling_window=1):
 
 greenColourRGB = (77/256, 175/256, 74/256)
 
-def plotAllForSinglePlateCombination(Ks, experimentName, rv, vi_lrs=[0.01,0.001,0.0001], vi_rolling_window=1, vi_eval_k=1, NUTS=False, dataset_seeds=[0]):
-    
+def plotAllForSinglePlateCombination(Ks, experimentName, rv, vi_lrs=[0.01,0.001,0.0001], vi_rolling_window=1, vi_eval_k=1, NUTS=False, dataset_seeds=[0], hmc_results_tag="", log_time=False):
+    print(experimentName)
+
     # Combine different baselines results into singular "ALL" files per dataset_seed
     for dataset_seed in dataset_seeds:
         if len(vi_lrs) >= 1:
             combineVIJsons(vi_lrs, experimentName, str(vi_eval_k), dataset_seed=dataset_seed)
-            combineALLJsons(experimentName, NUTS, dataset_seed)
+            combineALLJsons(experimentName, NUTS, dataset_seed, hmc_results_tag=hmc_results_tag)
+            # print("hello")
 
     # Average over all dataset_seeds to obtain a master "ALL" file (with no "_{dataset_seed}" at end of filename)
-    averageALLResultsOverDatasets(experimentName, dataset_seeds)
+    averageALLResultsOverDatasets(experimentName, dataset_seeds, Ks)
 
 
     plt.rcParams.update({"figure.dpi": 300})
@@ -132,7 +147,7 @@ def plotAllForSinglePlateCombination(Ks, experimentName, rv, vi_lrs=[0.01,0.001,
                         rv_temp = rv
                     if "vi" in method and vi_rolling_window > 1:
                         results[metric][method] = {"mean": getMeanValues(data, method, Ks, rv_temp, vi_rolling_window),
-                                                "std_err": getStdErrValues(data, method, Ks, rv_temp, vi_rolling_window)*np.sqrt(1000),
+                                                "std_err": getStdErrValues(data, method, Ks, rv_temp, vi_rolling_window),#*np.sqrt(1000/3),
                                                 "time": getTimeValues(data, method, Ks, rv_temp, vi_rolling_window)}
                     else:
                         results[metric][method] = {"mean": getMeanValues(data, method, Ks, rv_temp),
@@ -160,18 +175,24 @@ def plotAllForSinglePlateCombination(Ks, experimentName, rv, vi_lrs=[0.01,0.001,
         ax[0,1].errorbar(Ks["tmc_new"][1:],  results["p_ll"]["tmc_new"]["mean"][1:],  yerr=results["p_ll"]["tmc_new"]["std_err"][1:],  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
         ax[0,1].errorbar(Ks["global_k"][1:], results["p_ll"]["global_k"]["mean"][1:], yerr=results["p_ll"]["global_k"]["std_err"][1:], linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
 
-        ax[0,2].errorbar(Ks["tmc_new"][1:],  results["vars"]["tmc_new"]["mean"][1:],  yerr=0,  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
-        ax[0,2].errorbar(Ks["global_k"][1:], results["vars"]["global_k"]["mean"][1:], yerr=0, linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
+        ax[0,2].errorbar(Ks["tmc_new"][1:],  results["vars"]["tmc_new"]["mean"][1:],  yerr=results["vars"]["tmc_new"]["std_err"][1:],  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
+        ax[0,2].errorbar(Ks["global_k"][1:], results["vars"]["global_k"]["mean"][1:], yerr=results["vars"]["global_k"]["std_err"][1:], linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
 
-        ax[0,3].errorbar(Ks["tmc_new"][1:],  results["MSE"]["tmc_new"]["mean"][1:],  yerr=0,  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
-        ax[0,3].errorbar(Ks["global_k"][1:], results["MSE"]["global_k"]["mean"][1:], yerr=0, linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
+        ax[0,3].errorbar(Ks["tmc_new"][1:],  results["MSE"]["tmc_new"]["mean"][1:],  yerr=results["MSE"]["tmc_new"]["std_err"][1:],  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
+        ax[0,3].errorbar(Ks["global_k"][1:], results["MSE"]["global_k"]["mean"][1:], yerr=results["MSE"]["global_k"]["std_err"][1:], linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
+
+        for alpha, lr in enumerate(vi_lrs[::-1]):
+            ax[0,3].errorbar(np.nan,np.nan, yerr=0, linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
+        if NUTS:
+            ax[0,3].errorbar(np.nan, np.nan, yerr=0, linewidth=0.55, markersize = 0.75, label="NUTS", c='#984ea3')
 
 
         ax[1,0].errorbar(results["elbo"]["tmc_new"]["time"],  results["elbo"]["tmc_new"]["mean"],  yerr=0,  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
         ax[1,0].errorbar(results["elbo"]["global_k"]["time"], results["elbo"]["global_k"]["mean"], yerr=0, linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
         for alpha, lr in enumerate(vi_lrs[::-1]):
             # if not(experimentName == "bus_breakdown" and lr in [0.1, 0.01]):
-            ax[1,0].errorbar(results["elbo"][f"vi_{lr}"]["time"][:101], results["elbo"][f"vi_{lr}"]["mean"][:101], yerr=0, linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
+            # ax[1,0].errorbar(results["elbo"][f"vi_{lr}"]["time"][:101], results["elbo"][f"vi_{lr}"]["mean"][:101], yerr=0, linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
+            ax[1,0].errorbar(results["elbo"][f"vi_{lr}"]["time"], results["elbo"][f"vi_{lr}"]["mean"], yerr=0, linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
 
         # ax[1,0].set_yscale("log")
         if experimentName == "bus_breakdown":
@@ -180,14 +201,16 @@ def plotAllForSinglePlateCombination(Ks, experimentName, rv, vi_lrs=[0.01,0.001,
         ax[1,1].errorbar(results["p_ll"]["tmc_new"]["time"][1:],  results["p_ll"]["tmc_new"]["mean"][1:],  yerr=0,  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
         ax[1,1].errorbar(results["p_ll"]["global_k"]["time"][1:], results["p_ll"]["global_k"]["mean"][1:], yerr=0, linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
         for alpha, lr in enumerate(vi_lrs[::-1]):
-            ax[1,1].errorbar(results["p_ll"][f"vi_{lr}"]["time"][:101], results["p_ll"][f"vi_{lr}"]["mean"][:101], yerr=0, linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
+            # ax[1,1].errorbar(results["p_ll"][f"vi_{lr}"]["time"][:101], results["p_ll"][f"vi_{lr}"]["mean"][:101], yerr=0, linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
+            ax[1,1].errorbar(results["p_ll"][f"vi_{lr}"]["time"], results["p_ll"][f"vi_{lr}"]["mean"], yerr=0, linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
         if NUTS:
             ax[1,1].errorbar(results["p_ll"]["NUTS"]["time"], results["p_ll"]["NUTS"]["mean"], yerr=0, linewidth=0.55, markersize = 0.75, label="NUTS", c='#984ea3')
 
         ax[1,2].errorbar(results["vars"]["tmc_new"]["time"][1:],  results["vars"]["tmc_new"]["mean"][1:],  yerr=0,  linewidth=0.55, markersize = 0.75, fmt='-o', c='#e41a1c', label='MP IS')
         ax[1,2].errorbar(results["vars"]["global_k"]["time"][1:], results["vars"]["global_k"]["mean"][1:], yerr=0, linewidth=0.55, markersize = 0.75, fmt='-o', c='#377eb8', label='Global IS')
         for alpha, lr in enumerate(vi_lrs[::-1]):
-            ax[1,2].plot(results["vars"][f"vi_{lr}"]["time"][:101], results["vars"][f"vi_{lr}"]["mean"][:101], linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
+            # ax[1,2].plot(results["vars"][f"vi_{lr}"]["time"][:101], results["vars"][f"vi_{lr}"]["mean"][:101], linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
+            ax[1,2].plot(results["vars"][f"vi_{lr}"]["time"], results["vars"][f"vi_{lr}"]["mean"], linewidth=0.55, markersize = 0.75, label="VI lr="+str(lr), c=(*greenColourRGB, 1/(alpha+1)))
         if NUTS:
             ax[1,2].plot(results["vars"]["NUTS"]["time"], results["vars"]["NUTS"]["mean"], linewidth=0.55, markersize = 0.75, label="NUTS", c='#984ea3')
 
@@ -207,11 +230,27 @@ def plotAllForSinglePlateCombination(Ks, experimentName, rv, vi_lrs=[0.01,0.001,
 
             ax[0,j].tick_params(axis='x', labelrotation = 90)
 
-            ax[1,j].set_xlim(left=-0.01 if experimentName == "movielens" else -0.05)
             # ax[0,j].set_title(f'({colTitles[j]})', loc='left', weight="bold")
+
+            if log_time:
+                ax[1,j].set_xscale('log')
+                # if experimentName == "occupancy10RUN":
+                #     ax[1,j].set_yscale('symlog')
+                #     ax[1,0].set_ylim(top=-1e4)
+            # else:
+                # ax[1,j].set_xlim([-0.05, 2.4] if experimentName == "movielens" else [-0.05,2.2])
+            # ax[1,j].set_xlim(left=-0.05 if experimentName == "movielens" else -0.05)
+            ax[1,j].set_xlim(left=-0.05)
+
+        # if experimentName == "occupancy10RUN":
+        #     ax[1,0].set_xlim(right=10)
         
         xColAnnotationCoords = {"movielens":     [-34, -34, -23, -22],
-                                "bus_breakdown": [-37, -37, -23, -22.7],}
+                                "bus_breakdown": [-37, -37, -23, -22.7],
+                                "occupancy":     [-37, -37, -23, -22.7],
+                                "movielens10RUN":     [-34, -34, -23, -22],
+                                "bus_breakdown10RUN": [-37, -37, -23, -22.7],
+                                "occupancy10RUN":     [-37, -37, -23, -22.7]}
 
         ax[0,0].annotate(r'\bf{a}', xy=(0, 1), xycoords='axes fraction', fontsize=10,
             xytext=(xColAnnotationCoords[experimentName][0], 5), textcoords='offset points',
@@ -232,45 +271,85 @@ def plotAllForSinglePlateCombination(Ks, experimentName, rv, vi_lrs=[0.01,0.001,
             ax[i,2].set_ylabel(f"Variance of \n{rv} Estimator", fontsize=10)
             ax[i,3].set_ylabel(f"MSE of \n{rv} Estimator", fontsize=10)
 
-        plt.legend(loc="center right")
-        plt.savefig(f'plots/{experimentName}_all_{rv}.png')
-        plt.savefig(f'plots/{experimentName}_all_{rv}.pdf')
+        vi_smooth_str = f"_vi{vi_rolling_window}smooth)" if vi_rolling_window > 1 else ""
+        ax[0,3].legend()#loc="upper right")
+        plt.savefig(f'plots/{experimentName}_all_{rv}{vi_smooth_str}{hmc_results_tag}.png')
+        plt.savefig(f'plots/{experimentName}_all_{rv}{vi_smooth_str}{hmc_results_tag}.pdf')
         plt.close()
 
 
 # MOVIELENS
 vi_lrs= [0.0001, 0.001, 0.01]
 
-num_vi_iters = 250
+num_vi_iters = 250#5000
 vi_iter_step = 1
 vi_iter_counts = [str(x) for x in range(0, num_vi_iters+1, vi_iter_step)]
 
-num_NUTS_samples = 6
+num_NUTS_samples = 10#500
 
-Ks = {"tmc_new": ['1', '3', '10', '30', '100'], "global_k": ['1', '3','10','30', '100', '300', '1000', '3000', '10000', '30000', '100000']}
+Ks = {"tmc_new": ['1', '3', '10', '30'],#, '100'],
+      "global_k": ['1', '3','10','30', '100', '300', '1000', '3000', '10000', '30000', '100000']}
 
 for lr in vi_lrs:
     Ks[f"vi_{lr}"] = vi_iter_counts
 
 Ks["NUTS"] = [str(x) for x in range(1, num_NUTS_samples+1)]
 
-plotAllForSinglePlateCombination(Ks, "movielens", "z", vi_lrs=vi_lrs, NUTS=True)
+# plotAllForSinglePlateCombination(Ks, "movielens", "z", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2])
+# plotAllForSinglePlateCombination(Ks, "movielens", "z", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0], hmc_results_tag="3TUNE")
+# plotAllForSinglePlateCombination(Ks, "movielens", "z", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0], hmc_results_tag="10TUNE")
+
+
+# plotAllForSinglePlateCombination(Ks, "movielens10RUN", "z", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2], log_time=True, hmc_results_tag="_5")
+# plotAllForSinglePlateCombination(Ks, "movielens10RUN", "z", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2], log_time=True, hmc_results_tag="_10")
+
 
 # BUS BREAKDOWN
 vi_lrs=[0.0001, 0.001, 0.01]
 
-num_vi_iters = 100#200
-vi_iter_step = 1
+num_vi_iters = 250#5000#200
+vi_iter_step = 1#1
 vi_iter_counts = [str(x) for x in range(0, num_vi_iters+1, vi_iter_step)]
 
-num_NUTS_samples = 5
+num_NUTS_samples = 500
 
-Ks = {"tmc_new": ['1', '3', '10', '30', '100'], "global_k": ['1', '3','10','30', '100', '300', '1000', '3000', '10000', '30000', '100000']}
+Ks = {"tmc_new": ['1', '3', '10', '30'],#, '100'],
+      "global_k": ['1', '3','10','30', '100', '300', '1000', '3000', '10000', '30000', '100000']}
 
 for lr in vi_lrs:
     Ks[f"vi_{lr}"] = vi_iter_counts
 
 Ks["NUTS"] = [str(x) for x in range(1, num_NUTS_samples+1)]
 
-plotAllForSinglePlateCombination(Ks, "bus_breakdown", "alpha", vi_lrs=vi_lrs, NUTS=True)
+# plotAllForSinglePlateCombination(Ks, "bus_breakdown", "alpha", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2])
+# plotAllForSinglePlateCombination(Ks, "bus_breakdown", "alpha", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0], hmc_results_tag="3TUNE")
+# plotAllForSinglePlateCombination(Ks, "bus_breakdown", "alpha", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0], hmc_results_tag="10TUNE")
+
+
+# plotAllForSinglePlateCombination(Ks, "bus_breakdown10RUN", "alpha", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2], log_time=True, hmc_results_tag="_5")
+# plotAllForSinglePlateCombination(Ks, "bus_breakdown10RUN", "alpha", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2], log_time=True, hmc_results_tag="_10")
+
+# plotAllForSinglePlateCombination(Ks, "bus_breakdown10RUN", "alpha", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2], log_time=True, hmc_results_tag="_5", vi_rolling_window=25)
+# plotAllForSinglePlateCombination(Ks, "bus_breakdown10RUN", "alpha", vi_lrs=vi_lrs, NUTS=True, dataset_seeds=[0,1,2], log_time=True, hmc_results_tag="_10", vi_rolling_window=25)
+
+
+# OCCUPANCY
+vi_lrs=[0.00001, 0.00003, 0.0001, 0.001, 0.01, 0.1]
+num_vi_iters = 100#5000#200
+vi_iter_step = 1#1
+vi_iter_counts = [str(x) for x in range(0, num_vi_iters+1, vi_iter_step)]
+
+Ks = {"tmc_new": ['1', '1', '3', '10', '30', '100'],#, '100'],
+      "global_k": ['1', '1', '3','10','30', '100', '300', '1000', '3000', '10000', '30000', '100000']}
+for lr in vi_lrs:
+    Ks[f"vi_{lr}"] = vi_iter_counts
+
+Ks["NUTS"] = [str(x) for x in range(1, num_NUTS_samples+1)]
+
+# plotAllForSinglePlateCombination(Ks, "occupancy", "alpha", vi_lrs=vi_lrs, NUTS=False, dataset_seeds=[0,1,2], log_time=False)
+
+plotAllForSinglePlateCombination(Ks, "occupancy10RUN", "alpha", vi_lrs=vi_lrs, NUTS=False, dataset_seeds=[0,1,2], log_time=False)
+
+
+# plotAllForSinglePlateCombination(Ks, "occupancy10RUN", "alpha", vi_lrs=vi_lrs, NUTS=False, dataset_seeds=[0,1,2], log_time=True)
 
