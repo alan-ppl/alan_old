@@ -4,7 +4,7 @@ import alan
 import numpy as np
 from alan.experiment_utils import seed_torch
 
-def generate_model(N,M,device,ML=1, run=0, use_data=True):
+def generate_model(N,M,device,ML=2, run=0, use_data=True):
     M = 3
     J = 3
     I = 30
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.003, sample)
+        model.update(0.05, sample)
 
 
 
