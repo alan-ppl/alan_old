@@ -78,7 +78,7 @@ def inverse_sigmoid(y):
     -x = log(1/y - 1)
     x = -log(1/y - 1)
     """
-    return -t.log(1/y - 1)
+    return -t.log(t.abs(1/y - 1) + 1e-50)
 
 class BernoulliMixin(AbstractMixin):
     """
@@ -172,6 +172,48 @@ class PoissonMixin(AbstractMixin):
     def canonical_conv(rate):
         return {'rate': rate.exp()}
 
+# class NormalMixin(AbstractMixin):
+#     dist = staticmethod(Normal)
+#     sufficient_stats = (identity, t.square)
+#     default_init_conv = {'loc': 0., 'scale': 1.}
+#     @staticmethod
+#     def conv2mean(loc, scale):
+#         Ex  = loc
+#         Ex2 = loc**2 + scale**2
+#         return Ex, Ex2
+#     @staticmethod
+#     def mean2conv(Ex, Ex2):
+#         loc   = Ex
+#         # print(Ex2)
+#         # print(loc)
+#         # print(Ex2 - loc**2)
+#         scale = threshold(Ex2 - loc**2, 0 ,1e-25).sqrt()
+#         return {'loc': loc, 'scale': scale}
+
+#     @staticmethod
+#     def conv2nat(loc, scale):
+
+
+#         prec = 1/threshold(scale, 0 ,1e-25)
+#         mu_prec = loc * prec
+#         return mu_prec, -0.5*prec
+
+#     @staticmethod
+#     def nat2conv(mu_prec, minus_half_prec):
+#         prec = -2*minus_half_prec
+#         loc = mu_prec / threshold(prec, 0 ,1e-25)
+#         scale = threshold(prec, 0 ,1e-25).rsqrt()
+#         return {'loc': loc, 'scale': scale}
+
+#     @staticmethod
+#     def canonical_conv(loc, scale):
+#         ## exp so that its positive, is this the right place to do this?
+#         return {'loc': loc, 'scale': scale}
+
+#     @staticmethod
+#     def test_conv(N):
+#         return {'loc': t.randn(N), 'scale': t.randn(N).exp()}
+
 class NormalMixin(AbstractMixin):
     dist = staticmethod(Normal)
     sufficient_stats = (identity, t.square)
@@ -180,44 +222,37 @@ class NormalMixin(AbstractMixin):
     def conv2mean(loc, scale):
         Ex  = loc
         Ex2 = loc**2 + scale**2
+
         return Ex, Ex2
     @staticmethod
     def mean2conv(Ex, Ex2):
         loc   = Ex
-        print('mean2conv func')
-        print(t.isnan(Ex).sum())
-        print(t.isnan(Ex2).sum())
-        print(threshold(Ex2 - loc**2, 0, 1e-4).min())
-        scale = (threshold(Ex2 - loc**2, 0, 1e-4)).sqrt()
-        print('Is nan mean2conv')
-        print(t.isnan(scale).sum())
+        # print(Ex2 - loc**2)
+        scale = (t.abs(Ex2 - loc**2)).sqrt() + 1e-50
+        # scale = (Ex2 - loc**2).sqrt() 
         return {'loc': loc, 'scale': scale}
 
     @staticmethod
     def conv2nat(loc, scale):
-        if not isinstance(scale, Tensor):
-            scale = t.tensor(scale)
-        prec = 1/threshold(scale, 0, 1e-4)**2
+        prec = 1/scale
         mu_prec = loc * prec
         return mu_prec, -0.5*prec
+
     @staticmethod
     def nat2conv(mu_prec, minus_half_prec):
-
         prec = -2*minus_half_prec
-        print(prec.min())
-        loc = mu_prec / threshold(prec, 0, 1e-4)
-        scale = threshold(prec, 0 , 1e-4).rsqrt()
+        loc = mu_prec / prec
+        scale = prec.rsqrt()
         return {'loc': loc, 'scale': scale}
 
     @staticmethod
     def canonical_conv(loc, scale):
-        ## exp so that its positive, is this the right place to do this?
         return {'loc': loc, 'scale': scale}
 
     @staticmethod
     def test_conv(N):
         return {'loc': t.randn(N), 'scale': t.randn(N).exp()}
-
+    
 class ExponentialMixin(AbstractMixin):
     dist = staticmethod(Exponential)
     sufficient_stats = (identity,)

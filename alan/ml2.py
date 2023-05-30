@@ -19,11 +19,11 @@ class ML2(AlanModule):
 
         self.meannames = tuple(f'm{i}' for i in range(len(self.sufficient_stats)))
         for (meanname, init_mean) in zip(self.meannames, init_means):
-            self.register_buffer(meanname, t.full(shape, init_mean).rename(*names))
+            self.register_buffer(meanname, t.full(shape, init_mean, dtype=t.float64).rename(*names))
 
         self.Jnames = tuple(f'J{i}' for i in range(len(self.sufficient_stats)))
         for Jname in self.Jnames:
-            self.register_parameter(Jname, nn.Parameter(t.zeros(shape).rename(*names)))
+            self.register_parameter(Jname, nn.Parameter(t.zeros(shape, dtype=t.float64).rename(*names)))
 
         self.platenames = tuple(platesizes.keys())
 
@@ -76,7 +76,7 @@ class ML2Normal(ML2, NormalMixin):
     pass
 class ML2MvNormal(ML2, MvNormalMixin):
     pass
-class ML2Bernoulli(ML2, BernoulliMixin):
+class ML2BernoulliLogits(ML2, BernoulliLogitsMixin):
     pass
 class ML2Poisson(ML2, PoissonMixin):
     pass

@@ -5,7 +5,7 @@ from .utils import named2dim_tensor, extend_plates_with_named_tensor
 class AlanModule(nn.Module):
     """
     If we have an approximate posterior with per-datapoint parameters, then
-    these parameters likely have plates.  When used in .P or .Q, these 
+    these parameters likely have plates.  When used in .P or .Q, these
     parameters need to have the appropriate torchdim plates.  However, that's
     not easy to achieve given that we're trying to avoid the user having
     direct access to the underlying torchdims.
