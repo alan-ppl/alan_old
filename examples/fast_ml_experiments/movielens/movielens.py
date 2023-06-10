@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 import alan
 
-def generate_model(N,M,device, ML=1, run=0, use_data=True):
+def generate_model(N,M,device, ML=2, run=0, use_data=True):
     sizes = {'plate_1':M, 'plate_2':N}
     d_z = 18
     def P(tr, x):
@@ -71,7 +71,7 @@ def generate_model(N,M,device, ML=1, run=0, use_data=True):
         test_data['obs'] = test_data['obs'].rename('plate_1','plate_2')
     else:
         model = alan.Model(P, Q())
-        all_data = model.sample_prior(platesizes = {'plate_1':300}, inputs = all_covariates)
+        all_data = model.sample_prior(platesizes = {'plate_1':M}, inputs = all_covariates)
         #data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = all_data
         test_data = {}
@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.03, sample)
+        model.update(0.15, sample)
 
 
 

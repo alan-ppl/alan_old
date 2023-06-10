@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.03, sample)
+        model.update(0.25, sample)
 
 
 

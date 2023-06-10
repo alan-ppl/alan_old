@@ -179,42 +179,42 @@ def generate_model(N,M,device=t.device('cpu'),ML=1, run=0, use_data=True):
         def __init__(self):
             super().__init__()
             #raw_mu_b_T
-            self.mu_b_T = alan.MLMvNormal(init_conv={'loc':t.zeros((S,)),'covariance_matrix':t.eye(S)})
+            self.mu_b_T = alan.ML2MvNormal(init_conv={'loc':t.zeros((S,)),'covariance_matrix':t.eye(S)})
 
 
             #raw_mu_b
-            self.mu_b = alan.MLMvNormal({'T1': T},sample_shape=(S,))
+            self.mu_b = alan.ML2MvNormal({'T1': T},sample_shape=(S,))
 
 
             #raw_mu_c
-            self.mu_c = alan.MLNormal(sample_shape=(P_int,))
+            self.mu_c = alan.ML2Normal(sample_shape=(P_int,))
 
             #raw_mu_m
-            self.mu_m = alan.MLNormal(sample_shape=(M,))
+            self.mu_m = alan.ML2Normal(sample_shape=(M,))
 
             #raw_mu_pop
-            self.mu_pop = alan.MLNormal(sample_shape=(Pop,))
+            self.mu_pop = alan.ML2Normal(sample_shape=(Pop,))
 
             #mu_e_bias
-            self.mu_e_bias = alan.MLNormal()
+            self.mu_e_bias = alan.ML2Normal()
 
             #rho_e_bias
-            self.rho_e_bias = alan.MLNormal()
+            self.rho_e_bias = alan.ML2Normal()
 
             #raw_e_bias
-            self.e_bias = alan.MLNormal()
+            self.e_bias = alan.ML2Normal()
 
             #e
-            self.e = alan.MLNormal({'T2': T})
+            self.e = alan.ML2Normal({'T2': T})
 
             # #raw_measure_noise_national
             # self.raw_measure_noise_national = alan.MLNormal(sample_shape=(N_national_polls,))
 
             #raw_measure_noise_national
-            self.measure_noise_state = alan.MLNormal({'plate_State_Polls': N_state_polls})
+            self.measure_noise_state = alan.ML2Normal({'plate_State_Polls': N_state_polls})
 
             #raw_polling_bias
-            self.polling_bias = alan.MLNormal(sample_shape=(S,))
+            self.polling_bias = alan.ML2Normal(sample_shape=(S,))
 
         def forward(self, tr, state_weights,
                   sigma_measure_noise_national,

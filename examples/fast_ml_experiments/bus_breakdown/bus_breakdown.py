@@ -7,7 +7,7 @@ from alan.experiment_utils import seed_torch
 def generate_model(N,M,device,ML=2, run=0, use_data=True):
     M = 3
     J = 3
-    I = 30
+    I = 60
 
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
@@ -101,11 +101,13 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
                 #alpha
                 self.alpha = alan.ML2Normal({'plate_Year': M,'plate_Borough': J})
                 #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi = alan.ML2Normal({'plate_ID':I})
+                self.log_sigma_phi_psi = alan.ML2Normal()
                 #psi
-                self.psi = alan.ML2Normal({'plate_ID':I}, sample_shape=(run_type_dim,))
+                self.psi = alan.ML2Normal(sample_shape=(run_type_dim,))
                 #phi
-                self.phi = alan.ML2Normal({'plate_ID':I}, sample_shape=(bus_company_name_dim,))
+                self.phi = alan.ML2Normal(sample_shape=(bus_company_name_dim,))
+                #theta
+                # self.theta = alan.MLNormal({'plate_ID':I})
 
 
             def forward(self, tr, run_type, bus_company_name):

@@ -228,7 +228,7 @@ class NormalMixin(AbstractMixin):
     def mean2conv(Ex, Ex2):
         loc   = Ex
         # print(Ex2 - loc**2)
-        scale = (t.abs(Ex2 - loc**2)).sqrt() + 1e-50
+        scale = (t.abs(Ex2 - loc**2)).sqrt() + 1e-25
         # scale = (Ex2 - loc**2).sqrt() 
         return {'loc': loc, 'scale': scale}
 
@@ -358,6 +358,7 @@ class GammaMixin(AbstractMixin):
     """
     dist = staticmethod(Gamma)
     sufficient_stats = (t.log, identity)
+    default_init_conv = {'concentration':t.tensor(2, dtype=t.float64), 'rate':t.tensor(1, dtype=t.float64)}
 
     @staticmethod
     def conv2nat(concentration, rate):
@@ -373,7 +374,7 @@ class GammaMixin(AbstractMixin):
         #Tested by sampling
         alpha = concentration
         beta = rate
-        return (-t.log(beta) + t.digamma(alpha), alpha/beta)
+        return (-t.log(beta) + t.digamma(alpha), alpha/(beta))
     @staticmethod
     def mean2conv(Elogx, Ex):
         """
@@ -383,7 +384,7 @@ class GammaMixin(AbstractMixin):
         1/a^new = 1/a (1 + num / (1 + a grad_digamma(a)))
         a^new   = a / (1 + num / (1 + a grad_digamma(a)))
         """
-        logEx = Ex.log()
+        logEx = (Ex).log()
         diff = (Elogx - logEx)
         alpha = - 0.5 / diff
         for _ in range(6):

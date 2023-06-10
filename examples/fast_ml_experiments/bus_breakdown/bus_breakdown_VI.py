@@ -8,7 +8,7 @@ from alan.experiment_utils import seed_torch
 def generate_model(N,M,device,ML=1, run=0, use_data=True):
     M = 3
     J = 3
-    I = 30
+    I = 60
 
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 

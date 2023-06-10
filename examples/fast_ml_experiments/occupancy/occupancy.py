@@ -46,17 +46,17 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
         def __init__(self):
             super().__init__()
             #Year
-            self.year = alan.MLNormal({'plate_Years': M})
+            self.year = alan.ML2Normal({'plate_Years': M})
             #Bird
-            self.bird = alan.MLNormal({'plate_Years': M, 'plate_Birds':J})
+            self.bird = alan.ML2Normal({'plate_Years': M, 'plate_Birds':J})
             #Beta
-            self.beta = alan.MLNormal({'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I})
+            self.beta = alan.ML2Normal({'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I})
             #z
-            self.z = alan.MLBernoulliLogits({'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I})
+            self.z = alan.ML2BernoulliLogits({'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I})
 
 
             #alpha
-            self.alpha = alan.MLNormal({'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I})
+            self.alpha = alan.ML2Normal({'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I})
 
 
         def forward(self, tr, weather, quality):
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     for j in range(2000):
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.1, sample)
+        model.update(0.3, sample)
 
 
 
