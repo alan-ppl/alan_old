@@ -1,5 +1,6 @@
 import torch as t
 import torch.nn as nn
+import pickle 
 
 import alan
 import alan.postproc as pp
@@ -38,22 +39,22 @@ P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, True)
 # True posterior psi_z
 
 with open('psi_z_posterior_mean.pkl', 'rb') as f:
-    z_scale_mean = pickle.load(f)
+    z_scale_mean = pickle.load(f).item()
 
 
 # True posterior mean
 with open('mu_z_posterior_mean.pkl', 'rb') as f:
-    z_mean = pickle.load(f)
+    z_mean = pickle.load(f).item()
 
 
 data = {'obs':data.pop('obs')}
 
 K = 10
-T = 200
-ml_lrs = [0.15,0.1]
-vi_lrs = [0.15,0.1,0.05]
+T =  1000
+ml_lrs = [0.15,0.125,0.1]
+vi_lrs = [0.15]
 
-fig, ax = plt.subplots(6,1, figsize=(7, 8.0))
+fig, ax = plt.subplots(4,1, figsize=(7, 8.0))
 for j in range(len(ml_lrs)):
     lr = ml_lrs[j]
     print(f'ML: {lr}')
@@ -74,10 +75,11 @@ for j in range(len(ml_lrs)):
 
     for i in range(T):
         sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-        z_means.append(q.mu.mean2conv(*q.mu.named_means)['loc'][0].item())   
-        z_scales.append(q.mu.mean2conv(*q.mu.named_means)['scale'][0].item()) 
-        z_scale_means.append(q.psi_z.mean2conv(*q.psi_z.named_means)['loc'][0].item())
-        z_scale_scales.append(q.psi_z.mean2conv(*q.psi_z.named_means)['scale'][0].item()) 
+
+        z_means.append(pp.mean(sample.weights()['mu_z'])[0].item())    
+
+        z_scale_means.append(pp.mean(sample.weights()['psi_z'])[0].item())  
+
         elbos.append(sample.elbo().item()) 
         if i % 100 == 0:
             # print(q.Nz.mean2conv(*q.Nz.named_means))
@@ -97,14 +99,12 @@ for j in range(len(ml_lrs)):
 
     ax[0].plot(np.cumsum(times), z_means, color=ml_colours[j], label=f'ML lr: {lr}')
     ax[0].axhline(z_mean)
-    ax[1].plot(np.cumsum(times), z_scales, color=ml_colours[j])
-    ax[2].axhline(z_scale_mean)
-    ax[2].plot(np.cumsum(times), z_scale_means, color=ml_colours[j])
-    ax[3].plot(np.cumsum(times), z_scale_scales, color=ml_colours[j])
+    ax[1].axhline(z_scale_mean)
+    ax[1].plot(np.cumsum(times), z_scale_means, color=ml_colours[j])
     # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=ml_colours[j])
     # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=ml_colours[j])
-    ax[4].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
-    ax[5].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
+    ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
+    ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
 
 for j in range(len(vi_lrs)):
     lr = vi_lrs[j]
@@ -123,10 +123,10 @@ for j in range(len(vi_lrs)):
     for i in range(T):
         opt.zero_grad()
         sample = cond_model.sample_same(K, reparam=True, inputs=covariates, device=device)
-        z_means.append(q.m_mu_z[0].item())   
-        z_scales.append(q.log_theta_mu_z[0].exp().item())
-        z_scale_means.append(q.m_psi_z[0].item())
-        z_scale_scales.append(q.log_theta_psi_z[0].exp().item())
+        z_means.append(pp.mean(sample.weights()['mu_z'])[0].item())   
+
+        z_scale_means.append(pp.mean(sample.weights()['psi_z'])[0].item())  
+  
         elbo = sample.elbo()
         elbos.append(elbo.item())
         
@@ -149,30 +149,26 @@ for j in range(len(vi_lrs)):
 
     ax[0].plot(np.cumsum(times), z_means, color=vi_colours[j], label=f'VI lr: {lr}')
     ax[0].axhline(z_mean)
-    ax[1].plot(np.cumsum(times), z_scales, color=vi_colours[j])
-    ax[2].axhline(z_scale_mean)
-    ax[2].plot(np.cumsum(times), z_scale_means, color=vi_colours[j])
-    ax[3].plot(np.cumsum(times), z_scale_scales, color=vi_colours[j])
+    ax[1].axhline(z_scale_mean)
+    ax[1].plot(np.cumsum(times), z_scale_means, color=vi_colours[j])
     # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
     # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-    ax[4].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
-    ax[5].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
+    ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
+    ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
 
 ax[0].set_ylabel('mu_z')
 
-ax[1].set_ylabel('mu_z Scale')
+
+ax[1].set_ylabel('psi_z')
 
 
-ax[2].set_ylabel('psi_z')
-
-ax[3].set_ylabel('psi_z scale')
 
 
-ax[4].set_ylabel('ELBO')
+ax[2].set_ylabel('ELBO')
 
-ax[5].set_ylabel('Predictive LL')
+ax[3].set_ylabel('Predictive LL')
 
-ax[5].set_xlabel('Time')
+ax[3].set_xlabel('Time')
 
 ax[0].legend(loc='upper right')
 

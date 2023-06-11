@@ -58,7 +58,7 @@ nuts_kernel = NUTS(potential_fn=potential_fn)
 mcmc = MCMC(
     nuts_kernel,
     num_samples=1000,
-    warmup_steps=1000,
+    warmup_steps=5000,
     num_chains=7,
     initial_params=init_params,
     transforms=transforms,
