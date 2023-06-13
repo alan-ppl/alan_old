@@ -9,7 +9,6 @@ setup(
     packages = find_packages(),
     install_requires=[
     "torch>=1.13.0",
-    'functorch',
     ],
     extras_requires=[
     'numpy',

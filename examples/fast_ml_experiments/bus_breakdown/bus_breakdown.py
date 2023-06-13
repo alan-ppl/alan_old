@@ -141,7 +141,7 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
         #data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = all_data
         test_data = {}
-        data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], -1)
+        data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I//2,I//2], -1)
 
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
 
