@@ -40,7 +40,9 @@ def movielens(x, ratings):
         z = pyro.sample("z", Normal(mu_z, psi_z.exp()))
         return pyro.sample("obs", Bernoulli(logits=(z.T.unsqueeze(1) * x).sum(-1).T), obs=ratings)
 
-_, _, ratings, x, _, _, _ = generate_ML(N,M, device, 2, 0, True)
+
+use_data = False
+_, _, ratings, x, _, _, _ = generate_ML(N,M, device, 2, 0, use_data)
 
 
 ratings = ratings['obs'].rename(None).T
@@ -58,7 +60,7 @@ nuts_kernel = NUTS(potential_fn=potential_fn)
 mcmc = MCMC(
     nuts_kernel,
     num_samples=1000,
-    warmup_steps=5000,
+    warmup_steps=2000,
     num_chains=7,
     initial_params=init_params,
     transforms=transforms,
@@ -70,8 +72,8 @@ samples = mcmc.get_samples()
 mu_z_posterior_mean  = samples['mu_z'].sum(-1).mean(0)[0]
 psi_z_posterior_mean = samples['psi_z'].sum(-1).mean(0)[0]
 
-with open('mu_z_posterior_mean.pkl', 'wb') as f:
+with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'wb') as f:
     pickle.dump(mu_z_posterior_mean, f)
 
-with open('psi_z_posterior_mean.pkl', 'wb') as f:
+with open(f'posteriors/psi_z_posterior_mean_{use_data}.pkl', 'wb') as f:
     pickle.dump(psi_z_posterior_mean, f)

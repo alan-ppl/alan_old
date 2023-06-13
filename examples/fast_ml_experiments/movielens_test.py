@@ -27,8 +27,10 @@ device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
 M=300
 N=5
 
-P, Q_ml, data, covariates, all_data, all_covariates, sizes = generate_ML(N,M, device, 2, 0, True)
-P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, True)
+
+use_data = False
+P, Q_ml, data, covariates, all_data, all_covariates, sizes = generate_ML(N,M, device, 2, 0, use_data)
+P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, use_data)
 
 # # True psi_z
 # z_scale_mean = data['mu_z'][0]
@@ -38,21 +40,21 @@ P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, True)
 
 # True posterior psi_z
 
-with open('psi_z_posterior_mean.pkl', 'rb') as f:
+with open(f'posteriors/psi_z_posterior_mean_{use_data}.pkl', 'rb') as f:
     z_scale_mean = pickle.load(f).item()
 
 
 # True posterior mean
-with open('mu_z_posterior_mean.pkl', 'rb') as f:
+with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'rb') as f:
     z_mean = pickle.load(f).item()
 
 
 data = {'obs':data.pop('obs')}
 
 K = 10
-T =  1000
-ml_lrs = [0.15,0.125,0.1]
-vi_lrs = [0.15]
+T =  5000
+ml_lrs = [0.1]
+vi_lrs = [0.15,0.1]
 
 fig, ax = plt.subplots(4,1, figsize=(7, 8.0))
 for j in range(len(ml_lrs)):
@@ -156,6 +158,9 @@ for j in range(len(vi_lrs)):
     ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
     ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
 
+
+ax[0].set_title(f'K: {K}, Not Smoothed')
+
 ax[0].set_ylabel('mu_z')
 
 
@@ -174,4 +179,4 @@ ax[0].legend(loc='upper right')
 
 
 
-plt.savefig(f'movielens_test_data_{K}.png')
+plt.savefig(f'figures/movielens_test_data_{K}_{use_data}.png')
