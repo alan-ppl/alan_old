@@ -66,7 +66,7 @@ mcmc = MCMC(
 mcmc.run(x, ratings)
 samples = mcmc.get_samples()
 
-with with open(f'posteriors/movielens_{use_data}.pkl', 'wb') as f:
+with open(f'posteriors/movielens_{use_data}.pkl', 'wb') as f:
     pickle.dump(samples, f)
 
 mu_z_posterior_mean  = samples['mu_z'].sum(-1).mean(0)[0]

@@ -84,7 +84,7 @@ mcmc.run(run_type, bus_company_name, delays)
 samples = mcmc.get_samples()
 
 
-with with open(f'posteriors/bus_{use_data}.pkl', 'wb') as f:
+with open(f'posteriors/bus_{use_data}.pkl', 'wb') as f:
     pickle.dump(samples, f)
 
 sigma_beta_posterior_mean  = samples['sigma_beta'].mean(0)
