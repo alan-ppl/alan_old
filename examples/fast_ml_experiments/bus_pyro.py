@@ -1,16 +1,12 @@
-import math
 import pickle
 
 
-import pandas as pd
 import torch as t
 
 import pyro
-from pyro.distributions import Beta, Binomial, HalfCauchy, Normal, Pareto, Uniform, Bernoulli
-from pyro.distributions.util import scalar_like
-from pyro.infer import MCMC, NUTS, Predictive
-from pyro.infer.mcmc.util import initialize_model, summary
-from pyro.util import ignore_experimental_warning
+from pyro.distributions import Binomial, Normal
+from pyro.infer import MCMC, NUTS
+from pyro.infer.mcmc.util import initialize_model
 
 from bus_breakdown.bus_breakdown import generate_model as generate_ML
 from alan.experiment_utils import seed_torch, n_mean
@@ -88,7 +84,8 @@ mcmc.run(run_type, bus_company_name, delays)
 samples = mcmc.get_samples()
 
 
-
+with with open(f'posteriors/bus_{use_data}.pkl', 'wb') as f:
+    pickle.dump(samples, f)
 
 sigma_beta_posterior_mean  = samples['sigma_beta'].mean(0)
 mu_beta_posterior_mean = samples['mu_beta'].mean(0)

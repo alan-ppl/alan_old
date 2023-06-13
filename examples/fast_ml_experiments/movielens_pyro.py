@@ -1,4 +1,3 @@
-import math
 import pickle
 
 
@@ -6,11 +5,10 @@ import pandas as pd
 import torch as t
 
 import pyro
-from pyro.distributions import Beta, Binomial, HalfCauchy, Normal, Pareto, Uniform, Bernoulli
-from pyro.distributions.util import scalar_like
-from pyro.infer import MCMC, NUTS, Predictive
-from pyro.infer.mcmc.util import initialize_model, summary
-from pyro.util import ignore_experimental_warning
+from pyro.distributions import Normal, Bernoulli
+from pyro.infer import MCMC, NUTS
+from pyro.infer.mcmc.util import initialize_model
+
 
 from movielens.movielens import generate_model as generate_ML
 from alan.experiment_utils import seed_torch, n_mean
@@ -68,6 +66,8 @@ mcmc = MCMC(
 mcmc.run(x, ratings)
 samples = mcmc.get_samples()
 
+with with open(f'posteriors/movielens_{use_data}.pkl', 'wb') as f:
+    pickle.dump(samples, f)
 
 mu_z_posterior_mean  = samples['mu_z'].sum(-1).mean(0)[0]
 psi_z_posterior_mean = samples['psi_z'].sum(-1).mean(0)[0]
