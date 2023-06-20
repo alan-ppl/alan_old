@@ -39,41 +39,41 @@ def movielens(x, ratings):
         return pyro.sample("obs", Bernoulli(logits=(z.T.unsqueeze(1) * x).sum(-1).T), obs=ratings)
 
 
-use_data = False
-_, _, ratings, x, _, _, _ = generate_ML(N,M, device, 2, 0, use_data)
+for use_data in [True]:
+    _, _, ratings, x, _, _, _ = generate_ML(N,M, device, 2, 0, use_data)
 
 
-ratings = ratings['obs'].rename(None).T
-x = x['x'].rename(None)
+    ratings = ratings['obs'].rename(None).T
+    x = x['x'].rename(None)
 
 
-init_params, potential_fn, transforms, _ = initialize_model(
-        movielens,
-        model_args=(x, ratings),
+    init_params, potential_fn, transforms, _ = initialize_model(
+            movielens,
+            model_args=(x, ratings),
+            num_chains=7,
+            jit_compile=True,
+            skip_jit_warnings=True,
+        )
+    nuts_kernel = NUTS(potential_fn=potential_fn)
+    mcmc = MCMC(
+        nuts_kernel,
+        num_samples=1000,
+        warmup_steps=10000,
         num_chains=7,
-        jit_compile=True,
-        skip_jit_warnings=True,
+        initial_params=init_params,
+        transforms=transforms,
     )
-nuts_kernel = NUTS(potential_fn=potential_fn)
-mcmc = MCMC(
-    nuts_kernel,
-    num_samples=1000,
-    warmup_steps=2000,
-    num_chains=7,
-    initial_params=init_params,
-    transforms=transforms,
-)
-mcmc.run(x, ratings)
-samples = mcmc.get_samples()
+    mcmc.run(x, ratings)
+    samples = mcmc.get_samples()
 
-with open(f'posteriors/movielens_{use_data}.pkl', 'wb') as f:
-    pickle.dump(samples, f)
+    with open(f'posteriors/movielens_{use_data}.pkl', 'wb') as f:
+        pickle.dump(samples, f)
 
-mu_z_posterior_mean  = samples['mu_z'].sum(-1).mean(0)[0]
-psi_z_posterior_mean = samples['psi_z'].sum(-1).mean(0)[0]
+    mu_z_posterior_mean  = samples['mu_z'].sum(-1).mean(0)[0]
+    psi_z_posterior_mean = samples['psi_z'].sum(-1).mean(0)[0]
 
-with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'wb') as f:
-    pickle.dump(mu_z_posterior_mean, f)
+    with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'wb') as f:
+        pickle.dump(mu_z_posterior_mean, f)
 
-with open(f'posteriors/psi_z_posterior_mean_{use_data}.pkl', 'wb') as f:
-    pickle.dump(psi_z_posterior_mean, f)
+    with open(f'posteriors/psi_z_posterior_mean_{use_data}.pkl', 'wb') as f:
+        pickle.dump(psi_z_posterior_mean, f)

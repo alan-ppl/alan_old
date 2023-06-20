@@ -32,9 +32,9 @@ while i < 20:
 
 
 
-    M = 3
+    M = 2
     J = 3
-    I = 120
+    I = 60
 
 
 
@@ -86,13 +86,13 @@ while i < 20:
         bus_company_name = Bus_Company_Name.reshape(M, J, I, -1)
 
         delay = delay.reshape(M, J, I)
-        t.save(t.from_numpy(run_type)[:,:,:60,:], 'data/run_type_train_{}.pt'.format(i))
-        t.save(t.from_numpy(bus_company_name)[:,:,:60,:], 'data/bus_company_name_train_{}.pt'.format(i))
-        t.save(t.from_numpy(delay)[:,:,:60], 'data/delay_train_{}.pt'.format(i))
+        t.save(t.from_numpy(run_type)[:,:,:I//2,:], 'data/run_type_train_{}.pt'.format(i))
+        t.save(t.from_numpy(bus_company_name)[:,:,:I//2,:], 'data/bus_company_name_train_{}.pt'.format(i))
+        t.save(t.from_numpy(delay)[:,:,:I//2], 'data/delay_train_{}.pt'.format(i))
 
-        t.save(t.from_numpy(run_type)[:,:,60:,:], 'data/run_type_test_{}.pt'.format(i))
-        t.save(t.from_numpy(bus_company_name)[:,:,60:,:], 'data/bus_company_name_test_{}.pt'.format(i))
-        t.save(t.from_numpy(delay)[:,:,60:], 'data/delay_test_{}.pt'.format(i))
+        t.save(t.from_numpy(run_type)[:,:,I//2:,:], 'data/run_type_test_{}.pt'.format(i))
+        t.save(t.from_numpy(bus_company_name)[:,:,I//2:,:], 'data/bus_company_name_test_{}.pt'.format(i))
+        t.save(t.from_numpy(delay)[:,:,I//2:], 'data/delay_test_{}.pt'.format(i))
 
         i += 1
     except:

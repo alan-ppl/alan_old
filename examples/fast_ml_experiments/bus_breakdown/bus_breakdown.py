@@ -1,13 +1,11 @@
 import torch as t
-import torch.nn as nn
 import alan
-import numpy as np
 from alan.experiment_utils import seed_torch
 
 def generate_model(N,M,device,ML=2, run=0, use_data=True):
-    M = 3
+    M = 2
     J = 3
-    I = 60
+    I = 30
 
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
 
@@ -15,8 +13,8 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
         'bus_company_name': t.load('bus_breakdown/data/bus_company_name_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
     test_covariates = {'run_type': t.load('bus_breakdown/data/run_type_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
         'bus_company_name': t.load('bus_breakdown/data/bus_company_name_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
-    all_covariates = {'run_type': t.cat([covariates['run_type'],test_covariates['run_type']],-2),
-        'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],-2)}
+    all_covariates = {'run_type': t.cat((covariates['run_type'],test_covariates['run_type']),2),
+        'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],2)}
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
@@ -134,14 +132,14 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
         # print(data)
         test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
         all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
-
     else:
         model = alan.Model(P)
+
         all_data = model.sample_prior(inputs = all_covariates)
         #data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = all_data
         test_data = {}
-        data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I//2,I//2], -1)
+        data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], -1)
 
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
 

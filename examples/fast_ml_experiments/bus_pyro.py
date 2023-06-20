@@ -1,12 +1,14 @@
+import math
 import pickle
-
 
 import torch as t
 
 import pyro
-from pyro.distributions import Binomial, Normal
-from pyro.infer import MCMC, NUTS
-from pyro.infer.mcmc.util import initialize_model
+from pyro.distributions import Beta, Binomial, HalfCauchy, Normal, Pareto, Uniform, Bernoulli
+from pyro.distributions.util import scalar_like
+from pyro.infer import MCMC, NUTS, Predictive
+from pyro.infer.mcmc.util import initialize_model, summary
+from pyro.util import ignore_experimental_warning
 
 from bus_breakdown.bus_breakdown import generate_model as generate_ML
 from alan.experiment_utils import seed_torch, n_mean
@@ -16,20 +18,19 @@ seed_torch(0)
 device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
 
 
-M = 3
+M = 2
 J = 3
-I = 60
+I = 30
 
-use_data = False
+use_data = True
 
 _, _, delays, covariates, _, _, _ = generate_ML(0,0, device, 2, 0, use_data)
 
 
-delays = delays['obs'].rename(None).permute(2,1,0).unsqueeze(-1).float()
+delays = delays['obs'].rename(None).permute(2,0,1).unsqueeze(-1).float()
 
-run_type = covariates['run_type'].rename(None).float()
-print(run_type.shape)
-bus_company_name = covariates['bus_company_name'].rename(None).float()
+run_type = covariates['run_type'].rename(None).permute(1,0,2,3).float()
+bus_company_name = covariates['bus_company_name'].rename(None).permute(1,0,2,3).float()
 
 bus_company_name_dim = covariates['bus_company_name'].shape[-1]
 run_type_dim = covariates['run_type'].shape[-1]
@@ -56,9 +57,14 @@ def bus(run_type, bus_company_name, delays):
             alpha = pyro.sample("alpha", Normal(beta, sigma_alpha.exp()))
 
 
-
+            # print(bus_company_name.shape)
+            # print(phi.shape)
+            # print(run_type.shape)
+            # print(psi.shape)
+            # print(alpha.view(*alpha.shape,1,1).shape)
+            # print((bus_company_name @ phi + run_type @ psi).shape)
             logits = (alpha.view(*alpha.shape,1,1) + bus_company_name @ phi + run_type @ psi).permute(2,1,0,3)
-            print(logits.shape)
+
             return pyro.sample("delays", Binomial(total_count=131, logits=logits), obs=delays)
 
  
@@ -74,8 +80,8 @@ init_params, potential_fn, transforms, _ = initialize_model(
 nuts_kernel = NUTS(potential_fn=potential_fn)
 mcmc = MCMC(
     nuts_kernel,
-    num_samples=2,
-    warmup_steps=1,
+    num_samples=1000,
+    warmup_steps=5000,
     num_chains=7,
     initial_params=init_params,
     transforms=transforms,
