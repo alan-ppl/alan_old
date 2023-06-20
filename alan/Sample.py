@@ -13,9 +13,8 @@ class Sample():
       Check that data appears in logps but not logqs
       Check that all dims are something (plate, timeseries, K)
     """
-    def __init__(self, trp, reparam, lp_dtype, lp_device):
+    def __init__(self, trp, lp_dtype, lp_device):
         self.trp = trp
-        self.reparam = reparam
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
             assert lp.shape == ()
 
@@ -79,6 +78,8 @@ class Sample():
         self.Ks = set([*self.trp.Ks, *self.trp.Es])
         #Just Es (need to distinguish, because we normalize when summing over Ks, but we don't when summing over Es)
         self.Es = set(self.trp.Es)
+
+
 
     @property
     def samples(self):
@@ -178,8 +179,9 @@ class Sample():
 
 
     def elbo(self):
-        if not self.reparam:
-            raise Exception(f"Calling .elbo() with reparam=False is improper.")
+        # if not self.reparam and self.warn:
+        #     print(f"Calling .elbo() with reparam=False is improper.")
+        #     self.warn=False
         return self.tensor_product()
 
     # def cubo(self):
