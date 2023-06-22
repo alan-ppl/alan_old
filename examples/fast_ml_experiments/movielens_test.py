@@ -41,29 +41,31 @@ for use_data in [True]:
     # True posterior psi_z
 
     with open(f'posteriors/psi_z_posterior_mean_{use_data}.pkl', 'rb') as f:
-        z_scale_mean = pickle.load(f).item()
+        z_scale_mean = pickle.load(f)
 
 
     # True posterior mean
     with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'rb') as f:
-        z_mean = pickle.load(f).item()
+        z_mean = pickle.load(f)
 
 
     data = {'obs':data.pop('obs')}
 
     K = 10
-    T =  5000
-    ml_lrs = [0.1, 0.01]
+    T =  20
+    ml_lrs = [0.99,0.1, 0.01]
     vi_lrs = [0.1]
 
-    fig, ax = plt.subplots(4,1, figsize=(7, 8.0))
+    fig, ax = plt.subplots(20,1, figsize=(7.0, 5*8.0))
     for j in range(len(ml_lrs)):
         lr = ml_lrs[j]
+        if lr == 0.01:
+            T = 10
         print(f'ML: {lr}')
-        z_means = []
-        z_scales = []
-        z_scale_means = []
-        z_scale_scales = []
+        z_means = {i:[] for i in range(18)}
+
+        z_scale_means = {i:[] for i in range(18)}
+
         elbos = []
         times = []
         pred_lls = []
@@ -78,9 +80,14 @@ for use_data in [True]:
         for i in range(T):
             sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
 
-            z_means.append(pp.mean(sample.weights()['mu_z'])[0].item())    
+            mns = pp.mean(sample.weights())
+            zm = mns['mu_z']
+            zsm = mns['psi_z']
+            for k in range(18):
 
-            z_scale_means.append(pp.mean(sample.weights()['psi_z'])[0].item())  
+                z_means[k].append(zm[k].item())    
+
+                z_scale_means[k].append(zsm[k].item())  
 
             elbos.append(sample.elbo().item()) 
             if i % 100 == 0:
@@ -99,22 +106,24 @@ for use_data in [True]:
         elbos = np.expand_dims(np.array(elbos), axis=0)
         pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 
-        ax[0].plot(np.cumsum(times), z_means, color=ml_colours[j], label=f'ML lr: {lr}')
-        ax[0].axhline(z_mean)
-        ax[1].axhline(z_scale_mean)
-        ax[1].plot(np.cumsum(times), z_scale_means, color=ml_colours[j])
-        # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=ml_colours[j])
-        # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=ml_colours[j])
-        ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
-        ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
+        for i in range(18):
+            if i % 2 == 0:
+                ax[i].plot(np.cumsum(times), z_means[i], color=ml_colours[j], label=f'ML lr: {lr}')
+                ax[i].axhline(z_mean[i])
+            else:
+                ax[i].axhline(z_scale_mean[i])
+                ax[i].plot(np.cumsum(times), z_scale_means[i], color=ml_colours[j])
+            # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
+            # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
+            ax[18].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
+            ax[19].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
 
     for j in range(len(vi_lrs)):
         lr = vi_lrs[j]
         print(f'VI: {lr}')
-        z_means = []
-        z_scales = []
-        z_scale_means = []
-        z_scale_scales = []
+        z_means = {i:[] for i in range(18)}
+
+        z_scale_means = {i:[] for i in range(18)}
         elbos = []
         times = []
         pred_lls = []
@@ -122,12 +131,19 @@ for use_data in [True]:
         q = Q_vi()
         cond_model = alan.Model(P, q).condition(data=data)
         opt = t.optim.Adam(cond_model.parameters(), lr=lr)
-        for i in range(1000):
+        for i in range(20):
             opt.zero_grad()
             sample = cond_model.sample_same(K, reparam=True, inputs=covariates, device=device)
-            z_means.append(pp.mean(sample.weights()['mu_z'])[0].item())   
 
-            z_scale_means.append(pp.mean(sample.weights()['psi_z'])[0].item())  
+            mns = pp.mean(sample.weights())
+            zm = mns['mu_z']
+            zsm = mns['psi_z']
+
+            for k in range(18):
+
+                z_means[k].append(zm[k].item())    
+
+                z_scale_means[k].append(zsm[k].item())  
     
             elbo = sample.elbo()
             elbos.append(elbo.item())
@@ -149,34 +165,37 @@ for use_data in [True]:
         elbos = np.expand_dims(np.array(elbos), axis=0)
         pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 
-        ax[0].plot(np.cumsum(times), z_means, color=vi_colours[j], label=f'VI lr: {lr}')
-        ax[0].axhline(z_mean)
-        ax[1].axhline(z_scale_mean)
-        ax[1].plot(np.cumsum(times), z_scale_means, color=vi_colours[j])
-        # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
-        # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-        ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
-        ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
+        for i in range(18):
+            if i % 2 == 0:
+                ax[i].plot(np.cumsum(times), z_means[i], color=vi_colours[j], label=f'VI lr: {lr}')
+                ax[i].axhline(z_mean[i])
+            else:
+                ax[i].axhline(z_scale_mean[i])
+                ax[i].plot(np.cumsum(times), z_scale_means[i], color=vi_colours[j])
+            # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
+            # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
+            ax[18].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
+            ax[19].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
 
 
     ax[0].set_title(f'K: {K}, Not Smoothed, Using Data: {use_data}')
 
-    ax[0].set_ylabel('mu_z')
+    ax[0].set_ylabel('mu_z:0')
 
 
-    ax[1].set_ylabel('psi_z')
+    ax[1].set_ylabel('psi_z:0')
 
 
 
 
-    ax[2].set_ylabel('ELBO')
+    ax[18].set_ylabel('ELBO')
 
-    ax[3].set_ylabel('Predictive LL')
+    ax[19].set_ylabel('Predictive LL')
 
-    ax[3].set_xlabel('Time')
+    ax[19].set_xlabel('Time')
 
     ax[0].legend(loc='upper right')
 
 
-
+    plt.tight_layout()
     plt.savefig(f'figures/movielens_test_data_{K}_{use_data}.png')
