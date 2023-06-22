@@ -124,7 +124,7 @@ class TorchDimDist():
         dims = [*sample_dims, *self.dims]
         return generic_getitem(sample, dims)
 
-    def log_prob(self, x, Kdim=None):
+    def log_prob(self, x, mask=None, Kdim=None):
         assert isinstance(x, Tensor)
 
         #Same number of unnamed batch dims
@@ -137,10 +137,13 @@ class TorchDimDist():
         new_dims = [dim for dim in x_dims if (dim not in set(self.dims))]
         all_dims = [*new_dims, *self.dims]
         x = singleton_order(x, all_dims)
-
+        
         assert not is_dimtensor(x)
         log_prob = self.dist(**self.all_args).log_prob(x)
         log_prob = generic_getitem(log_prob, all_dims)
+
+        if mask is not None:
+            log_prob = log_prob * mask
 
         if self.unnamed_batch_dims > 0:
             log_prob = log_prob.sum()

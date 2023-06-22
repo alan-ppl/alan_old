@@ -8,7 +8,7 @@ M = 3
 N = 4
 platesizes = {'plate_1': J, 'plate_2': M, 'plate_3': N}
 def P(tr):
-    tr('a',   alan.Normal(t.zeros(()), 1))
+    tr('a',   alan.Normal(tr.zeros(()), 1))
     tr('b',   alan.Normal(tr['a'], 1))
     tr('c',   alan.Normal(tr['b'], 1), plates='plate_1')
     tr('d',   alan.Normal(tr['c'], 1), plates='plate_2')
