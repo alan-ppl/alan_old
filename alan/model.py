@@ -6,6 +6,7 @@ from .utils import *
 
 from .alan_module import AlanModule
 
+
 class SampleMixin():
     r"""
     A mixin for :class:`Model` and :class:`ConditionedModel` that introduces the sample_... methods
@@ -220,6 +221,20 @@ class SampleMixin():
         for mod in model.modules():
             if hasattr(mod, '_update'):
                 mod._update(lr)
+        self.zero_grad()
+
+    def ammpis_update(self, lr, sample):
+        """
+        Will call update on Model
+        """
+        assert not sample.reparam
+        # _, q_obj = sample.rws()
+        # (q_obj).backward()
+        # elbo = sample.elbo().item()
+        model = self.model if isinstance(self, ConditionedModel) else self
+        for mod in model.modules():
+            if hasattr(mod, '_update'):
+                mod._update(sample, lr)
         self.zero_grad()
 
     def ng_update(self, lr, sample):

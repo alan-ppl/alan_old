@@ -5,3 +5,4 @@ from .ml2 import *
 from .ng import *
 from .tilted import *
 from .alan_module import AlanModule
+from .ammp_is import *

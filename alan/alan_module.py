@@ -17,6 +17,7 @@ class AlanModule(nn.Module):
         super().__init__()
         self.platedims = {}
         self._names = {}
+        self.index = 0
 
     def get_unnamed_tensor(self, name):
         if '_parameters' in self.__dict__:
@@ -62,10 +63,13 @@ class AlanModule(nn.Module):
 
     def add_module(self, name, child):
         platedims = {**self.platedims}
-        #Add new platedims from child
+        #Add new platedims from child and index each child module for use in AMMP-IS sampling
+        idx = -1
         for gc in child.modules():
             if isinstance(gc, AlanModule):
                 platedims = {**platedims, **gc.platedims}
+                gc.index = idx
+                idx += 1
             else:
                 for x in list(gc.parameters(recurse=False)) + list(gc.buffers(recurse=False)):
                     if any(name is not None in x.names):
