@@ -52,15 +52,13 @@ for use_data in [True]:
     data = {'obs':data.pop('obs')}
 
     K = 10
-    T =  20
-    ml_lrs = [0.99,0.1, 0.01]
+    T =  2000
+    ml_lrs = [0.15, 0.05]
     vi_lrs = [0.1]
 
-    fig, ax = plt.subplots(20,1, figsize=(7.0, 5*8.0))
+    fig, ax = plt.subplots(19,2, figsize=(7.0, 5*8.0))
     for j in range(len(ml_lrs)):
         lr = ml_lrs[j]
-        if lr == 0.01:
-            T = 10
         print(f'ML: {lr}')
         z_means = {i:[] for i in range(18)}
 
@@ -107,16 +105,14 @@ for use_data in [True]:
         pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 
         for i in range(18):
-            if i % 2 == 0:
-                ax[i].plot(np.cumsum(times), z_means[i], color=ml_colours[j], label=f'ML lr: {lr}')
-                ax[i].axhline(z_mean[i])
-            else:
-                ax[i].axhline(z_scale_mean[i])
-                ax[i].plot(np.cumsum(times), z_scale_means[i], color=ml_colours[j])
+            ax[i,0].plot(np.cumsum(times), z_means[i], color=ml_colours[j], label=f'ML lr: {lr}')
+            ax[i,0].axhline(z_mean[i])
+            ax[i,1].axhline(z_scale_mean[i])
+            ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=ml_colours[j])
             # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
             # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-            ax[18].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
-            ax[19].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
+        ax[18,0].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
+        ax[18,1].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
 
     for j in range(len(vi_lrs)):
         lr = vi_lrs[j]
@@ -131,7 +127,7 @@ for use_data in [True]:
         q = Q_vi()
         cond_model = alan.Model(P, q).condition(data=data)
         opt = t.optim.Adam(cond_model.parameters(), lr=lr)
-        for i in range(20):
+        for i in range(500):
             opt.zero_grad()
             sample = cond_model.sample_same(K, reparam=True, inputs=covariates, device=device)
 
@@ -166,35 +162,32 @@ for use_data in [True]:
         pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 
         for i in range(18):
-            if i % 2 == 0:
-                ax[i].plot(np.cumsum(times), z_means[i], color=vi_colours[j], label=f'VI lr: {lr}')
-                ax[i].axhline(z_mean[i])
-            else:
-                ax[i].axhline(z_scale_mean[i])
-                ax[i].plot(np.cumsum(times), z_scale_means[i], color=vi_colours[j])
+            ax[i,0].plot(np.cumsum(times), z_means[i], color=vi_colours[j], label=f'VI lr: {lr}')
+            ax[i,0].axhline(z_mean[i])
+            ax[i,0].set_ylabel(f'mu_z_{i}')
+            ax[i,1].axhline(z_scale_mean[i])
+            ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=vi_colours[j])
+            ax[i,1].set_ylabel(f'psi_z_{i}')
             # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
             # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-            ax[18].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
-            ax[19].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
+        ax[18,0].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
+        ax[18,1].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
 
 
-    ax[0].set_title(f'K: {K}, Not Smoothed, Using Data: {use_data}')
-
-    ax[0].set_ylabel('mu_z:0')
-
-
-    ax[1].set_ylabel('psi_z:0')
+    fig.suptitle(f'K: {K}, Not Smoothed, Using Data: {use_data}')
 
 
 
 
-    ax[18].set_ylabel('ELBO')
 
-    ax[19].set_ylabel('Predictive LL')
 
-    ax[19].set_xlabel('Time')
+    ax[18,0].set_ylabel('ELBO')
 
-    ax[0].legend(loc='upper right')
+    ax[18,1].set_ylabel('Predictive LL')
+
+    ax[18,0].set_xlabel('Time')
+    ax[18,1].set_xlabel('Time')
+    ax[0,0].legend(loc='upper right')
 
 
     plt.tight_layout()
