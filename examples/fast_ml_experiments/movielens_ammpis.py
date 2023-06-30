@@ -15,7 +15,7 @@ import time
 
 from alan.experiment_utils import seed_torch, n_mean
 
-from movielens.movielens import generate_model as generate_ML
+from movielens.movielens_ammpis import generate_model as generate_AMMP_IS
 from movielens.movielens_VI import generate_model as generate_VI
 
 ml_colours = ['#ffffb2','#fecc5c','#fd8d3c','#f03b20'][::-1]
@@ -29,7 +29,7 @@ N=5
 
 for use_data in [True]:
 
-    P, Q_ml, data, covariates, all_data, all_covariates, sizes = generate_ML(N,M, device, 2, 0, use_data)
+    P, Q_ammpis, data, covariates, all_data, all_covariates, sizes = generate_AMMP_IS(N,M, 0, use_data)
     P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, use_data)
 
     # # True psi_z
@@ -52,8 +52,8 @@ for use_data in [True]:
     data = {'obs':data.pop('obs')}
 
     K = 10
-    T =  2000
-    ml_lrs = [0.15, 0.05]
+    T = 3
+    ml_lrs = [0.8]
     vi_lrs = [0.1]
 
     fig, ax = plt.subplots(19,2, figsize=(7.0, 5*8.0))
@@ -68,7 +68,7 @@ for use_data in [True]:
         times = []
         pred_lls = []
         seed_torch(0)
-        q = Q_ml()
+        q = Q_ammpis()
         m1 = alan.Model(P, q).condition(data=data)
 
         # samp = m1.sample_same(K, reparam=False)
@@ -88,12 +88,12 @@ for use_data in [True]:
                 z_scale_means[k].append(zsm[k].item())  
 
             elbos.append(sample.elbo().item()) 
-            if i % 100 == 0:
+            if i % 1 == 0:
                 # print(q.Nz.mean2conv(*q.Nz.named_means))
                 print(f'Elbo: {elbos[-1]}')   
             
             start = time.time()    
-            m1.update(lr, sample)
+            m1.ammpis_update(lr, sample)
             times.append(time.time() - start)
 
 
@@ -105,7 +105,7 @@ for use_data in [True]:
         pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 
         for i in range(18):
-            ax[i,0].plot(np.cumsum(times), z_means[i], color=ml_colours[j], label=f'ML lr: {lr}')
+            ax[i,0].plot(np.cumsum(times), z_means[i], color=ml_colours[j], label=f'AMMP-IS lr: {lr}')
             ax[i,0].axhline(z_mean[i])
             ax[i,1].axhline(z_scale_mean[i])
             ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=ml_colours[j])
@@ -127,7 +127,7 @@ for use_data in [True]:
         q = Q_vi()
         cond_model = alan.Model(P, q).condition(data=data)
         opt = t.optim.Adam(cond_model.parameters(), lr=lr)
-        for i in range(500):
+        for i in range(T):
             opt.zero_grad()
             sample = cond_model.sample_same(K, reparam=True, inputs=covariates, device=device)
 
@@ -191,4 +191,4 @@ for use_data in [True]:
 
 
     plt.tight_layout()
-    plt.savefig(f'figures/movielens_test_data_{K}_{use_data}.png')
+    plt.savefig(f'figures/movielens_ammpis_{K}_{use_data}.png')
