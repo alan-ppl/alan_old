@@ -55,8 +55,8 @@ print(f'True var: {var}')
 
 
 K = 100
-T = 10000
-ml_lrs = [0.8]
+T = 2000
+ml_lrs = [0.1]
 # ml_lrs = [3]
 vi_lrs = [0.5]
 ml_colours = ['#ffffb2','#fecc5c','#fd8d3c','#f03b20'][::-1]
@@ -143,6 +143,8 @@ for j in range(len(ml_lrs)):
     ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
 
 
+ax[0].set_title(f'K: {K}')
+
 ax[0].set_ylabel('Mean')
 ax[0].set_ylim(30,40)
 
@@ -150,7 +152,7 @@ ax[1].set_ylabel('Scale')
 ax[1].set_ylim(-0.25,0.35)
 
 ax[2].set_ylabel('ELBO')
-ax[2].set_ylim(-15,-2)
+ax[2].set_ylim(-20,10)
 ax[3].set_ylabel('Predictive LL')
 ax[3].set_ylim(-20,10)
 

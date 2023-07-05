@@ -229,8 +229,10 @@ class NormalMixin(AbstractMixin):
     
     @staticmethod
     def sample2mean(sample,index):
-        Ex  = list(pp.mean(sample).values())[index]
-        Ex2 = list(pp.mean(pp.square(sample)).values())[index]
+        name = list(sample.keys())[index]
+        sample = {name:sample[name]}
+        Ex  = pp.mean(sample)[name]
+        Ex2 = pp.mean(pp.square(sample))[name]
 
         return [Ex, Ex2]
     
@@ -238,14 +240,15 @@ class NormalMixin(AbstractMixin):
     def mean2conv(Ex, Ex2):
         loc   = Ex
         # print(Ex2 - loc**2)
-        scale = (t.abs(Ex2 - loc**2)).sqrt() + 1e-25
+        scale = (threshold(Ex2 - loc**2,1,1)).sqrt() 
+        # scale = scale + (1e-20)*(scale==0)
         # scale = (Ex2 - loc**2).sqrt() 
         # Try this:
         # a = Ex2 - loc**2
-        # A = a + (-a + 1e-5)*(a<0)
+        # A = a + (-a + 1e-20)*(a<0)
         # scale = A.sqrt()
-
-
+        # print(Ex2 - loc**2 <= 0)
+        # print(scale)
         return {'loc': loc, 'scale': scale}
 
     @staticmethod

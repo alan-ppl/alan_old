@@ -3,10 +3,11 @@ import torch.nn as nn
 from . import traces
 from .Sample import Sample, SampleGlobal
 from .utils import *
+from torch.nn.functional import threshold
 
 from .alan_module import AlanModule
 
-
+from torch.nn.functional import softplus
 class SampleMixin():
     r"""
     A mixin for :class:`Model` and :class:`ConditionedModel` that introduces the sample_... methods
@@ -36,6 +37,7 @@ class SampleMixin():
         #place on device
         data   = {k: v.to(device=device, dtype=t.float64) for (k, v) in data.items()}
         inputs = {k: v.to(device=device, dtype=t.float64) for (k, v) in inputs.items()}
+        
 
         platedims = self.platedims if use_model else {}
         platedims = extend_plates_with_named_tensors(platedims, [*data.values(), *inputs.values()])
@@ -230,11 +232,16 @@ class SampleMixin():
         assert not sample.reparam
         # _, q_obj = sample.rws()
         # (q_obj).backward()
-        # elbo = sample.elbo().item()
+        sample_weights = sample.weights()
+        l_tot = getattr(self.model, 'l_tot')
+        l_one_iter = sample.elbo().item()
+        
+        l_tot.data.add_(softplus(l_one_iter - l_tot))
+        eta = t.exp(l_one_iter - l_tot)
         model = self.model if isinstance(self, ConditionedModel) else self
         for mod in model.modules():
             if hasattr(mod, '_update'):
-                mod._update(sample, lr)
+                mod._update(sample_weights, lr, eta)
         self.zero_grad()
 
     def ng_update(self, lr, sample):
@@ -350,6 +357,9 @@ class Model(SampleMixin, AlanModule):
         #Default to using P as Q if Q is not defined.
         if not hasattr(self, 'Q'):
             self.Q = P
+        
+        assert not hasattr(self, 'l_tot')
+        self.register_buffer('l_tot', t.tensor(-1e15, dtype=t.float64))
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)
@@ -375,4 +385,5 @@ class Model(SampleMixin, AlanModule):
     def check_device(self, device):
         device = t.device(device)
         for x in [*self.parameters(), *self.buffers()]:
-            assert x.device == device
+            if x.device != device:
+                x.to(device)

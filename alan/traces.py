@@ -140,6 +140,7 @@ class AbstractTraceQ(AbstractTrace):
         if key in self.data:
             return None
 
+
         if multi_sample==False:
             warn(
                 "WARNING: multi_sample=False will break alot of things, "

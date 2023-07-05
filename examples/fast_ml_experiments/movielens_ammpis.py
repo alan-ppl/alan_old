@@ -1,7 +1,7 @@
 import torch as t
 import torch.nn as nn
 import pickle 
-
+import math
 import alan
 import alan.postproc as pp
 
@@ -52,8 +52,9 @@ for use_data in [True]:
     data = {'obs':data.pop('obs')}
 
     K = 10
-    T = 3
-    ml_lrs = [0.8]
+    ammpis_T = 1000
+    vi_T = 500
+    ml_lrs = [0.1]
     vi_lrs = [0.1]
 
     fig, ax = plt.subplots(19,2, figsize=(7.0, 5*8.0))
@@ -75,22 +76,19 @@ for use_data in [True]:
         # mean_post = mean(samp.weights(1000))
         # var_post
 
-        for i in range(T):
+        for i in range(ammpis_T):
             sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
 
-            mns = pp.mean(sample.weights())
-            zm = mns['mu_z']
-            zsm = mns['psi_z']
+
             for k in range(18):
+                z_means[k].append(q.mu.mean2conv(*q.mu.named_means)['loc'][k].item())    
 
-                z_means[k].append(zm[k].item())    
-
-                z_scale_means[k].append(zsm[k].item())  
-
-            elbos.append(sample.elbo().item()) 
-            if i % 1 == 0:
+                z_scale_means[k].append(q.psi_z.mean2conv(*q.psi_z.named_means)['loc'][0].item()) 
+            
+            elbos.append(m1.model.l_tot - math.log(i+1)) 
+            if i % 100 == 0:
                 # print(q.Nz.mean2conv(*q.Nz.named_means))
-                print(f'Elbo: {elbos[-1]}')   
+                print(f'Elbo: {m1.model.l_tot - math.log(i+1)}')   
             
             start = time.time()    
             m1.ammpis_update(lr, sample)
@@ -111,7 +109,7 @@ for use_data in [True]:
             ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=ml_colours[j])
             # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
             # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-        ax[18,0].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
+        ax[18,0].plot(np.cumsum(times)[1:], elbos.squeeze(0)[1:], color=ml_colours[j])
         ax[18,1].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
 
     for j in range(len(vi_lrs)):
@@ -127,7 +125,7 @@ for use_data in [True]:
         q = Q_vi()
         cond_model = alan.Model(P, q).condition(data=data)
         opt = t.optim.Adam(cond_model.parameters(), lr=lr)
-        for i in range(T):
+        for i in range(vi_T):
             opt.zero_grad()
             sample = cond_model.sample_same(K, reparam=True, inputs=covariates, device=device)
 

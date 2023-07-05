@@ -50,8 +50,8 @@ for use_data in [True]:
     data = {'obs':data.pop('obs')}
 
     K = 10
-    T = 2000
-    ml_lrs = [0.6]
+    T = 1000
+    ml_lrs = [0.2]
     vi_lrs = [0.1]
 
     fig, ax = plt.subplots(4,1, figsize=(7, 8.0))

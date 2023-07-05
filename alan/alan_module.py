@@ -17,7 +17,7 @@ class AlanModule(nn.Module):
         super().__init__()
         self.platedims = {}
         self._names = {}
-        self.index = 0
+        self.index = None
 
     def get_unnamed_tensor(self, name):
         if '_parameters' in self.__dict__:
