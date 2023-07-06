@@ -294,7 +294,7 @@ class TraceQMCMC(TraceQPermutation):  # Probably don't want to really inherit fr
             assert Kdim.size == self.trq.Kdim.size
         #non-grouped K's
         else:
-            Kdim = Dim(f"K_{key}", self.K-1)   # N.B. We will need to increase the size of this to K later, but not sure how to account for (group is not None) case yet
+            Kdim = Dim(f"K_{key}", self.K)#-1)   # N.B. We will need to increase the size of this to K later, but not sure how to account for (group is not None) case yet
             self.K_var[key] = Kdim
 
         if T is not None:
@@ -308,15 +308,8 @@ class TraceQMCMC(TraceQPermutation):  # Probably don't want to really inherit fr
         #have one K (Kdim).
         sample = self.index_sample(sample, Kdim, group)
         tempKdim = Dim(f"K_{key}", 1)
-        temp = self.indexed_samples[key].rename(None)[None, :]
-
-        finalKdim = Dim(f"K_{key}", self.K)
-        sample = t.cat((dim2named_tensor(sample).rename(None), temp))[finalKdim]
-
-
         logq = dist.log_prob(sample) 
 
-        self.K_var[key] = finalKdim
         self.samples[key] = sample
 
         if group is not None:

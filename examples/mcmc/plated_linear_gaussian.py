@@ -13,8 +13,6 @@ def P(tr):
     tr('c',   alan.Normal(tr['b'], 1), plates='plate_1')
     tr('d',   alan.Normal(tr['c'], 1), plates='plate_2')
     tr('obs', alan.Normal(tr['d']*tr.ones(5), 1), plates='plate_3')
-    print(tr['a'], tr['d'], tr['obs'])
-    input("wait a second...")
 
 class Q(alan.AlanModule):
     def __init__(self):
@@ -45,8 +43,6 @@ class Q(alan.AlanModule):
         tr('c', alan.Normal(mean_c, self.log_s_c.exp()))
 
         mean_d = self.w_d * tr['c'] + self.b_d
-        print(mean_d)
-        input("huh?")
         tr('d', alan.Normal(mean_d, self.log_s_d.exp()))
 
 model = alan.Model(P, Q())
