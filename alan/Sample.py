@@ -286,7 +286,7 @@ class Sample():
         result = self.tensor_product(extra_log_factors=dim_Js)
         #But differentiate wrt non-torchdim Js
         ws = list(t.autograd.grad(result, undim_Js))
-
+        # print(ws)
         result = {}
         for i in range(len(ws)):
             sample = samples[i]

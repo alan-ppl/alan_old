@@ -238,8 +238,7 @@ class SampleMixin():
         model = self.model if isinstance(self, ConditionedModel) else self
 
 
-        #Trying using a downweighting term so our early broad posterior's high importance weight variance
-        #doesn't cause us to have overly narrow t+1 posteriors
+        
         hq = 0
         for mod in model.modules():
             if hasattr(mod, '_update'):
@@ -247,20 +246,33 @@ class SampleMixin():
                 hq += 1/2 * t.log(2*t.pi*sig) + 1/2
 
         HQ_t.data.copy_(hq) 
+        self.model.HQs.append(HQ_t.item())
+        #Trying using a downweighting term so our early broad posterior's high importance weight variance
+        #doesn't cause us to have overly narrow t+1 posteriors
+
         # simplest method
         # dt = HQ_t_minus_1 - HQ_t + 0.1
+        
         # Using relu
-        dt = t.nn.functional.relu(HQ_t_minus_1 - HQ_t)
+        # dt = t.nn.functional.relu(HQ_t_minus_1 - HQ_t)
+        # print(dt)
 
+        # l_tot = getattr(self.model, 'l_tot')
+        # l_one_iter = sample.elbo().item()
+        # l_tot.data.add_(softplus(l_one_iter + dt - l_tot) - dt)
+        # eta = t.exp(l_one_iter - l_tot)
+        
 
+         weights = [t.exp(-t.nn.functional.relu(hq - HQ_t)) for hq in self.model.HQs]
         l_tot = getattr(self.model, 'l_tot')
         l_one_iter = sample.elbo().item()
-        l_tot.data.add_(softplus(l_one_iter + dt - l_tot) - dt)
+        l_tot.data.copy_(t.log(sum([weight*t.exp(l) for weight, l in zip(weights, self.model.Ltots)])))
+        self.model.Ltots.append(l_tot.item())
         eta = t.exp(l_one_iter - l_tot)
-        
+
         for mod in model.modules():
             if hasattr(mod, '_update'):
-                mod._update(sample_weights, lr, eta)
+                mod._update(sample_weights, weights, lr, eta)
 
         HQ_t_minus_1.data.copy_(HQ_t.data)
         self.zero_grad()
@@ -383,6 +395,8 @@ class Model(SampleMixin, AlanModule):
         self.register_buffer('l_tot', t.tensor(-1e15, dtype=t.float64))
         self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
         self.register_buffer('HQ_t_minus_1', t.tensor(0.0, dtype=t.float64))
+        self.HQs = [t.tensor(0.0, dtype=t.float64)]
+        self.Ltots = [t.tensor(-1e15, dtype=t.float64)]
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)

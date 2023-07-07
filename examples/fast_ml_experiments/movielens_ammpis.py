@@ -54,7 +54,7 @@ for use_data in [True]:
     K = 10
     ammpis_T = 500
     vi_T = 250
-    ml_lrs = [0.1]
+    ml_lrs = [0.4]
     vi_lrs = [0.1]
 
     fig, ax = plt.subplots(19,2, figsize=(7.0, 5*8.0))
