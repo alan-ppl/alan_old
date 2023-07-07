@@ -52,8 +52,8 @@ for use_data in [True]:
     data = {'obs':data.pop('obs')}
 
     K = 10
-    ammpis_T = 1000
-    vi_T = 500
+    ammpis_T = 500
+    vi_T = 250
     ml_lrs = [0.1]
     vi_lrs = [0.1]
 

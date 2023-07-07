@@ -229,19 +229,40 @@ class SampleMixin():
         """
         Will call update on Model
         """
-        assert not sample.reparam
-        # _, q_obj = sample.rws()
-        # (q_obj).backward()
+        # assert not sample.reparam
+
         sample_weights = sample.weights()
+
+        HQ_t = getattr(self.model, 'HQ_t')
+        HQ_t_minus_1 = getattr(self.model, 'HQ_t_minus_1')
+        model = self.model if isinstance(self, ConditionedModel) else self
+
+
+        #Trying using a downweighting term so our early broad posterior's high importance weight variance
+        #doesn't cause us to have overly narrow t+1 posteriors
+        hq = 0
+        for mod in model.modules():
+            if hasattr(mod, '_update'):
+                sig = mod.mean2conv(*mod.named_means)['scale'].sum()
+                hq += 1/2 * t.log(2*t.pi*sig) + 1/2
+
+        HQ_t.data.copy_(hq) 
+        # simplest method
+        # dt = HQ_t_minus_1 - HQ_t + 0.1
+        # Using relu
+        dt = t.nn.functional.relu(HQ_t_minus_1 - HQ_t)
+
+
         l_tot = getattr(self.model, 'l_tot')
         l_one_iter = sample.elbo().item()
-        
-        l_tot.data.add_(softplus(l_one_iter - l_tot))
+        l_tot.data.add_(softplus(l_one_iter + dt - l_tot) - dt)
         eta = t.exp(l_one_iter - l_tot)
-        model = self.model if isinstance(self, ConditionedModel) else self
+        
         for mod in model.modules():
             if hasattr(mod, '_update'):
                 mod._update(sample_weights, lr, eta)
+
+        HQ_t_minus_1.data.copy_(HQ_t.data)
         self.zero_grad()
 
     def ng_update(self, lr, sample):
@@ -360,6 +381,8 @@ class Model(SampleMixin, AlanModule):
         
         assert not hasattr(self, 'l_tot')
         self.register_buffer('l_tot', t.tensor(-1e15, dtype=t.float64))
+        self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('HQ_t_minus_1', t.tensor(0.0, dtype=t.float64))
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)
