@@ -248,9 +248,9 @@ class SampleMixin():
 
         HQ_t.data.copy_(hq) 
         # simplest method
-        # dt = HQ_t_minus_1 - HQ_t + 0.1
+        dt = HQ_t_minus_1 - HQ_t + 0.1
         # Using relu
-        dt = t.nn.functional.relu(HQ_t_minus_1 - HQ_t)
+        # dt = t.nn.functional.relu(HQ_t_minus_1 - HQ_t)
 
 
         l_tot = getattr(self.model, 'l_tot')
