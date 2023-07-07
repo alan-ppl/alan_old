@@ -60,16 +60,17 @@ class AMMP_IS(AlanModule):
     def named_grads(self):
         return [self.get_named_grad(natname) for natname in self.natnames]
 
-    def _update(self, sample_weights, weights, lr, eta):
-        m_one_iter = self.sample2mean(sample_weights, self.index)
+    def _update(self, sample, weights, lr, P_tot, P_one_iters):
+        m_one_iter = self.sample2mean(sample.weights(), self.index)
         with t.no_grad():
             idx = 0
             
             for idx, (mean, avgmean,m_one)  in enumerate(zip(self.named_means, self.named_avgmeans, m_one_iter)):
                 # avgmean.data.copy_(eta * m_one + (1 - eta) * avgmean)
-                avgmean.data.copy_(sum([weight*t.exp(l) for weight, l in zip(weights, self.model.Ltots)]))
+                avgmean.data.copy_((1/P_tot) * sum([w * m * p for w, m, p in zip(weights, self.Ms[idx], P_one_iters)]))
                 mean.data.copy_(lr*avgmean + (1-lr)*mean) 
-                self.Ms[idx].append(mean.data.clone())
+                
+                self.Ms[idx].append(m_one)
                 idx += 1
         self.reset_nats()
 

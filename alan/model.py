@@ -231,7 +231,6 @@ class SampleMixin():
         """
         # assert not sample.reparam
 
-        sample_weights = sample.weights()
 
         HQ_t = getattr(self.model, 'HQ_t')
         HQ_t_minus_1 = getattr(self.model, 'HQ_t_minus_1')
@@ -263,16 +262,17 @@ class SampleMixin():
         # eta = t.exp(l_one_iter - l_tot)
         
 
-         weights = [t.exp(-t.nn.functional.relu(hq - HQ_t)) for hq in self.model.HQs]
+        weights = [t.exp(-t.nn.functional.relu(hq - HQ_t)) for hq in self.model.HQs]
         l_tot = getattr(self.model, 'l_tot')
-        l_one_iter = sample.elbo().item()
-        l_tot.data.copy_(t.log(sum([weight*t.exp(l) for weight, l in zip(weights, self.model.Ltots)])))
-        self.model.Ltots.append(l_tot.item())
-        eta = t.exp(l_one_iter - l_tot)
+        l_one_iter = sample.elbo()
+        l_tot.data.copy_(t.log(sum([w*p for w, p in zip(weights, self.model.P_one_iters)])))
+        print(self.model.P_one_iters)
+        self.model.P_one_iters.append(t.exp(l_one_iter))
+
 
         for mod in model.modules():
             if hasattr(mod, '_update'):
-                mod._update(sample_weights, weights, lr, eta)
+                mod._update(sample, weights, lr, t.exp(l_tot), self.model.P_one_iters)
 
         HQ_t_minus_1.data.copy_(HQ_t.data)
         self.zero_grad()
@@ -396,7 +396,7 @@ class Model(SampleMixin, AlanModule):
         self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
         self.register_buffer('HQ_t_minus_1', t.tensor(0.0, dtype=t.float64))
         self.HQs = [t.tensor(0.0, dtype=t.float64)]
-        self.Ltots = [t.tensor(-1e15, dtype=t.float64)]
+        self.P_one_iters = [t.tensor(1, dtype=t.float64)]
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)
