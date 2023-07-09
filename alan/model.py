@@ -263,6 +263,7 @@ class SampleMixin():
         
 
         weights = [t.nn.functional.relu(hq - HQ_t) for hq in self.model.HQs]
+
         l_tot = getattr(self.model, 'l_tot')
         l_one_iter = sample.elbo()
 
