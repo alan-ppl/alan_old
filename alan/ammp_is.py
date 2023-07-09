@@ -58,18 +58,30 @@ class AMMP_IS(AlanModule):
     def named_grads(self):
         return [self.get_named_grad(natname) for natname in self.natnames]
 
-    def _update(self, sample_weights, lr, eta):
-        m_one_iter = self.sample2mean(sample_weights, self.index)
+    def m_one_iter(self, sample_weights):
+        """
+        """
+        return self.sample2mean(sample_weights, self.index)
+    
+    def _update_avg_means(self, m_one_iter,eta):
         with t.no_grad():
-            idx = 0
-            
-            for (mean, avgmean,m_one)  in zip(self.named_means, self.named_avgmeans, m_one_iter):
+            for (avgmean,m_one) in zip(self.named_avgmeans, m_one_iter):
                 avgmean.data.copy_(eta * m_one + (1 - eta) * avgmean)
+
+    def _update_means(self, lr):   
+        with t.no_grad():
+            for (mean, avgmean) in zip(self.named_means, self.named_avgmeans):
                 mean.data.copy_(lr*avgmean + (1-lr)*mean) 
-                # if idx == 1:
-                #     print(mean)
-                idx += 1
+
         self.reset_nats()
+
+
+    def entropy(self, use_average=False):
+        if not use_average:
+            return self.dist(**self.nat2conv(*self.dim_nats)).entropy()
+        else:
+            return self.dist(**self.mean2conv(*self.named_avgmeans)).entropy()
+
 
     def reset_nats(self):
         with t.no_grad():
