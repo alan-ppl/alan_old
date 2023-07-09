@@ -262,17 +262,22 @@ class SampleMixin():
         # eta = t.exp(l_one_iter - l_tot)
         
 
-        weights = [t.exp(-t.nn.functional.relu(hq - HQ_t)) for hq in self.model.HQs]
+        weights = [t.nn.functional.relu(hq - HQ_t) for hq in self.model.HQs]
         l_tot = getattr(self.model, 'l_tot')
         l_one_iter = sample.elbo()
-        l_tot.data.copy_(t.log(sum([w*p for w, p in zip(weights, self.model.P_one_iters)])))
-        print(self.model.P_one_iters)
-        self.model.P_one_iters.append(t.exp(l_one_iter))
+
+        self.model.l_one_iters.append(l_one_iter.item())
+
+        #can this and weights be done in one line?
+        l_t = [l_one_iter - w for l_one_iter, w in zip(self.model.l_one_iters, weights)]
+
+        l_tot.data.copy_(t.logsumexp(t.stack(l_t), dim=0))
 
 
+        
         for mod in model.modules():
             if hasattr(mod, '_update'):
-                mod._update(sample, weights, lr, t.exp(l_tot), self.model.P_one_iters)
+                mod._update(sample, lr, [t.exp(lt - l_tot) for lt in l_t])
 
         HQ_t_minus_1.data.copy_(HQ_t.data)
         self.zero_grad()
@@ -396,7 +401,7 @@ class Model(SampleMixin, AlanModule):
         self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
         self.register_buffer('HQ_t_minus_1', t.tensor(0.0, dtype=t.float64))
         self.HQs = [t.tensor(0.0, dtype=t.float64)]
-        self.P_one_iters = [t.tensor(1, dtype=t.float64)]
+        self.l_one_iters = [-1e15]
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)

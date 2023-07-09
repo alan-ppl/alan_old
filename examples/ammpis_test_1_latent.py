@@ -56,7 +56,7 @@ print(f'True var: {var}')
 
 K = 100
 T = 2000
-ml_lrs = [0.1]
+ml_lrs = [0.2]
 # ml_lrs = [3]
 vi_lrs = [0.5]
 ml_colours = ['#ffffb2','#fecc5c','#fd8d3c','#f03b20'][::-1]
@@ -162,4 +162,4 @@ ax[0].legend(loc='upper right')
 
 
 
-plt.savefig('chart.png')
+plt.savefig('chart_1_latent.png')
