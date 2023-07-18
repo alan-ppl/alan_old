@@ -75,13 +75,13 @@ for use_data in [True]:
 
         for i in range(T):
             sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-            z_means.append(pp.mean(sample.weights()['sigma_beta']).item())    
+            z_means.append(q.sigma_beta.mean2conv(*q.sigma_beta.named_means)['loc'].item())    
 
-            z_scale_means.append(pp.mean(sample.weights()['mu_beta']).item())  
-            elbos.append(sample.elbo().item()) 
-            if i % 100 == 0:
+            z_scale_means.append(q.mu_beta.mean2conv(*q.mu_beta.named_means)['loc'].item())  
+            if i % 500 == 0:
                 # print(q.Nz.mean2conv(*q.Nz.named_means))
-                print(f'Elbo: {elbos[-1]}')   
+                print(f'Elbo: {m1.model.l_tot}')   
+            elbos.append(m1.model.l_tot) 
             
             start = time.time()    
             m1.ammpis_update(lr, sample)

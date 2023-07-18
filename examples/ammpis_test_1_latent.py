@@ -9,6 +9,7 @@ import numpy as np
 t.manual_seed(0)
 from alan.experiment_utils import n_mean
 import time
+import math 
 
 import alan.postproc as pp
 
@@ -117,12 +118,12 @@ for j in range(len(ml_lrs)):
 
     for i in range(T):
         sample = m1.sample_same(K, reparam=False)
-        means.append(pp.mean(sample.weights())['z'].item())   
-        scales.append(pp.std(sample.weights())['z'].item())
+        means.append(q.Nz.mean2conv(*q.Nz.named_means)['loc'].item())   
+        scales.append(q.Nz.mean2conv(*q.Nz.named_means)['scale'].item())
         if i % 500 == 0:
             # print(q.Nz.mean2conv(*q.Nz.named_means))
-            print(f'Elbo: {sample.elbo().item()}')   
-        elbos.append(sample.elbo().item()) 
+            print(f'Elbo: {m1.model.l_tot}')   
+        elbos.append(m1.model.l_tot) 
         start = time.time()    
         m1.ammpis_update(lr, sample)
         times.append(time.time() - start)
@@ -162,4 +163,4 @@ ax[0].legend(loc='upper right')
 
 
 
-plt.savefig('chart.png')
+plt.savefig('chart_1_latent.png')

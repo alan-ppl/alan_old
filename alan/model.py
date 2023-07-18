@@ -231,14 +231,17 @@ class SampleMixin():
         """
         # assert not sample.reparam
 
-        sample_weights = sample.weights()
 
         HQ_t = getattr(self.model, 'HQ_t')
         HQ_temp = getattr(self.model, 'HQ_temp')
+        l_tot = getattr(self.model, 'l_tot')
+        logwt_minus_1 = getattr(self.model, 'logwt_minus_1')
+        sample_weights = sample.weights()
+
         model = self.model if isinstance(self, ConditionedModel) else self
 
         l_one_iter = sample.elbo().item()
-        l_tot = getattr(self.model, 'l_tot')
+        
         hq = 0
         for mod in model.modules():
             if hasattr(mod, 'm_one_iter'):
@@ -247,43 +250,36 @@ class SampleMixin():
 
         HQ_t.data.copy_(hq) 
         HQ_temp.data.copy_(hq)
-        logwt_minus_1 = 0
-        counter = 0
         
-        converged = False
-        while not converged:
+
+        l_tot_t_1 = l_tot
+        
+        for j in range(100):
             #weights 
 
-            logwt = -(HQ_t - HQ_temp)
-            print('HQ_t')
-            print(HQ_t)
-            print('logwt')
-            print(logwt)
+            # logwt = -(HQ_t - HQ_temp)
             #or
-            #logwt = -t.nn.functional.relu(HQ_t - HQ_temp)
-            #
+            logwt = -t.nn.functional.relu(HQ_t - HQ_temp) 
+
             dt = logwt - logwt_minus_1
-            
-            l_tot = l_tot -dt + softplus(l_one_iter + dt - l_tot)
+
+            l_tot.data.copy_(l_tot_t_1 - dt + softplus(l_one_iter + dt - l_tot_t_1))
+
             eta_t = t.exp(l_one_iter - l_tot)
-            print('eta_t')
-            print(eta_t)
 
             hq_temp = 0
+
             for mod in model.modules():
                 if hasattr(mod, '_update_avg_means'):
                     m_one_iter = mod.m_one_iter(sample_weights)
                     mod._update_avg_means(m_one_iter, eta_t)
+                if hasattr(mod, 'm_one_iter'):
                     hq_temp += mod.entropy(use_average=True).sum()
 
-            print('hq_temp')
-            print(hq_temp)
             HQ_temp.data.copy_(hq_temp)
             self.zero_grad()
-            counter += 1
-            logwt_minus_1 = logwt
-            converged = (HQ_t - HQ_temp) < 1e-4
-        
+
+        logwt_minus_1.data.copy_(logwt)
         for mod in model.modules():
             if hasattr(mod, '_update_means'):
                 mod._update_means(lr)
@@ -406,6 +402,7 @@ class Model(SampleMixin, AlanModule):
         self.register_buffer('l_tot', t.tensor(-1e15, dtype=t.float64))
         self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
         self.register_buffer('HQ_temp', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('logwt_minus_1', t.tensor(0.0, dtype=t.float64))
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)
