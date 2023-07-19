@@ -1,6 +1,6 @@
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 
 import numpy as np
 import math 
@@ -116,10 +116,54 @@ def ammp_is(T, post, init, lr, K=5):
     return m_q, m_avg, l_tot
 
         
+def mcmc(T, post, init, proposal_scale, burn_in=100):
+    if type(proposal_scale) in (float, int):
+        proposal_scale = proposal_scale*t.ones(num_latents, 1)
+    post_dist = Normal(post[:,0], post[:,1])
+
+    N = init.shape[0]
+
+    x = sample(init, 1)
+    
+    # to store samples
+    samples = t.zeros((T + burn_in, N))
+    samples[0,:] = x
+
+    moments = []
+
+    num_accepted = t.zeros(N)
+
+    for i in range(T + burn_in):
+        # normal proposal
+        proposal_params = t.stack([x.squeeze(0), proposal_scale.squeeze(1)], dim=1)
+
+        y = sample(proposal_params, 1)
+
+        alpha = t.exp(post_dist.log_prob(y) - post_dist.log_prob(x))
+        accepted = alpha > t.rand(N)
+        num_accepted += accepted.squeeze(0)
+
+        x = t.where(accepted, y, x)
+
+        samples[i,:] = x
+
+        # print(samples)
+        # print((samples != 0).all(1).sum().item())
+        # breakpoint()
+
+        if i > burn_in:
+            Ex = t.mean(samples[burn_in:,:], dim=0)
+            Ex2 = t.mean(samples[burn_in:,:]**2, dim=0)
+            moments.append(t.cat([Ex.unsqueeze(1), Ex2.unsqueeze(1)], dim=1))
+
+    acceptance_rates = num_accepted / (T + burn_in)
+
+    return moments, acceptance_rates.mean().item()
+
 
 
 if __name__ == "__main__":
-    num_latents = 500
+    num_latents = 5#00
     init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 
     loc = Normal(0,150).sample((num_latents,1)).float()
@@ -129,16 +173,42 @@ if __name__ == "__main__":
 
     print("Final ELBO: ", l_tot[-1])
 
+    m_mcmc, mcmc_acceptance_rate = mcmc(10000, post, init, 2.4*scale, burn_in=1000)
+    print("MCMC acceptance rate: ", mcmc_acceptance_rate)
+
     #Posterior mean and scale error
     print("Posterior mean error: ", (post[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
     print("Posterior scale error: ", (post[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
 
+    print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
+    print("MCMC scale error: ", (post[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
+
+
     print('Mean')
     print(post[:,0])
     print(fit_approx_post(m_q[-1])[:,0])
+    print(fit_approx_post(m_mcmc[-1])[:,0])
+
 
     print('Scale')
-    print(post[:,0])
-    print(fit_approx_post(m_q[-1])[:,0])    
+    print(post[:,1])
+    print(fit_approx_post(m_q[-1])[:,1])   
+    print(fit_approx_post(m_mcmc[-1])[:,1])
+    
+
+    # Want to tune MCMC to have acceptance rate of 0.44
+    MCMC_SCALE_TEST = False
+    if MCMC_SCALE_TEST:
+        for proposal_scale in [2.4*scale, 2.4, 2.4/num_latents**0.5, 2.4*scale/num_latents**0.5, 2.4]:
+            # N.B. 2.4*scale SHOULD be optimal
+            m_mcmc, mcmc_acceptance_rate = mcmc(10000, post, init, proposal_scale, burn_in=1000)
+
+            print("Proposal sigma: ", proposal_scale)
+            print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
+            print("MCMC scale error: ", (post[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
+            print("MCMC acceptance rate: ", mcmc_acceptance_rate)
+            print()
 
     
+        
+
