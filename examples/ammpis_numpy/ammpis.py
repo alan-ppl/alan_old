@@ -9,12 +9,16 @@ import torch as t
 from torch.nn.functional import softplus
 from torch.distributions import Normal
 
+
+t.manual_seed(0)
+t.cuda.manual_seed(0)
+
 def fit_approx_post(moments):
     # moments is a vector nx2 
 
     loc   = moments[:,0]
     a = moments[:,1] - loc**2
-    A = a + (-a + 1e-4)*(a<=0)
+    A = a + (-a + 1e-10)*(a<=0)
     scale = A.sqrt()
     
     params = t.cat([loc.unsqueeze(1), scale.unsqueeze(1)], dim=1)
@@ -35,17 +39,25 @@ def IW(sample, params, post):
 
     K = sample.shape[0]
     N = sample.shape[1]
-    elbo = t.logsumexp(logp - logq, dim=0).sum() - N*math.log(K)
+
+
+    
+    elbo = t.logsumexp((logp - logq), dim=0).sum() - N*math.log(K)
+    
+
+    lqp = logp - logq
+    lqp_max = lqp.amax(axis=0)
+    weights = t.exp(lqp - lqp_max)
+
+    weights = weights / weights.sum(axis=0)
     
 
 
-    weights = t.exp(logp - logq)
-
-    weights = weights / weights.sum(axis=0)
-
+    
     Ex_one_iter = (weights * sample).sum(axis=0)
     Ex2_one_iter = (weights * sample**2).sum(axis=0)
     m_one_iter = t.cat([Ex_one_iter.unsqueeze(1), Ex2_one_iter.unsqueeze(1)], dim=1)
+    
     return m_one_iter, elbo
 
 
@@ -75,7 +87,7 @@ def ammp_is(T, post, init, lr, K=5):
         H_Q = entropy(Q_params)
         H_Q_temp = entropy(Q_params)
 
-        if t % 10 == 0:
+        if t % 100 == 0:
             print("Iteration: ", t, "ELBO: ", l_tot[-1])
 
 
@@ -110,10 +122,10 @@ if __name__ == "__main__":
     num_latents = 500
     init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 
-    loc = Normal(0,1).sample((num_latents,1)).float()
-    scale = Normal(0,1).sample((num_latents,1)).exp().float()
+    loc = Normal(0,150).sample((num_latents,1)).float()
+    scale = Normal(0,0.00001).sample((num_latents,1)).exp().float()
     post = t.cat([loc, scale], dim=1)
-    m_q, m_avg, l_tot = ammp_is(100,post, init, 0.4, 100)
+    m_q, m_avg, l_tot = ammp_is(1000,post, init, 0.4, 100)
 
     print("Final ELBO: ", l_tot[-1])
 
@@ -121,6 +133,12 @@ if __name__ == "__main__":
     print("Posterior mean error: ", (post[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
     print("Posterior scale error: ", (post[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
 
-    
+    print('Mean')
+    print(post[:,0])
+    print(fit_approx_post(m_q[-1])[:,0])
+
+    print('Scale')
+    print(post[:,0])
+    print(fit_approx_post(m_q[-1])[:,0])    
 
     
