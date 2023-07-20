@@ -1,6 +1,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 # matplotlib.use('TkAgg')
+import time 
 
 import numpy as np
 import math 
@@ -9,9 +10,10 @@ import torch as t
 from torch.nn.functional import softplus
 from torch.distributions import Normal
 
-
 t.manual_seed(0)
 t.cuda.manual_seed(0)
+
+VERBOSE = False
 
 def fit_approx_post(moments):
     # moments is a vector nx2 
@@ -29,10 +31,10 @@ def fit_approx_post(moments):
 def IW(sample, params, post):
     # sample is a list of samples
     # params is a vector nx2
-    # post is a vector nx2
+    # post is a torch distribution
     # returns a list of IW samples and the ELBO
     # print(sample.shape)
-    logp = Normal(post[:,0], post[:,1]).log_prob(sample)
+    logp = post.log_prob(sample)
 
     logq = Normal(params[:,0], params[:,1]).log_prob(sample)
     
@@ -76,7 +78,11 @@ def ammp_is(T, post, init, lr, K=5):
     m_avg = [init]
     l_tot = [-1e15]
     log_w_t_minus_one = 0.0
-    for t in range(T):
+    
+    times = t.zeros(T+1)
+    start_time = time.time()
+
+    for i in range(T):
         Q_params = fit_approx_post(m_q[-1])
 
         z_t = sample(Q_params, K)
@@ -87,8 +93,8 @@ def ammp_is(T, post, init, lr, K=5):
         H_Q = entropy(Q_params)
         H_Q_temp = entropy(Q_params)
 
-        if t % 100 == 0:
-            print("Iteration: ", t, "ELBO: ", l_tot[-1])
+        if VERBOSE and i % 100 == 0:
+            print("Iteration: ", i, "ELBO: ", l_tot[-1])
 
 
         for _ in range(1):
@@ -113,13 +119,14 @@ def ammp_is(T, post, init, lr, K=5):
 
         m_q.append(lr * new_m_avg + (1 - lr) * m_q[-1])
 
-    return m_q, m_avg, l_tot
+        times[i+1] = time.time() - start_time
+
+    return m_q, m_avg, l_tot, times
 
         
 def mcmc(T, post, init, proposal_scale, burn_in=100):
     if type(proposal_scale) in (float, int):
         proposal_scale = proposal_scale*t.ones(num_latents, 1)
-    post_dist = Normal(post[:,0], post[:,1])
 
     N = init.shape[0]
 
@@ -129,9 +136,12 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
     samples = t.zeros((T + burn_in, N))
     samples[0,:] = x
 
-    moments = []
+    moments = [init]
 
     num_accepted = t.zeros(N)
+
+    times = t.zeros(T+1)
+    start_time = time.time()
 
     for i in range(T + burn_in):
         # normal proposal
@@ -139,7 +149,7 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
 
         y = sample(proposal_params, 1)
 
-        alpha = t.exp(post_dist.log_prob(y) - post_dist.log_prob(x))
+        alpha = t.exp(post.log_prob(y) - post.log_prob(x))
         accepted = alpha > t.rand(N)
         num_accepted += accepted.squeeze(0)
 
@@ -151,29 +161,39 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
         # print((samples != 0).all(1).sum().item())
         # breakpoint()
 
-        if i > burn_in:
+        if i == burn_in-1:
+            start_time = time.time()
+
+        if i >= burn_in:
             Ex = t.mean(samples[burn_in:,:], dim=0)
             Ex2 = t.mean(samples[burn_in:,:]**2, dim=0)
             moments.append(t.cat([Ex.unsqueeze(1), Ex2.unsqueeze(1)], dim=1))
 
+            times[i-burn_in+1] = time.time() - start_time
+
+
     acceptance_rates = num_accepted / (T + burn_in)
 
-    return moments, acceptance_rates.mean().item()
+    return moments, acceptance_rates.mean().item(), times
 
 
 
 if __name__ == "__main__":
-    num_latents = 5#00
+    num_latents = 500
     init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 
     loc = Normal(0,150).sample((num_latents,1)).float()
-    scale = Normal(0,0.00001).sample((num_latents,1)).exp().float()
+    scale = Normal(0,0.1).sample((num_latents,1)).exp().float()
+
     post = t.cat([loc, scale], dim=1)
-    m_q, m_avg, l_tot = ammp_is(1000,post, init, 0.4, 100)
+    post_dist = Normal(post[:,0], post[:,1])
+    # breakpoint()
+
+    m_q, m_avg, l_tot, ammp_is_times = ammp_is(1000, post_dist, init, 0.4, 100)
 
     print("Final ELBO: ", l_tot[-1])
 
-    m_mcmc, mcmc_acceptance_rate = mcmc(10000, post, init, 2.4*scale, burn_in=1000)
+    m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(10000, post_dist, init, 2.4*scale, burn_in=1000)
     print("MCMC acceptance rate: ", mcmc_acceptance_rate)
 
     #Posterior mean and scale error
@@ -200,8 +220,8 @@ if __name__ == "__main__":
     MCMC_SCALE_TEST = False
     if MCMC_SCALE_TEST:
         for proposal_scale in [2.4*scale, 2.4, 2.4/num_latents**0.5, 2.4*scale/num_latents**0.5, 2.4]:
-            # N.B. 2.4*scale SHOULD be optimal
-            m_mcmc, mcmc_acceptance_rate = mcmc(10000, post, init, proposal_scale, burn_in=1000)
+            # N.B. 2.4*scale SHOULD be optimal (in Gaussian posterior case)
+            m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(10000, post, init, proposal_scale, burn_in=1000)
 
             print("Proposal sigma: ", proposal_scale)
             print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
