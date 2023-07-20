@@ -1,6 +1,6 @@
 import matplotlib
 import matplotlib.pyplot as plt
-# matplotlib.use('TkAgg')
+matplotlib.use('TkAgg')
 
 import numpy as np
 import math 
@@ -17,11 +17,11 @@ def fit_approx_post(moments):
     # moments is a vector nx2 
 
     loc   = moments[:,0]
-    a = moments[:,1] - loc**2
-    A = a + (-a + 1e-10)*(a<=0)
-    scale = A.sqrt()
-    
-    params = t.cat([loc.unsqueeze(1), scale.unsqueeze(1)], dim=1)
+    raw_2nd_mom = moments[:,1] - loc**2
+    bounded_2nd_mom = raw_2nd_mom + (-raw_2nd_mom + 1e-10)*(raw_2nd_mom<=0)
+    scale = bounded_2nd_mom .sqrt()
+
+    params = t.vstack([loc, scale]).t()
 
     return params
 
@@ -36,28 +36,21 @@ def IW(sample, params, post):
 
     logq = Normal(params[:,0], params[:,1]).log_prob(sample)
     
-
     K = sample.shape[0]
     N = sample.shape[1]
-
-
     
     elbo = t.logsumexp((logp - logq), dim=0).sum() - N*math.log(K)
     
-
     lqp = logp - logq
     lqp_max = lqp.amax(axis=0)
     weights = t.exp(lqp - lqp_max)
 
     weights = weights / weights.sum(axis=0)
     
-
-
-    
     Ex_one_iter = (weights * sample).sum(axis=0)
     Ex2_one_iter = (weights * sample**2).sum(axis=0)
-    m_one_iter = t.cat([Ex_one_iter.unsqueeze(1), Ex2_one_iter.unsqueeze(1)], dim=1)
-    
+    m_one_iter = t.stack([Ex_one_iter, Ex2_one_iter]).t()
+
     return m_one_iter, elbo
 
 
@@ -76,6 +69,8 @@ def ammp_is(T, post, init, lr, K=5):
     m_avg = [init]
     l_tot = [-1e15]
     log_w_t_minus_one = 0.0
+    mean_errs = []
+    var_errs = []
     for t in range(T):
         Q_params = fit_approx_post(m_q[-1])
 
@@ -113,7 +108,10 @@ def ammp_is(T, post, init, lr, K=5):
 
         m_q.append(lr * new_m_avg + (1 - lr) * m_q[-1])
 
-    return m_q, m_avg, l_tot
+        mean_errs.append((post[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
+        var_errs.append((post[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
+
+    return m_q, m_avg, l_tot, mean_errs, var_errs
 
         
 def mcmc(T, post, init, proposal_scale, burn_in=100):
@@ -132,6 +130,9 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
     moments = []
 
     num_accepted = t.zeros(N)
+
+    mean_errs = []
+    var_errs = []
 
     for i in range(T + burn_in):
         # normal proposal
@@ -154,11 +155,14 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
         if i > burn_in:
             Ex = t.mean(samples[burn_in:,:], dim=0)
             Ex2 = t.mean(samples[burn_in:,:]**2, dim=0)
-            moments.append(t.cat([Ex.unsqueeze(1), Ex2.unsqueeze(1)], dim=1))
+            moments.append(t.stack([Ex, Ex2]).t())
+
+            mean_errs.append((post[:,0] - fit_approx_post(moments[-1])[:,0]).abs().mean())
+            var_errs.append((post[:,1] - fit_approx_post(moments[-1])[:,1]).abs().mean())
 
     acceptance_rates = num_accepted / (T + burn_in)
 
-    return moments, acceptance_rates.mean().item()
+    return moments, acceptance_rates.mean().item(), mean_errs, var_errs
 
 
 
@@ -169,11 +173,22 @@ if __name__ == "__main__":
     loc = Normal(0,150).sample((num_latents,1)).float()
     scale = Normal(0,0.00001).sample((num_latents,1)).exp().float()
     post = t.cat([loc, scale], dim=1)
-    m_q, m_avg, l_tot = ammp_is(1000,post, init, 0.4, 100)
+    m_q, m_avg, l_tot, mean_errs, var_errs = ammp_is(1000,post, init, 0.4, 100)
 
     print("Final ELBO: ", l_tot[-1])
 
-    m_mcmc, mcmc_acceptance_rate = mcmc(10000, post, init, 2.4*scale, burn_in=1000)
+
+    fig, ax = plt.subplots(2,1, figsize=(5.5, 8.0))
+
+    ax[0].plot(mean_errs, c='r', label='AMMP-IS')
+    ax[0].set_title("Mean Error")
+
+    ax[1].plot(var_errs, c='r', label='AMMP-IS')
+    ax[1].set_title("Var Error")
+
+
+    
+    m_mcmc, mcmc_acceptance_rate, mean_errs_mcmc, var_errs_mcmc = mcmc(10000, post, init, 2.4*scale, burn_in=1000)
     print("MCMC acceptance rate: ", mcmc_acceptance_rate)
 
     #Posterior mean and scale error
@@ -195,6 +210,15 @@ if __name__ == "__main__":
     print(fit_approx_post(m_q[-1])[:,1])   
     print(fit_approx_post(m_mcmc[-1])[:,1])
     
+
+    ax[0].plot(mean_errs_mcmc, c='b', label='MCMC')
+
+    ax[1].plot(var_errs_mcmc, c='b', label='MCMC')
+
+    ax[0].legend(loc='upper right')
+
+    plt.savefig('figures/ammp_is_vs_mcmc.png')
+
 
     # Want to tune MCMC to have acceptance rate of 0.44
     MCMC_SCALE_TEST = False
