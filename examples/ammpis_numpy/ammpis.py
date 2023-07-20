@@ -19,11 +19,11 @@ def fit_approx_post(moments):
     # moments is a vector nx2 
 
     loc   = moments[:,0]
-    a = moments[:,1] - loc**2
-    A = a + (-a + 1e-10)*(a<=0)
-    scale = A.sqrt()
-    
-    params = t.cat([loc.unsqueeze(1), scale.unsqueeze(1)], dim=1)
+    raw_2nd_mom = moments[:,1] - loc**2
+    bounded_2nd_mom = raw_2nd_mom + (-raw_2nd_mom + 1e-10)*(raw_2nd_mom<=0)
+    scale = bounded_2nd_mom .sqrt()
+
+    params = t.vstack([loc, scale]).t()
 
     return params
 
@@ -38,28 +38,21 @@ def IW(sample, params, post):
 
     logq = Normal(params[:,0], params[:,1]).log_prob(sample)
     
-
     K = sample.shape[0]
     N = sample.shape[1]
-
-
     
     elbo = t.logsumexp((logp - logq), dim=0).sum() - N*math.log(K)
     
-
     lqp = logp - logq
     lqp_max = lqp.amax(axis=0)
     weights = t.exp(lqp - lqp_max)
 
     weights = weights / weights.sum(axis=0)
     
-
-
-    
     Ex_one_iter = (weights * sample).sum(axis=0)
     Ex2_one_iter = (weights * sample**2).sum(axis=0)
-    m_one_iter = t.cat([Ex_one_iter.unsqueeze(1), Ex2_one_iter.unsqueeze(1)], dim=1)
-    
+    m_one_iter = t.stack([Ex_one_iter, Ex2_one_iter]).t()
+
     return m_one_iter, elbo
 
 
@@ -167,7 +160,10 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
         if i >= burn_in:
             Ex = t.mean(samples[burn_in:,:], dim=0)
             Ex2 = t.mean(samples[burn_in:,:]**2, dim=0)
-            moments.append(t.cat([Ex.unsqueeze(1), Ex2.unsqueeze(1)], dim=1))
+            moments.append(t.stack([Ex, Ex2]).t())
+
+            times[i-burn_in+1] = time.time() - start_time
+
 
             times[i-burn_in+1] = time.time() - start_time
 
@@ -176,7 +172,18 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
 
     return moments, acceptance_rates.mean().item(), times
 
+def get_errs(m, post):
+    # m is a list of moments
+    # post is a torch distribution
+    # returns a list of mean errors and a list of variance errors
+    mean_errs = []
+    var_errs = []
 
+    for i in range(len(m_q)):
+        mean_errs.append((post[:,0] - fit_approx_post(m_q[i])[:,0]).abs().mean())
+        var_errs.append((post[:,1] - fit_approx_post(m_q[i])[:,1]).abs().mean())
+
+    return mean_errs, var_errs
 
 if __name__ == "__main__":
     num_latents = 500
@@ -190,10 +197,24 @@ if __name__ == "__main__":
     # breakpoint()
 
     m_q, m_avg, l_tot, ammp_is_times = ammp_is(1000, post_dist, init, 0.4, 100)
+    mean_errs, var_errs = get_errs(m_q, post)
 
     print("Final ELBO: ", l_tot[-1])
 
-    m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(10000, post_dist, init, 2.4*scale, burn_in=1000)
+
+    fig, ax = plt.subplots(2,1, figsize=(5.5, 8.0))
+
+    ax[0].plot(mean_errs, c='r', label='AMMP-IS')
+    ax[0].set_title("Mean Error")
+
+    ax[1].plot(var_errs, c='r', label='AMMP-IS')
+    ax[1].set_title("Var Error")
+
+
+    
+    m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(1000, post_dist, init, 2.4*scale, burn_in=100)
+    mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post)
+
     print("MCMC acceptance rate: ", mcmc_acceptance_rate)
 
     #Posterior mean and scale error
@@ -215,6 +236,15 @@ if __name__ == "__main__":
     print(fit_approx_post(m_q[-1])[:,1])   
     print(fit_approx_post(m_mcmc[-1])[:,1])
     
+
+    ax[0].plot(mean_errs_mcmc, c='b', label='MCMC')
+
+    ax[1].plot(var_errs_mcmc, c='b', label='MCMC')
+
+    ax[0].legend(loc='upper right')
+
+    plt.savefig('figures/ammp_is_vs_mcmc.png')
+
 
     # Want to tune MCMC to have acceptance rate of 0.44
     MCMC_SCALE_TEST = False

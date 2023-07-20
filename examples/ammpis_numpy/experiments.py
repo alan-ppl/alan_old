@@ -12,7 +12,7 @@ t.manual_seed(0)
 t.cuda.manual_seed(0)
 
 if __name__ == "__main__":
-    num_runs = 5
+    num_runs = 3
 
     num_iters = 1000 # mcmc seems to require about 1000 iterations to converge
     
@@ -108,7 +108,7 @@ if __name__ == "__main__":
             # add horizontal legend along top of plot
             axs[0,1].legend(loc='lower center', bbox_to_anchor=(0.27, 1.25), shadow=False, ncol=3)
 
-            plt.savefig(f"examples/ammpis_numpy/plots/{post}{'_vs_time' if x_axis == 'time' else ''}.png")
+            plt.savefig(f"figures/{post}{'_vs_time' if x_axis == 'time' else ''}.png")
             plt.close()
 
 
