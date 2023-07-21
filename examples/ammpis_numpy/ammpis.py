@@ -164,9 +164,72 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
 
             times[i-burn_in+1] = time.time() - start_time
 
+    acceptance_rates = num_accepted / (T + burn_in)
+
+    return moments, acceptance_rates.mean().item(), times
+
+def am(T, post, init, proposal_scale, burn_in=100):
+    if type(proposal_scale) in (float, int):
+        proposal_scale = proposal_scale*t.ones(num_latents, 1)
+
+    N = init.shape[0]
+
+    x = sample(init, 1)
+    
+    # to store samples
+    samples = t.zeros((T + burn_in, N))
+    samples[0,:] = x
+
+    moments = [init]
+
+    num_accepted = t.zeros(N)
+
+    times = t.zeros(T+1)
+    start_time = time.time()
+
+    for i in range(T + burn_in):
+        # get grad of log p(x)
+        x.requires_grad_(True)
+        x.retain_grad()
+        logp_x = post.log_prob(x)
+        logp_x.sum().backward()
+        grad_logp_x = x.grad
+        x.requires_grad_(False)
+
+        # normal proposal
+        # breakpoint()
+        proposal_params = t.stack([(x + proposal_scale.t() * 0.5 * grad_logp_x).squeeze(), proposal_scale.squeeze(1)], dim=1)
+
+        y = sample(proposal_params, 1)
+
+        # get grad of log p(y)
+        y.requires_grad_(True)
+        y.retain_grad()
+        logp_y = post.log_prob(y)
+        logp_y.sum().backward()
+        grad_logp_y = y.grad
+        y.requires_grad_(False)
+
+        reverse_proposal_params = t.stack([(y + proposal_scale.t() * 0.5 * grad_logp_y).squeeze(), proposal_scale.squeeze(1)], dim=1)
+
+
+        alpha = t.exp(post.log_prob(y) - post.log_prob(x) + Normal(proposal_params[:,0], proposal_params[:,1]).log_prob(x) - Normal(reverse_proposal_params[:,0], reverse_proposal_params[:,1]).log_prob(y))
+        accepted = alpha > t.rand(N)
+        num_accepted += accepted.squeeze(0)
+
+        x = t.where(accepted, y, x)
+
+        samples[i,:] = x
+
+        if i == burn_in-1:
+            start_time = time.time()
+
+        if i >= burn_in:
+            Ex = t.mean(samples[burn_in:,:], dim=0)
+            Ex2 = t.mean(samples[burn_in:,:]**2, dim=0)
+            moments.append(t.stack([Ex, Ex2]).t())
 
             times[i-burn_in+1] = time.time() - start_time
-
 
     acceptance_rates = num_accepted / (T + burn_in)
 
