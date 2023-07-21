@@ -168,7 +168,7 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
 
     return moments, acceptance_rates.mean().item(), times
 
-def am(T, post, init, proposal_scale, burn_in=100):
+def lang(T, post, init, proposal_scale, burn_in=100):
     if type(proposal_scale) in (float, int):
         proposal_scale = proposal_scale*t.ones(num_latents, 1)
 
@@ -277,8 +277,11 @@ if __name__ == "__main__":
     
     m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(1000, post_dist, init, 2.4*scale, burn_in=100)
     mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post)
+    print("MCMC acceptance rate: ", mcmc_acceptance_rate)  # should be 0.44 for Gaussian posterior
 
-    print("MCMC acceptance rate: ", mcmc_acceptance_rate)
+
+    m_lang, lang_acceptance_rate, lang_times = lang(1000, post_dist, init, 2.4*scale, burn_in=100)
+    print("Lang acceptance rate: ", lang_acceptance_rate)  # should be 0.574 for Gaussian posterior
 
     #Posterior mean and scale error
     print("Posterior mean error: ", (post[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
@@ -287,6 +290,10 @@ if __name__ == "__main__":
     print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
     print("MCMC scale error: ", (post[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
 
+    print("Lang mean error: ", (post[:,0] - fit_approx_post(m_lang[-1])[:,0]).abs().mean())
+    print("Lang scale error: ", (post[:,1] - fit_approx_post(m_lang[-1])[:,1]).abs().mean())
+
+    # breakpoint()
 
     print('Mean')
     print(post[:,0])

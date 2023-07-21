@@ -12,9 +12,9 @@ t.manual_seed(0)
 t.cuda.manual_seed(0)
 
 if __name__ == "__main__":
-    num_runs = 5
+    num_runs = 3
 
-    num_iters = 1000 # mcmc seems to require about 1000 iterations to converge
+    num_iters = 500 # mcmc and lang seem to require about 1000 iterations to converge
     
     num_latents = [10, 100, 1000, 10000]
     
@@ -32,13 +32,13 @@ if __name__ == "__main__":
     for run in range(num_runs):
         for post in posteriors:
             for n in num_latents:
-                print(f"run: {run}, post: {post}, n: {n}")
+                print(f"run: {run}, post: {post}, n: {n}", end="\t")
             
                 init = t.tensor([0.0,1.0], dtype=t.float64).repeat((n,1))
 
                 # priors on posterior parameters
                 loc = Normal(0,100).sample((n,1)).float()
-                scale = Normal(0,0.1).sample((n,1)).exp().float()
+                scale = Normal(0,0.1).sample((n,1)).exp().float() * 10
 
                 post_dist = posteriors[post](loc.squeeze(), scale.squeeze())
                 true_post = t.cat([post_dist.mean.unsqueeze(1), post_dist.stddev.unsqueeze(1)], dim=1)
@@ -53,8 +53,10 @@ if __name__ == "__main__":
                 mcmc_post = [fit_approx_post(m) for m in m_mcmc]
 
                 # langevin (mala)
-                m_lang, lang_acceptance_rate, lang_times = am(num_iters, post_dist, init, 2.4*post_dist.stddev.unsqueeze(1), burn_in=0)#num_iters//10)
+                m_lang, lang_acceptance_rate, lang_times = lang(num_iters, post_dist, init, 2.4*post_dist.stddev.unsqueeze(1), burn_in=0)#num_iters//10)
                 lang_post = [fit_approx_post(m) for m in m_lang]
+
+                print(f"Acceptance rates: mcmc={mcmc_acceptance_rate},\t lang={lang_acceptance_rate}")
 
                 # calculate errors
                 for i in range(num_iters+1):
