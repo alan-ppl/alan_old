@@ -55,7 +55,7 @@ if __name__ == "__main__":
              "ammp_is_no_inner_loop": t.zeros(num_runs, len(posteriors), len(num_latents), num_iters+1),
              "ammp_is_weight_all": t.zeros(num_runs, len(posteriors), len(num_latents), num_iters+1),
              "mcmc":    t.zeros(num_runs, len(posteriors), len(num_latents), num_iters+1),
-             "lang":    t.zeros(num_runs, len(posteriors), len(num_latents), num_iters+1)}
+             "lang":    t.zeros(num_runs, len(posteriors), len(num_latents), num_iters+1)} 
     
     for run in range(num_runs):
         for post in posteriors:
@@ -72,6 +72,8 @@ if __name__ == "__main__":
                 post_dist = posteriors[post](loc.squeeze(), scale.squeeze())
                 true_post = t.cat([post_dist.mean.unsqueeze(1), post_dist.stddev.unsqueeze(1)], dim=1)
 
+                final_post_avg = {}
+
                 for fn in [ammp_is, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_weight_all]:
 
                     name = fn.__name__
@@ -79,6 +81,8 @@ if __name__ == "__main__":
                     m_q, m_avg, l_tot, weights, ents, fn_times = fn(num_iters, post_dist, init, 0.4, 100)
                     post_q = [fit_approx_post(m) for m in m_q]
                     post_avg = [fit_approx_post(m) for m in m_avg]
+
+                    final_post_avg[name] = post_avg[-1]
 
                     # calculate errors
                     for i in range(num_iters+1):
@@ -111,22 +115,24 @@ if __name__ == "__main__":
                 times["lang"][run, list(posteriors.keys()).index(post), num_latents.index(n), :] = lang_times
 
                 # plot the pdfs of the final approximating distributions
-                # if run == 0 and not (post == "Gumbel" and n > 10):
-                # if run == 0 and post == "Gumbel" and n != 1000:
-                #     fig, ax = plt.subplots(1,1, figsize=(5.5, 4.0))
-                #     # breakpoint()
-                #     df = pd.DataFrame({"true": post_dist.sample((num_iters*10,)).numpy()[:,0],
-                #                     #    "ammp_is": Normal(ammp_is_post_avg[-1][:,0], ammp_is_post_avg[-1][:,1]).sample((num_iters*10,)).numpy()[:,0],
-                #                        "mcmc": mcmc_samples[burn_in:,0].repeat(10),
-                #                        "lang": lang_samples[burn_in:,0].repeat(10)})
-                #                         # "mcmc": Normal(mcmc_post[-1][:,0], mcmc_post[-1][:,1]).sample((num_iters*10,)).numpy()[:,0],
-                #                         # "lang": Normal(lang_post[-1][:,0], lang_post[-1][:,1] + 1e-10).sample((num_iters*10,)).numpy()[:,0]})
+                if run == 0: # and post == "Gumbel" and n != 1000:
+                    fig, ax = plt.subplots(1,1, figsize=(5.5, 4.0))
+                    # breakpoint()
 
-                #     df.plot.kde(ax=ax, legend=True, ind=None)
+                    df = pd.DataFrame({"true": post_dist.sample((num_iters*10,)).numpy()[:,0],
+                                       "mcmc": mcmc_samples[burn_in:,0].repeat(10),
+                                       "lang": lang_samples[burn_in:,0].repeat(10)})
+                                        # "mcmc": Normal(mcmc_post[-1][:,0], mcmc_post[-1][:,1]).sample((num_iters*10,)).numpy()[:,0],
+                                        # "lang": Normal(lang_post[-1][:,0], lang_post[-1][:,1] + 1e-10).sample((num_iters*10,)).numpy()[:,0]})
 
-                #     ax.set_title(f"n={n}, {post}({loc[0,0].item():.3f}, {scale[0,0].item():.3f}) posterior")
-                #     plt.savefig(f"figures/{post}_n{n}_run{run}.png")
-                #     plt.close()
+                    for name in final_post_avg:
+                        df[name] = Normal(final_post_avg[name][:,0], final_post_avg[name][:,1]).sample((num_iters*10,)).numpy()[:,0]
+
+                    df.plot.kde(ax=ax, legend=True, ind=None)
+
+                    ax.set_title(f"n={n}, {post}({loc[0,0].item():.3f}, {scale[0,0].item():.3f}) posterior")
+                    plt.savefig(f"figures/{post}_n{n}_run{run}.png")
+                    plt.close()
 
 
     # take mean over runs
