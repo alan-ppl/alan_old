@@ -158,15 +158,15 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
             start_time = time.time()
 
         if i >= burn_in:
-            Ex = t.mean(samples[burn_in:,:], dim=0)
-            Ex2 = t.mean(samples[burn_in:,:]**2, dim=0)
+            Ex = t.mean(samples[burn_in:(i+1),:], dim=0)
+            Ex2 = t.mean(samples[burn_in:(i+1),:]**2, dim=0)
             moments.append(t.stack([Ex, Ex2]).t())
 
             times[i-burn_in+1] = time.time() - start_time
 
     acceptance_rates = num_accepted / (T + burn_in)
 
-    return moments, acceptance_rates.mean().item(), times
+    return moments, acceptance_rates.mean().item(), times, samples
 
 def lang(T, post, init, proposal_scale, burn_in=100):
     if type(proposal_scale) in (float, int):
@@ -225,15 +225,15 @@ def lang(T, post, init, proposal_scale, burn_in=100):
             start_time = time.time()
 
         if i >= burn_in:
-            Ex = t.mean(samples[burn_in:,:], dim=0)
-            Ex2 = t.mean(samples[burn_in:,:]**2, dim=0)
+            Ex = t.mean(samples[burn_in:(i+1),:], dim=0)
+            Ex2 = t.mean(samples[burn_in:(i+1),:]**2, dim=0)
             moments.append(t.stack([Ex, Ex2]).t())
 
             times[i-burn_in+1] = time.time() - start_time
 
     acceptance_rates = num_accepted / (T + burn_in)
 
-    return moments, acceptance_rates.mean().item(), times
+    return moments, acceptance_rates.mean().item(), times, samples
 
 def get_errs(m, post):
     # m is a list of moments
@@ -275,12 +275,12 @@ if __name__ == "__main__":
 
 
     
-    m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(1000, post_dist, init, 2.4*scale, burn_in=100)
+    m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(1000, post_dist, init, 2.4*scale, burn_in=100)
     mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post)
     print("MCMC acceptance rate: ", mcmc_acceptance_rate)  # should be 0.44 for Gaussian posterior
 
 
-    m_lang, lang_acceptance_rate, lang_times = lang(1000, post_dist, init, 2.4*scale, burn_in=100)
+    m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(1000, post_dist, init, 2.4*scale, burn_in=100)
     print("Lang acceptance rate: ", lang_acceptance_rate)  # should be 0.574 for Gaussian posterior
 
     #Posterior mean and scale error
@@ -321,7 +321,7 @@ if __name__ == "__main__":
     if MCMC_SCALE_TEST:
         for proposal_scale in [2.4*scale, 2.4, 2.4/num_latents**0.5, 2.4*scale/num_latents**0.5, 2.4]:
             # N.B. 2.4*scale SHOULD be optimal (in Gaussian posterior case)
-            m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(10000, post, init, proposal_scale, burn_in=1000)
+            m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(10000, post, init, proposal_scale, burn_in=1000)
 
             print("Proposal sigma: ", proposal_scale)
             print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())

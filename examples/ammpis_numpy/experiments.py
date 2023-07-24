@@ -1,6 +1,7 @@
 from ammpis import *
 import matplotlib
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import numpy as np
 import math
@@ -12,9 +13,9 @@ t.manual_seed(0)
 t.cuda.manual_seed(0)
 
 if __name__ == "__main__":
-    num_runs = 3
+    num_runs = 1
 
-    num_iters = 500 # mcmc and lang seem to require about 1000 iterations to converge
+    num_iters = 100 # mcmc and lang seem to require about 1000 iterations to converge
     
     num_latents = [10, 100, 1000, 10000]
     
@@ -38,22 +39,24 @@ if __name__ == "__main__":
 
                 # priors on posterior parameters
                 loc = Normal(0,100).sample((n,1)).float()
-                scale = Normal(0,0.1).sample((n,1)).exp().float() * 10
+                # scale = Normal(0,0.1).sample((n,1)).exp().float() + 5
+                # do log uniform instead of uniform to avoid numerical issues
 
                 post_dist = posteriors[post](loc.squeeze(), scale.squeeze())
                 true_post = t.cat([post_dist.mean.unsqueeze(1), post_dist.stddev.unsqueeze(1)], dim=1)
 
                 # ammpis
-                m_q, m_avg, l_tot, ammp_is_times = ammp_is(num_iters, post_dist, init, 0.4, 100)
+                m_q, m_avg, l_tot, ammp_is_times = ammp_is(num_iters, post_dist, init, 0.4, 10)
                 ammp_is_post_q = [fit_approx_post(m) for m in m_q]
                 ammp_is_post_avg = [fit_approx_post(m) for m in m_avg]
 
                 # mcmc
-                m_mcmc, mcmc_acceptance_rate, mcmc_times = mcmc(num_iters, post_dist, init, 2.4*post_dist.stddev.unsqueeze(1), burn_in=0)#num_iters//10)
+                burn_in = num_iters//10
+                m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(num_iters, post_dist, init, 2.4*post_dist.stddev.unsqueeze(1), burn_in=burn_in)
                 mcmc_post = [fit_approx_post(m) for m in m_mcmc]
 
                 # langevin (mala)
-                m_lang, lang_acceptance_rate, lang_times = lang(num_iters, post_dist, init, 2.4*post_dist.stddev.unsqueeze(1), burn_in=0)#num_iters//10)
+                m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(num_iters, post_dist, init, 2.4*post_dist.stddev.unsqueeze(1), burn_in=burn_in)
                 lang_post = [fit_approx_post(m) for m in m_lang]
 
                 print(f"Acceptance rates: mcmc={mcmc_acceptance_rate},\t lang={lang_acceptance_rate}")
@@ -69,6 +72,26 @@ if __name__ == "__main__":
                 times["ammp_is"][run, list(posteriors.keys()).index(post), num_latents.index(n), :] = ammp_is_times
                 times["mcmc"][run, list(posteriors.keys()).index(post), num_latents.index(n), :] = mcmc_times
                 times["lang"][run, list(posteriors.keys()).index(post), num_latents.index(n), :] = lang_times
+
+
+                # if run == 0 and not (post == "Gumbel" and n > 10):
+                if run == 0 and post == "Gumbel" and n != 1000:
+                    # plot the pdfs of the final approximating distributions
+                    fig, ax = plt.subplots(1,1, figsize=(5.5, 4.0))
+                    # breakpoint()
+                    df = pd.DataFrame({"true": post_dist.sample((num_iters*10,)).numpy()[:,0],
+                                       "ammp_is": Normal(ammp_is_post_avg[-1][:,0], ammp_is_post_avg[-1][:,1]).sample((num_iters*10,)).numpy()[:,0],
+                                       "mcmc": mcmc_samples[burn_in:,0].repeat(10),
+                                       "lang": lang_samples[burn_in:,0].repeat(10)})
+                                        # "mcmc": Normal(mcmc_post[-1][:,0], mcmc_post[-1][:,1]).sample((num_iters*10,)).numpy()[:,0],
+                                        # "lang": Normal(lang_post[-1][:,0], lang_post[-1][:,1] + 1e-10).sample((num_iters*10,)).numpy()[:,0]})
+                    
+                    df.plot.kde(ax=ax, legend=True, ind=None)
+
+                    ax.set_title(f"n={n}, {post}({loc[0,0].item():.3f}, {scale[0,0].item():.3f}) posterior")
+                    plt.savefig(f"figures/{post}_n{n}_run{run}.png")
+                    plt.close()
+
 
     # take mean over runs
     errors["ammp_is_post_q"] = errors["ammp_is_post_q"].mean(0)
