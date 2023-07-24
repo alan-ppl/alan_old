@@ -388,7 +388,7 @@ if __name__ == "__main__":
 
 
     for fn in [ammp_is, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_weight_all]:
-        m_q, m_avg, l_tot, log_weights, ammp_is_times = fn(1000, post_dist, init, 0.4, 100)
+        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(1000, post_dist, init, 0.4, 100)
         mean_errs, var_errs = get_errs(m_q, post)
 
         print(f"Final ELBO {fn.__name__}: ", l_tot[-1])
@@ -445,7 +445,7 @@ if __name__ == "__main__":
 
 
 
-    m_lang, lang_acceptance_rate, lang_times = lang(1000, post_dist, init, 2.4*scale, burn_in=100)
+    m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(1000, post_dist, init, 2.4*scale, burn_in=100)
     mean_errs_lang, var_errs_lang = get_errs(m_lang, post)
     print("Lang acceptance rate: ", lang_acceptance_rate)  # should be 0.574 for Gaussian posterior
 

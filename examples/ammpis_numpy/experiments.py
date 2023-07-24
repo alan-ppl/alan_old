@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
                 # priors on posterior parameters
                 loc = Normal(0,100).sample((n,1)).float()
-                # scale = Normal(0,0.1).sample((n,1)).exp().float() + 5
+                scale = Normal(0,0.1).sample((n,1)).exp().float() + 5
                 # do log uniform instead of uniform to avoid numerical issues
 
                 post_dist = posteriors[post](loc.squeeze(), scale.squeeze())
