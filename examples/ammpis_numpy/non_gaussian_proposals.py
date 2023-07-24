@@ -1,6 +1,6 @@
 from ammpis import *
 import matplotlib
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -11,15 +11,19 @@ from torch.distributions import Normal, Laplace, Gumbel
 t.manual_seed(0)
 t.cuda.manual_seed(0)
 
+### NOTE: this is a lazy modification to experiments.py where I've just changed the proposal distribution type to match
+### the posterior distribution type.
+
 if __name__ == "__main__":
-    num_runs = 1
+    num_runs = 3
 
     num_iters = 100 # mcmc and lang seem to require about 1000 iterations to converge
     
     num_latents = [10, 100, 1000]
     
 
-    posteriors = {"Normal": Normal, "Laplace": Laplace, "Gumbel": Gumbel}
+    # posteriors = {"Normal": Normal, "Laplace": Laplace, "Gumbel": Gumbel}
+    posteriors = {"Laplace": Laplace, "Gumbel": Gumbel}
         
     
     errors = {"ammp_is_post_q":   t.zeros(num_runs, len(posteriors), len(num_latents), num_iters+1, 2),
@@ -78,7 +82,7 @@ if __name__ == "__main__":
 
                     name = fn.__name__
                     # ammpis
-                    m_q, m_avg, l_tot, weights, ents, fn_times = fn(num_iters, post_dist, init, 0.4, 100)
+                    m_q, m_avg, l_tot, weights, ents, fn_times = fn(num_iters, post_dist, init, 0.4, 100, posteriors[post])
                     post_q = [fit_approx_post(m) for m in m_q]
                     post_avg = [fit_approx_post(m) for m in m_avg]
 
@@ -131,7 +135,7 @@ if __name__ == "__main__":
                     df.plot.kde(ax=ax, legend=True, ind=None)
 
                     ax.set_title(f"n={n}, {post}({loc[0,0].item():.3f}, {scale[0,0].item():.3f}) posterior")
-                    plt.savefig(f"figures/{post}_n{n}_run{run}.png")
+                    plt.savefig(f"figures/{post}_n{n}_run{run}_nongaussianprop.png")
                     plt.close()
 
 
@@ -200,6 +204,6 @@ if __name__ == "__main__":
             # add horizontal legend along top of plot
             axs[0,1].legend(loc='lower center', bbox_to_anchor=(0.27, 1.25), shadow=False, ncol=2)
 
-            plt.savefig(f"figures/{post}{'_vs_time' if x_axis == 'time' else ''}.png")
+            plt.savefig(f"figures/{post}{'_vs_time' if x_axis == 'time' else ''}_nongaussianprop.png")
             plt.close()
 

@@ -8,7 +8,7 @@ import math
 import torch as t
 
 from torch.nn.functional import softplus
-from torch.distributions import Normal
+from torch.distributions import Normal, Laplace, Gumbel
 from torch.nn.functional import relu as ReLU
 
 t.manual_seed(0)
@@ -16,28 +16,41 @@ t.cuda.manual_seed(0)
 
 VERBOSE = False
 
-def fit_approx_post(moments):
+def fit_approx_post(moments, dist_type=Normal):
     # moments is a vector nx2 
+    # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
+    # returns a vector nx2 of parameters of the approximating distribution
 
     loc   = moments[:,0]
     raw_2nd_mom = moments[:,1] - loc**2
     bounded_2nd_mom = raw_2nd_mom + (-raw_2nd_mom + 1e-10)*(raw_2nd_mom<=0)
     scale = bounded_2nd_mom .sqrt()
 
+    if dist_type == Laplace:
+        # Variance of Laplace(mu, b) is 2*b^2
+        scale /= 2**0.5
+    elif dist_type == Gumbel:
+        # Variance of Gumbel(mu, b) is (pi^2)/6 * b^2
+        # Mean of Gumbel(mu, b) is mu + 0.57721...*b
+        # (where 0.57721...W is the Euler-Mascheroni constant)
+        scale *= math.sqrt(6)/math.pi
+        loc -= 0.57721*scale
+
     params = t.vstack([loc, scale]).t()
 
     return params
 
 
-def IW(sample, params, post):
+def IW(sample, params, post, dist_type=Normal):
     # sample is a list of samples
     # params is a vector nx2
     # post is a torch distribution
+    # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
     # returns a list of IW samples and the ELBO
     # print(sample.shape)
     logp = post.log_prob(sample)
 
-    logq = Normal(params[:,0], params[:,1]).log_prob(sample)
+    logq = dist_type(params[:,0], params[:,1]).log_prob(sample)
     
     K = sample.shape[0]
     N = sample.shape[1]
@@ -57,17 +70,23 @@ def IW(sample, params, post):
     return m_one_iter, elbo
 
 
-def sample(params, K=1):
+def sample(params, K=1, dist_type=Normal):
+    # params is a vector nx2
+    # K is the number of samples to draw per latent variable
+    # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
+    # returns a list of samples
 
-    samps = Normal(params[:,0], params[:,1]).sample((K,))
+    samps = dist_type(params[:,0], params[:,1]).sample((K,))
     return samps
 
-def entropy(params):
+def entropy(params, dist_type=Normal):
+    # params is a vector nx2
+    # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
 
-    return Normal(params[:,0], params[:,1]).entropy().sum()
+    return dist_type(params[:,0], params[:,1]).entropy().sum()
 
  
-def ammp_is(T, post, init, lr, K=5):
+def ammp_is(T, post, init, lr, K=5, dist_type=Normal):
     m_q = [init]
     m_avg = [init]
     l_tot = [-1e15]
@@ -77,16 +96,16 @@ def ammp_is(T, post, init, lr, K=5):
     start_time = time.time()
 
     weights = [0]
-    entropies = [entropy(fit_approx_post(m_q[-1]))]
+    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1])
+        Q_params = fit_approx_post(m_q[-1], dist_type)
 
-        z_t = sample(Q_params, K)
+        z_t = sample(Q_params, K, dist_type)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post)
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)
 
-        H_Q = entropy(Q_params)
-        H_Q_temp = entropy(Q_params)
+        H_Q = entropy(Q_params, dist_type)
+        H_Q_temp = entropy(Q_params, dist_type)
 
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
@@ -103,9 +122,9 @@ def ammp_is(T, post, init, lr, K=5):
           
             new_m_avg = eta_t * m_one_iter_t + (1 - eta_t) * m_avg[-1]
 
-            Q_temp_params = fit_approx_post(new_m_avg)
+            Q_temp_params = fit_approx_post(new_m_avg, dist_type)
 
-            H_Q_temp = entropy(Q_temp_params)
+            H_Q_temp = entropy(Q_temp_params, dist_type)
 
         l_tot.append(l_tot_t)
         m_avg.append(new_m_avg)
@@ -117,7 +136,7 @@ def ammp_is(T, post, init, lr, K=5):
     return m_q, m_avg, l_tot, weights, entropies, times
 
 
-def ammp_is_uniform_dt(T, post, init, lr, K=5):
+def ammp_is_uniform_dt(T, post, init, lr, K=5, dist_type=Normal):
     m_q = [init]
     m_avg = [init]
     l_tot = [-1e15]
@@ -125,13 +144,13 @@ def ammp_is_uniform_dt(T, post, init, lr, K=5):
     times = t.zeros(T+1)
     start_time = time.time()
 
-    entropies = [entropy(fit_approx_post(m_q[-1]))]
+    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1])
+        Q_params = fit_approx_post(m_q[-1], dist_type)
 
-        z_t = sample(Q_params, K)
+        z_t = sample(Q_params, K, dist_type)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post)
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)
 
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
@@ -150,11 +169,11 @@ def ammp_is_uniform_dt(T, post, init, lr, K=5):
         m_q.append(lr * new_m_avg + (1 - lr) * m_q[-1])
 
         times[i+1] = time.time() - start_time
-        entropies.append(entropy(Q_params))
+        entropies.append(entropy(Q_params, dist_type))
 
     return m_q, m_avg, l_tot, [0]*len(l_tot), entropies, times
 
-def ammp_is_no_inner_loop(T, post, init, lr, K=5):
+def ammp_is_no_inner_loop(T, post, init, lr, K=5, dist_type=Normal):
     m_q = [init]
     m_avg = [init]
     l_tot = [-1e15]
@@ -162,14 +181,14 @@ def ammp_is_no_inner_loop(T, post, init, lr, K=5):
     times = t.zeros(T+1)
     start_time = time.time()
 
-    H_Q_temp = entropy(fit_approx_post(m_q[-1]))
-    entropies = [entropy(fit_approx_post(m_q[-1]))]
+    H_Q_temp = entropy(fit_approx_post(m_q[-1], dist_type), dist_type)
+    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1]) 
+        Q_params = fit_approx_post(m_q[-1], dist_type) 
 
-        z_t = sample(Q_params, K)
+        z_t = sample(Q_params, K, dist_type)
 
-        H_Q = entropy(Q_params)
+        H_Q = entropy(Q_params, dist_type)
         
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
@@ -177,7 +196,7 @@ def ammp_is_no_inner_loop(T, post, init, lr, K=5):
         dt = -(H_Q - H_Q_temp) + 0.1
         #dt = -ReLu(H_Q - H_Q_temp)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post)   
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)   
 
         l_tot_t = l_tot[-1] + dt + softplus(l_one_iter_t - dt - l_tot[-1])
         eta_t = np.exp(l_one_iter_t - l_tot_t)
@@ -197,7 +216,7 @@ def ammp_is_no_inner_loop(T, post, init, lr, K=5):
     return m_q, m_avg, l_tot, weights, entropies, times
 
 
-def ammp_is_weight_all(T, post, init, lr, K=5):
+def ammp_is_weight_all(T, post, init, lr, K=5, dist_type=Normal):
     m_q = [init]
     m_one_iters = []
     l_one_iters = [-1e15]
@@ -207,20 +226,20 @@ def ammp_is_weight_all(T, post, init, lr, K=5):
     times = t.zeros(T+1)
     start_time = time.time()
 
-    entropies = [entropy(fit_approx_post(m_q[-1]))]
+    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1]) 
+        Q_params = fit_approx_post(m_q[-1], dist_type) 
 
-        z_t = sample(Q_params, K)
+        z_t = sample(Q_params, K, dist_type)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post)
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)
 
         m_one_iters.append(m_one_iter_t)
         l_one_iters.append(l_one_iter_t)
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
 
-        dts = [-ReLU(entropy(fit_approx_post(m)) - entropy(Q_params)) for m in m_q]
+        dts = [-ReLU(entropy(fit_approx_post(m, dist_type)) - entropy(Q_params, dist_type)) for m in m_q]
         lts = t.stack([lt - dt for lt, dt in zip(l_one_iters, dts)])
 
         l_tot.append(t.logsumexp(lts, dim=0))
@@ -233,7 +252,7 @@ def ammp_is_weight_all(T, post, init, lr, K=5):
 
         times[i+1] = time.time() - start_time
 
-        entropies.append(entropy(Q_params))
+        entropies.append(entropy(Q_params, dist_type))
 
     return m_q, m_avg, l_tot, [0] + dts, entropies, times
 
