@@ -6,6 +6,7 @@ import time
 import numpy as np
 import math 
 import torch as t
+import torch.nn as nn
 
 from torch.nn.functional import softplus
 from torch.distributions import Normal, Laplace, Gumbel
@@ -256,7 +257,55 @@ def ammp_is_weight_all(T, post, init, lr, K=5, dist_type=Normal):
 
     return m_q, m_avg, l_tot, [0] + dts, entropies, times
 
+
+def VI(T, post_params, init_params, lr, approx_dist=Normal, post_dist=Normal, K=5):
+
+    # approximate posterior
+    means = nn.Parameter(t.tensor(init_params[:,0], dtype=t.float64), requires_grad=True)
+    log_vars = nn.Parameter(t.tensor(init_params[:,1], dtype=t.float64), requires_grad=True)
+
+    post_dist = post_dist(post_params[:,0], post_params[:,1])
+    opt = t.optim.Adam([means,log_vars], lr=lr)
+
+    mean_arr = []
+    log_var_arr = []
+    elbos = []
+    entropies = []
+
+    times = t.zeros(T+1)
+    start_time = time.time()
+    for i in range(T):
+        opt.zero_grad()
+
+        Q = approx_dist(means, t.exp(log_vars))
+
+        z = Q.rsample((K,))
+
+        # compute ELBO
+        K = z.shape[0]
+        N = z.shape[1]
+    
+        elbo = t.logsumexp((post_dist.log_prob(z)- Q.log_prob(z)), dim=0).sum() - N*math.log(K)
+
+        # compute gradients
+        (-elbo).backward()
+
+        # update parameters
+        opt.step()
+
+        times[i+1] = time.time() - start_time
+
+        if VERBOSE and i % 100 == 0:
+            print("Iteration: ", i, "ELBO: ", elbo.item())
         
+        mean_arr.append(means.clone().detach())
+        log_var_arr.append(log_vars.clone().detach())
+        elbos.append(elbo.item())
+        entropies.append(Q.entropy().sum().item())
+
+    return mean_arr, log_var_arr, elbos, entropies, times
+
+
 def mcmc(T, post, init, proposal_scale, burn_in=100):
     if type(proposal_scale) in (float, int):
         proposal_scale = proposal_scale*t.ones(num_latents, 1)
@@ -403,11 +452,11 @@ if __name__ == "__main__":
     colors = ['#a6611a','#dfc27d','#80cdc1','#018571']
     k = 0
 
-    fig, ax = plt.subplots(3,1, figsize=(5.5, 8.0))
+    fig, ax = plt.subplots(4,1, figsize=(5.5, 10.0))
 
 
     for fn in [ammp_is, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_weight_all]:
-        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(1000, post_dist, init, 0.4, 100)
+        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(500, post_dist, init, 0.4, 100)
         mean_errs, var_errs = get_errs(m_q, post)
 
         print(f"Final ELBO {fn.__name__}: ", l_tot[-1])
@@ -420,9 +469,25 @@ if __name__ == "__main__":
 
         ax[2].plot([lt + lw for lt, lw in zip(l_tot, log_weights)][2:], c=colors[k], label=f'{fn.__name__}')
         ax[2].set_title("weighted log P_tot")
+
+        ax[3].plot(entropies, c=colors[k], label=f'{fn.__name__}')
+        ax[3].set_title("Entropy")
         k += 1
 
 
+    vi_means, vi_vars, elbos, entropies, vi_times = VI(500, post, init, 0.4, K=100)
+
+    mean_errs = []
+    var_errs = []
+
+    for i in range(len(vi_means)):
+        mean_errs.append((post[:,0] - vi_means[i]).abs().mean())
+        var_errs.append((post[:,1] - vi_vars[i].exp()).abs().mean())
+
+    ax[0].plot(mean_errs, c='#54278f', label='VI')
+    ax[1].plot(var_errs, c='#54278f', label='VI')
+    ax[2].plot(elbos, c='#54278f', label='VI') 
+    ax[3].plot(entropies, c='#54278f', label='VI')
     
     m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(1000, post_dist, init, 2.4*scale, burn_in=100)
     mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post)
@@ -444,16 +509,16 @@ if __name__ == "__main__":
 
     # breakpoint()
 
-    print('Mean')
-    print(post[:,0])
-    print(fit_approx_post(m_q[-1])[:,0])
-    print(fit_approx_post(m_mcmc[-1])[:,0])
+    # print('Mean')
+    # print(post[:,0])
+    # print(fit_approx_post(m_q[-1])[:,0])
+    # print(fit_approx_post(m_mcmc[-1])[:,0])
 
 
-    print('Scale')
-    print(post[:,1])
-    print(fit_approx_post(m_q[-1])[:,1])   
-    print(fit_approx_post(m_mcmc[-1])[:,1])
+    # print('Scale')
+    # print(post[:,1])
+    # print(fit_approx_post(m_q[-1])[:,1])   
+    # print(fit_approx_post(m_mcmc[-1])[:,1])
     
 
     ax[0].plot(mean_errs_mcmc, c='b', label='MCMC')
@@ -473,7 +538,7 @@ if __name__ == "__main__":
     ax[1].plot(var_errs_lang, c='r', label='Lang')
 
     ax[0].legend(loc='upper right')
-
+    plt.tight_layout()  
     plt.savefig('figures/ammp_is_vs_mcmc.png')
     # #Posterior mean and scale error
     # print("Posterior mean error: ", (post[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
