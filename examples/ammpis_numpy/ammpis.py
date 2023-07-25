@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 matplotlib.use('TkAgg')
 import time 
 
+import stan
 import numpy as np
 import math 
 import torch as t
@@ -329,6 +330,44 @@ def VI(T, post_params, init_params, lr, approx_post_type=Normal, post_type=Norma
 
     return mean_arr, log_var_arr, elbos, entropies, times
 
+def HMC(T, post_params, init, post_type=Normal, num_chains=4):
+    # NOTE: this produces a total of T*num_chains samples
+    code = """
+    data {
+        int<lower=1> N;         // num_latents
+        array[N] real loc;
+        array[N] real scale;
+    }
+    parameters {
+        array[N] real y; 
+    }
+    model {
+        target += normal_lpdf(y | loc, exp(scale)); // log-likelihood
+    }
+    """
+    data = {"N": int(init.shape[0]), "loc": post_params[:,0].numpy(), "scale": t.log(post_params[:,1]).numpy()}
+    # hmc_init = [{"loc": init[:,0].numpy(), "scale": t.log(init[:,1]).numpy()}]*num_chains
+    hmc_init = [{"y": Normal(init[:,0], init[:,1]).sample((1,))[0,:].numpy()}]*num_chains
+
+    posterior = stan.build(code, data=data)
+
+    start_time = time.time()
+    fit = posterior.sample(num_chains=num_chains, num_samples=T, init=hmc_init)
+    end_time = time.time()
+
+    times = np.arange(0, end_time - start_time, (end_time - start_time)/(T*num_chains))
+
+    samples = fit["y"]
+
+    moments = []
+
+    for i in range(T*num_chains):
+        # breakpoint()
+        Ex = samples[:,:(i+1)].mean(1)
+        Ex2 = (samples[:,:(i+1)]**2).mean(1)
+        moments.append(t.stack([t.tensor(Ex), t.tensor(Ex2)]).t())
+
+    return moments, times, fit
 
 def mcmc(T, post_params, init, proposal_scale, burn_in=100, post_dist=Normal):
     if type(proposal_scale) in (float, int):
@@ -517,52 +556,39 @@ if __name__ == "__main__":
     ax[1].plot(var_errs, c='#54278f', label='VI')
     ax[2].plot(elbos, c='#54278f', label='VI') 
     ax[3].plot(entropies, c='#54278f', label='VI')
+
+
+    hmc_moms, hmc_times, hmc_samples = HMC(125, post_params, init, post_type=Normal, num_chains=4)
+
+    mean_errs, var_errs = get_errs(hmc_moms, post_params)
+    ax[0].plot(mean_errs, c='#FF10F0', label='HMC')
+    ax[1].plot(var_errs, c='#FF10F0', label='HMC')
+
     
-    m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(1000, post_params, init, 2.4*scale, burn_in=100)
+    m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(500, post_params, init, 2.4*scale, burn_in=100)
     mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post_params)
     print("MCMC acceptance rate: ", mcmc_acceptance_rate)  # should be 0.44 for Gaussian posterior
 
 
-    m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(1000, post_params, init, 2.4*scale, burn_in=100)
+    m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(500, post_params, init, 2.4*scale, burn_in=100)
     mean_errs_lang, var_errs_lang = get_errs(m_lang, post_params)
     print("Lang acceptance rate: ", lang_acceptance_rate)  # should be 0.574 for Gaussian posterior
 
-    # #Posterior mean and scale error
-    # print("Posterior mean error: ", (post_params[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
-    # print("Posterior scale error: ", (post_params[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
-
-    # print("MCMC mean error: ", (post_params[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
-    # print("MCMC scale error: ", (post_params[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
-
-    # print("Lang mean error: ", (post_params[:,0] - fit_approx_post(m_lang[-1])[:,0]).abs().mean())
-    # print("Lang scale error: ", (post_params[:,1] - fit_approx_post(m_lang[-1])[:,1]).abs().mean())
-
-    # breakpoint()
-
-    # print('Mean')
-    # print(post_params[:,0])
-    # print(fit_approx_post(m_q[-1])[:,0])
-    # print(fit_approx_post(m_mcmc[-1])[:,0])
-
-
-    # print('Scale')
-    # print(post_params[:,1])
-    # print(fit_approx_post(m_q[-1])[:,1])   
-    # print(fit_approx_post(m_mcmc[-1])[:,1])
-    
-
     ax[0].plot(mean_errs_mcmc, c='b', label='MCMC')
-
     ax[1].plot(var_errs_mcmc, c='b', label='MCMC')
 
+    ax[0].plot(mean_errs_lang, c='#11fff3', label='Lang')
+    ax[1].plot(var_errs_lang, c='#11fff3', label='Lang')
 
-    ax[0].plot(mean_errs_lang, c='r', label='Lang')
-
-    ax[1].plot(var_errs_lang, c='r', label='Lang')
+    # log y axis
+    ax[0].set_yscale('log')
+    ax[1].set_yscale('log')
 
     ax[0].legend(loc='upper right')
     plt.tight_layout()  
     plt.savefig('figures/ammp_is_vs_mcmc.png')
+
+
     # #Posterior mean and scale error
     # print("Posterior mean error: ", (post_params[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
     # print("Posterior scale error: ", (post_params[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
@@ -585,9 +611,6 @@ if __name__ == "__main__":
     # print(post_params[:,1])
     # print(fit_approx_post(m_q[-1])[:,1])   
     # print(fit_approx_post(m_mcmc[-1])[:,1])
-    
-
-
 
     # Want to tune MCMC to have acceptance rate of 0.44
     MCMC_SCALE_TEST = False
