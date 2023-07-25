@@ -42,16 +42,16 @@ def fit_approx_post(moments, dist_type=Normal):
     return params
 
 
-def IW(sample, params, post, dist_type=Normal):
+def IW(sample, approx_dist, post):
     # sample is a list of samples
     # params is a vector nx2
     # post is a torch distribution
     # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
     # returns a list of IW samples and the ELBO
-    # print(sample.shape)
+
     logp = post.log_prob(sample)
 
-    logq = dist_type(params[:,0], params[:,1]).log_prob(sample)
+    logq = approx_dist.log_prob(sample)
     
     K = sample.shape[0]
     N = sample.shape[1]
@@ -71,25 +71,25 @@ def IW(sample, params, post, dist_type=Normal):
     return m_one_iter, elbo
 
 
-def sample(params, K=1, dist_type=Normal):
+def sample(dist, K=1):
     # params is a vector nx2
     # K is the number of samples to draw per latent variable
     # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
     # returns a list of samples
 
-    samps = dist_type(params[:,0], params[:,1]).sample((K,))
+    samps = dist.sample((K,))
     return samps
 
-def entropy(params, dist_type=Normal):
+def entropy(dist):
     # params is a vector nx2
     # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
 
-    return dist_type(params[:,0], params[:,1]).entropy().sum()
+    return dist.entropy().sum()
 
  
-def ammp_is(T, post, init, lr, K=5, dist_type=Normal):
-    m_q = [init]
-    m_avg = [init]
+def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    m_q = [init_moments]
+    m_avg = [init_moments]
     l_tot = [-1e15]
     log_w_t_minus_one = 0.0
     
@@ -97,16 +97,22 @@ def ammp_is(T, post, init, lr, K=5, dist_type=Normal):
     start_time = time.time()
 
     weights = [0]
-    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
+
+    post = post_type(post_params[:,0], post_params[:,1])
+
+    init_params = fit_approx_post(m_q[-1], approx_post_type)
+    init_dist = approx_post_type(init_params[:,0], init_params[:,1])
+    entropies = [entropy(init_dist)]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1], dist_type)
+        Q_params = fit_approx_post(m_q[-1], approx_post_type)
 
-        z_t = sample(Q_params, K, dist_type)
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+        z_t = sample(Q_t, K)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
 
-        H_Q = entropy(Q_params, dist_type)
-        H_Q_temp = entropy(Q_params, dist_type)
+        H_Q = entropy(Q_t)
+        H_Q_temp = entropy(Q_t)
 
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
@@ -123,9 +129,10 @@ def ammp_is(T, post, init, lr, K=5, dist_type=Normal):
           
             new_m_avg = eta_t * m_one_iter_t + (1 - eta_t) * m_avg[-1]
 
-            Q_temp_params = fit_approx_post(new_m_avg, dist_type)
+            Q_temp_params = fit_approx_post(new_m_avg, approx_post_type)
 
-            H_Q_temp = entropy(Q_temp_params, dist_type)
+            Q_temp = approx_post_type(Q_temp_params[:,0], Q_temp_params[:,1])
+            H_Q_temp = entropy(Q_temp)
 
         l_tot.append(l_tot_t)
         m_avg.append(new_m_avg)
@@ -134,24 +141,30 @@ def ammp_is(T, post, init, lr, K=5, dist_type=Normal):
 
         times[i+1] = time.time() - start_time
         entropies.append(H_Q)
+
     return m_q, m_avg, l_tot, weights, entropies, times
 
 
-def ammp_is_uniform_dt(T, post, init, lr, K=5, dist_type=Normal):
-    m_q = [init]
-    m_avg = [init]
+def ammp_is_uniform_dt(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    m_q = [init_moments]
+    m_avg = [init_moments]
     l_tot = [-1e15]
     
     times = t.zeros(T+1)
     start_time = time.time()
 
-    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
+    post = post_type(post_params[:,0], post_params[:,1])
+
+    init_params = fit_approx_post(m_q[-1], approx_post_type)
+    init_dist = approx_post_type(init_params[:,0], init_params[:,1])
+    entropies = [entropy(init_dist)]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1], dist_type)
+        Q_params = fit_approx_post(m_q[-1], approx_post_type)
 
-        z_t = sample(Q_params, K, dist_type)
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+        z_t = sample(Q_t, K)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
 
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
@@ -170,26 +183,31 @@ def ammp_is_uniform_dt(T, post, init, lr, K=5, dist_type=Normal):
         m_q.append(lr * new_m_avg + (1 - lr) * m_q[-1])
 
         times[i+1] = time.time() - start_time
-        entropies.append(entropy(Q_params, dist_type))
+        entropies.append(entropy(Q_t))
 
     return m_q, m_avg, l_tot, [0]*len(l_tot), entropies, times
 
-def ammp_is_no_inner_loop(T, post, init, lr, K=5, dist_type=Normal):
-    m_q = [init]
-    m_avg = [init]
+def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    m_q = [init_moments]
+    m_avg = [init_moments]
     l_tot = [-1e15]
     weights = [0]
     times = t.zeros(T+1)
     start_time = time.time()
 
-    H_Q_temp = entropy(fit_approx_post(m_q[-1], dist_type), dist_type)
-    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
+    post = post_type(post_params[:,0], post_params[:,1])
+
+    Q_temp_params = fit_approx_post(m_q[-1], approx_post_type)
+    Q_temp = approx_post_type(Q_temp_params[:,0], Q_temp_params[:,1])
+    H_Q_temp = entropy(Q_temp)
+    entropies = [H_Q_temp]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1], dist_type) 
+        Q_params = fit_approx_post(m_q[-1], approx_post_type) 
 
-        z_t = sample(Q_params, K, dist_type)
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+        z_t = sample(Q_t, K)
 
-        H_Q = entropy(Q_params, dist_type)
+        H_Q = entropy(Q_t)
         
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
@@ -197,7 +215,7 @@ def ammp_is_no_inner_loop(T, post, init, lr, K=5, dist_type=Normal):
         dt = -(H_Q - H_Q_temp) + 0.1
         #dt = -ReLu(H_Q - H_Q_temp)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)   
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)  
 
         l_tot_t = l_tot[-1] + dt + softplus(l_one_iter_t - dt - l_tot[-1])
         eta_t = np.exp(l_one_iter_t - l_tot_t)
@@ -212,35 +230,41 @@ def ammp_is_no_inner_loop(T, post, init, lr, K=5, dist_type=Normal):
         H_Q_temp = H_Q
         weights.append(dt)
         times[i+1] = time.time() - start_time
-        entropies = H_Q
+        entropies.append(H_Q)
 
     return m_q, m_avg, l_tot, weights, entropies, times
 
 
-def ammp_is_weight_all(T, post, init, lr, K=5, dist_type=Normal):
-    m_q = [init]
+def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    m_q = [init_moments]
     m_one_iters = []
     l_one_iters = [-1e15]
-    m_avg = [init]
+    m_avg = [init_moments]
     l_tot = [-1e15]
 
     times = t.zeros(T+1)
     start_time = time.time()
 
-    entropies = [entropy(fit_approx_post(m_q[-1], dist_type), dist_type)]
+    post = post_type(post_params[:,0], post_params[:,1])
+
+    Q_params = fit_approx_post(m_q[-1], approx_post_type)
+    Q_1 = approx_post_type(Q_params[:,0], Q_params[:,1])
+    entropies = [entropy(Q_1)]
     for i in range(T):
-        Q_params = fit_approx_post(m_q[-1], dist_type) 
+        Q_params = fit_approx_post(m_q[-1], approx_post_type) 
 
-        z_t = sample(Q_params, K, dist_type)
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+        z_t = sample(Q_t, K)
 
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_params, post, dist_type)
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)  
 
         m_one_iters.append(m_one_iter_t)
         l_one_iters.append(l_one_iter_t)
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
 
-        dts = [-ReLU(entropy(fit_approx_post(m, dist_type)) - entropy(Q_params, dist_type)) for m in m_q]
+        params_t = [fit_approx_post(m, approx_post_type) for m in m_q]
+        dts = [-ReLU(entropy(approx_post_type(p[:,0], p[:,-1])) - entropy(Q_t)) for p in params_t]
         lts = t.stack([lt - dt for lt, dt in zip(l_one_iters, dts)])
 
         l_tot.append(t.logsumexp(lts, dim=0))
@@ -253,18 +277,18 @@ def ammp_is_weight_all(T, post, init, lr, K=5, dist_type=Normal):
 
         times[i+1] = time.time() - start_time
 
-        entropies.append(entropy(Q_params, dist_type))
+        entropies.append(entropy(Q_t))
 
     return m_q, m_avg, l_tot, [0] + dts, entropies, times
 
 
-def VI(T, post_params, init_params, lr, approx_dist=Normal, post_dist=Normal, K=5):
+def VI(T, post_params, init_params, lr, approx_post_type=Normal, post_type=Normal, K=5):
 
     # approximate posterior
     means = nn.Parameter(t.tensor(init_params[:,0], dtype=t.float64), requires_grad=True)
     log_vars = nn.Parameter(t.tensor(init_params[:,1], dtype=t.float64), requires_grad=True)
 
-    post_dist = post_dist(post_params[:,0], post_params[:,1])
+    post = post_type(post_params[:,0], post_params[:,1])
     opt = t.optim.Adam([means,log_vars], lr=lr)
 
     mean_arr = []
@@ -277,7 +301,7 @@ def VI(T, post_params, init_params, lr, approx_dist=Normal, post_dist=Normal, K=
     for i in range(T):
         opt.zero_grad()
 
-        Q = approx_dist(means, t.exp(log_vars))
+        Q = approx_post_type(means, t.exp(log_vars))
 
         z = Q.rsample((K,))
 
@@ -285,7 +309,7 @@ def VI(T, post_params, init_params, lr, approx_dist=Normal, post_dist=Normal, K=
         K = z.shape[0]
         N = z.shape[1]
     
-        elbo = t.logsumexp((post_dist.log_prob(z)- Q.log_prob(z)), dim=0).sum() - N*math.log(K)
+        elbo = t.logsumexp((post.log_prob(z)- Q.log_prob(z)), dim=0).sum() - N*math.log(K)
 
         # compute gradients
         (-elbo).backward()
@@ -301,18 +325,19 @@ def VI(T, post_params, init_params, lr, approx_dist=Normal, post_dist=Normal, K=
         mean_arr.append(means.clone().detach())
         log_var_arr.append(log_vars.clone().detach())
         elbos.append(elbo.item())
-        entropies.append(Q.entropy().sum().item())
+        entropies.append(entropy(Q).clone().detach())
 
     return mean_arr, log_var_arr, elbos, entropies, times
 
 
-def mcmc(T, post, init, proposal_scale, burn_in=100):
+def mcmc(T, post_params, init, proposal_scale, burn_in=100, post_dist=Normal):
     if type(proposal_scale) in (float, int):
         proposal_scale = proposal_scale*t.ones(num_latents, 1)
 
     N = init.shape[0]
 
-    x = sample(init, 1)
+    init_proposal = Normal(init[:,0], init[:,1])
+    x = sample(init_proposal, 1)
     
     # to store samples
     samples = t.zeros((T + burn_in, N))
@@ -325,17 +350,19 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
     times = t.zeros(T+1)
     start_time = time.time()
 
+    post = post_dist(post_params[:,0], post_params[:,1])
     for i in range(T + burn_in):
         # normal proposal
         proposal_params = t.stack([x.squeeze(0), proposal_scale.squeeze(1)], dim=1)
 
-        y = sample(proposal_params, 1)
+        proposal = Normal(proposal_params[:,0], proposal_params[:,1])
+        y = sample(proposal, 1)
 
         alpha = t.exp(post.log_prob(y) - post.log_prob(x))
         accepted = alpha > t.rand(N)
         num_accepted += accepted.squeeze(0)
 
-        x = t.where(accepted, y, x)
+        x = t.where(accepted, y, x) 
 
         samples[i,:] = x
 
@@ -357,13 +384,14 @@ def mcmc(T, post, init, proposal_scale, burn_in=100):
 
     return moments, acceptance_rates.mean().item(), times, samples
 
-def lang(T, post, init, proposal_scale, burn_in=100):
+def lang(T, post_params, init, proposal_scale, burn_in=100, post_dist=Normal):
     if type(proposal_scale) in (float, int):
         proposal_scale = proposal_scale*t.ones(num_latents, 1)
 
     N = init.shape[0]
 
-    x = sample(init, 1)
+    init_proposal = Normal(init[:,0], init[:,1])
+    x = sample(init_proposal, 1)
     
     # to store samples
     samples = t.zeros((T + burn_in, N))
@@ -376,6 +404,7 @@ def lang(T, post, init, proposal_scale, burn_in=100):
     times = t.zeros(T+1)
     start_time = time.time()
 
+    post = post_dist(post_params[:,0], post_params[:,1])
     for i in range(T + burn_in):
         # get grad of log p(x)
         x.requires_grad_(True)
@@ -389,7 +418,8 @@ def lang(T, post, init, proposal_scale, burn_in=100):
         # breakpoint()
         proposal_params = t.stack([(x + proposal_scale.t() * 0.5 * grad_logp_x).squeeze(), proposal_scale.squeeze(1)], dim=1)
 
-        y = sample(proposal_params, 1)
+        proposal = Normal(proposal_params[:,0], proposal_params[:,1])
+        y = sample(proposal, 1)
 
         # get grad of log p(y)
         y.requires_grad_(True)
@@ -424,7 +454,7 @@ def lang(T, post, init, proposal_scale, burn_in=100):
 
     return moments, acceptance_rates.mean().item(), times, samples
 
-def get_errs(m_q, post):
+def get_errs(m_q, post_params):
     # m_q is a list of moments
     # post is a vector each row of which defines a posterior for a latent variable
     # returns a list of mean errors and a list of variance errors
@@ -432,8 +462,8 @@ def get_errs(m_q, post):
     var_errs = []
 
     for i in range(len(m_q)):
-        mean_errs.append((post[:,0] - fit_approx_post(m_q[i])[:,0]).abs().mean())
-        var_errs.append((post[:,1] - fit_approx_post(m_q[i])[:,1]).abs().mean())
+        mean_errs.append((post_params[:,0] - fit_approx_post(m_q[i])[:,0]).abs().mean())
+        var_errs.append((post_params[:,1] - fit_approx_post(m_q[i])[:,1]).abs().mean())
 
     return mean_errs, var_errs
 
@@ -445,8 +475,7 @@ if __name__ == "__main__":
     loc = Normal(0,150).sample((num_latents,1)).float()
     scale = Normal(0,0.1).sample((num_latents,1)).exp().float()
 
-    post = t.cat([loc, scale], dim=1)
-    post_dist = Normal(post[:,0], post[:,1])
+    post_params = t.cat([loc, scale], dim=1)
     # breakpoint()
 
     colors = ['#a6611a','#dfc27d','#80cdc1','#018571']
@@ -456,8 +485,8 @@ if __name__ == "__main__":
 
 
     for fn in [ammp_is, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_weight_all]:
-        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(500, post_dist, init, 0.4, 100)
-        mean_errs, var_errs = get_errs(m_q, post)
+        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(500, post_params, init, 0.4, 100)
+        mean_errs, var_errs = get_errs(m_q, post_params)
 
         print(f"Final ELBO {fn.__name__}: ", l_tot[-1])
 
@@ -475,48 +504,49 @@ if __name__ == "__main__":
         k += 1
 
 
-    vi_means, vi_vars, elbos, entropies, vi_times = VI(500, post, init, 0.4, K=100)
+    vi_means, vi_vars, elbos, entropies, vi_times = VI(500, post_params, init, 0.4, K=100)
 
     mean_errs = []
     var_errs = []
 
     for i in range(len(vi_means)):
-        mean_errs.append((post[:,0] - vi_means[i]).abs().mean())
-        var_errs.append((post[:,1] - vi_vars[i].exp()).abs().mean())
+        mean_errs.append((post_params[:,0] - vi_means[i]).abs().mean())
+        var_errs.append((post_params[:,1] - vi_vars[i].exp()).abs().mean())
 
     ax[0].plot(mean_errs, c='#54278f', label='VI')
     ax[1].plot(var_errs, c='#54278f', label='VI')
     ax[2].plot(elbos, c='#54278f', label='VI') 
     ax[3].plot(entropies, c='#54278f', label='VI')
     
-    m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(1000, post_dist, init, 2.4*scale, burn_in=100)
-    mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post)
+    m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(1000, post_params, init, 2.4*scale, burn_in=100)
+    mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post_params)
     print("MCMC acceptance rate: ", mcmc_acceptance_rate)  # should be 0.44 for Gaussian posterior
 
 
-    m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(1000, post_dist, init, 2.4*scale, burn_in=100)
+    m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(1000, post_params, init, 2.4*scale, burn_in=100)
+    mean_errs_lang, var_errs_lang = get_errs(m_lang, post_params)
     print("Lang acceptance rate: ", lang_acceptance_rate)  # should be 0.574 for Gaussian posterior
 
-    #Posterior mean and scale error
-    print("Posterior mean error: ", (post[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
-    print("Posterior scale error: ", (post[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
+    # #Posterior mean and scale error
+    # print("Posterior mean error: ", (post_params[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
+    # print("Posterior scale error: ", (post_params[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
 
-    print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
-    print("MCMC scale error: ", (post[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
+    # print("MCMC mean error: ", (post_params[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
+    # print("MCMC scale error: ", (post_params[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
 
-    print("Lang mean error: ", (post[:,0] - fit_approx_post(m_lang[-1])[:,0]).abs().mean())
-    print("Lang scale error: ", (post[:,1] - fit_approx_post(m_lang[-1])[:,1]).abs().mean())
+    # print("Lang mean error: ", (post_params[:,0] - fit_approx_post(m_lang[-1])[:,0]).abs().mean())
+    # print("Lang scale error: ", (post_params[:,1] - fit_approx_post(m_lang[-1])[:,1]).abs().mean())
 
     # breakpoint()
 
     # print('Mean')
-    # print(post[:,0])
+    # print(post_params[:,0])
     # print(fit_approx_post(m_q[-1])[:,0])
     # print(fit_approx_post(m_mcmc[-1])[:,0])
 
 
     # print('Scale')
-    # print(post[:,1])
+    # print(post_params[:,1])
     # print(fit_approx_post(m_q[-1])[:,1])   
     # print(fit_approx_post(m_mcmc[-1])[:,1])
     
@@ -526,13 +556,6 @@ if __name__ == "__main__":
     ax[1].plot(var_errs_mcmc, c='b', label='MCMC')
 
 
-
-
-
-    m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(1000, post_dist, init, 2.4*scale, burn_in=100)
-    mean_errs_lang, var_errs_lang = get_errs(m_lang, post)
-    print("Lang acceptance rate: ", lang_acceptance_rate)  # should be 0.574 for Gaussian posterior
-
     ax[0].plot(mean_errs_lang, c='r', label='Lang')
 
     ax[1].plot(var_errs_lang, c='r', label='Lang')
@@ -541,25 +564,25 @@ if __name__ == "__main__":
     plt.tight_layout()  
     plt.savefig('figures/ammp_is_vs_mcmc.png')
     # #Posterior mean and scale error
-    # print("Posterior mean error: ", (post[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
-    # print("Posterior scale error: ", (post[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
+    # print("Posterior mean error: ", (post_params[:,0] - fit_approx_post(m_q[-1])[:,0]).abs().mean())
+    # print("Posterior scale error: ", (post_params[:,1] - fit_approx_post(m_q[-1])[:,1]).abs().mean())
 
-    # print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
-    # print("MCMC scale error: ", (post[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
+    # print("MCMC mean error: ", (post_params[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
+    # print("MCMC scale error: ", (post_params[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
 
-    # print("Lang mean error: ", (post[:,0] - fit_approx_post(m_lang[-1])[:,0]).abs().mean())
-    # print("Lang scale error: ", (post[:,1] - fit_approx_post(m_lang[-1])[:,1]).abs().mean())
+    # print("Lang mean error: ", (post_params[:,0] - fit_approx_post(m_lang[-1])[:,0]).abs().mean())
+    # print("Lang scale error: ", (post_params[:,1] - fit_approx_post(m_lang[-1])[:,1]).abs().mean())
 
     # breakpoint()
 
     # print('Mean')
-    # print(post[:,0])
+    # print(post_params[:,0])
     # print(fit_approx_post(m_q[-1])[:,0])
     # print(fit_approx_post(m_mcmc[-1])[:,0])
 
 
     # print('Scale')
-    # print(post[:,1])
+    # print(post_params[:,1])
     # print(fit_approx_post(m_q[-1])[:,1])   
     # print(fit_approx_post(m_mcmc[-1])[:,1])
     
@@ -571,11 +594,11 @@ if __name__ == "__main__":
     if MCMC_SCALE_TEST:
         for proposal_scale in [2.4*scale, 2.4, 2.4/num_latents**0.5, 2.4*scale/num_latents**0.5, 2.4]:
             # N.B. 2.4*scale SHOULD be optimal (in Gaussian posterior case)
-            m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(10000, post, init, proposal_scale, burn_in=1000)
+            m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(10000, post_params, init, proposal_scale, burn_in=1000)
 
             print("Proposal sigma: ", proposal_scale)
-            print("MCMC mean error: ", (post[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
-            print("MCMC scale error: ", (post[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
+            print("MCMC mean error: ", (post_params[:,0] - fit_approx_post(m_mcmc[-1])[:,0]).abs().mean())
+            print("MCMC scale error: ", (post_params[:,1] - fit_approx_post(m_mcmc[-1])[:,1]).abs().mean())
             print("MCMC acceptance rate: ", mcmc_acceptance_rate)
             print()
 
