@@ -332,9 +332,10 @@ def VI(T, post_params, init_params, lr, approx_post_type=Normal, post_type=Norma
 
 def HMC(T, post_params, init, post_type=Normal, num_chains=4):
     # NOTE: this produces a total of T*num_chains samples
+    ll_stan_func = {Normal: "normal_lpdf", Laplace: "double_exponential_lpdf", Gumbel: "gumbel_lpdf"}
     code = """
     data {
-        int<lower=1> N;         // num_latents
+        int<lower=1> N;
         array[N] real loc;
         array[N] real scale;
     }
@@ -342,12 +343,12 @@ def HMC(T, post_params, init, post_type=Normal, num_chains=4):
         array[N] real y; 
     }
     model {
-        target += normal_lpdf(y | loc, exp(scale)); // log-likelihood
+        target += %s(y | loc, exp(scale));
     }
-    """
+    """ % (ll_stan_func[post_type])
     data = {"N": int(init.shape[0]), "loc": post_params[:,0].numpy(), "scale": t.log(post_params[:,1]).numpy()}
     # hmc_init = [{"loc": init[:,0].numpy(), "scale": t.log(init[:,1]).numpy()}]*num_chains
-    hmc_init = [{"y": Normal(init[:,0], init[:,1]).sample((1,))[0,:].numpy()}]*num_chains
+    hmc_init = [{"y": post_type(init[:,0], init[:,1]).sample((1,))[0,:].numpy()}]*num_chains
 
     posterior = stan.build(code, data=data)
 
