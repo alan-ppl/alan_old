@@ -10,7 +10,7 @@ import torch as t
 import torch.nn as nn
 
 from torch.nn.functional import softplus
-from torch.distributions import Normal, Laplace, Gumbel
+from torch.distributions import Normal, Laplace, Gumbel, Uniform
 from torch.nn.functional import relu as ReLU
 
 t.manual_seed(0)
@@ -368,7 +368,7 @@ def HMC(T, post_params, init, post_type=Normal, num_chains=4):
         Ex2 = (samples[:,:(i+1)]**2).mean(1)
         moments.append(t.stack([t.tensor(Ex), t.tensor(Ex2)]).t())
 
-    return moments, times, fit
+    return moments, times, samples
 
 def mcmc(T, post_params, init, proposal_scale, burn_in=100, post_dist=Normal):
     if type(proposal_scale) in (float, int):
@@ -513,7 +513,11 @@ if __name__ == "__main__":
     init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 
     loc = Normal(0,150).sample((num_latents,1)).float()
-    scale = Normal(0,0.1).sample((num_latents,1)).exp().float()
+    # scale = Normal(0,0.01).sample((num_latents,1)).exp().float()
+    scale = Uniform(-5,-0.5).sample((num_latents,1)).exp().float()
+
+    # print(scale)
+    # breakpoint()
 
     post_params = t.cat([loc, scale], dim=1)
     # breakpoint()
@@ -525,7 +529,7 @@ if __name__ == "__main__":
 
 
     for fn in [ammp_is, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_weight_all]:
-        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(500, post_params, init, 0.4, 100)
+        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(500, post_params, init, 0.4, 5)
         mean_errs, var_errs = get_errs(m_q, post_params)
 
         print(f"Final ELBO {fn.__name__}: ", l_tot[-1])
@@ -578,12 +582,14 @@ if __name__ == "__main__":
     ax[0].plot(mean_errs_mcmc, c='b', label='MCMC')
     ax[1].plot(var_errs_mcmc, c='b', label='MCMC')
 
-    ax[0].plot(mean_errs_lang, c='#11fff3', label='Lang')
-    ax[1].plot(var_errs_lang, c='#11fff3', label='Lang')
+    ax[0].plot(mean_errs_lang, c='r', label='Lang')
+    ax[1].plot(var_errs_lang, c='r', label='Lang')
 
     # log y axis
     ax[0].set_yscale('log')
     ax[1].set_yscale('log')
+    # ax[2].set_yscale('log')
+    ax[3].set_yscale('log')
 
     ax[0].legend(loc='upper right')
     plt.tight_layout()  
