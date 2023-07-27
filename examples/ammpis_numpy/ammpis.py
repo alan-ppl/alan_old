@@ -92,6 +92,7 @@ def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post
     m_q = [init_moments]
     m_avg = [init_moments]
     l_tot = [-1e15]
+    l_one_iters = []
     log_w_t_minus_one = 0.0
     
     times = t.zeros(T+1)
@@ -118,11 +119,11 @@ def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
 
-        for _ in range(5):
+        for _ in range(1):
             log_w_t = -(H_Q - H_Q_temp)
             #log_w_t = -ReLu(H_Q - H_Q_temp)
 
-            weights.append(log_w_t)
+            
             dt = log_w_t - log_w_t_minus_one
 
             l_tot_t = l_tot[-1] + dt + softplus(l_one_iter_t - dt - l_tot[-1])
@@ -135,22 +136,24 @@ def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post
             Q_temp = approx_post_type(Q_temp_params[:,0], Q_temp_params[:,1])
             H_Q_temp = entropy(Q_temp)
 
-        l_tot.append(l_tot_t)
-        m_avg.append(new_m_avg)
+        weights.append(dt.clone())
+        l_one_iters.append(l_one_iter_t.clone())
+        l_tot.append(l_tot_t.clone())
+        m_avg.append(new_m_avg.clone())
 
         m_q.append(lr * new_m_avg + (1 - lr) * m_q[-1])
 
         times[i+1] = time.time() - start_time
         entropies.append(H_Q)
 
-    return m_q, m_avg, l_tot, weights, entropies, times
+    return m_q, m_avg, l_tot, l_one_iters, weights, entropies, times
 
 
 def ammp_is_uniform_dt(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
     m_q = [init_moments]
     m_avg = [init_moments]
     l_tot = [-1e15]
-    
+    l_one_iters = []
     times = t.zeros(T+1)
     start_time = time.time()
 
@@ -178,20 +181,22 @@ def ammp_is_uniform_dt(T, post_params, init_moments, lr, K=5, approx_post_type=N
         new_m_avg = eta_t * m_one_iter_t + (1 - eta_t) * m_avg[-1]
 
 
-        l_tot.append(l_tot_t)
-        m_avg.append(new_m_avg)
+        l_tot.append(l_tot_t.clone())
+        l_one_iters.append(l_one_iter_t.clone())
+        m_avg.append(new_m_avg.clone())
 
         m_q.append(lr * new_m_avg + (1 - lr) * m_q[-1])
 
         times[i+1] = time.time() - start_time
         entropies.append(entropy(Q_t))
 
-    return m_q, m_avg, l_tot, [0]*len(l_tot), entropies, times
+    return m_q, m_avg, l_tot, l_one_iters, [0]*len(l_tot), entropies, times
 
 def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
     m_q = [init_moments]
     m_avg = [init_moments]
     l_tot = [-1e15]
+    l_one_iters = []
     weights = [0]
     times = t.zeros(T+1)
     start_time = time.time()
@@ -223,8 +228,9 @@ def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_typ
         
         new_m_avg = eta_t * m_one_iter_t + (1 - eta_t) * m_avg[-1]
 
-        l_tot.append(l_tot_t)
-        m_avg.append(new_m_avg)
+        l_tot.append(l_tot_t.clone())
+        l_one_iters.append(l_one_iter_t.clone())
+        m_avg.append(new_m_avg.clone())
 
         m_q.append(lr * new_m_avg + (1 - lr) * m_q[-1])
 
@@ -233,7 +239,7 @@ def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_typ
         times[i+1] = time.time() - start_time
         entropies.append(H_Q)
 
-    return m_q, m_avg, l_tot, weights, entropies, times
+    return m_q, m_avg, l_tot, l_one_iters, weights, entropies, times
 
 
 def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
@@ -242,6 +248,7 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
     l_one_iters = [-1e15]
     m_avg = [init_moments]
     l_tot = [-1e15]
+    l_one_iters = []
 
     times = t.zeros(T+1)
     start_time = time.time()
@@ -268,7 +275,8 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
         dts = [-ReLU(entropy(approx_post_type(p[:,0], p[:,-1])) - entropy(Q_t)) for p in params_t]
         lts = t.stack([lt - dt for lt, dt in zip(l_one_iters, dts)])
 
-        l_tot.append(t.logsumexp(lts, dim=0))
+        l_tot.append(t.logsumexp(lts, dim=0).clone())
+        l_one_iters.append(l_one_iter_t.clone())
 
         new_m_avg = sum([t.exp(lt - l_tot[-1]) * m for lt, m in zip(lts, m_one_iters)])
 
@@ -280,7 +288,7 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
 
         entropies.append(entropy(Q_t))
 
-    return m_q, m_avg, l_tot, [0] + dts, entropies, times
+    return m_q, m_avg, l_tot, l_one_iters, [0] + dts, entropies, times
 
 
 def VI(T, post_params, init_params, lr, approx_post_type=Normal, post_type=Normal, K=5):
@@ -510,10 +518,11 @@ def get_errs(m_q, post_params):
 
 if __name__ == "__main__":
     num_latents = 500
+    K=5
     init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 
     loc = Normal(0,150).sample((num_latents,1)).float()
-    # scale = Normal(0,0.01).sample((num_latents,1)).exp().float()
+    # scale = Normal(0,1).sample((num_latents,1)).exp().float()
     scale = Uniform(-5,-0.5).sample((num_latents,1)).exp().float()
 
     # print(scale)
@@ -525,11 +534,11 @@ if __name__ == "__main__":
     colors = ['#a6611a','#dfc27d','#80cdc1','#018571']
     k = 0
 
-    fig, ax = plt.subplots(4,1, figsize=(5.5, 10.0))
+    fig, ax = plt.subplots(4,1, figsize=(5.5, 12.0))
 
 
     for fn in [ammp_is, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_weight_all]:
-        m_q, m_avg, l_tot, log_weights, entropies, ammp_is_times = fn(500, post_params, init, 0.4, 5)
+        m_q, m_avg, l_tot, l_one_iters, log_weights, entropies, ammp_is_times = fn(500, post_params, init, 0.4, K)
         mean_errs, var_errs = get_errs(m_q, post_params)
 
         print(f"Final ELBO {fn.__name__}: ", l_tot[-1])
@@ -540,27 +549,27 @@ if __name__ == "__main__":
         ax[1].plot(var_errs, c=colors[k], label=f'{fn.__name__}')
         ax[1].set_title("Var Error")
 
-        ax[2].plot([lt + lw for lt, lw in zip(l_tot, log_weights)][2:], c=colors[k], label=f'{fn.__name__}')
-        ax[2].set_title("weighted log P_tot")
+        ax[2].plot([lt + lw for lt, lw in zip(l_one_iters, log_weights)][2:], c=colors[k], label=f'{fn.__name__}')
+        ax[2].set_title("weighted l_one_iter")
 
         ax[3].plot(entropies, c=colors[k], label=f'{fn.__name__}')
         ax[3].set_title("Entropy")
         k += 1
 
 
-    vi_means, vi_vars, elbos, entropies, vi_times = VI(500, post_params, init, 0.4, K=100)
+    # vi_means, vi_vars, elbos, entropies, vi_times = VI(500, post_params, init, 0.4, K=K)
 
-    mean_errs = []
-    var_errs = []
+    # mean_errs = []
+    # var_errs = []
 
-    for i in range(len(vi_means)):
-        mean_errs.append((post_params[:,0] - vi_means[i]).abs().mean())
-        var_errs.append((post_params[:,1] - vi_vars[i].exp()).abs().mean())
+    # for i in range(len(vi_means)):
+    #     mean_errs.append((post_params[:,0] - vi_means[i]).abs().mean())
+    #     var_errs.append((post_params[:,1] - vi_vars[i].exp()).abs().mean())
 
-    ax[0].plot(mean_errs, c='#54278f', label='VI')
-    ax[1].plot(var_errs, c='#54278f', label='VI')
-    ax[2].plot(elbos, c='#54278f', label='VI') 
-    ax[3].plot(entropies, c='#54278f', label='VI')
+    # ax[0].plot(mean_errs, c='#54278f', label='VI')
+    # ax[1].plot(var_errs, c='#54278f', label='VI')
+    # ax[2].plot(elbos, c='#54278f', label='VI') 
+    # ax[3].plot(entropies, c='#54278f', label='VI')
 
 
     hmc_moms, hmc_times, hmc_samples = HMC(125, post_params, init, post_type=Normal, num_chains=4)
@@ -588,7 +597,7 @@ if __name__ == "__main__":
     # log y axis
     ax[0].set_yscale('log')
     ax[1].set_yscale('log')
-    # ax[2].set_yscale('log')
+    ax[2].set_yscale('symlog')
     ax[3].set_yscale('log')
 
     ax[0].legend(loc='upper right')
