@@ -1,6 +1,6 @@
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import time 
 
 import stan
@@ -17,6 +17,9 @@ t.manual_seed(0)
 t.cuda.manual_seed(0)
 
 VERBOSE = False
+
+def ReLU(x):
+    return x * (x > 0)
 
 def fit_approx_post(moments, dist_type=Normal):
     # moments is a vector nx2 
@@ -89,7 +92,7 @@ def entropy(dist):
     return dist.entropy().sum()
 
  
-def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal, use_ReLU=False, num_inner_loop=1):
     m_q = [init_moments]
     m_avg = [init_moments]
     l_tot = [-1e15]
@@ -120,9 +123,11 @@ def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
 
-        for _ in range(1):
-            log_w_t = -(H_Q - H_Q_temp)
-            #log_w_t = -ReLu(H_Q - H_Q_temp)
+        for _ in range(num_inner_loop):
+            if use_ReLU:
+                log_w_t = -ReLU(H_Q - H_Q_temp)
+            else:
+                log_w_t = -(H_Q - H_Q_temp)
 
             
             dt = log_w_t - log_w_t_minus_one #- 0.1
@@ -148,8 +153,12 @@ def ammp_is(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post
         times[i+1] = time.time() - start_time
         entropies.append(H_Q)
 
+        log_w_t_minus_one = log_w_t
+
     return m_q, m_avg, l_tot, l_one_iters, weights, entropies, times
 
+def ammp_is_ReLU(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal, num_inner_loop=1):
+    return ammp_is(T, post_params, init_moments, lr, K, approx_post_type, post_type, use_ReLU=True, num_inner_loop=num_inner_loop)
 
 def ammp_is_uniform_dt(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
     m_q = [init_moments]
@@ -194,7 +203,7 @@ def ammp_is_uniform_dt(T, post_params, init_moments, lr, K=5, approx_post_type=N
 
     return m_q, m_avg, l_tot, l_one_iters, [0]*len(l_tot), entropies, times
 
-def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal, use_ReLU=False):
     m_q = [init_moments]
     m_avg = [init_moments]
     l_tot = [-1e15]
@@ -220,8 +229,10 @@ def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_typ
         if VERBOSE and i % 100 == 0:
             print("Iteration: ", i, "ELBO: ", l_tot[-1])
 
-        dt = -(H_Q - H_Q_temp) + 0.1
-        #dt = -ReLu(H_Q - H_Q_temp)
+        if use_ReLU:
+            dt = -ReLU(H_Q - H_Q_temp)
+        else:
+            dt = -(H_Q - H_Q_temp) + 0.1
 
         m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)  
 
@@ -242,6 +253,9 @@ def ammp_is_no_inner_loop(T, post_params, init_moments, lr, K=5, approx_post_typ
         entropies.append(H_Q)
 
     return m_q, m_avg, l_tot, l_one_iters, weights, entropies, times
+
+def ammp_is_no_inner_loop_ReLU(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    return ammp_is_no_inner_loop(T, post_params, init_moments, lr, K, approx_post_type, post_type, use_ReLU=True)
 
 
 def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
@@ -278,7 +292,7 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
         lts = t.stack([lt - dt for lt, dt in zip(l_one_iters, dts)])
 
         l_tot.append(t.logsumexp(lts, dim=0).clone())
-        l_one_iters.append(l_one_iter_t.clone())
+        # l_one_iters.append(l_one_iter_t.clone())
 
         new_m_avg = sum([t.exp(lt - l_tot[-1]) * m for lt, m in zip(lts, m_one_iters)])
 
@@ -291,6 +305,108 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
         entropies.append(entropy(Q_t))
 
     return m_q, m_avg, l_tot, l_one_iters, [0] + dts, entropies, times
+
+def natural_rws(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    m_q = [init_moments]
+    l_one_iters = []
+    
+    times = t.zeros(T+1)
+    start_time = time.time()
+
+    post = post_type(post_params[:,0], post_params[:,1])
+
+    init_params = fit_approx_post(m_q[-1], approx_post_type)
+    init_dist = approx_post_type(init_params[:,0], init_params[:,1])
+    entropies = [entropy(init_dist)]
+    for i in range(T):
+        Q_params = fit_approx_post(m_q[-1], approx_post_type)
+
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+
+        z_t = sample(Q_t, K)
+
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
+
+        new_m_q = lr * m_one_iter_t + (1 - lr) * m_q[-1]
+
+        entropies.append(entropy(Q_t))
+        l_one_iters.append(l_one_iter_t.clone())
+        m_q.append(new_m_q.clone())
+
+        times[i+1] = time.time() - start_time
+
+    return m_q, l_one_iters, entropies, times
+
+def natural_rws_difference(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    m_q = [init_moments]
+    l_one_iters = []
+    
+    times = t.zeros(T+1)
+    start_time = time.time()
+
+    post = post_type(post_params[:,0], post_params[:,1])
+
+    init_params = fit_approx_post(m_q[-1], approx_post_type)
+    init_dist = approx_post_type(init_params[:,0], init_params[:,1])
+    entropies = [entropy(init_dist)]
+    for i in range(T):
+        Q_params = fit_approx_post(m_q[-1], approx_post_type)
+
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+
+        z_t = sample(Q_t, K)
+
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
+
+        Ex_one_iter = (z_t).sum(axis=0)
+        Ex2_one_iter = (z_t**2).sum(axis=0)
+        m_z = t.stack([Ex_one_iter, Ex2_one_iter]).t()
+
+        new_m_q = lr * (m_one_iter_t - m_z) + m_q[-1]
+
+        entropies.append(entropy(Q_t))
+        l_one_iters.append(l_one_iter_t.clone())
+        m_q.append(new_m_q.clone())
+
+        times[i+1] = time.time() - start_time
+
+    return m_q, l_one_iters, entropies, times
+
+def natural_rws_standardised(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    m_q = [init_moments]
+    l_one_iters = []
+    
+    times = t.zeros(T+1)
+    start_time = time.time()
+
+    post = post_type(post_params[:,0], post_params[:,1])
+
+    init_params = fit_approx_post(m_q[-1], approx_post_type)
+    init_dist = approx_post_type(init_params[:,0], init_params[:,1])
+    entropies = [entropy(init_dist)]
+    for i in range(T):
+        Q_params = fit_approx_post(m_q[-1], approx_post_type)
+
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+
+        z_t = sample(Q_t, K)
+
+        mean_z = z_t.mean(axis=0)
+        var_z = z_t.var(axis=0)
+    
+        z_t = np.sqrt(Q_params[:,1] / var_z) * (z_t - mean_z) + Q_params[:,0]
+
+        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
+
+        new_m_q = lr * m_one_iter_t + (1 - lr) * m_q[-1]
+
+        entropies.append(entropy(Q_t))
+        l_one_iters.append(l_one_iter_t.clone())
+        m_q.append(new_m_q.clone())
+
+        times[i+1] = time.time() - start_time
+
+    return m_q, l_one_iters, entropies, times
 
 
 def VI(T, post_params, init_params, lr, approx_post_type=Normal, post_type=Normal, K=5):
