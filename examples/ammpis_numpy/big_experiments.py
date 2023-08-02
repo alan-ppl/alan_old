@@ -1,216 +1,434 @@
 from ammpis import *
-import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-import pandas as pd
-
 import torch as t
+from torch.distributions import Normal, Uniform
+import pickle
+from itertools import product
 
-from torch.distributions import Normal, Laplace, Gumbel
+def x_axis(xs, use_time=False):
+    if use_time:
+        return xs
+    else:
+        return range(len(xs))
 
-t.manual_seed(0)
-t.cuda.manual_seed(0)
+T = 2000
+lr = 0.4
 
-if __name__ == "__main__":
-    num_runs = 1
+Ns = [50, 500, 5000]
+Ks = [3, 10, 30]#, 100]
+var_sizes = ["WIDE", "NARROW"]
 
-    num_iters = 100 # mcmc and lang seem to require about 1000 iterations to converge
-    
-    num_latents = [10, 100, 1000]
-    
+total_num_plots = len(Ns) * len(Ks) * len(var_sizes)
 
-    posteriors = {"Normal": Normal, "Laplace": Laplace, "Gumbel": Gumbel}
+plot_counter = 0
+for VAR_SIZE_STR in var_sizes:
 
-    Ks = [1,3,10,30,100]
-        
-    # ammp_is_fns = [ammp_is, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_weight_all]
-    ammp_is_fns = [ammp_is, ammp_is_weight_all]
-    errors = {"ammp_is_post_q":   t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "ammp_is_post_avg": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "ammp_is_uniform_dt_post_q":   t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "ammp_is_uniform_dt_post_avg": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "ammp_is_no_inner_loop_post_q":   t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "ammp_is_no_inner_loop_post_avg": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "ammp_is_weight_all_post_q":   t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "ammp_is_weight_all_post_avg": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "mcmc_post":        t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2),
-              "lang_post":        t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1, 2)}
+    results = {N: {K: {} for K in Ks} for N in Ns}
+    post_params_collection = {N: {K: None for K in Ks} for N in Ns}
+    for num_latents, K in product(Ns, Ks):
+        plot_counter += 1
 
+        t.manual_seed(1)
+        t.cuda.manual_seed(0)
 
+        print(f"({plot_counter}/{total_num_plots}) Running for N={num_latents}, K={K}, VAR_SIZE={VAR_SIZE_STR}")
 
-    entropies = {"ammp_is": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-            "ammp_is_uniform_dt": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-            "ammp_is_no_inner_loop": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-            "ammp_is_weight_all": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-            "mcmc":    t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-            "lang":    t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1)}
-    
-    weighted_ltots = {"ammp_is": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-        "ammp_is_uniform_dt": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-        "ammp_is_no_inner_loop": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-        "ammp_is_weight_all": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-        "mcmc":    t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-        "lang":    t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1)}
-    
+        init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 
-    times = {"ammp_is": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-             "ammp_is_uniform_dt": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-             "ammp_is_no_inner_loop": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-             "ammp_is_weight_all": t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-             "mcmc":    t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1),
-             "lang":    t.zeros(num_runs, len(Ks), len(num_latents), num_iters+1)} 
-    
-    for run in range(num_runs):
-        for K in Ks:
-            for n in num_latents:
-                print(f"run: {run}, K: {K}, n: {n}", end="\t")
+        loc = Normal(0,1).sample((num_latents,1)).float()
+        if VAR_SIZE_STR == "WIDE":
+            scale = Normal(0,1).sample((num_latents,1)).exp().float()
+        else:
+            scale = Uniform(-6,-1).sample((num_latents,1)).exp().float()
+
+        print(f'Location mean: {loc.abs().mean()}')
+        print(f'Variance mean: {scale.mean()}')
+        post_params = t.cat([loc, scale], dim=1)
+        post_params_collection[num_latents][K] = post_params
+
+        # first get the results
+        # AMMPIS
+        ammp_is_variants = [ammp_is, ammp_is_ReLU, ammp_is_uniform_dt, ammp_is_no_inner_loop, ammp_is_no_inner_loop_ReLU]#, ammp_is_weight_all]
+
+        for i, fn in enumerate(ammp_is_variants):
+            results[num_latents][K][fn.__name__] = fn(T, post_params, init, lr, K)
+            print(f"{fn.__name__}, lr={lr} done.")
+
+        # NATURAL RWS
+        rws_variants = [natural_rws, natural_rws_difference, natural_rws_standardised]
+        rws_lrs = [0.01, 0.01, 0.4]
+        for i, fn in enumerate(rws_variants):
+            results[num_latents][K][fn.__name__] = fn(T, post_params, init, rws_lrs[i], K)
+            print(f"{fn.__name__}, lr={rws_lrs[i]} done.")
+
+        # HMC
+        hmc_params   = {"N": num_latents,
+                        "T": T//4,
+                        "post_params": post_params,
+                        "init": init,
+                        "post_type": Normal,
+                        "num_chains": 4}
+
+        with open('saved_hmc.pkl', 'rb') as f:
+            saved_hmc = pickle.load(f)
+
+        params_match = False
+        if all([hmc_params[key] == saved_hmc["params"][key] for key in ["N", "T", "post_type", "num_chains"]]):
+            if all([(hmc_params[key] == saved_hmc["params"][key]).all() for key in ["post_params", "init"]]):
+                print("Loading saved HMC results.")
+                hmc_moms, hmc_times, hmc_samples = saved_hmc['results']
+                params_match = True
+
+        if not params_match:
+            n = hmc_params.pop("N")
+            hmc_moms, hmc_times, hmc_samples = HMC(**hmc_params)
+            hmc_params["N"] = n
+            with open('saved_hmc.pkl', 'wb') as f:
+                pickle.dump({'params': hmc_params, 'results': (hmc_moms, hmc_times, hmc_samples)}, f)
             
-                init = t.tensor([0.0,1.0], dtype=t.float64).repeat((n,1))
+            print("HMC done.")
 
-                # priors on posterior parameters
-                loc = Normal(0,100).sample((n,1)).float()
-                # scale = Normal(0,0.1).sample((n,1)).exp().float() + 5
-                scale = Uniform(-5,-0.5).sample((n,1)).exp().float()
-                # do log uniform instead of uniform to avoid numerical issues
+        results[num_latents][K]["HMC"] = [hmc_moms, hmc_times, hmc_samples]
 
-                post_params = t.cat([loc, scale], dim=1)
-                post_dist = Normal(loc, scale)
-                true_post = post_params
+        # VI
+        results[num_latents][K]["VI"] = VI(T, post_params, init, 0.05, K=K)
+        print("VI done.")
 
-                final_post_avg = {}
+        # MCMC
+        results[num_latents][K]["mcmc"] = mcmc(T, post_params, init, 2.4*scale, burn_in=T//10)
+        print("MCMC done.")
 
-                for fn in ammp_is_fns:
-
-                    name = fn.__name__
-                    # ammpis
-                    m_q, m_avg, l_tot, l_one_iters, weights, ents, fn_times = fn(num_iters, post_params, init, 0.4, K)
-                    post_q = [fit_approx_post(m) for m in m_q]
-                    post_avg = [fit_approx_post(m) for m in m_avg]
-
-                    final_post_avg[name] = post_avg[-1]
-
-                    # calculate errors
-                    for i in range(num_iters+1):
-                        errors[f"{name}_post_q"][run, Ks.index(K), num_latents.index(n), i, :] = (true_post - post_q[i]).abs().mean(0)
-                        errors[f"{name}_post_avg"][run, Ks.index(K), num_latents.index(n), i, :] = (true_post - post_avg[i]).abs().mean(0)
-
-                    times[f"{name}"][run, Ks.index(K), num_latents.index(n), :] = fn_times
-                    entropies[f"{name}"][run, Ks.index(K), num_latents.index(n), :] = t.tensor(ents)
-
-                    weighted_ltots[f"{name}"][run, Ks.index(K), num_latents.index(n), :] = t.tensor([lt + wt for lt, wt in zip(l_tot, weights)])
+        # LANG
+        results[num_latents][K]["lang"] = lang(T, post_params, init, 1e-6*scale, burn_in=T//10)
+        print("Lang done.")
 
 
+        # Now to actually plot the results in a couple of ways
+        # First: one plot per num_latents-K-posterior_width combination
 
-                # mcmc
-                burn_in = num_iters//10
-                m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = mcmc(num_iters, post_params, init, 2.4*scale, burn_in=burn_in)
-                mcmc_post = [fit_approx_post(m) for m in m_mcmc]
+        for use_time in [True, False]:
+            fig, ax = plt.subplots(5,1, figsize=(5.5, 14.0))
 
-                # langevin (mala)
-                m_lang, lang_acceptance_rate, lang_times, lang_samples = lang(num_iters, post_params, init, 2.4*scale, burn_in=burn_in)
-                lang_post = [fit_approx_post(m) for m in m_lang]
+            # AMMPIS
+            colours = ['#543005','#8c510a','#bf812d','#dfc27d', "pink", "#FF69B4", "#f6e8c3", "#c7eae5", "#80cdc1"]
 
-                print(f"Acceptance rates: mcmc={mcmc_acceptance_rate},\t lang={lang_acceptance_rate}")
+            for i, fn in enumerate(ammp_is_variants):
+                m_q, m_avg, l_tot, l_one_iters, log_weights, entropies, ammp_is_times = results[num_latents][K][fn.__name__] 
+                mean_errs, var_errs = get_errs(m_q, post_params)
 
-                # calculate errors
-                for i in range(num_iters+1):
-                    errors["mcmc_post"][run, Ks.index(K), num_latents.index(n), i, :] = (true_post - mcmc_post[i]).abs().mean(0)
-                    errors["lang_post"][run, Ks.index(K), num_latents.index(n), i, :] = (true_post - lang_post[i]).abs().mean(0)
-
-                times["mcmc"][run, Ks.index(K), num_latents.index(n), :] = mcmc_times
-                times["lang"][run, Ks.index(K), num_latents.index(n), :] = lang_times
-
-                # # plot the pdfs of the final approximating distributions
-                # if run == 0: # and post == "Gumbel" and n != 1000:
-                #     fig, ax = plt.subplots(1,1, figsize=(5.5, 4.0))
-                #     # breakpoint()
-
-                #     df = pd.DataFrame({"true": post_dist.sample((num_iters*10,)).numpy()[:,0][:,0],
-                #                        "mcmc": mcmc_samples[burn_in:,0].repeat(10),
-                #                        "lang": lang_samples[burn_in:,0].repeat(10)})
-                #                         # "mcmc": Normal(mcmc_post[-1][:,0], mcmc_post[-1][:,1]).sample((num_iters*10,)).numpy()[:,0],
-                #                         # "lang": Normal(lang_post[-1][:,0], lang_post[-1][:,1] + 1e-10).sample((num_iters*10,)).numpy()[:,0]})
-
-                #     for name in final_post_avg:
-                #         df[name] = Normal(final_post_avg[name][:,0], final_post_avg[name][:,1]).sample((num_iters*10,)).numpy()[:,0]
+                ax[0].plot(x_axis(ammp_is_times, use_time), mean_errs, c=colours[i], label=f'{fn.__name__}')
+                ax[1].plot(x_axis(ammp_is_times, use_time), var_errs, c=colours[i], label=f'{fn.__name__}')
+                ax[2].plot(x_axis(ammp_is_times[3:], use_time), [lt + lw for lt, lw in zip(l_one_iters, log_weights)][2:], c=colours[i], label=f'{fn.__name__}')
+                ax[3].plot(x_axis(ammp_is_times, use_time), entropies, c=colours[i], label=f'{fn.__name__}')
+                ax[4].plot(x_axis(ammp_is_times, use_time), [(fit_approx_post(m)[:,1] / post_params[:,1]).mean() for m in m_avg], c=colours[i], label=f'{fn.__name__}')
 
 
-                #     df.plot.kde(ax=ax, legend=True, ind=None)
+            # NATURAL RWS
+            rws_colours = ['#80cdc1','#35978f','#01665e']
 
-                #     ax.set_title(f"n={n}, {K}({loc[0,0].item():.3f}, {scale[0,0].item():.3f}) posterior")
-                #     plt.savefig(f"figures/{K}_n{n}_run{run}.png")
-                #     plt.close()
+            for i, fn in enumerate(rws_variants):
+                m_q, l_one_iters, entropies, times = results[num_latents][K][fn.__name__] 
+                mean_errs, var_errs = get_errs(m_q, post_params)
 
-
-    # take mean over runs
-    for fn in ammp_is_fns:
-        name = fn.__name__
-        errors[f"{name}_post_q"] = errors[f"{name}_post_q"].mean(0)
-        errors[f"{name}_post_avg"] = errors[f"{name}_post_avg"].mean(0)
-        times[f"{name}"] = times[f"{name}"].mean(0)
-        entropies[f"{name}"] = entropies[f"{name}"].mean(0)
-        weighted_ltots[f"{name}"] = weighted_ltots[f"{name}"].mean(0)
+                ax[0].plot(x_axis(times, use_time), mean_errs, c=rws_colours[i], label=f'{fn.__name__}')
+                ax[1].plot(x_axis(times, use_time), var_errs, c=rws_colours[i], label=f'{fn.__name__}')
+                ax[2].plot(x_axis(times[3:], use_time), [lt for lt in l_one_iters][2:], c=rws_colours[i], label=f'{fn.__name__}')
+                ax[3].plot(x_axis(times, use_time), entropies, c=rws_colours[i], label=f'{fn.__name__}')
+                ax[4].plot(x_axis(times, use_time), [(fit_approx_post(m)[:,1] / post_params[:,1]).mean() for m in m_q], c=rws_colours[i], label=f'{fn.__name__}')
 
 
+            # HMC
+            hmc_moms, hmc_times, hmc_samples = results[num_latents][K]["HMC"]
+            hmc_mean_errs, hmc_var_errs = get_errs(hmc_moms, post_params)
 
-    errors["mcmc_post"] = errors["mcmc_post"].mean(0)
-    errors["lang_post"] = errors["lang_post"].mean(0)
+            ax[0].plot(x_axis(hmc_times, use_time)[:len(hmc_mean_errs)], hmc_mean_errs, c='black', label='HMC')
+            ax[1].plot(x_axis(hmc_times, use_time)[:len(hmc_var_errs)], hmc_var_errs, c='black', label='HMC')
 
+            if not use_time:
+                # VI
+                vi_means, vi_vars, elbos, entropies, vi_times = results[num_latents][K]["VI"]
 
-    times["mcmc"] = times["mcmc"].mean(0)
-    times["lang"] = times["lang"].mean(0)
+                mean_errs = []
+                var_errs = []
 
+                for i in range(len(vi_means)):
+                    mean_errs.append((post_params[:,0] - vi_means[i]).abs().mean())
+                    var_errs.append((post_params[:,1] - vi_vars[i].exp()).abs().mean())
 
+                ax[0].plot(x_axis(vi_times[:-1]), mean_errs, c='#54278f', label='VI')
+                ax[1].plot(x_axis(vi_times[:-1]), var_errs, c='#54278f', label='VI')
+                ax[2].plot(x_axis(vi_times[:-1]), elbos, c='#54278f', label='VI') 
+                ax[3].plot(x_axis(vi_times[:-1]), entropies, c='#54278f', label='VI')
+                ax[4].plot(x_axis(vi_times[:-1]), [(v.exp() / post_params[:,1]).mean() for v in vi_vars], c='#54278f', label='VI')
 
+                # MCMC
+                m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = results[num_latents][K]["mcmc"]
+                mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post_params)
 
-    for x_axis in ["iterations", "time"]:
-        for K in Ks:
-            # subplot for each num_latents and each element of the error tensor (mean, scale)
-            fig, axs = plt.subplots(len(num_latents), 4, figsize=(16,20), sharex=(x_axis=="iterations"))
-            fig.suptitle(f"K={K}", x=0.17, y=0.95, weight="bold")
+                ax[0].plot(x_axis(mcmc_times), mean_errs_mcmc, c='b', label='MCMC')
+                ax[1].plot(x_axis(mcmc_times), var_errs_mcmc, c='b', label='MCMC')
 
-            for fn in ammp_is_fns:
-                name = fn.__name__
-                for i in range(len(num_latents)):
-                    if x_axis == "iterations":
-                        xs = t.arange(num_iters+1)
-                    elif x_axis == "time":
-                        xs = times[f"{name}"][Ks.index(K), i, :]
+                # LANG
+                m_lang, lang_acceptance_rate, lang_times, lang_samples = results[num_latents][K]["lang"]
+                mean_errs_lang, var_errs_lang = get_errs(m_lang, post_params)
 
-                    if name in ['mcmc', 'lang']:
-                        axs[i, 0].plot(xs, errors[f"{name}_post"][Ks.index(K), i, :, 0].numpy(), label=f"{name}")
-                        axs[i, 1].plot(xs, errors[f"{name}_post"][Ks.index(K), i, :, 1].numpy(), label=f"{name}")
-                    else:
-                        axs[i, 0].plot(xs, errors[f"{name}_post_q"][Ks.index(K), i, :, 0].numpy(), label=f"{name}_Qt")
-                        axs[i, 0].plot(xs, errors[f"{name}_post_avg"][Ks.index(K), i, :, 0].numpy(), label=f"{name}_av")
-
-                        axs[i, 1].plot(xs, errors[f"{name}_post_q"][Ks.index(K), i, :, 1].numpy(), label=f"{name}_Qt")
-                        axs[i, 1].plot(xs, errors[f"{name}_post_avg"][Ks.index(K), i, :, 1].numpy(), label=f"{name}_av")
-
-                        axs[i, 2].plot(xs, entropies[f"{name}"][Ks.index(K), i, :].numpy(), label=f"{name}")
-                        axs[i, 3].plot(xs[2:], weighted_ltots[f"{name}"][Ks.index(K), i, :].numpy()[2:], label=f"{name}")
-                
-                axs[0, 0].set_title(f"Error in mean")
-                axs[0, 1].set_title("Error in variance")
-                axs[0, 2].set_title("Entropy")
-                axs[0, 3].set_title("Weighted l_tot")
+                ax[0].plot(x_axis(lang_times), mean_errs_lang, c='r', label='Lang')
+                ax[1].plot(x_axis(lang_times), var_errs_lang, c='r', label='Lang')
 
 
-                # add x-axis labels
-                for ax in axs[-1,:]:
-                    ax.set_xlabel("Iterations" if x_axis == "iterations" else "Time (s)")
+            # Formatting
 
-                # for each row, add a label to the y-axis containing the num_latents
-                for ax, row in zip(axs[:,0], num_latents):
-                    ax.set_ylabel(f"n={row}")
+            ax[0].set_title("Mean Error")
+            ax[1].set_title("Var Error")
+            ax[2].set_title("weighted l_one_iter")
+            ax[3].set_title("Entropy")
+            ax[4].set_title("Q variance / posterior variance")
 
-                # for ax in axs:
-                #     for a in ax:
-                #         a.set_yscale("symlog")
+            # log y axis
+            ax[0].set_yscale('log')
+            ax[1].set_yscale('log')
+            # ax[2].set_yscale('symlog')
+            # ax[3].set_yscale('symlog')
 
-            # add horizontal legend along top of plot
-            axs[0,1].legend(loc='lower center', bbox_to_anchor=(0.27, 1.25), shadow=False, ncol=2)
+            ax[2].set_ylim(-50, 20)
+            ax[4].set_ylim(0.5, 1.5)
 
-            plt.savefig(f"figures/{K}{'_vs_time' if x_axis == 'time' else ''}.png")
+
+            # ax[0].legend(loc='upper right')
+
+            ax[-1].set_xlabel('Time (s)' if use_time else 'Iteration')
+            if use_time:
+                for a in ax:
+                    a.set_xlim(-0.001)
+
+            ax[0].legend(loc='lower center', bbox_to_anchor=(0.5, 1.25), shadow=False, ncol=2)
+
+            plt.tight_layout()  
+            plt.savefig(f"figures/big_experiments/N{num_latents}_K{K}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}.png")
             plt.close()
 
+    print()
+
+    # Now for the other plots:
+    #   1. The regular 5 rows but repeated over columns with increasing N for fixed K
+    #           (i.e. so the posterior gets more difficult from left to right)
+    #   2. Again the regular 5 rows but repeated over increasing K for fixed N
+    #           (so the ammpis and rws methods should improve from left to right)
+
+    for K in Ks:
+        for use_time in [True, False]:
+            fig, ax = plt.subplots(5, len(Ns), figsize=(16.5, 14.0))
+
+            for j, num_latents in enumerate(Ns):
+                post_params = post_params_collection[num_latents][K]
+
+                # AMMPIS
+                colours = ['#543005','#8c510a','#bf812d','#dfc27d', "pink", "#FF69B4", "#f6e8c3", "#c7eae5", "#80cdc1"]
+
+                for i, fn in enumerate(ammp_is_variants):
+                    m_q, m_avg, l_tot, l_one_iters, log_weights, entropies, ammp_is_times = results[num_latents][K][fn.__name__] 
+                    mean_errs, var_errs = get_errs(m_q, post_params)
+
+                    ax[0, j].plot(x_axis(ammp_is_times, use_time), mean_errs, c=colours[i], label=f'{fn.__name__}')
+                    ax[1, j].plot(x_axis(ammp_is_times, use_time), var_errs, c=colours[i], label=f'{fn.__name__}')
+                    ax[2, j].plot(x_axis(ammp_is_times[3:], use_time), [lt + lw for lt, lw in zip(l_one_iters, log_weights)][2:], c=colours[i], label=f'{fn.__name__}')
+                    ax[3, j].plot(x_axis(ammp_is_times, use_time), entropies, c=colours[i], label=f'{fn.__name__}')
+                    ax[4, j].plot(x_axis(ammp_is_times, use_time), [(fit_approx_post(m)[:,1] / post_params[:,1]).mean() for m in m_avg], c=colours[i], label=f'{fn.__name__}')
+
+
+                # NATURAL RWS
+                rws_colours = ['#80cdc1','#35978f','#01665e']
+
+                for i, fn in enumerate(rws_variants):
+                    m_q, l_one_iters, entropies, times = results[num_latents][K][fn.__name__] 
+                    mean_errs, var_errs = get_errs(m_q, post_params)
+
+                    ax[0, j].plot(x_axis(times, use_time), mean_errs, c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[1, j].plot(x_axis(times, use_time), var_errs, c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[2, j].plot(x_axis(times[3:], use_time), [lt for lt in l_one_iters][2:], c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[3, j].plot(x_axis(times, use_time), entropies, c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[4, j].plot(x_axis(times, use_time), [(fit_approx_post(m)[:,1] / post_params[:,1]).mean() for m in m_q], c=rws_colours[i], label=f'{fn.__name__}')
+
+
+                # HMC
+                hmc_moms, hmc_times, hmc_samples = results[num_latents][K]["HMC"]
+                hmc_mean_errs, hmc_var_errs = get_errs(hmc_moms, post_params)
+
+                ax[0, j].plot(x_axis(hmc_times, use_time)[:len(hmc_mean_errs)], hmc_mean_errs, c='black', label='HMC')
+                ax[1, j].plot(x_axis(hmc_times, use_time)[:len(hmc_var_errs)], hmc_var_errs, c='black', label='HMC')
+
+                if not use_time:
+                    # VI
+                    vi_means, vi_vars, elbos, entropies, vi_times = results[num_latents][K]["VI"]
+
+                    mean_errs = []
+                    var_errs = []
+
+                    for i in range(len(vi_means)):
+                        mean_errs.append((post_params[:,0] - vi_means[i]).abs().mean())
+                        var_errs.append((post_params[:,1] - vi_vars[i].exp()).abs().mean())
+
+                    ax[0, j].plot(x_axis(vi_times[:-1]), mean_errs, c='#54278f', label='VI')
+                    ax[1, j].plot(x_axis(vi_times[:-1]), var_errs, c='#54278f', label='VI')
+                    ax[2, j].plot(x_axis(vi_times[:-1]), elbos, c='#54278f', label='VI') 
+                    ax[3, j].plot(x_axis(vi_times[:-1]), entropies, c='#54278f', label='VI')
+                    ax[4, j].plot(x_axis(vi_times[:-1]), [(v.exp() / post_params[:,1]).mean() for v in vi_vars], c='#54278f', label='VI')
+
+
+                    # MCMC
+                    m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = results[num_latents][K]["mcmc"]
+                    mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post_params)
+
+                    ax[0, j].plot(x_axis(mcmc_times), mean_errs_mcmc, c='b', label='MCMC')
+                    ax[1, j].plot(x_axis(mcmc_times), var_errs_mcmc, c='b', label='MCMC')
+
+                    # LANG
+                    m_lang, lang_acceptance_rate, lang_times, lang_samples = results[num_latents][K]["lang"]
+                    mean_errs_lang, var_errs_lang = get_errs(m_lang, post_params)
+
+                    ax[0, j].plot(x_axis(lang_times), mean_errs_lang, c='r', label='Lang')
+                    ax[1, j].plot(x_axis(lang_times), var_errs_lang, c='r', label='Lang')
+
+
+                # Formatting
+                ax[0, j].set_title(f"Mean Error, N={num_latents}")
+                ax[1, j].set_title("Var Error")
+                ax[2, j].set_title("weighted l_one_iter")
+                ax[3, j].set_title("Entropy")
+                ax[4, j].set_title("Q variance / posterior variance")
+
+                # log y axis
+                ax[0, j].set_yscale('log')
+                ax[1, j].set_yscale('log')
+                # ax[2].set_yscale('symlog')
+                # ax[3].set_yscale('symlog')
+
+                ax[2, j].set_ylim(-50, 20)
+                ax[4, j].set_ylim(0.5, 1.5)
+
+
+                # ax[0].legend(loc='upper right')
+
+                ax[-1, j].set_xlabel('Time (s)' if use_time else 'Iteration')
+                if use_time:
+                    for a in ax[:,j]:
+                        a.set_xlim(-0.001)
+
+            ax[0, 0].legend(loc='lower center', bbox_to_anchor=(0.5, 1.25), shadow=False, ncol=2)
+
+            plt.tight_layout()  
+            plt.savefig(f"figures/big_experiments/VARIED_N/K{K}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}.png")
+            plt.savefig(f"figures/big_experiments/VARIED_N/K{K}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}.pdf")
+            plt.close()
+
+    print("Varying N plot saved.")
+
+    for num_latents in Ns:
+        for use_time in [True, False]:
+            fig, ax = plt.subplots(5, len(Ks), figsize=(16.5, 14.0))
+
+            for j, K in enumerate(Ks):
+                post_params = post_params_collection[num_latents][K]
+
+                # AMMPIS
+                colours = ['#543005','#8c510a','#bf812d','#dfc27d', "pink", "#FF69B4", "#f6e8c3", "#c7eae5", "#80cdc1"]
+
+                for i, fn in enumerate(ammp_is_variants):
+                    m_q, m_avg, l_tot, l_one_iters, log_weights, entropies, ammp_is_times = results[num_latents][K][fn.__name__] 
+                    mean_errs, var_errs = get_errs(m_q, post_params)
+
+                    ax[0, j].plot(x_axis(ammp_is_times, use_time), mean_errs, c=colours[i], label=f'{fn.__name__}')
+                    ax[1, j].plot(x_axis(ammp_is_times, use_time), var_errs, c=colours[i], label=f'{fn.__name__}')
+                    ax[2, j].plot(x_axis(ammp_is_times[3:], use_time), [lt + lw for lt, lw in zip(l_one_iters, log_weights)][2:], c=colours[i], label=f'{fn.__name__}')
+                    ax[3, j].plot(x_axis(ammp_is_times, use_time), entropies, c=colours[i], label=f'{fn.__name__}')
+                    ax[4, j].plot(x_axis(ammp_is_times, use_time), [(fit_approx_post(m)[:,1] / post_params[:,1]).mean() for m in m_avg], c=colours[i], label=f'{fn.__name__}')
+
+
+                # NATURAL RWS
+                rws_colours = ['#80cdc1','#35978f','#01665e']
+
+                for i, fn in enumerate(rws_variants):
+                    m_q, l_one_iters, entropies, times = results[num_latents][K][fn.__name__] 
+                    mean_errs, var_errs = get_errs(m_q, post_params)
+
+                    ax[0, j].plot(x_axis(times, use_time), mean_errs, c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[1, j].plot(x_axis(times, use_time), var_errs, c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[2, j].plot(x_axis(times[3:], use_time), [lt for lt in l_one_iters][2:], c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[3, j].plot(x_axis(times, use_time), entropies, c=rws_colours[i], label=f'{fn.__name__}')
+                    ax[4, j].plot(x_axis(times, use_time), [(fit_approx_post(m)[:,1] / post_params[:,1]).mean() for m in m_q], c=rws_colours[i], label=f'{fn.__name__}')
+
+
+                # HMC
+                hmc_moms, hmc_times, hmc_samples = results[num_latents][K]["HMC"]
+                hmc_mean_errs, hmc_var_errs = get_errs(hmc_moms, post_params)
+
+                ax[0, j].plot(x_axis(hmc_times, use_time)[:len(hmc_mean_errs)], hmc_mean_errs, c='black', label='HMC')
+                ax[1, j].plot(x_axis(hmc_times, use_time)[:len(hmc_var_errs)], hmc_var_errs, c='black', label='HMC')
+
+                if not use_time:
+                    # VI
+                    vi_means, vi_vars, elbos, entropies, vi_times = results[num_latents][K]["VI"]
+
+                    mean_errs = []
+                    var_errs = []
+
+                    for i in range(len(vi_means)):
+                        mean_errs.append((post_params[:,0] - vi_means[i]).abs().mean())
+                        var_errs.append((post_params[:,1] - vi_vars[i].exp()).abs().mean())
+
+                    ax[0, j].plot(x_axis(vi_times[:-1]), mean_errs, c='#54278f', label='VI')
+                    ax[1, j].plot(x_axis(vi_times[:-1]), var_errs, c='#54278f', label='VI')
+                    ax[2, j].plot(x_axis(vi_times[:-1]), elbos, c='#54278f', label='VI') 
+                    ax[3, j].plot(x_axis(vi_times[:-1]), entropies, c='#54278f', label='VI')
+                    ax[4, j].plot(x_axis(vi_times[:-1]), [(v.exp() / post_params[:,1]).mean() for v in vi_vars], c='#54278f', label='VI')
+
+
+                    # MCMC
+                    m_mcmc, mcmc_acceptance_rate, mcmc_times, mcmc_samples = results[num_latents][K]["mcmc"]
+                    mean_errs_mcmc, var_errs_mcmc = get_errs(m_mcmc, post_params)
+
+                    ax[0, j].plot(x_axis(mcmc_times), mean_errs_mcmc, c='b', label='MCMC')
+                    ax[1, j].plot(x_axis(mcmc_times), var_errs_mcmc, c='b', label='MCMC')
+
+                    # LANG
+                    m_lang, lang_acceptance_rate, lang_times, lang_samples = results[num_latents][K]["lang"]
+                    mean_errs_lang, var_errs_lang = get_errs(m_lang, post_params)
+
+                    ax[0, j].plot(x_axis(lang_times), mean_errs_lang, c='r', label='Lang')
+                    ax[1, j].plot(x_axis(lang_times), var_errs_lang, c='r', label='Lang')
+
+
+                # Formatting
+                ax[0, j].set_title(f"Mean Error, K={K}")
+                ax[1, j].set_title("Var Error")
+                ax[2, j].set_title("weighted l_one_iter")
+                ax[3, j].set_title("Entropy")
+                ax[4, j].set_title("Q variance / posterior variance")
+
+                # log y axis
+                ax[0, j].set_yscale('log')
+                ax[1, j].set_yscale('log')
+                # ax[2].set_yscale('symlog')
+                # ax[3].set_yscale('symlog')
+
+                ax[2, j].set_ylim(-50, 20)
+                ax[4, j].set_ylim(0.5, 1.5)
+
+
+                # ax[0].legend(loc='upper right')
+
+                ax[-1, j].set_xlabel('Time (s)' if use_time else 'Iteration')
+                if use_time:
+                    for a in ax[:,j]:
+                        a.set_xlim(-0.001)
+
+            ax[0, 0].legend(loc='lower center', bbox_to_anchor=(0.5, 1.25), shadow=False, ncol=2)
+
+            plt.tight_layout()  
+            plt.savefig(f"figures/big_experiments/VARIED_K/N{num_latents}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}.png")
+            plt.savefig(f"figures/big_experiments/VARIED_K/N{num_latents}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}.pdf")
+            plt.close()
+
+    print("Varying K plot saved.")
+
+    print()
