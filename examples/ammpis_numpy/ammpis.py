@@ -307,6 +307,12 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
     return m_q, m_avg, l_tot, l_one_iters, [0] + dts, entropies, times
 
 def natural_rws(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    # to allow for lr schedules, we'll define lr as a function of iteration number (i)
+    if type(lr) == float:
+        lr_fn = lambda i: lr
+    else:
+        lr_fn = lr
+
     m_q = [init_moments]
     l_one_iters = []
     
@@ -327,7 +333,10 @@ def natural_rws(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, 
 
         m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
 
-        new_m_q = lr * m_one_iter_t + (1 - lr) * m_q[-1]
+        new_m_q = lr_fn(i) * m_one_iter_t + (1 - lr_fn(i)) * m_q[-1]
+
+        # input(f"{i}, {(new_m_q-m_q[-1]).abs().mean()}")
+
 
         entropies.append(entropy(Q_t))
         l_one_iters.append(l_one_iter_t.clone())
@@ -373,6 +382,12 @@ def natural_rws_difference(T, post_params, init_moments, lr, K=5, approx_post_ty
     return m_q, l_one_iters, entropies, times
 
 def natural_rws_standardised(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+    # to allow for lr schedules, we'll define lr as a function of iteration number (i)
+    if type(lr) == float:
+        lr_fn = lambda i: lr
+    else:
+        lr_fn = lr
+        
     m_q = [init_moments]
     l_one_iters = []
     
@@ -398,7 +413,7 @@ def natural_rws_standardised(T, post_params, init_moments, lr, K=5, approx_post_
 
         m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
 
-        new_m_q = lr * m_one_iter_t + (1 - lr) * m_q[-1]
+        new_m_q = lr_fn(i) * m_one_iter_t + (1 - lr_fn(i)) * m_q[-1]
 
         entropies.append(entropy(Q_t))
         l_one_iters.append(l_one_iter_t.clone())
