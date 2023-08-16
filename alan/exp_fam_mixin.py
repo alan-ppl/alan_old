@@ -243,8 +243,9 @@ class NormalMixin(AbstractMixin):
         # scale = (Ex2 - loc**2).sqrt() 
         # Try this:
         a = Ex2 - loc**2
-        A = a + (-a + 1e-4)*(a<=0)
+        A = a + (-a + 1e-15)*(a<=0)
         scale = A.sqrt()
+        scale = scale + (1e-20)*(scale==0)
         return {'loc': loc, 'scale': scale}
 
     @staticmethod

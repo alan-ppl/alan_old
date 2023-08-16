@@ -78,8 +78,9 @@ def run_experiment(cfg):
             model = alan.Model(P, Q())
             model.to(device)
 
-            lr = (i + 10)**(-0.9)
+            
             for j in range(cfg.training.num_iters):
+                lr = (j + 10)**(-0.9)
                 if t.cuda.is_available():
                     t.cuda.synchronize()
                 start = time.time()

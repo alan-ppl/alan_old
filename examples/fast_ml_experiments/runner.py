@@ -53,7 +53,7 @@ def run_experiment(cfg):
             if cfg.dataset == 'movielens':
                 sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,300,18), dtype=np.float32)
             elif cfg.dataset == 'bus_breakdown':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3,3), dtype=np.float32)
+                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,2,3), dtype=np.float32)
             elif cfg.dataset == 'potus':
                 sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
         else:
