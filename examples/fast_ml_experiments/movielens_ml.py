@@ -74,6 +74,7 @@ for use_data in [True]:
             q = Q_ml()
             m1 = alan.Model(P, q).condition(data=data)
 
+            m1.to(device)
             # samp = m1.sample_same(K, reparam=False)
             # mean_post = mean(samp.weights(1000))
             # var_post
@@ -147,7 +148,7 @@ for use_data in [True]:
             seed_torch(0)
             q = Q_ml()
             m1 = alan.Model(P, q).condition(data=data)
-
+            m1.to(device)
             # samp = m1.sample_same(K, reparam=False)
             # mean_post = mean(samp.weights(1000))
             # var_post
@@ -208,6 +209,7 @@ for use_data in [True]:
             seed_torch(0)
             q = Q_vi()
             cond_model = alan.Model(P, q).condition(data=data)
+            cond_model.to(device)
             opt = t.optim.Adam(cond_model.parameters(), lr=lr)
             for i in range(2000):
                 opt.zero_grad()
