@@ -9,7 +9,7 @@ import alan.postproc as pp
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 import time
 
 
@@ -41,13 +41,13 @@ for use_data in [True]:
 
     # True posterior psi_z
 
-    with open(f'posteriors/psi_z_posterior_mean_{use_data}.pkl', 'rb') as f:
-        z_scale_mean = pickle.load(f)
+    # with open(f'posteriors/psi_z_posterior_mean_{use_data}.pkl', 'rb') as f:
+    #     z_scale_mean = pickle.load(f)
 
 
-    # True posterior mean
-    with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'rb') as f:
-        z_mean = pickle.load(f)
+    # # True posterior mean
+    # with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'rb') as f:
+    #     z_mean = pickle.load(f)
 
 
     data = {'obs':data.pop('obs')}
@@ -117,16 +117,18 @@ for use_data in [True]:
             elbos = np.expand_dims(np.array(elbos), axis=0)
             pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 
-            for i in range(18):
-                ax[i,0].plot(np.cumsum(times), z_means[i], color=adaptive_colours[j], label=f'ML adaptive: {exp_lr}')
-                ax[i,0].axhline(z_mean[i])
-                ax[i,1].axhline(z_scale_mean[i])
-                ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=adaptive_colours[j])
+            # for i in range(18):
+            #     ax[i,0].plot(np.cumsum(times), z_means[i], color=adaptive_colours[j], label=f'ML adaptive: {exp_lr}')
+            #     # ax[i,0].axhline(z_mean[i])
+            #     # ax[i,1].axhline(z_scale_mean[i])
+            #     ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=adaptive_colours[j])
                 # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
                 # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-            ax[18,0].plot(np.cumsum(times), elbos.squeeze(0), color=adaptive_colours[j])
+            # ax[18,0].plot(np.cumsum(times), elbos.squeeze(0), color=adaptive_colours[j])
+
+            # ax[18,1].plot(np.cumsum(times), pred_lls.squeeze(0), color=adaptive_colours[j])
+
             ax2[0].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=adaptive_colours[j], label=f'ML adaptive: {exp_lr}')
-            ax[18,1].plot(np.cumsum(times), pred_lls.squeeze(0), color=adaptive_colours[j])
             ax2[1].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=adaptive_colours[j])
             ax2[2].plot(np.cumsum(times), scales, color=adaptive_colours[j])
 
@@ -241,18 +243,18 @@ for use_data in [True]:
             elbos = np.expand_dims(np.array(elbos), axis=0)
             pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 
-            for i in range(18):
-                ax[i,0].plot(np.cumsum(times), z_means[i], color=vi_colours[j], label=f'VI lr: {lr}')
-                ax[i,0].axhline(z_mean[i])
-                ax[i,0].set_ylabel(f'mu_z_{i}')
-                ax[i,1].axhline(z_scale_mean[i])
-                ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=vi_colours[j])
-                ax[i,1].set_ylabel(f'psi_z_{i}')
-                # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
-                # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-            ax[18,0].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
+            # for i in range(18):
+            #     ax[i,0].plot(np.cumsum(times), z_means[i], color=vi_colours[j], label=f'VI lr: {lr}')
+            #     ax[i,0].axhline(z_mean[i])
+            #     ax[i,0].set_ylabel(f'mu_z_{i}')
+            #     ax[i,1].axhline(z_scale_mean[i])
+            #     ax[i,1].plot(np.cumsum(times), z_scale_means[i], color=vi_colours[j])
+            #     ax[i,1].set_ylabel(f'psi_z_{i}')
+            #     # ax[4].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
+            #     # ax[5].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
+            # ax[18,0].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
             
-            ax[18,1].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
+            # ax[18,1].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
 
 
             ax2[0].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j], label=f'VI lr: {lr}')
@@ -260,7 +262,7 @@ for use_data in [True]:
 
 
 
-        fig.suptitle(f'K: {K}, Using Data: {use_data}')
+        # fig.suptitle(f'K: {K}, Using Data: {use_data}')
         fig2.suptitle(f'K: {K}, Using Data: {use_data}')
 
 
@@ -268,22 +270,28 @@ for use_data in [True]:
 
 
 
-        ax[18,0].set_ylabel('ELBO')
-        ax2[0].set_ylabel('ELBO')
+        # ax[18,0].set_ylabel('ELBO')
         
+        # ax[18,0].set_xlabel('Time')
+        # ax[18,1].set_xlabel('Time')
 
-        ax[18,1].set_ylabel('Predictive LL')
+        # ax[18,1].set_ylabel('Predictive LL')
+
+        # ax[0,0].legend(loc='upper right')
+
+        # fig.tight_layout()
+        # fig.savefig(f'figures/movielens_test_data_{K}_{use_data}.png')
+
+
+        ax2[0].set_ylabel('ELBO')
         ax2[1].set_ylabel('Predictive LL')
         
-
-
-        ax[18,0].set_xlabel('Time')
-        ax[18,1].set_xlabel('Time')
+        
         ax2[0].set_xlabel('Time')
 
         ax2[2].set_ylabel('Approx Posterior scales')
 
-        ax[0,0].legend(loc='upper right')
+        
         fig2.legend(loc='upper right')
 
 
@@ -292,8 +300,6 @@ for use_data in [True]:
         ax2[1].set_ylim(-1050,-800)
 
 
-        fig.tight_layout()
-        fig.savefig(f'figures/movielens_test_data_{K}_{use_data}.png')
 
         fig2.tight_layout()
         fig2.savefig(f'figures/movielens_test_data_{K}_{use_data}_elbo.png')
