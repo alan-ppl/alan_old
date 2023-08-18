@@ -94,7 +94,7 @@ for use_data in [True]:
                 scale = q.mu.mean2conv(*q.mu.named_means)['scale'].sum() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].sum()
                 scale /= q.mu.mean2conv(*q.mu.named_means)['scale'].numel() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].numel()
 
-                scales.append(scale.item().cpu())
+                scales.append(scale.item())
                 for k in range(18):
 
                     z_means[k].append(zm[k].item())    
@@ -167,7 +167,7 @@ for use_data in [True]:
                 scale = q.mu.mean2conv(*q.mu.named_means)['scale'].sum() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].sum()
                 scale /= q.mu.mean2conv(*q.mu.named_means)['scale'].numel() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].numel()
 
-                scales.append(scale.item().cpu())
+                scales.append(scale.item())
                 for k in range(18):
 
                     z_means[k].append(zm[k].item())    
