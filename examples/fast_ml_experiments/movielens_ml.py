@@ -94,14 +94,14 @@ for use_data in [True]:
                 scale = q.mu.mean2conv(*q.mu.named_means)['scale'].sum() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].sum()
                 scale /= q.mu.mean2conv(*q.mu.named_means)['scale'].numel() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].numel()
 
-                scales.append(scale.item())
+                scales.append(scale.item().cpu())
                 for k in range(18):
 
                     z_means[k].append(zm[k].item())    
 
                     z_scale_means[k].append(zsm[k].item())  
 
-                elbos.append(sample.elbo().item()) 
+                elbos.append(sample.elbo().item().cpu()) 
                 if i % 100 == 0:
                     # print(q.Nz.mean2conv(*q.Nz.named_means))
                     print(f'Elbo: {elbos[-1]}, lr: {lr}')     
@@ -112,7 +112,7 @@ for use_data in [True]:
 
 
                 sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-                pred_lls.append(m1.predictive_ll(sample, N = 10,inputs_all=all_covariates, data_all=all_data)['obs'])
+                pred_lls.append(m1.predictive_ll(sample, N = 10,inputs_all=all_covariates, data_all=all_data)['obs'].cpu())
 
 
             elbos = np.expand_dims(np.array(elbos), axis=0)
@@ -167,14 +167,14 @@ for use_data in [True]:
                 scale = q.mu.mean2conv(*q.mu.named_means)['scale'].sum() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].sum()
                 scale /= q.mu.mean2conv(*q.mu.named_means)['scale'].numel() + q.psi_z.mean2conv(*q.psi_z.named_means)['scale'].numel()
 
-                scales.append(scale.item())
+                scales.append(scale.item().cpu())
                 for k in range(18):
 
                     z_means[k].append(zm[k].item())    
 
                     z_scale_means[k].append(zsm[k].item())  
 
-                elbos.append(sample.elbo().item()) 
+                elbos.append(sample.elbo().item().cpu()) 
                 if i % 100 == 0:
                     # print(q.Nz.mean2conv(*q.Nz.named_means))
                     print(f'Elbo: {elbos[-1]}')   
@@ -185,7 +185,7 @@ for use_data in [True]:
 
 
                 sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-                pred_lls.append(m1.predictive_ll(sample, N = 10,inputs_all=all_covariates, data_all=all_data)['obs'])
+                pred_lls.append(m1.predictive_ll(sample, N = 10,inputs_all=all_covariates, data_all=all_data)['obs'].cpu())
 
 
             elbos = np.expand_dims(np.array(elbos), axis=0)
@@ -226,7 +226,7 @@ for use_data in [True]:
                     z_scale_means[k].append(zsm[k].item())  
         
                 elbo = sample.elbo()
-                elbos.append(elbo.item())
+                elbos.append(elbo.item().cpu())
                 
                 start = time.time()
                 (-elbo).backward()
@@ -235,7 +235,7 @@ for use_data in [True]:
 
 
                 sample = cond_model.sample_same(K, reparam=False, inputs=covariates, device=device)
-                pred_lls.append(cond_model.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'])
+                pred_lls.append(cond_model.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'].cpu())
 
 
                 if i % 100 == 0:
