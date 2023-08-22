@@ -9,7 +9,7 @@ import alan.postproc as pp
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
-#matplotlib.use('TkAgg')
+matplotlib.use('TkAgg')
 import time
 
 
@@ -101,7 +101,7 @@ for use_data in [True]:
 
                     z_scale_means[k].append(zsm[k].item())  
 
-                elbos.append(sample.elbo().item().cpu()) 
+                elbos.append(sample.elbo().item()) 
                 if i % 100 == 0:
                     # print(q.Nz.mean2conv(*q.Nz.named_means))
                     print(f'Elbo: {elbos[-1]}, lr: {lr}')     
@@ -174,7 +174,7 @@ for use_data in [True]:
 
                     z_scale_means[k].append(zsm[k].item())  
 
-                elbos.append(sample.elbo().item().cpu()) 
+                elbos.append(sample.elbo().item()) 
                 if i % 100 == 0:
                     # print(q.Nz.mean2conv(*q.Nz.named_means))
                     print(f'Elbo: {elbos[-1]}')   
@@ -226,7 +226,7 @@ for use_data in [True]:
                     z_scale_means[k].append(zsm[k].item())  
         
                 elbo = sample.elbo()
-                elbos.append(elbo.item().cpu())
+                elbos.append(elbo.item())
                 
                 start = time.time()
                 (-elbo).backward()

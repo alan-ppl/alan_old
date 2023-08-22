@@ -80,7 +80,10 @@ def run_experiment(cfg):
 
             
             for j in range(cfg.training.num_iters):
-                lr = (j + 10)**(-0.9)
+                if cfg.training.decay is not None:
+                    lr = (j + 10)**(-cfg.training.decay)
+                else:
+                    lr = cfg.training.lr
                 if t.cuda.is_available():
                     t.cuda.synchronize()
                 start = time.time()
