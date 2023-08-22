@@ -164,7 +164,7 @@ class SampleMixin():
         #platedims, data, inputs = self.dims_data_inputs(data_all, covariates_all, platesizes_all, device)
         post_samples = sample._importance_samples(N)
 
-        platedims_all, data_all, mask_all, inputs_all = self.dims_data_inputs(data_all, inputs_all, platesizes_all, device=sample.device, use_model=False)
+        platedims_all, data_all, mask_all, inputs_all = self.dims_data_inputs(data_all, None, inputs_all, platesizes_all, device=sample.device, use_model=False)
 
         tr = traces.TracePred(
             N, post_samples,
