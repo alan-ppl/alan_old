@@ -128,7 +128,7 @@ class SampleMixin():
 
         return Sample(trp, lp_dtype=lp_dtype, lp_device=lp_device)
 
-    def sample_prior(self, N=None, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
+    def sample_prior(self, N=None, reparam=True, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
         """Draw samples from a generative model (with no data).
 
         Args:

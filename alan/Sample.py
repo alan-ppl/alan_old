@@ -1,7 +1,8 @@
 import math
 from .utils import *
 from .dist import Categorical
-from functorch.dim import Tensor, Dim
+from functorch.dim import dims, Tensor, Dim
+from . import traces
 
 
 class Sample():
