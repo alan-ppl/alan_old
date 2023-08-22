@@ -4,6 +4,8 @@ from torch.distributions.multivariate_normal import _precision_to_scale_tril
 from torch.nn.functional import threshold
 from .dist import *
 
+import alan.postproc as pp
+
 Tensor = (functorch.dim.Tensor, t.Tensor)
 
 def grad_digamma(x):
@@ -224,12 +226,26 @@ class NormalMixin(AbstractMixin):
         Ex2 = loc**2 + scale**2
 
         return Ex, Ex2
+    
+    @staticmethod
+    def sample2mean(sample,index):
+        name = list(sample.keys())[index]
+        sample = {name:sample[name]}
+        Ex  = pp.mean(sample)[name]
+        Ex2 = pp.mean(pp.square(sample))[name]
+        return [Ex, Ex2]
+    
     @staticmethod
     def mean2conv(Ex, Ex2):
         loc   = Ex
-        # print(Ex2 - loc**2)
-        scale = (t.abs(Ex2 - loc**2)).sqrt() + 1e-25
+        # scale = (threshold(Ex2 - loc**2,0.5,0.5)).sqrt() 
+        # scale = scale + (1e-20)*(scale==0)
         # scale = (Ex2 - loc**2).sqrt() 
+        # Try this:
+        a = Ex2 - loc**2
+        A = a + (-a + 1e-15)*(a<=0)
+        scale = A.sqrt()
+        scale = scale + (1e-10)*(scale<=0)
         return {'loc': loc, 'scale': scale}
 
     @staticmethod

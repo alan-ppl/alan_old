@@ -3,9 +3,11 @@ import torch.nn as nn
 from . import traces
 from .Sample import Sample, SampleGlobal
 from .utils import *
+from torch.nn.functional import threshold
 
 from .alan_module import AlanModule
 
+from torch.nn.functional import softplus
 class SampleMixin():
     r"""
     A mixin for :class:`Model` and :class:`ConditionedModel` that introduces the sample_... methods
@@ -37,6 +39,7 @@ class SampleMixin():
         data   = {k: v.to(device=device, dtype=t.float64) for (k, v) in data.items()}
         inputs = {k: v.to(device=device, dtype=t.float64) for (k, v) in inputs.items()}
         mask  = {k: v.to(device=device, dtype=t.float64) for (k, v) in mask.items()}
+
 
         platedims = self.platedims if use_model else {}
         platedims = extend_plates_with_named_tensors(platedims, [*data.values(), *inputs.values(), *mask.values()])
@@ -234,6 +237,65 @@ class SampleMixin():
                 mod._update(lr)
         self.zero_grad()
 
+    def ammpis_update(self, lr, sample):
+        """
+        Will call update on Model
+        """
+        # assert not sample.reparam
+
+
+        HQ_t = getattr(self.model, 'HQ_t')
+        HQ_temp = getattr(self.model, 'HQ_temp')
+        l_tot = getattr(self.model, 'l_tot')
+        logwt_minus_1 = getattr(self.model, 'logwt_minus_1')
+        sample_weights = sample.weights()
+
+        model = self.model if isinstance(self, ConditionedModel) else self
+
+        l_one_iter = sample.elbo().item()
+        
+        hq = 0
+        for mod in model.modules():
+            if hasattr(mod, 'm_one_iter'):
+                hq += mod.entropy().sum()
+                
+
+        HQ_t.data.copy_(hq) 
+        HQ_temp.data.copy_(hq)
+        
+
+        l_tot_t_1 = l_tot
+        
+        for j in range(100):
+            #weights 
+
+            # logwt = -(HQ_t - HQ_temp)
+            #or
+            logwt = -t.nn.functional.relu(HQ_t - HQ_temp) 
+
+            dt = logwt - logwt_minus_1
+
+            l_tot.data.copy_(l_tot_t_1 - dt + softplus(l_one_iter + dt - l_tot_t_1))
+
+            eta_t = t.exp(l_one_iter - l_tot)
+
+            hq_temp = 0
+
+            for mod in model.modules():
+                if hasattr(mod, '_update_avg_means'):
+                    m_one_iter = mod.m_one_iter(sample_weights)
+                    mod._update_avg_means(m_one_iter, eta_t)
+                if hasattr(mod, 'm_one_iter'):
+                    hq_temp += mod.entropy(use_average=True).sum()
+
+            HQ_temp.data.copy_(hq_temp)
+            self.zero_grad()
+
+        logwt_minus_1.data.copy_(logwt)
+        for mod in model.modules():
+            if hasattr(mod, '_update_means'):
+                mod._update_means(lr)
+
     def ng_update(self, lr, sample):
         assert sample.reparam
         sample.elbo().backward()
@@ -349,6 +411,12 @@ class Model(SampleMixin, AlanModule):
         #Default to using P as Q if Q is not defined.
         if not hasattr(self, 'Q'):
             self.Q = P
+        
+        assert not hasattr(self, 'l_tot')
+        self.register_buffer('l_tot', t.tensor(-1e15, dtype=t.float64))
+        self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('HQ_temp', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('logwt_minus_1', t.tensor(0.0, dtype=t.float64))
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)
@@ -374,4 +442,5 @@ class Model(SampleMixin, AlanModule):
     def check_device(self, device):
         device = t.device(device)
         for x in [*self.parameters(), *self.buffers()]:
-            assert x.device == device
+            if x.device != device:
+                x.to(device)

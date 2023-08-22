@@ -14,7 +14,7 @@ import time
 
 from alan.experiment_utils import seed_torch, n_mean
 
-from bus_breakdown.bus_breakdown import generate_model as generate_ML
+from bus_breakdown.bus_breakdown_ammpis import generate_model as generate_AMMP_IS
 from bus_breakdown.bus_breakdown_VI import generate_model as generate_VI
 
 ml_colours = ['#ffffb2','#fecc5c','#fd8d3c','#f03b20'][::-1]
@@ -28,9 +28,9 @@ J = 3
 I = 30  
 N=0
 
-for use_data in [False,True]:
+for use_data in [True]:
 
-    P, Q_ml, data, covariates, all_data, all_covariates, sizes = generate_ML(N,M, device, 2, 0, use_data)
+    P, Q_ammpis, data, covariates, all_data, all_covariates, sizes = generate_AMMP_IS(N,M, 0, use_data)
     P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, use_data)
 
 
@@ -50,14 +50,14 @@ for use_data in [False,True]:
     data = {'obs':data.pop('obs')}
 
     K = 10
-    T = 2000
-    ml_lrs = [0.1,0.3]
+    T = 1000
+    ml_lrs = [0.2]
     vi_lrs = [0.1]
 
     fig, ax = plt.subplots(4,1, figsize=(7, 8.0))
     for j in range(len(ml_lrs)):
         lr = ml_lrs[j]
-        print(f'ML: {lr}')
+        print(f'AMMP-IS: {lr}')
         z_means = []
         z_scales = []
         z_scale_means = []
@@ -66,7 +66,7 @@ for use_data in [False,True]:
         times = []
         pred_lls = []
         seed_torch(0)
-        q = Q_ml()
+        q = Q_ammpis()
         m1 = alan.Model(P, q).condition(data=data)
 
         # samp = m1.sample_same(K, reparam=False)
@@ -75,16 +75,16 @@ for use_data in [False,True]:
 
         for i in range(T):
             sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-            z_means.append(pp.mean(sample.weights()['sigma_beta']).item())    
+            z_means.append(q.sigma_beta.mean2conv(*q.sigma_beta.named_means)['loc'].item())    
 
-            z_scale_means.append(pp.mean(sample.weights()['mu_beta']).item())  
-            elbos.append(sample.elbo().item()) 
-            if i % 100 == 0:
+            z_scale_means.append(q.mu_beta.mean2conv(*q.mu_beta.named_means)['loc'].item())  
+            if i % 500 == 0:
                 # print(q.Nz.mean2conv(*q.Nz.named_means))
-                print(f'Elbo: {elbos[-1]}')   
+                print(f'Elbo: {m1.model.l_tot}')   
+            elbos.append(m1.model.l_tot) 
             
             start = time.time()    
-            m1.update(lr, sample)
+            m1.ammpis_update(lr, sample)
             times.append(time.time() - start)
 
 
@@ -98,7 +98,7 @@ for use_data in [False,True]:
         z_means = np.expand_dims(np.array(z_means), axis=0)
         z_scale_means = np.expand_dims(np.array(z_scale_means), axis=0)
 
-        ax[0].plot(np.cumsum(times)[::25], n_mean(z_means,25).squeeze(0), color=ml_colours[j], label=f'ML lr: {lr}')
+        ax[0].plot(np.cumsum(times)[::25], n_mean(z_means,25).squeeze(0), color=ml_colours[j], label=f'AMMP-IS lr: {lr}')
         ax[0].axhline(z_mean)
         ax[1].axhline(z_scale_mean)
         ax[1].plot(np.cumsum(times)[::25], n_mean(z_scale_means,25).squeeze(0), color=ml_colours[j])
@@ -180,4 +180,4 @@ for use_data in [False,True]:
 
 
 
-    plt.savefig(f'figures/bus_test_data_{K}_{use_data}.png')
+    plt.savefig(f'figures/bus_ammpis_{K}_{use_data}.png')

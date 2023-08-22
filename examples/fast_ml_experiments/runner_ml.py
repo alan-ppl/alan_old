@@ -51,7 +51,7 @@ def run_experiment(cfg):
             if cfg.dataset == 'movielens':
                 sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,300,18), dtype=np.float32)
             elif cfg.dataset == 'bus_breakdown':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3,3), dtype=np.float32)
+                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,2,3), dtype=np.float32)
             elif cfg.dataset == 'potus':
                 sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
         else:
@@ -78,15 +78,19 @@ def run_experiment(cfg):
             model = alan.Model(P, Q())
             model.to(device)
 
-
+            
             for j in range(cfg.training.num_iters):
+                if cfg.training.decay is not None:
+                    lr = (j + 10)**(-cfg.training.decay)
+                else:
+                    lr = cfg.training.lr
                 if t.cuda.is_available():
                     t.cuda.synchronize()
                 start = time.time()
                 sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
                 elbo = sample.elbo().item()
                 per_seed_obj[i,j] = (elbo)
-                model.update(cfg.training.lr, sample)
+                model.update(lr, sample)
                 if t.cuda.is_available():
                     t.cuda.synchronize()
                 times[i,j] = (time.time() - start)
@@ -134,8 +138,7 @@ def run_experiment(cfg):
 
 
                 if j % 100 == 0:
-                    print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
-                    print("Iteration: {0}, Predll: {1:.2f}".format(j,pred_liks[i,j]))
+                    print("Iteration: {0}, ELBO: {1:.2f}, Predll: {2:.2f}".format(j,elbo,pred_liks[i,j]))
 
 
             ###

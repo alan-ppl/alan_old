@@ -2,8 +2,8 @@ import torch as t
 import alan
 from alan.experiment_utils import seed_torch
 
-def generate_model(N,M,device,ML=2, run=0, use_data=True):
-    M = 3
+def generate_model(N,M, run=0, use_data=True):
+    M = 2
     J = 3
     I = 30
 
@@ -39,90 +39,50 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
       tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()))
       # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
       # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
-      tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+    #   tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+      tr('obs', alan.Bernoulli(logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
 
 
 
 
-    if ML == 1:
-        class Q(alan.AlanModule):
-            def __init__(self):
-                super().__init__()
-                #sigma_beta
-                self.sigma_beta = alan.MLNormal()
-                #mu_beta
-                self.mu_beta = alan.MLNormal()
-                #beta
-                self.beta = alan.MLNormal({'plate_Year': M})
-                #sigma_alpha
-                self.sigma_alpha = alan.MLNormal({'plate_Borough': J})
-                #alpha
-                self.alpha = alan.MLNormal({'plate_Year': M,'plate_Borough': J})
-                #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi = alan.MLNormal()
-                #psi
-                self.psi = alan.MLNormal(sample_shape=(run_type_dim,))
-                #phi
-                self.phi = alan.MLNormal(sample_shape=(bus_company_name_dim,))
-                #theta
-                # self.theta = alan.MLNormal({'plate_ID':I})
+    class Q(alan.AlanModule):
+        def __init__(self):
+            super().__init__()
+            #sigma_beta
+            self.sigma_beta = alan.AMMP_ISNormal()
+            #mu_beta
+            self.mu_beta = alan.AMMP_ISNormal()
+            #beta
+            self.beta = alan.AMMP_ISNormal({'plate_Year': M})
+            #sigma_alpha
+            self.sigma_alpha = alan.AMMP_ISNormal({'plate_Borough': J})
+            #alpha
+            self.alpha = alan.AMMP_ISNormal({'plate_Year': M,'plate_Borough': J})
+            #log_sigma_phi_psi logits
+            self.log_sigma_phi_psi = alan.AMMP_ISNormal()
+            #psi
+            self.psi = alan.AMMP_ISNormal(sample_shape=(run_type_dim,))
+            #phi
+            self.phi = alan.AMMP_ISNormal(sample_shape=(bus_company_name_dim,))
+            #theta
+            # self.theta = alan.MLNormal({'plate_ID':I})
 
 
-            def forward(self, tr, run_type, bus_company_name):
-                #Year level
+        def forward(self, tr, run_type, bus_company_name):
+            #Year level
 
-                tr('sigma_beta', self.sigma_beta())
-                tr('mu_beta', self.mu_beta())
-                tr('beta', self.beta())
+            tr('sigma_beta', self.sigma_beta())
+            tr('mu_beta', self.mu_beta())
+            tr('beta', self.beta())
 
-                #Borough level
-                tr('sigma_alpha', self.sigma_alpha())
-                tr('alpha', self.alpha())
+            #Borough level
+            tr('sigma_alpha', self.sigma_alpha())
+            tr('alpha', self.alpha())
 
-                #ID level
-                tr('log_sigma_phi_psi', self.log_sigma_phi_psi())
-                tr('psi', self.psi())
-                tr('phi', self.phi())
-                # tr('theta', self.theta())
-    elif ML == 2:
-        class Q(alan.AlanModule):
-            def __init__(self):
-                super().__init__()
-                #sigma_beta
-                self.sigma_beta = alan.ML2Normal()
-                #mu_beta
-                self.mu_beta = alan.ML2Normal()
-                #beta
-                self.beta = alan.ML2Normal({'plate_Year': M})
-                #sigma_alpha
-                self.sigma_alpha = alan.ML2Normal({'plate_Borough': J})
-                #alpha
-                self.alpha = alan.ML2Normal({'plate_Year': M,'plate_Borough': J})
-                #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi = alan.ML2Normal()
-                #psi
-                self.psi = alan.ML2Normal(sample_shape=(run_type_dim,))
-                #phi
-                self.phi = alan.ML2Normal(sample_shape=(bus_company_name_dim,))
-                #theta
-                # self.theta = alan.MLNormal({'plate_ID':I})
-
-
-            def forward(self, tr, run_type, bus_company_name):
-                #Year level
-
-                tr('sigma_beta', self.sigma_beta())
-                tr('mu_beta', self.mu_beta())
-                tr('beta', self.beta())
-
-                #Borough level
-                tr('sigma_alpha', self.sigma_alpha())
-                tr('alpha', self.alpha())
-
-                #ID level
-                tr('log_sigma_phi_psi', self.log_sigma_phi_psi())
-                tr('psi', self.psi())
-                tr('phi', self.phi())
+            #ID level
+            tr('log_sigma_phi_psi', self.log_sigma_phi_psi())
+            tr('psi', self.psi())
+            tr('phi', self.phi())
 
 
 
@@ -147,7 +107,7 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
 
 if __name__ == "__main__":
     seed_torch(0)
-    P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), run=0, use_data=False)
+    P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, run=0, use_data=False)
 
 
     model = alan.Model(P, Q())
@@ -158,12 +118,12 @@ if __name__ == "__main__":
 
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
         elbo = sample.elbo()
-        model.update(0.05, sample)
+        model.ammpis_update(0.3, sample)
 
 
 
 
-        for i in range(10):
+        for i in range(2):
             try:
                 sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
                 pred_likelihood = model.predictive_ll(sample, N = 10, data_all=all_data, inputs_all=all_covariates)
@@ -171,6 +131,6 @@ if __name__ == "__main__":
             except:
                 pred_likelihood = 0
 
-        if j % 100 == 0:
+        if j % 10 == 0:
             print(f'Elbo: {elbo.item()}')
             print(f'Pred_ll: {pred_likelihood}')

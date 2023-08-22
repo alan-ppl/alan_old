@@ -153,6 +153,9 @@ class TorchDimDist():
 
     def log_prob_Q(self, x, Kdim=None):
         return self.log_prob(x, Kdim=Kdim)
+    
+    def entropy(self):
+        return self.dist(**self.all_args).entropy()
 
 def new_dist(name, dist, result_ndim, param_ndim):
     """

@@ -6,7 +6,7 @@ import numpy as np
 from alan.experiment_utils import seed_torch
 
 def generate_model(N,M,device,ML=1, run=0, use_data=True):
-    M = 2
+    M = 3
     J = 3
     I = 30
 

@@ -58,7 +58,7 @@ for use_data in [True]:
     mcmc = MCMC(
         nuts_kernel,
         num_samples=1000,
-        warmup_steps=10000,
+        warmup_steps=20000,
         num_chains=7,
         initial_params=init_params,
         transforms=transforms,
@@ -69,8 +69,8 @@ for use_data in [True]:
     with open(f'posteriors/movielens_{use_data}.pkl', 'wb') as f:
         pickle.dump(samples, f)
 
-    mu_z_posterior_mean  = samples['mu_z'].sum(-1).mean(0)[0]
-    psi_z_posterior_mean = samples['psi_z'].sum(-1).mean(0)[0]
+    mu_z_posterior_mean  = [samples['mu_z'].sum(-1).mean(0)[i].item() for i in range(18)]
+    psi_z_posterior_mean = [samples['mu_z'].sum(-1).mean(0)[i].item() for i in range(18)]
 
     with open(f'posteriors/mu_z_posterior_mean_{use_data}.pkl', 'wb') as f:
         pickle.dump(mu_z_posterior_mean, f)

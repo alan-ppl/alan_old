@@ -135,6 +135,30 @@ class Sample():
         assert 1==lp.numel()
         return lp
 
+
+    # def HQ(self, detach_q=False):
+    #     """
+    #     Computes the Entropy: H(Q) = E_Q[-log(Q)]
+    #     """
+    #     logq = self.logq
+    #     if detach_q:
+    #         logq = [lq.detach() for lq in logq]
+
+    #     tensors = [*[-lq for lq in logq]]
+
+    #     ## Convert tensors to Float64
+    #     tensors = [x.to(dtype=t.float64) for x in tensors]
+
+    #     #iterate from lowest plate
+    #     for plate_name in self.ordered_plate_dims[::-1]:
+    #         tensors = self.sum_plate_T(tensors, plate_name)
+
+    #     assert 1==len(tensors)
+    #     HQ = tensors[0]
+    #     assert 1==lp.numel()
+    #     return HQ
+    
+
     def sum_plate_T(self, lps, plate_dim):
         if plate_dim is not None:
             #partition tensors into those with/without plate_name
@@ -255,7 +279,7 @@ class Sample():
 
         undim_Js = []
         for (sample, dims) in zip(samples, dimss):
-            undim_Js.append(t.zeros(tuple(dim.size for dim in dims), device=sample.device, requires_grad=True))
+            undim_Js.append(t.zeros(tuple(dim.size for dim in dims), device=sample.device, dtype=t.float64, requires_grad=True))
 
         #Put torchdims back in.
         dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
