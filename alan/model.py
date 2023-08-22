@@ -231,39 +231,58 @@ class SampleMixin():
         """
         # assert not sample.reparam
 
-        sample_weights = sample.weights()
 
         HQ_t = getattr(self.model, 'HQ_t')
-        HQ_t_minus_1 = getattr(self.model, 'HQ_t_minus_1')
+        HQ_temp = getattr(self.model, 'HQ_temp')
+        l_tot = getattr(self.model, 'l_tot')
+        logwt_minus_1 = getattr(self.model, 'logwt_minus_1')
+        sample_weights = sample.weights()
+
         model = self.model if isinstance(self, ConditionedModel) else self
 
-
-        #Trying using a downweighting term so our early broad posterior's high importance weight variance
-        #doesn't cause us to have overly narrow t+1 posteriors
+        l_one_iter = sample.elbo().item()
+        
         hq = 0
         for mod in model.modules():
-            if hasattr(mod, '_update'):
-                sig = mod.mean2conv(*mod.named_means)['scale'].sum()
-                hq += 1/2 * t.log(2*t.pi*sig) + 1/2
+            if hasattr(mod, 'm_one_iter'):
+                hq += mod.entropy().sum()
+                
 
         HQ_t.data.copy_(hq) 
-        # simplest method
-        dt = HQ_t_minus_1 - HQ_t + 0.1
-        # Using relu
-        # dt = t.nn.functional.relu(HQ_t_minus_1 - HQ_t)
-
-
-        l_tot = getattr(self.model, 'l_tot')
-        l_one_iter = sample.elbo().item()
-        l_tot.data.add_(softplus(l_one_iter + dt - l_tot) - dt)
-        eta = t.exp(l_one_iter - l_tot)
+        HQ_temp.data.copy_(hq)
         
-        for mod in model.modules():
-            if hasattr(mod, '_update'):
-                mod._update(sample_weights, lr, eta)
 
-        HQ_t_minus_1.data.copy_(HQ_t.data)
-        self.zero_grad()
+        l_tot_t_1 = l_tot
+        
+        for j in range(100):
+            #weights 
+
+            # logwt = -(HQ_t - HQ_temp)
+            #or
+            logwt = -t.nn.functional.relu(HQ_t - HQ_temp) 
+
+            dt = logwt - logwt_minus_1
+
+            l_tot.data.copy_(l_tot_t_1 - dt + softplus(l_one_iter + dt - l_tot_t_1))
+
+            eta_t = t.exp(l_one_iter - l_tot)
+
+            hq_temp = 0
+
+            for mod in model.modules():
+                if hasattr(mod, '_update_avg_means'):
+                    m_one_iter = mod.m_one_iter(sample_weights)
+                    mod._update_avg_means(m_one_iter, eta_t)
+                if hasattr(mod, 'm_one_iter'):
+                    hq_temp += mod.entropy(use_average=True).sum()
+
+            HQ_temp.data.copy_(hq_temp)
+            self.zero_grad()
+
+        logwt_minus_1.data.copy_(logwt)
+        for mod in model.modules():
+            if hasattr(mod, '_update_means'):
+                mod._update_means(lr)
 
     def ng_update(self, lr, sample):
         assert sample.reparam
@@ -382,7 +401,8 @@ class Model(SampleMixin, AlanModule):
         assert not hasattr(self, 'l_tot')
         self.register_buffer('l_tot', t.tensor(-1e15, dtype=t.float64))
         self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
-        self.register_buffer('HQ_t_minus_1', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('HQ_temp', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('logwt_minus_1', t.tensor(0.0, dtype=t.float64))
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)

@@ -11,6 +11,7 @@
       do_pred_ll: True
       num_pred_ll_samples: 10
     lr: 1e-3
-    ML: 2
+    ML: 1
+    decay: !!null
   use_data: True
   do_moments: True

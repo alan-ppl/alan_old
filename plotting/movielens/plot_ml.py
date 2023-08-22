@@ -11,7 +11,7 @@ Ks = ['3','10','30']
 
 N = '5'
 M = '300'
-lrs = ['0.1', '0.03', '0.01']# '0.003', '0.001']
+lrs = ['0.001', '0.03', '0.01']
 mean_no = 10
 
 ml_colours = ['#f1eef6','#bdc9e1','#74a9cf','#2b8cbe','#045a8d'][::-1]
@@ -100,14 +100,14 @@ with plt.rc_context(bundles.icml2022()):
 
             ax[0,K].set_title(f'Training K: {Ks[K]}')
 
-            if data == 'False':
-                ax[0,0].set_ylim(-2500,-1000)
-                ax[0,1].set_ylim(-1400,-1000)
-                ax[0,2].set_ylim(-1500,-900)
-            else:
-                ax[0,0].set_ylim(-2500,-1000)
-                ax[0,1].set_ylim(-1400,-1000)
-                ax[0,2].set_ylim(-1500,-900)
+            # if data == 'False':
+            #     ax[0,0].set_ylim(-2500,-1000)
+            #     ax[0,1].set_ylim(-1400,-1000)
+            #     ax[0,2].set_ylim(-1500,-900)
+            # else:
+            #     ax[0,0].set_ylim(-2500,-1000)
+            #     ax[0,1].set_ylim(-1400,-1000)
+            #     ax[0,2].set_ylim(-1500,-900)
 
         # handles, labels = fig.get_legend_handles_labels()
         # unique = [(h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]]

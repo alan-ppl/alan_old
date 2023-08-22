@@ -54,7 +54,7 @@ for use_data in [True]:
     K = 10
     ammpis_T = 500
     vi_T = 250
-    ml_lrs = [0.1]
+    ml_lrs = [0.3]
     vi_lrs = [0.1]
 
     fig, ax = plt.subplots(19,2, figsize=(7.0, 5*8.0))
@@ -82,13 +82,13 @@ for use_data in [True]:
 
             for k in range(18):
                 z_means[k].append(q.mu.mean2conv(*q.mu.named_means)['loc'][k].item())    
-
                 z_scale_means[k].append(q.psi_z.mean2conv(*q.psi_z.named_means)['loc'][0].item()) 
-            
-            elbos.append(m1.model.l_tot - math.log(i+1)) 
+            # print(m1.model.l_tot )
+            elbos.append(m1.model.l_tot.item()) 
+
             if i % 100 == 0:
                 # print(q.Nz.mean2conv(*q.Nz.named_means))
-                print(f'Elbo: {m1.model.l_tot - math.log(i+1)}')   
+                print(f'Elbo: {m1.model.l_tot.item()}')   
             
             start = time.time()    
             m1.ammpis_update(lr, sample)

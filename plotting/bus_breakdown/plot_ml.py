@@ -94,16 +94,16 @@ with plt.rc_context(bundles.icml2022()):
             #                ncol=2)
 
             ax[0,K].set_title(f'Training K: {Ks[K]}')
-            if data == 'False':
-                ax[0,0].set_ylim(-3500,-1800)
-                ax[0,1].set_ylim(-1650,-1400)
-                ax[0,2].set_ylim(-1550,-1400)
-                ax[1,0].set_ylim(-16000,-13500)
-                ax[1,1].set_ylim(-16000,-13500)
-                ax[1,2].set_ylim(-16000,-13500)
-            else:
-                ax[0,0].set_ylim(-2550,-1700)
-                ax[0,1].set_ylim(-1625,-1525)
+            # if data == 'False':
+            #     ax[0,0].set_ylim(-3500,-1800)
+            #     ax[0,1].set_ylim(-1650,-1400)
+            #     ax[0,2].set_ylim(-1550,-1400)
+            #     ax[1,0].set_ylim(-16000,-13500)
+            #     ax[1,1].set_ylim(-16000,-13500)
+            #     ax[1,2].set_ylim(-16000,-13500)
+            # else:
+            #     ax[0,0].set_ylim(-2550,-1700)
+            #     ax[0,1].set_ylim(-1625,-1525)
 
             # ax[1,K].set_title(f'Training K: {Ks[K]}')
             #
