@@ -2,13 +2,16 @@
   dataset: ???
   model: ???
   training:
-    num_iters: 200
+    num_iters: 3000
     N: 2
     M: 2
-    Ks: [3,10,30]
-    num_runs: 5
+    Ks: [3,10,30,100]
+    num_runs: 10
     pred_ll:
-      do_pred_ll: False
-      num_pred_ll_samples: 1000
+      do_pred_ll: True
+      num_pred_ll_samples: 10
     lr: 1e-3
     ML: 1
+    decay: !!null
+  use_data: True
+  do_moments: True

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import scipy.signal as ss
 # import theano
-import pytorch as t
+import torch as t
 
 from .preprocessed_data import PreprocessedData
 
@@ -158,11 +158,11 @@ def preprocess_data(
     else:
         NewCases[NewCases < 0] = np.nan
 
-    Confirmed = np.ma.masked_invalid(Confirmed.astype(t.float32))
-    Active = np.ma.masked_invalid(Active.astype(t.float32))
-    Deaths = np.ma.masked_invalid(Deaths.astype(t.float32))
-    NewDeaths = np.ma.masked_invalid(NewDeaths.astype(t.float32))
-    NewCases = np.ma.masked_invalid(NewCases.astype(t.float32))
+    Confirmed = np.ma.masked_invalid(Confirmed)
+    Active = np.ma.masked_invalid(Active)
+    Deaths = np.ma.masked_invalid(Deaths)
+    NewDeaths = np.ma.masked_invalid(NewDeaths)
+    NewCases = np.ma.masked_invalid(NewCases)
 
     # handle schools and universities
     if schools_unis == "two_xor":

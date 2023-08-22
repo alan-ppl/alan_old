@@ -3,9 +3,11 @@ import torch.nn as nn
 from . import traces
 from .Sample import Sample, SampleGlobal
 from .utils import *
+from torch.nn.functional import threshold
 
 from .alan_module import AlanModule
 
+from torch.nn.functional import softplus
 class SampleMixin():
     r"""
     A mixin for :class:`Model` and :class:`ConditionedModel` that introduces the sample_... methods
@@ -14,7 +16,7 @@ class SampleMixin():
         self.Q(tr, ...)
         self.check_device(device)
     """
-    def dims_data_inputs(self, data, inputs, platesizes, device, use_model=True):
+    def dims_data_inputs(self, data, mask, inputs, platesizes, device, use_model=True):
         r"""
         Adds the right dimensions to *data* and *inputs*.
 
@@ -29,15 +31,18 @@ class SampleMixin():
         self.check_device(device)
         #deal with possibility of None defaults
         data       = none_empty_dict(data)
+        mask       = none_empty_dict(mask)
         inputs     = none_empty_dict(inputs)
         platesizes = none_empty_dict(platesizes)
 
         #place on device
-        data   = {k: v.to(device=device) for (k, v) in data.items()}
-        inputs = {k: v.to(device=device) for (k, v) in inputs.items()}
+        data   = {k: v.to(device=device, dtype=t.float64) for (k, v) in data.items()}
+        inputs = {k: v.to(device=device, dtype=t.float64) for (k, v) in inputs.items()}
+        mask  = {k: v.to(device=device, dtype=t.float64) for (k, v) in mask.items()}
+
 
         platedims = self.platedims if use_model else {}
-        platedims = extend_plates_with_named_tensors(platedims, [*data.values(), *inputs.values()])
+        platedims = extend_plates_with_named_tensors(platedims, [*data.values(), *inputs.values(), *mask.values()])
         platedims = extend_plates_with_sizes(platedims, platesizes)
 
         if hasattr(self, "data") and use_model:
@@ -48,9 +53,19 @@ class SampleMixin():
             assert 0 == len(set(self.inputs).intersection(inputs))
             inputs = {**self.inputs, **inputs}
 
+        if hasattr(self, "mask") and use_model:
+            assert 0 == len(set(self.mask).intersection(mask))
+            mask = {**self.mask, **mask}
+            
+
+        for k, v in mask.items():
+            if k in data:
+                mask[k] = v.refine_names(*data[k].names)
+                
         data   = named2dim_tensordict(platedims, data)
         inputs = named2dim_tensordict(platedims, inputs)
-        return platedims, data, inputs
+        mask   = named2dim_tensordict(platedims, mask)
+        return platedims, data, mask, inputs
 
     def sample_same(self, *args, **kwargs):
         r"""
@@ -77,7 +92,7 @@ class SampleMixin():
         """
         return self.sample_tensor(traces.TraceQGlobal, *args, **kwargs)
 
-    def sample_tensor(self, trace_type, K, reparam=True, data=None, inputs=None, platesizes=None, device=t.device('cpu')):
+    def sample_tensor(self, trace_type, K, reparam=True, data=None, mask=None, inputs=None, platesizes=None, device=t.device('cpu'), lp_dtype=t.float64, lp_device=None):
         r"""
         Internal method that actually runs *P* and *Q*.
 
@@ -97,7 +112,7 @@ class SampleMixin():
         Returns:
             Sample (:class:`alan.Sample.Sample`): Sample object
         """
-        platedims, data, inputs = self.dims_data_inputs(data, inputs, platesizes, device)
+        platedims, data, mask, inputs = self.dims_data_inputs(data, mask, inputs, platesizes, device)
 
         #if 0==len(all_data):
         #    raise Exception("No data provided either to the Model(...) or to e.g. model.elbo(...)")
@@ -108,13 +123,13 @@ class SampleMixin():
         #    warn("You have provided data to Model(...) and e.g. model.elbo(...). There are legitimate uses for this, but they are very, _very_ unusual.  You should usually provide all data to Model(...), unless you're minibatching, in which case that data needs to be provided to e.g. model.elbo(...).  You may have some minibatched and some non-minibatched data, but very likely you don't.")
 
         #sample from approximate posterior
-        trq = trace_type(K, data, inputs, platedims, reparam, device)
+        trq = trace_type(K, data, mask, platedims, reparam, device, lp_dtype)
         self.Q(trq, **inputs)
         #compute logP
         trp = traces.TraceP(trq)
         self.P(trp, **inputs)
 
-        return Sample(trp)
+        return Sample(trp, lp_dtype=lp_dtype, lp_device=lp_device)
 
     def sample_prior(self, N=None, reparam=True, inputs=None, platesizes=None, device=t.device('cpu'), varnames=None):
         """Draw samples from a generative model (with no data).
@@ -132,10 +147,10 @@ class SampleMixin():
             represented as a named tensor (e.g. so that it is suitable
             for use as data).
         """
-        platedims, _, inputs = self.dims_data_inputs(None, inputs, platesizes, device)
+        platedims, data, mask, inputs = self.dims_data_inputs({}, {}, inputs, platesizes, device)
 
         with t.no_grad():
-            tr = traces.TraceSample(N, inputs, platedims, device)
+            tr = traces.TraceSample(N, platedims, device)
             self.P(tr, **inputs)
 
         if isinstance(varnames, str):
@@ -146,43 +161,31 @@ class SampleMixin():
         return {varname: dim2named_tensor(tr.samples[varname]) for varname in varnames}
 
     def _predictive(self, sample, N, data_all=None, inputs_all=None, platesizes_all=None):
-        """Internal method that returns a trace for the predictive distribution
-
-        Args:
-            sample (:class:`Sample`): sample object (corresponding to...)
-            N (int):        The number of samples to draw
-            data_all (Dict): **Dict** containing both testing and training data
-            inputs_all (Dict): **Dict** containing both testing and training inputs (covariates)
-            platesizes_all (Dict): **Dict** mapping from dim name to size
-
-        Returns:
-            tr (:class:`alan.traces.TracePred`): trace for the predictive distribution
-            N (TorchDim.dim): TorchDim dim with size N
-        """
+        assert isinstance(sample, (Sample, SampleGlobal))
+        assert isinstance(N, int)
         N = Dim('N', N)
         #platedims, data, inputs = self.dims_data_inputs(data_all, covariates_all, platesizes_all, device)
         post_samples = sample._importance_samples(N)
 
-        platedims_all, data_all, inputs_all = self.dims_data_inputs(data_all, inputs_all, platesizes_all, device=sample.device, use_model=False)
+        platedims_all, data_all, mask_all, inputs_all = self.dims_data_inputs(data_all, None, inputs_all, platesizes_all, device=sample.device, use_model=False)
 
         tr = traces.TracePred(
             N, post_samples,
             sample.trp.data, data_all,
-            sample.trp.inputs, inputs_all,
             sample.trp.platedims, platedims_all,
             device=sample.device
         )
         self.P(tr, **inputs_all)
         return tr, N
 
-    def predictive_samples(self, sample, N, platesizes_all=None):
+    def predictive_samples(self, sample, N, inputs_all=None, platesizes_all=None):
         if platesizes_all is None:
             platesizes_all = {}
-        trace_pred, N = self._predictive(sample, N, None, platesizes_all)
+        trace_pred, N = self._predictive(sample, N, data_all=None, inputs_all=inputs_all, platesizes_all=platesizes_all)
         #Convert everything to named
         #Return a dict mapping
         #Convert everything to named
-        return trace_pred.samples_all
+        return trace_pred.samples
 
     def predictive_ll(self, sample, N, data_all, inputs_all=None):
         """
@@ -215,7 +218,8 @@ class SampleMixin():
                 ll_train = ll_train.sum(dims_train)
             #print(ll_all)
             #print(ll_train)
-            result[varname] = (ll_all - ll_train).mean(N)
+            #result[varname] = (ll_all - ll_train).mean(N)
+            result[varname] = logmeanexp_dims(ll_all - ll_train, (N,))
 
         return result
 
@@ -232,6 +236,65 @@ class SampleMixin():
             if hasattr(mod, '_update'):
                 mod._update(lr)
         self.zero_grad()
+
+    def ammpis_update(self, lr, sample):
+        """
+        Will call update on Model
+        """
+        # assert not sample.reparam
+
+
+        HQ_t = getattr(self.model, 'HQ_t')
+        HQ_temp = getattr(self.model, 'HQ_temp')
+        l_tot = getattr(self.model, 'l_tot')
+        logwt_minus_1 = getattr(self.model, 'logwt_minus_1')
+        sample_weights = sample.weights()
+
+        model = self.model if isinstance(self, ConditionedModel) else self
+
+        l_one_iter = sample.elbo().item()
+        
+        hq = 0
+        for mod in model.modules():
+            if hasattr(mod, 'm_one_iter'):
+                hq += mod.entropy().sum()
+                
+
+        HQ_t.data.copy_(hq) 
+        HQ_temp.data.copy_(hq)
+        
+
+        l_tot_t_1 = l_tot
+        
+        for j in range(100):
+            #weights 
+
+            # logwt = -(HQ_t - HQ_temp)
+            #or
+            logwt = -t.nn.functional.relu(HQ_t - HQ_temp) 
+
+            dt = logwt - logwt_minus_1
+
+            l_tot.data.copy_(l_tot_t_1 - dt + softplus(l_one_iter + dt - l_tot_t_1))
+
+            eta_t = t.exp(l_one_iter - l_tot)
+
+            hq_temp = 0
+
+            for mod in model.modules():
+                if hasattr(mod, '_update_avg_means'):
+                    m_one_iter = mod.m_one_iter(sample_weights)
+                    mod._update_avg_means(m_one_iter, eta_t)
+                if hasattr(mod, 'm_one_iter'):
+                    hq_temp += mod.entropy(use_average=True).sum()
+
+            HQ_temp.data.copy_(hq_temp)
+            self.zero_grad()
+
+        logwt_minus_1.data.copy_(logwt)
+        for mod in model.modules():
+            if hasattr(mod, '_update_means'):
+                mod._update_means(lr)
 
     def ng_update(self, lr, sample):
         assert sample.reparam
@@ -283,15 +346,16 @@ class ConditionedModel(SampleMixin):
     bound_model = model.bind(data=..., inputs=...)
     bound_model.sample_mp(K) == model.sample_mp(K, data=..., inputs=...)
     """
-    def __init__(self, model, data, inputs, platesizes):
+    def __init__(self, model, data, mask, inputs, platesizes):
         super().__init__()
         self.model  = model
         self.data   = none_empty_dict(data)
+        self.mask   = none_empty_dict(mask)
         self.inputs = none_empty_dict(inputs)
         platesizes  = none_empty_dict(platesizes)
 
         self.platedims = extend_plates_with_sizes(model.platedims, platesizes)
-        tensors = [*self.data.values(), *self.inputs.values()]
+        tensors = [*self.data.values(), *self.inputs.values(), *self.mask.values()]
         self.platedims = extend_plates_with_named_tensors(self.platedims, tensors)
 
     def P(self, tr, *args, **kwargs):
@@ -309,6 +373,7 @@ class ConditionedModel(SampleMixin):
     def to(self, *args, **kwargs):
         self.model.to(*args, **kwargs)
         self.data   = {k: v.to(*args, **kwargs) for (k, v) in self.data.items()}
+        self.mask = {k: v.to(*args, **kwargs) for (k, v) in self.mask.items()}
         self.inputs = {k: v.to(*args, **kwargs) for (k, v) in self.inputs.items()}
 
     def check_device(self, device):
@@ -346,11 +411,17 @@ class Model(SampleMixin, AlanModule):
         #Default to using P as Q if Q is not defined.
         if not hasattr(self, 'Q'):
             self.Q = P
+        
+        assert not hasattr(self, 'l_tot')
+        self.register_buffer('l_tot', t.tensor(-1e15, dtype=t.float64))
+        self.register_buffer('HQ_t', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('HQ_temp', t.tensor(0.0, dtype=t.float64))
+        self.register_buffer('logwt_minus_1', t.tensor(0.0, dtype=t.float64))
 
     def forward(self, *args, **kwargs):
         return NestedModel(self, args, kwargs)
 
-    def condition(self, data=None, inputs=None, platesizes=None):
+    def condition(self, data=None, mask=None, inputs=None, platesizes=None):
         r"""
         Args:
             data:   Any non-minibatched data. This is usually used in statistics,
@@ -366,9 +437,10 @@ class Model(SampleMixin, AlanModule):
                     the named dimensions in data (and from the sizes of any parameters
                     in Q).
         """
-        return ConditionedModel(self, data, inputs, platesizes)
+        return ConditionedModel(self, data, mask, inputs, platesizes)
 
     def check_device(self, device):
         device = t.device(device)
         for x in [*self.parameters(), *self.buffers()]:
-            assert x.device == device
+            if x.device != device:
+                x.to(device)

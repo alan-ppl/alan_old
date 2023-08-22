@@ -5,7 +5,7 @@ from .utils import named2dim_tensor, extend_plates_with_named_tensor
 class AlanModule(nn.Module):
     """
     If we have an approximate posterior with per-datapoint parameters, then
-    these parameters likely have plates.  When used in .P or .Q, these 
+    these parameters likely have plates.  When used in .P or .Q, these
     parameters need to have the appropriate torchdim plates.  However, that's
     not easy to achieve given that we're trying to avoid the user having
     direct access to the underlying torchdims.
@@ -17,6 +17,7 @@ class AlanModule(nn.Module):
         super().__init__()
         self.platedims = {}
         self._names = {}
+        self.index = None
 
     def get_unnamed_tensor(self, name):
         if '_parameters' in self.__dict__:
@@ -62,10 +63,13 @@ class AlanModule(nn.Module):
 
     def add_module(self, name, child):
         platedims = {**self.platedims}
-        #Add new platedims from child
+        #Add new platedims from child and index each child module for use in AMMP-IS sampling
+        idx = -1
         for gc in child.modules():
             if isinstance(gc, AlanModule):
                 platedims = {**platedims, **gc.platedims}
+                gc.index = idx
+                idx += 1
             else:
                 for x in list(gc.parameters(recurse=False)) + list(gc.buffers(recurse=False)):
                     if any(name is not None in x.names):

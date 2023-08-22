@@ -29,11 +29,11 @@ class ML(AlanModule):
 
         self.meannames = tuple(f'mean_{i}' for i in range(len(self.sufficient_stats)))
         for (meanname, init_mean) in zip(self.meannames, init_means):
-            self.register_buffer(meanname, t.full(shape, init_mean).rename(*names))
+            self.register_buffer(meanname, t.full(shape, init_mean, dtype=t.float64).rename(*names))
 
         self.natnames = tuple(f'nat_{i}' for i in range(len(self.sufficient_stats)))
         for natname in self.natnames:
-            self.register_parameter(natname, nn.Parameter(t.zeros(shape).rename(*names)))
+            self.register_parameter(natname, nn.Parameter(t.zeros(shape, dtype=t.float64).rename(*names)))
         self.reset_nats()
 
         self.platenames = tuple(platesizes.keys())
@@ -77,7 +77,7 @@ class MLNormal(ML, NormalMixin):
     pass
 class MLMvNormal(ML, MvNormalMixin):
     pass
-class MLBernoulli(ML, BernoulliMixin):
+class MLBernoulliLogits(ML, BernoulliLogitsMixin):
     pass
 class MLPoisson(ML, PoissonMixin):
     pass

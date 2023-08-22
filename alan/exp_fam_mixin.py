@@ -1,7 +1,12 @@
 import torch as t
 import torch.autograd.forward_ad as fwAD
 from torch.distributions.multivariate_normal import _precision_to_scale_tril
+from torch.nn.functional import threshold
 from .dist import *
+
+import alan.postproc as pp
+
+Tensor = (functorch.dim.Tensor, t.Tensor)
 
 def grad_digamma(x):
     return t.special.polygamma(1, x)
@@ -75,7 +80,7 @@ def inverse_sigmoid(y):
     -x = log(1/y - 1)
     x = -log(1/y - 1)
     """
-    return -t.log(1/y - 1)
+    return -t.log(t.abs(1/y - 1) + 1e-50)
 
 class BernoulliMixin(AbstractMixin):
     """
@@ -92,6 +97,8 @@ class BernoulliMixin(AbstractMixin):
 
 class BernoulliLogitsMixin(BernoulliMixin):
     #Conventional and natural parameters are both logits
+    default_init_conv = {'logits':t.zeros(())}
+
     @staticmethod
     def conv2nat(logits):
         return (logits,)
@@ -107,7 +114,7 @@ class BernoulliLogitsMixin(BernoulliMixin):
         return {'logits': inverse_sigmoid(probs)}
 
     @staticmethod
-    def canonical_conv(self, probs=None, logits=None):
+    def canonical_conv(logits=None, probs=None):
         assert (probs is None) != (logits is None)
         return {'logits': inverse_sigmoid(probs) if probs is not None else logits}
 
@@ -132,7 +139,7 @@ class BernoulliProbsMixin(BernoulliMixin):
         return {'probs': probs}
 
     @staticmethod
-    def canonical_conv(self, probs=None, logits=None):
+    def canonical_conv(logits=None, probs=None):
         assert (probs is None) != (logits is None)
         return {'probs': t.sigmoid(logits) if (logits is not None) else logits}
 
@@ -165,7 +172,49 @@ class PoissonMixin(AbstractMixin):
 
     @staticmethod
     def canonical_conv(rate):
-        return {'rate': rate}
+        return {'rate': rate.exp()}
+
+# class NormalMixin(AbstractMixin):
+#     dist = staticmethod(Normal)
+#     sufficient_stats = (identity, t.square)
+#     default_init_conv = {'loc': 0., 'scale': 1.}
+#     @staticmethod
+#     def conv2mean(loc, scale):
+#         Ex  = loc
+#         Ex2 = loc**2 + scale**2
+#         return Ex, Ex2
+#     @staticmethod
+#     def mean2conv(Ex, Ex2):
+#         loc   = Ex
+#         # print(Ex2)
+#         # print(loc)
+#         # print(Ex2 - loc**2)
+#         scale = threshold(Ex2 - loc**2, 0 ,1e-25).sqrt()
+#         return {'loc': loc, 'scale': scale}
+
+#     @staticmethod
+#     def conv2nat(loc, scale):
+
+
+#         prec = 1/threshold(scale, 0 ,1e-25)
+#         mu_prec = loc * prec
+#         return mu_prec, -0.5*prec
+
+#     @staticmethod
+#     def nat2conv(mu_prec, minus_half_prec):
+#         prec = -2*minus_half_prec
+#         loc = mu_prec / threshold(prec, 0 ,1e-25)
+#         scale = threshold(prec, 0 ,1e-25).rsqrt()
+#         return {'loc': loc, 'scale': scale}
+
+#     @staticmethod
+#     def canonical_conv(loc, scale):
+#         ## exp so that its positive, is this the right place to do this?
+#         return {'loc': loc, 'scale': scale}
+
+#     @staticmethod
+#     def test_conv(N):
+#         return {'loc': t.randn(N), 'scale': t.randn(N).exp()}
 
 class NormalMixin(AbstractMixin):
     dist = staticmethod(Normal)
@@ -175,18 +224,36 @@ class NormalMixin(AbstractMixin):
     def conv2mean(loc, scale):
         Ex  = loc
         Ex2 = loc**2 + scale**2
+
         return Ex, Ex2
+    
+    @staticmethod
+    def sample2mean(sample,index):
+        name = list(sample.keys())[index]
+        sample = {name:sample[name]}
+        Ex  = pp.mean(sample)[name]
+        Ex2 = pp.mean(pp.square(sample))[name]
+        return [Ex, Ex2]
+    
     @staticmethod
     def mean2conv(Ex, Ex2):
-        loc   = Ex 
-        scale = (Ex2 - loc**2).sqrt()
+        loc   = Ex
+        # scale = (threshold(Ex2 - loc**2,0.5,0.5)).sqrt() 
+        # scale = scale + (1e-20)*(scale==0)
+        # scale = (Ex2 - loc**2).sqrt() 
+        # Try this:
+        a = Ex2 - loc**2
+        A = a + (-a + 1e-15)*(a<=0)
+        scale = A.sqrt()
+        scale = scale + (1e-10)*(scale<=0)
         return {'loc': loc, 'scale': scale}
 
     @staticmethod
     def conv2nat(loc, scale):
-        prec = 1/scale**2
+        prec = 1/scale
         mu_prec = loc * prec
         return mu_prec, -0.5*prec
+
     @staticmethod
     def nat2conv(mu_prec, minus_half_prec):
         prec = -2*minus_half_prec
@@ -201,7 +268,7 @@ class NormalMixin(AbstractMixin):
     @staticmethod
     def test_conv(N):
         return {'loc': t.randn(N), 'scale': t.randn(N).exp()}
-
+    
 class ExponentialMixin(AbstractMixin):
     dist = staticmethod(Exponential)
     sufficient_stats = (identity,)
@@ -211,7 +278,7 @@ class ExponentialMixin(AbstractMixin):
     @staticmethod
     def mean2conv(mean):
         return {'rate': t.reciprocal(mean)}
-    
+
     @staticmethod
     def nat2conv(nat):
         return {'rate': -nat}
@@ -273,7 +340,7 @@ class DirichletMixin(AbstractMixin):
 class BetaMixin(AbstractMixin):
     dist = staticmethod(Beta)
     sufficient_stats = (t.log, lambda x: t.log(1-x))
-    
+
     @staticmethod
     def conv2nat(concentration1, concentration0):
         return (concentration1-1, concentration0-1)
@@ -298,7 +365,7 @@ class BetaMixin(AbstractMixin):
     def canonical_conv(concentration1, concentration0):
         return {'concentration1': concentration1, 'concentration0': concentration0}
 
-    
+
 
 class GammaMixin(AbstractMixin):
     """
@@ -307,6 +374,7 @@ class GammaMixin(AbstractMixin):
     """
     dist = staticmethod(Gamma)
     sufficient_stats = (t.log, identity)
+    default_init_conv = {'concentration':t.tensor(2, dtype=t.float64), 'rate':t.tensor(1, dtype=t.float64)}
 
     @staticmethod
     def conv2nat(concentration, rate):
@@ -322,7 +390,7 @@ class GammaMixin(AbstractMixin):
         #Tested by sampling
         alpha = concentration
         beta = rate
-        return (-t.log(beta) + t.digamma(alpha), alpha/beta)
+        return (-t.log(beta) + t.digamma(alpha), alpha/(beta))
     @staticmethod
     def mean2conv(Elogx, Ex):
         """
@@ -332,14 +400,14 @@ class GammaMixin(AbstractMixin):
         1/a^new = 1/a (1 + num / (1 + a grad_digamma(a)))
         a^new   = a / (1 + num / (1 + a grad_digamma(a)))
         """
-        logEx = Ex.log()
+        logEx = (Ex).log()
         diff = (Elogx - logEx)
         alpha = - 0.5 / diff
         for _ in range(6):
             num = diff + alpha.log() - t.digamma(alpha)
             denom = 1 - alpha * grad_digamma(alpha)
             alpha = alpha * t.reciprocal(1 + num/denom)
-        beta = alpha / Ex 
+        beta = alpha / Ex
         return {'concentration': alpha, 'rate': beta}
 
     @staticmethod
@@ -386,7 +454,7 @@ def bmv(m, v):
 class MvNormalMixin(AbstractMixin):
     dist = staticmethod(MultivariateNormal)
     sufficient_stats = (identity,vec_square)
-
+    # default_init_conv = {'loc': 0., 'covariance_matrix': t.eye(1)}
     @staticmethod
     def conv2nat(loc, covariance_matrix):
         P = posdef_matrix_inverse(covariance_matrix)

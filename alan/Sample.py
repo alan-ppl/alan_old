@@ -1,9 +1,9 @@
 import math
 from .utils import *
-from .timeseries import TimeseriesLogP, flatten_tslp_list
 from .dist import Categorical
 from functorch.dim import dims, Tensor, Dim
 from . import traces
+
 
 class Sample():
     """
@@ -14,44 +14,73 @@ class Sample():
       Check that data appears in logps but not logqs
       Check that all dims are something (plate, timeseries, K)
     """
-    def __init__(self, trp):
+    def __init__(self, trp, lp_dtype, lp_device):
         self.trp = trp
-
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
-            if isinstance(lp, TimeseriesLogP):
-                assert lp.first.shape == () and lp.rest.shape == ()
-            else:
-                assert lp.shape == ()
+            assert lp.shape == ()
 
-        Q_keys = [*trp.group, *trp.logq_var]
-        assert set(Q_keys) == set(trp.samples.keys())
+        Q_non_sum_varnames = [*trp.group, *trp.logq_var]
+        Q_sum_varnames = [*Q_non_sum_varnames, *trp.sum_discrete_varnames]
+
+        variables_in_Q_but_not_P = tuple(set(Q_sum_varnames).difference(trp.samples.keys()))
+        if 0 != len(variables_in_Q_but_not_P):
+            raise Exception(
+                f"Variables {variables_in_Q_but_not_P} sampled in Q but not present in P"
+            )
+        data_with_no_logp = set(trp.data.keys()).difference(trp.logp.keys())
+        if 0 != len(data_with_no_logp):
+            raise Exception(
+                f"Data {data_with_no_logp} provided, but not specified in P"
+            )
+        assert set(Q_sum_varnames) == set(trp.samples.keys())
 
         for (rv, lp) in trp.logp.items():
-            assert (rv in Q_keys) or (rv in trp.data)
+            assert (rv in Q_sum_varnames) or (rv in trp.data)
+
 
         #All keys in Q
-        for key in Q_keys:
+        for key in Q_non_sum_varnames:
 
             #check that any rv in logqs is also in logps
             if key not in trp.logp:
-                raise Exception(f"The latent variable '{rv}' is sampled in Q but not P.")
+                raise Exception(f"The latent variable '{key}' is sampled in Q but not P.")
 
             lp = trp.logp[key]
             lq = trp.logq_var[key] if (key in trp.logq_var) else trp.logq_group[trp.group[key]]
 
             # check same plates/timeseries appear in lp and lq
-            lp_notK = [dim for dim in generic_dims(lp) if not self.is_K(dim)]
-            lq_notK = [dim for dim in generic_dims(lq) if not self.is_K(dim)]
+            #lp_notK = [dim for dim in generic_dims(lp) if not self.is_K(dim)]
+            #lq_notK = [dim for dim in generic_dims(lq) if not self.is_K(dim)]
+            lp_notK = trp.extract_platedims(lp)
+            lq_notK = trp.extract_platedims(lq)
             assert set(lp_notK) == set(lq_notK)
 
-        self.varname2logp = trp.logp
+        # self.varname2logp = trp.logp
         self.logp = [*trp.logp.values()]
         self.logq = [*trp.logq_group.values(), *trp.logq_var.values()]
 
+        lp_kwargs = {}
+        if lp_device is not None:
+            lp_kwargs['device'] = lp_device
+        self.trp.samples = {k: x.to(**lp_kwargs) for (k, x) in self.trp.samples.items()}
+
+        if lp_dtype is not None:
+            lp_kwargs['dtype']  = lp_dtype
+        self.logp = [x.to(**lp_kwargs) for x in self.logp]
+        self.logq = [x.to(**lp_kwargs) for x in self.logq]
+
+        self.varname2logp = dict(zip(trp.logp.keys(), self.logp))
         #Assumes that self.lps come in ordered
         self.set_platedims = set(trp.platedims.values())
         self.ordered_plate_dims = [dim for dim in unify_dims(self.logp) if self.is_platedim(dim)]
         self.ordered_plate_dims = [None, *self.ordered_plate_dims]
+
+        #Returns Ks + Es (for discrete variables we're summing out), as we need to sum over both!
+        self.Ks = set([*self.trp.Ks, *self.trp.Es])
+        #Just Es (need to distinguish, because we normalize when summing over Ks, but we don't when summing over Es)
+        self.Es = set(self.trp.Es)
+
+
 
     @property
     def samples(self):
@@ -64,10 +93,6 @@ class Sample():
     @property
     def reparam(self):
         return self.trp.reparam
-
-    @property
-    def Ks(self):
-        return self.trp.Ks
 
     @property
     def device(self):
@@ -83,7 +108,7 @@ class Sample():
     def is_K(self, dim):
         return dim in self.Ks
 
-    def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):
+    def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):# fn=lambda x:x):
         """
         Sums over plates, starting at the lowest plate.
         The key exported method.
@@ -110,6 +135,30 @@ class Sample():
         assert 1==lp.numel()
         return lp
 
+
+    # def HQ(self, detach_q=False):
+    #     """
+    #     Computes the Entropy: H(Q) = E_Q[-log(Q)]
+    #     """
+    #     logq = self.logq
+    #     if detach_q:
+    #         logq = [lq.detach() for lq in logq]
+
+    #     tensors = [*[-lq for lq in logq]]
+
+    #     ## Convert tensors to Float64
+    #     tensors = [x.to(dtype=t.float64) for x in tensors]
+
+    #     #iterate from lowest plate
+    #     for plate_name in self.ordered_plate_dims[::-1]:
+    #         tensors = self.sum_plate_T(tensors, plate_name)
+
+    #     assert 1==len(tensors)
+    #     HQ = tensors[0]
+    #     assert 1==lp.numel()
+    #     return HQ
+    
+
     def sum_plate_T(self, lps, plate_dim):
         if plate_dim is not None:
             #partition tensors into those with/without plate_name
@@ -121,43 +170,19 @@ class Sample():
         #collect K's that appear in higher plates
         Ks_to_keep = set([dim for dim in unify_dims(higher_lps) if self.is_K(dim)])
 
-        ts  = [lp for lp in lower_lps if     isinstance(lp, TimeseriesLogP)]
-        nts = [lp for lp in lower_lps if not isinstance(lp, TimeseriesLogP)]
-        assert len(ts) in [0, 1, 2]
+        if plate_dim in self.trp.Tdim2Ks.keys():
+            Kprev, Kdim = self.trp.Tdim2Ks[plate_dim]
+            Ks_to_keep = [Kdim, *Ks_to_keep]
 
-        if 2==len(ts):
-            #Could happen if we have a timeseries extra_log_factor when importance sampling
-            ts = [ts[0] + ts[1]]
-        if len(ts) == 1:
-            lower_lp = self.sum_T(ts[0], nts, plate_dim, Ks_to_keep)
-        else:
-            lower_lp = self.sum_plate(nts, plate_dim, Ks_to_keep)
+        lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
+
+        if plate_dim in self.trp.Tdim2Ks.keys():
+            lower_lp = chain_logmmexp(lower_lp, plate_dim, Kprev, Kdim) #Kprev x Knext
+            lower_lp = reduce_Ks([lower_lp], [Kdim], self.Es)
+        elif plate_dim is not None:
+            lower_lp = lower_lp.sum(plate_dim)
 
         return [*higher_lps, lower_lp]
-
-    def sum_T(self, ts, non_ts, T, Ks_to_keep):
-        assert ts.T is T
-
-        #Split all the non-timeseries log-p's into the first and rest.
-        non_ts_T = [lp.order(T)    for lp in non_ts]
-        firsts   = [lp[0]          for lp in non_ts_T]
-        rests    = [lp[1:][ts.Tm1] for lp in non_ts_T]
-
-        #Reduce over Ks separately for first and rest
-        Ks_to_keep = [ts.K, *Ks_to_keep]
-        first = self.reduce_Ks_to_keep([ts.first, *firsts], Ks_to_keep)
-        rest  = self.reduce_Ks_to_keep([ts.rest,  *rests],  Ks_to_keep)
-
-        first = first.order(ts.K)[ts.Kprev] #Replace K with Kprev
-        rest = chain_logmmexp(rest, ts.Tm1, ts.Kprev, ts.K) #Kprev x Knext
-
-        return reduce_Ks([first, rest], [ts.Kprev, ts.K])
-
-    def sum_plate(self, lower_lps, plate_dim, Ks_to_keep):
-        lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
-        if plate_dim is not None:
-            lower_lp = lower_lp.sum(plate_dim)
-        return lower_lp
 
     def reduce_Ks_to_keep(self, tensors, Ks_to_keep):
         """
@@ -175,11 +200,17 @@ class Sample():
         all_dims = unify_dims(tensors)
         Ks_to_keep = set(Ks_to_keep)
         Ks_to_sum    = [dim for dim in all_dims if self.is_K(dim) and (dim not in Ks_to_keep)]
-        return reduce_Ks(tensors, Ks_to_sum)
+        return reduce_Ks(tensors, Ks_to_sum, self.Es)
 
 
     def elbo(self):
+        # if not self.reparam and self.warn:
+        #     print(f"Calling .elbo() with reparam=False is improper.")
+        #     self.warn=False
         return self.tensor_product()
+
+    # def cubo(self):
+    #     return self.tensor_product(fn=lambda x:x**2)
 
     def rws(self):
         # Wake-phase P update
@@ -248,7 +279,7 @@ class Sample():
 
         undim_Js = []
         for (sample, dims) in zip(samples, dimss):
-            undim_Js.append(t.zeros(tuple(dim.size for dim in dims), device=sample.device, requires_grad=True))
+            undim_Js.append(t.zeros(tuple(dim.size for dim in dims), device=sample.device, dtype=t.float64, requires_grad=True))
 
         #Put torchdims back in.
         dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
@@ -293,31 +324,23 @@ class Sample():
         #ordered in the order of generating under P
         var_names           = list(self.samples.keys())
         samples             = list(self.samples.values())
-        logps_u             = [self.varname2logp[var_name] for var_name in var_names]
-        #Some of the objects in logps_u aren't tensors!  They're TimeseriesLogP, which acts as a
-        #container for a first and last tensor.  To take gradients we need actual tensors, so we flatten,
-        logps_f, unflatten  = flatten_tslp_list(logps_u)
-        dimss               = [lp.dims for lp in logps_f]
-        undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps_f, dimss)]
+        logps               = [self.varname2logp[var_name] for var_name in var_names]
+        dimss               = [lp.dims for lp in logps]
+        undim_logps         = [generic_order(lp, dims) for (lp, dims) in zip(logps, dimss)]
 
         #Start with Js with no dimensions (like NN parameters)
         undim_Js = [t.zeros_like(ulp, requires_grad=True) for ulp in undim_logps]
         #Put torchdims back in.
         dim_Js = [J[dims] for (J, dims) in zip(undim_Js, dimss)]
         #Compute result with torchdim Js
-        result = self.tensor_product(extra_log_factors=unflatten(dim_Js))
+        result = self.tensor_product(extra_log_factors=dim_Js)
         #But differentiate wrt non-torchdim Js
         marginals = list(t.autograd.grad(result, undim_Js))
         #Put dims back,
         marginals = [marg[dims] for (marg, dims) in zip(marginals, dimss)]
         #Normalized, marg gives the "posterior marginals" over Ks
-
-        #Wrap up the first and last marginals into a TimeseriesLogP.
-        marginals = unflatten(marginals)
-
-        #Delete everything that's a flat list (otherwise we risk difficult-to-catch bugs).
-        #Could also separate computing marginals into a separate function.
-        del logps_f, unflatten, dimss, undim_logps, undim_Js, dim_Js, result
+        #Delete everything that's not necessary for the rest
+        del logps, dimss, undim_logps, undim_Js, dim_Js, result
 
         #### Sampling the K's
 
@@ -332,37 +355,30 @@ class Sample():
             #.dims, and the resulting new_K should make sense for both .first and .last
             new_Ks = [dim for dim in generic_dims(marg) if self.is_K(dim) and (dim not in K_post_idxs)]
 
-            #Timeseries must be associated with a new K.  Should be enforced in TraceP,
-            #but check again here.
-            if isinstance(marg, TimeseriesLogP):
-                assert 1==len(new_Ks)
-
             #Should be zero (e.g. if grouped) or one new K.
             assert len(new_Ks) in (0, 1)
 
             #If there's a new K, then we need to do posterior sampling for that K.
             if 1==len(new_Ks):
                 K = new_Ks[0]
-                if isinstance(marg, TimeseriesLogP):
-                    #sample the initial state (t=0)
-                    init_K_post = sample_cond(marg.first, K, K_post_idxs, N)
-
-                    #sample the rest of the states (t=1...T-1)
-                    Kprev      = marg.Kprev
-                    rest       = marg.rest.order(marg.Tm1) #Bring Tm1 to first dimension.
-
+                if var_names[i] in self.trp.Tvar2Tdim.keys():
+                    Tdim = self.trp.Tvar2Tdim[var_names[i]]
+                    Kprev, Kdim = self.trp.Tdim2Ks[Tdim]
+                    marg = marg.order(Tdim)
+                    # print(var_names[i])
+                    # print(marg)
                     #Tensor to record all the K's
-                    K_posts    = init_K_post[None, ...].expand(marg.T.size)
+                    init_K_post = sample_cond(marg[0], Kdim, K_post_idxs, N)
+                    K_posts    = init_K_post[None, ...].expand(Tdim.size)
 
-                    for _t in range(1, marg.T.size):
+                    for _t in range(1, Tdim.size):
                         _K_post_idxs = {Kprev: K_posts[_t-1], **K_post_idxs}
 
                         #rest runs from t=1...T-1, so rest[0] corresponds to time t=1.
                         #could be optimized by indexing into marg with K_post_idxs once.
-                        K_posts[_t] = sample_cond(rest[_t-1], K, _K_post_idxs, N)
+                        K_posts[_t] = sample_cond(marg[_t-1], Kdim, _K_post_idxs, N)
 
-                    K_post_idxs[K] = K_posts[marg.T]
-
+                    K_post_idxs[K] = K_posts[Tdim]
                 else:
                     K_post_idxs[K] = sample_cond(marg, K, K_post_idxs, N)
 
@@ -377,14 +393,15 @@ def sample_cond(marg, K, K_post_idxs, N):
     and returns N (torchdim Dim) samples of the current K (torchdim Dim).
     """
     prev_Ks = [dim for dim in generic_dims(marg) if (dim in K_post_idxs)]
-
     marg = generic_order(marg, prev_Ks)
     #index into marg for the previous Ks, which gives an unnormalized posterior.
     #note that none of the previous Ks have a T dimension, so we don't need to
     #do any time indexing...
+
     cond = marg[tuple(K_post_idxs[prev_K] for prev_K in prev_Ks)]
 
     #Check none of the conditional probabilites are big and negative
+    assert cond.dtype == t.float64
     assert (-1E-6 < generic_order(cond, generic_dims(cond))).all()
     #Set any small and negative conditional probaiblities to zero.
     cond = cond * (cond > 0)
@@ -392,8 +409,11 @@ def sample_cond(marg, K, K_post_idxs, N):
     #Put current K at the back for the sampling,
     cond = cond.order(K)
     cond = cond.permute(cond.ndim-1, *range(cond.ndim-1))
+
     #Sample new K's
-    return Categorical(cond).sample(False, sample_dims=(N,))
+
+    ## Shouldn't need to add 1e-10
+    return Categorical(cond + 1e-10).sample(False, sample_dims=(N,))
 
 class SampleGlobal(Sample):
     def tensor_product(self, detach_p=False, detach_q=False, extra_log_factors=()):

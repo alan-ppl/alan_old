@@ -2,6 +2,7 @@ import torch as t
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 import alan
+import alan.postproc as pp
 
 import os
 import numpy as np
@@ -11,9 +12,9 @@ import random
 import hydra
 import importlib.util
 import sys
-import json
+import pickle
 
-from alan.experiment_utils import seed_torch
+from alan.experiment_utils import seed_torch, n_mean
 
 
 seed_torch(0)
@@ -22,25 +23,13 @@ seed_torch(0)
 
 print('...', flush=True)
 
-# parser = argparse.ArgumentParser(description='Run an experiment.')
-#
-# parser.add_argument('f', type=str,
-#                     help='Yaml file describing experiment')
-# args = parser.parse_args()
-# f = args.f
-#
-# config_path = f.rsplit('/', 1)[0]
-# config_name = f.rsplit('/', 1)[1]
-#
-# print(config_path)
-# print(config_name)
 @hydra.main(version_base=None, config_path='config', config_name='conf')
 def run_experiment(cfg):
+    print('ML')
     print(cfg)
     # writer = SummaryWriter(log_dir='runs/' + cfg.dataset + '/' + cfg.model + '/')
     device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
 
-    results_dict = {}
 
     Ks = cfg.training.Ks
 
@@ -51,64 +40,132 @@ def run_experiment(cfg):
     foo = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = foo
     spec.loader.exec_module(foo)
-    # foo.MyClass()
-    # experiment = importlib.import_module(cfg.model.model, 'Deeper_Hier_Regression')
 
-    P, Q, data, covariates, test_data, test_covariates, all_data, all_covariates = foo.generate_model(N,M, device, cfg.training.ML)
+
     for K in Ks:
-        print(K,M,N)
-        results_dict[N] = results_dict.get(N, {})
-        results_dict[N][M] = results_dict[N].get(M, {})
-        results_dict[N][M][K] = results_dict[N][M].get(K, {})
-        per_seed_obj = []
-        objs = []
-        pred_liks = []
-        times = []
-        for i in range(cfg.training.num_runs):
-            per_seed_elbos = []
-            start = time.time()
-            seed_torch(i)
+        print(K)
+        per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+        pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
 
-            model = alan.Model(P, Q())#.condition(data=data)
+        if cfg.use_data:
+            if cfg.dataset == 'movielens':
+                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,300,18), dtype=np.float32)
+            elif cfg.dataset == 'bus_breakdown':
+                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,2,3), dtype=np.float32)
+            elif cfg.dataset == 'potus':
+                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
+        else:
+            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+
+        times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+        nans = np.asarray([0]*cfg.training.num_runs)
+        for i in range(cfg.training.num_runs):
+            seed_torch(i)
+            P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+
+            if not cfg.use_data:
+                data_prior = data
+
+                if not cfg.dataset == 'potus':
+                    data = {'obs':data.pop('obs')}
+                else:
+                    data = {'n_democrat_state':data.pop('n_democrat_state')}
+
+            per_seed_elbos = []
+
+
+
+            model = alan.Model(P, Q())
             model.to(device)
 
-
+            
             for j in range(cfg.training.num_iters):
-                sample = model.sample_same(K, data=data, inputs=covariates, reparam=False, device=device)
+                if cfg.training.decay is not None:
+                    lr = (j + 10)**(-cfg.training.decay)
+                else:
+                    lr = cfg.training.lr
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
+                start = time.time()
+                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
                 elbo = sample.elbo().item()
-                per_seed_obj.append(elbo)
-                model.update(cfg.training.lr, sample)
+                per_seed_obj[i,j] = (elbo)
+                model.update(lr, sample)
+                if t.cuda.is_available():
+                    t.cuda.synchronize()
+                times[i,j] = (time.time() - start)
 
-                # writer.add_scalar('Objective/Run number {}/{}'.format(i, K), elbo, j)
-                if j % 10 == 0:
-                    print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
+                #Predictive Log Likelihoods
+                if cfg.training.pred_ll.do_pred_ll:
+                    success=False
+                    for k in range(10):
+                        try:
+                            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
+                            pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
+                            if not cfg.dataset == 'potus':
+                                pred_liks[i,j] = pred_likelihood['obs'].item()
+                            else:
+                                pred_liks[i,j] = pred_likelihood['n_democrat_state'].item()
+                            success=True
+                        except:
+                            print('nan pred likelihood!')
+                            nans[i] += 1
+                        if success:
+                            break
+                    if not success:
+                        pred_liks[i,j] = np.nan
 
 
+                if cfg.do_moments:
+                    #MSE/Variance of first moment
+                    sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
+                    exps = pp.mean(sample.weights())
 
-            if cfg.training.pred_ll.do_pred_ll:
-                sample = model.sample_same(K, data=test_data, inputs=test_covariates, reparam=False, device=device)
-                pred_likelihood = model.predictive_ll(sample, N = cfg.training.pred_ll.num_pred_ll_samples, data_all=all_data, inputs_all=all_covariates)
-                pred_liks.append(pred_likelihood['obs'].item())
-            else:
-                pred_liks.append(0)
-            objs.append(np.mean(per_seed_obj[-50:]))
-            times.append((time.time() - start)/cfg.training.num_iters)
-            # writer.add_scalar('Time/Run number {}'.format(i,K), times[-1], K)
-            # writer.add_scalar('Predictive Log Likelihood/Run number {}'.format(i,K), pred_liks[-1], K)
+                    rvs = list(exps.keys())
+                    if not cfg.use_data:
+                        expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
+
+                        sq_err = 0
+                        for rv in rvs:
+                            sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
+                    else:
+                        if cfg.dataset == 'bus_breakdown':
+                            sq_errs[i,j] = exps['alpha'].cpu()
+                        if cfg.dataset == 'movielens':
+                            sq_errs[i,j] = exps['z'].cpu()
+                        if cfg.dataset == 'potus':
+                            sq_errs[i,j] = exps['mu_pop'].cpu()
+
+
+                if j % 100 == 0:
+                    print("Iteration: {0}, ELBO: {1:.2f}, Predll: {2:.2f}".format(j,elbo,pred_liks[i,j]))
+
 
             ###
             # SAVING MODELS DOESN'T WORK YET
             ###
             if not os.path.exists(cfg.dataset + '/' + 'results/' + cfg.model + '/'):
                 os.makedirs(cfg.dataset + '/' + 'results/' + cfg.model + '/')
-            #
+
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
+        if cfg.use_data:
+            sz = sq_errs.ndim
+            sz = tuple(range(2,sz))
+            sq_errs = sq_errs.var(0, keepdims=True).mean(sz)
 
-        results_dict[N][M][K] = {'final_obj':np.mean(objs),'final_obj_std':np.std(objs), 'pred_likelihood':np.mean(pred_liks), 'pred_likelihood_std':np.std(pred_liks), 'objs': objs, 'pred_liks':pred_liks, 'avg_time':np.mean(times), 'std_time':np.std(times)}
 
-    file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML) + '_{}_'.format(cfg.training.lr) + '_' + 'N{0}_M{1}.json'.format(N,M)
-    with open(file, 'w') as f:
-        json.dump(results_dict, f)
+
+        results_dict = {'objs':per_seed_obj,
+                                 'pred_likelihood':pred_liks,
+                                 'times':times,
+                                 'nans':(nans/cfg.training.num_runs).tolist(),
+                                 'sq_errs':sq_errs}
+
+
+        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
+        with open(file, 'wb') as f:
+            pickle.dump(results_dict, f)
+
 
 if __name__ == "__main__":
     run_experiment()
