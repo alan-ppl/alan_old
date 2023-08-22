@@ -4,6 +4,7 @@ from .dist import Categorical
 from functorch.dim import dims, Tensor, Dim
 from . import traces
 
+
 class Sample():
     """
     Does error checking on the log-ps, and does the tensor product.

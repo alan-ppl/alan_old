@@ -105,11 +105,12 @@ class AbstractTrace(GetItem):
 
 
 class AbstractTraceQ(AbstractTrace):
-    def __init__(self, K, data, platedims, reparam, device, lp_dtype):
+    def __init__(self, K, data, mask, platedims, reparam, device, lp_dtype):
         super().__init__(device)
         self.K = K
 
         self.data = data
+        self.mask = mask
         self.platedims = platedims
 
         self.reparam = reparam
@@ -309,6 +310,7 @@ class TraceP(AbstractTrace):
         super().__init__(trq.device)
         self.platedims = trq.platedims
         self.data = trq.data
+        self.mask = trq.mask
         self.samples_q = trq.samples
         self.logq_group, self.logq_var = trq.finalize_logq()
         self.K_group = trq.K_group
@@ -398,7 +400,12 @@ class TraceP(AbstractTrace):
             if key in self.samples_q:
                 self.samples[key] = self.samples_q[key]
             sample = self.samples_q[key] if (key in self.samples) else self.data[key]
-            self.logp[key] = dist.log_prob(sample, Kdim=self.key2Kdim(key))
+            
+            if key not in self.samples and key in self.mask:
+                self.logp[key] = dist.log_prob(sample, self.mask[key], Kdim=self.key2Kdim(key))
+            else:
+                self.logp[key] = dist.log_prob(sample, Kdim=self.key2Kdim(key))
+            
 
 
 
