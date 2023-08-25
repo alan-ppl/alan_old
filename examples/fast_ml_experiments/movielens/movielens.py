@@ -23,7 +23,7 @@ def generate_model(N,M,device, ML=2, run=0, use_data=True):
             def __init__(self):
                 super().__init__()
                 #mu_z
-                self.mu = alan.MLNormal(sample_shape=(d_z,))
+                self.mu_z = alan.MLNormal(sample_shape=(d_z,))
                 #psi_z
                 self.psi_z = alan.MLNormal(sample_shape=(d_z,))
 
@@ -32,7 +32,7 @@ def generate_model(N,M,device, ML=2, run=0, use_data=True):
 
 
             def forward(self, tr,x):
-                tr('mu_z', self.mu())
+                tr('mu_z', self.mu_z())
                 tr('psi_z', self.psi_z())
 
                 tr('z', self.z())
@@ -42,7 +42,7 @@ def generate_model(N,M,device, ML=2, run=0, use_data=True):
             def __init__(self):
                 super().__init__()
                 #mu_z
-                self.mu = alan.ML2Normal(sample_shape=(d_z,))
+                self.mu_z = alan.ML2Normal(sample_shape=(d_z,))
                 #psi_z
                 self.psi_z = alan.ML2Normal(sample_shape=(d_z,))
 
@@ -51,7 +51,7 @@ def generate_model(N,M,device, ML=2, run=0, use_data=True):
 
 
             def forward(self, tr,x):
-                tr('mu_z', self.mu())
+                tr('mu_z', self.mu_z())
                 tr('psi_z', self.psi_z())
 
                 tr('z', self.z())
