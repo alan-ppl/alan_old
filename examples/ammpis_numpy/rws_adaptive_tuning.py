@@ -24,7 +24,9 @@ for lr in constant_lrs:
     lr_funcs.append(lr)
 
 
-lr_funcs += [lambda i, p: 1 / ((i+10)**p)]#,
+lr_funcs += [lambda i, p: 1 / ((i+10)**p),
+             lambda i, p: 1 / ((i+100)**p),
+             lambda i, p: 1 / ((i+1000)**p)]#,
             #  lambda i, p: min(0.1, 1 / ((i+1)**p)),
             #  lambda i, p: min(0.3, 1 / ((i+1)**p)),
             #  lambda i: 0.1 if i < 250 else 0.01,
@@ -34,7 +36,7 @@ lr_funcs += [lambda i, p: 1 / ((i+10)**p)]#,
 pows = [0.75, 0.9]
 
 Ns = [5000]#50, 500, 5000]
-Ks = [3]#, 10, 30, 100]
+Ks = [5]#, 10, 30, 100]
 var_sizes = ["WIDE"]#, "NARROW"]
 # var_sizes = ["NARROW"]
 
@@ -81,7 +83,7 @@ for num_latents, K, VAR_SIZE_STR in product(Ns, Ks, var_sizes):
                             lr = lambda i: lr_fn(i, p)
                     # breakpoint()
                     # rws_results[(i,j,k)] = fn(T, post_params, init, lr, K)
-                    rws_results[(i,j,k)] = fn(T*15, post_params, init, lr, K)
+                    rws_results[(i,j,k)] = fn(T, post_params, init, lr, K)
                     print(f"{fn.__name__}, lr_type={j}, p={p} done.")
             
     # rws_results['natural_rws_difference'] = natural_rws_difference(T, post_params, init, 0.005, K)
@@ -253,11 +255,12 @@ for num_latents, K, VAR_SIZE_STR in product(Ns, Ks, var_sizes):
         ax[0].legend(loc='lower center', bbox_to_anchor=(0.5, 1.25), shadow=False, ncol=3)
 
         # plt.suptitle("Natural RWS Learning Rate Schedules\n1: $(i+10)^{-p}$\n2: min($0.1, (i+1)^{-p}$)\n3: min($0.3, (i+1)^{-p}$)\n4: $0.1$ for $i < 250$, $0.01$ for $250 < i < 1000$, $0.001$ for $i > 1000$")
-        plt.suptitle("Natural RWS Learning Rate Schedules\n1: $(i+10)^{-p}$")
+        # plt.suptitle("Natural RWS Learning Rate Schedules\n1: $(i+10)^{-p}$")
+        plt.suptitle("Natural RWS Learning Rate Schedules\n1: $(i+10)^{-p}$\n2: $(i+100)^{-p}$\n3: $(i+1000)^{-p}$")
 
         plt.tight_layout()  
-        plt.savefig(f"figures/rws_lrs_adaptive/N{num_latents}_K{K}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}.png")
-        plt.savefig(f"figures/rws_lrs_adaptive/N{num_latents}_K{K}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}.pdf")
+        plt.savefig(f"figures/rws_lrs_adaptive/N{num_latents}_K{K}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}_NEW.png")
+        plt.savefig(f"figures/rws_lrs_adaptive/N{num_latents}_K{K}_{VAR_SIZE_STR}{'_TIME' if use_time else ''}_NEW.pdf")
 
         # if use_time:
         #     for a in ax:
