@@ -47,32 +47,29 @@ def run_experiment(cfg):
         per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
 
-        if cfg.use_data:
-            if cfg.dataset == 'movielens':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,300,18), dtype=np.float32)
-            elif cfg.dataset == 'bus_breakdown':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,2,3), dtype=np.float32)
-            elif cfg.dataset == 'potus':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
-        else:
-            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+
+
+        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+
+        m1 = alan.Model(P, Q).condition(data=data)
+
+        samp = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+
+        scales = {k:np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32) for k in samp.weights().keys()}
+        weights = {k:np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32) for k in samp.weights().keys()}
 
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+        non_zero_weights = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
             seed_torch(i)
             P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
 
             if not cfg.use_data:
-                data_prior = data
-
                 if not cfg.dataset == 'potus':
                     data = {'obs':data.pop('obs')}
                 else:
                     data = {'n_democrat_state':data.pop('n_democrat_state')}
-
-            per_seed_elbos = []
-
 
 
             model = alan.Model(P, Q())
@@ -80,10 +77,12 @@ def run_experiment(cfg):
 
             
             for j in range(cfg.training.num_iters):
+
                 if cfg.training.decay is not None:
                     lr = (j + 10)**(-cfg.training.decay)
                 else:
                     lr = cfg.training.lr
+
                 if t.cuda.is_available():
                     t.cuda.synchronize()
                 start = time.time()
@@ -91,8 +90,10 @@ def run_experiment(cfg):
                 elbo = sample.elbo().item()
                 per_seed_obj[i,j] = (elbo)
                 model.update(lr, sample)
+
                 if t.cuda.is_available():
                     t.cuda.synchronize()
+
                 times[i,j] = (time.time() - start)
 
                 #Predictive Log Likelihoods
@@ -116,25 +117,18 @@ def run_experiment(cfg):
                         pred_liks[i,j] = np.nan
 
 
-                if cfg.do_moments:
-                    #MSE/Variance of first moment
-                    sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
-                    exps = pp.mean(sample.weights())
+                non_zero_weight = 0  
+                num_latents = 0
+                    
+                for k,v in sample.weights().items():
+                    scales[k][i,j] = q.__getattr__(k).mean2conv(*q.__getattr__(k).named_means)['scale'].mean()
+                    weights[k][i,j] = (v[1].rename(None) > 0.001).sum()
 
-                    rvs = list(exps.keys())
-                    if not cfg.use_data:
-                        expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
+                    non_zero_weight += (v[1].rename(None) > 0.001).sum()
+                    num_latents += v[0].numel()
 
-                        sq_err = 0
-                        for rv in rvs:
-                            sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
-                    else:
-                        if cfg.dataset == 'bus_breakdown':
-                            sq_errs[i,j] = exps['alpha'].cpu()
-                        if cfg.dataset == 'movielens':
-                            sq_errs[i,j] = exps['z'].cpu()
-                        if cfg.dataset == 'potus':
-                            sq_errs[i,j] = exps['mu_pop'].cpu()
+                non_zero_weights[i,j] = non_zero_weight
+
 
 
                 if j % 100 == 0:
@@ -148,10 +142,7 @@ def run_experiment(cfg):
                 os.makedirs(cfg.dataset + '/' + 'results/' + cfg.model + '/')
 
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
-        if cfg.use_data:
-            sz = sq_errs.ndim
-            sz = tuple(range(2,sz))
-            sq_errs = sq_errs.var(0, keepdims=True).mean(sz)
+
 
 
 
@@ -159,7 +150,9 @@ def run_experiment(cfg):
                                  'pred_likelihood':pred_liks,
                                  'times':times,
                                  'nans':(nans/cfg.training.num_runs).tolist(),
-                                 'sq_errs':sq_errs}
+                                 'scales':scales,
+                                 'weights':weights,
+                                 'non_zero_weights':non_zero_weights,}
 
 
         file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
