@@ -10,7 +10,7 @@ def P(tr):
   '''
   a = t.zeros(5)
   tr.sample('mu', alan.Normal(a, t.ones(5))) #, plate="plate_1")
-  tr.sample('obs', alan.MultivariateNormal(tr['mu'], t.eye(5)))
+  tr.sample('obs', alan.Normal(tr['mu'], t.ones(5)))
 
 
 
