@@ -389,5 +389,5 @@ for ML in [2,1]:
             ax_scales[1,0].set_ylabel('Mean Non zero weights')
             fig_scales.legend(loc='upper right')
             fig_scales.tight_layout()
-            fig_scales.savefig(f'figures/bus_test_data_{K}_{use_data}_scales_weights_ML_{ML}.png')
+            fig_scales.savefig(f'figures/movielens_test_data_{K}_{use_data}_scales_weights_ML_{ML}.png')
 
