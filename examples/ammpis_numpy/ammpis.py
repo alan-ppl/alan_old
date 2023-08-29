@@ -29,7 +29,7 @@ def fit_approx_post(moments, dist_type=Normal):
     loc   = moments[:,0]
     raw_2nd_mom = moments[:,1] - loc**2
     bounded_2nd_mom = raw_2nd_mom + (-raw_2nd_mom + 1e-10)*(raw_2nd_mom<=0)
-    scale = bounded_2nd_mom .sqrt()
+    scale = bounded_2nd_mom.sqrt()
 
     if dist_type == Laplace:
         # Variance of Laplace(mu, b) is 2*b^2

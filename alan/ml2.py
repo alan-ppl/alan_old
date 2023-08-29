@@ -67,8 +67,6 @@ class ML2(AlanModule):
         self.check_J_zeros()
         with t.no_grad():
             for (m, g) in zip(self.named_means, self.named_grads):
-                # print(m)
-                # print(g)
                 m.data.mul_(1-lr).add_(g, alpha=lr)
 
     def local_parameters(self):
