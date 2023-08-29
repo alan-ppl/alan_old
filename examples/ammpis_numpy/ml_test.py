@@ -19,10 +19,10 @@ fig_iters, ax_iters = plt.subplots(1,1, figsize=(5.0, 5.0))
 
 seed_torch(0)
 
-num_latents = 500
-K=5
+num_latents = 5
+K=10
 
-T=2000
+T=5000
 prior_mean = Normal(0,150).sample((num_latents,)).float()
 prior_scale = Uniform(1, 2).sample((num_latents,)).float()
 
@@ -55,11 +55,13 @@ class Q_ml2(alan.AlanModule):
 #Posterior
 data = alan.Model(P).sample_prior(varnames='obs')
 
-post_scale = t.diag(t.inverse(t.diag(prior_scale) + t.diag(lik_scale)))
+prior_scale = t.square(prior_scale)
+lik_scale = t.square(lik_scale)
+post_scale = t.diag(t.diag(prior_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ t.diag(lik_scale))
 post_mean = t.diag(prior_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ data['obs'] + t.diag(lik_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ prior_mean
 
 post_mean = post_mean.reshape(-1,1)
-post_scale = post_scale.reshape(-1,1)
+post_scale = t.sqrt(post_scale.reshape(-1,1))
 
 
 post_params = t.cat([post_mean, post_scale], dim=1)
@@ -114,9 +116,9 @@ for i in range(1000):
         print(f'ml2: {elbos_ml2[i]}')
         print(f'natural rws: {l_one_iters[i]}')
         break
-    if l_one_iters[i] != elbos_ml1[i]:
-        print(i)
-        print(f'ml1: {elbos_ml1[i]}')
-        print(f'ml2: {elbos_ml2[i]}')
-        print(f'natural rws: {l_one_iters[i]}')
-        break
+    # if l_one_iters[i] != elbos_ml1[i]:
+    #     print(i)
+    #     print(f'ml1: {elbos_ml1[i]}')
+    #     print(f'ml2: {elbos_ml2[i]}')
+    #     print(f'natural rws: {l_one_iters[i]}')
+    #     break
