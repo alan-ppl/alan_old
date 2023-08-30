@@ -31,8 +31,9 @@ def fit_approx_post(moments, dist_type=Normal):
 
     loc   = moments[:,0]
     raw_2nd_mom = moments[:,1] - loc**2
-    bounded_2nd_mom = raw_2nd_mom + (-raw_2nd_mom + 1e-10)*(raw_2nd_mom<=0)
+    bounded_2nd_mom = raw_2nd_mom + (-raw_2nd_mom + 1e-15)*(raw_2nd_mom<=0)
     scale = bounded_2nd_mom.sqrt()
+    scale = scale + (1e-10)*(scale<=0)
 
     if dist_type == Laplace:
         # Variance of Laplace(mu, b) is 2*b^2
@@ -414,7 +415,7 @@ def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
         else:
             m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post)
 
-        l_one_iter_t.backward()
+        l_one_iter_t.backward(retain_graph=True)
         new_m_q = m_q[-1] + lr_fn(i) * nats.grad
 
         # input(f"{i}, {(new_m_q-m_q[-1]).abs().mean()}")
@@ -473,7 +474,7 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
             m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post, extra_log_factor = elf)
 
 
-        l_one_iter_t.backward()
+        l_one_iter_t.backward(retain_graph=True)
         
         new_m_q = m_q[-1] * (1 - lr_fn(i)) + lr_fn(i) * t.vstack([J_loc.grad, J_scale.grad]).t()
 
@@ -485,6 +486,10 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
         m_q.append(new_m_q.clone())
 
         times[i+1] = time.time() - start_time
+
+    for i in range(T):
+        m_q[i] = m_q[i].detach()
+        l_one_iters[i] = l_one_iters[i].detach()
 
     return m_q, l_one_iters, entropies, times
 
