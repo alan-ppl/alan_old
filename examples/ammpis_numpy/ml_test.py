@@ -13,7 +13,7 @@ from ammpis import *
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
-colours = ['#9e9ac8','#de2d26','#31a354']
+colours = ['#9e9ac8','#fbb4b9','#253494','#de2d26','#31a354']
 
 fig_iters, ax_iters = plt.subplots(1,1, figsize=(5.0, 5.0))
 
@@ -22,16 +22,16 @@ seed_torch(0)
 num_latents = 5
 K=10
 
-T=5000
-prior_mean = Normal(0,150).sample((num_latents,)).float()
-prior_scale = Uniform(1, 2).sample((num_latents,)).float()
+T=500
+prior_mean = Normal(0,150).sample((num_latents,1)).float()
+prior_scale = Uniform(1, 2).sample((num_latents,1)).float()
 
 lik_scale = Uniform(1, 2).sample((num_latents,)).float()
 def P(tr):
   '''
   Bayesian Gaussian Model
   '''
-  tr('mu', alan.Normal(prior_mean, prior_scale))
+  tr('mu', alan.Normal(prior_mean.squeeze(1), prior_scale.squeeze(1)))
   tr('obs', alan.Normal(tr['mu'], lik_scale))
 
 
@@ -55,20 +55,30 @@ class Q_ml2(alan.AlanModule):
 #Posterior
 data = alan.Model(P).sample_prior(varnames='obs')
 
-prior_scale = t.square(prior_scale)
-lik_scale = t.square(lik_scale)
-post_scale = t.diag(t.diag(prior_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ t.diag(lik_scale))
-post_mean = t.diag(prior_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ data['obs'] + t.diag(lik_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ prior_mean
+# prior_scale = t.square(prior_scale)
+# lik_scale = t.square(lik_scale)
+# post_scale = t.diag(t.diag(prior_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ t.diag(lik_scale))
+# post_mean = t.diag(prior_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ data['obs'] + t.diag(lik_scale) @ t.inverse(t.diag(prior_scale) + t.diag(lik_scale)) @ prior_mean
 
-post_mean = post_mean.reshape(-1,1)
-post_scale = t.sqrt(post_scale.reshape(-1,1))
+# post_mean = post_mean.reshape(-1,1)
+# post_scale = t.sqrt(post_scale.reshape(-1,1))
 
 
-post_params = t.cat([post_mean, post_scale], dim=1)
+# post_params = t.cat([post_mean, post_scale], dim=1)
+
+prior_params = t.cat([prior_mean, prior_scale], dim=1)
+lik_params = lik_scale
 init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 
-m_q, l_one_iters, entropies, times = natural_rws(T, post_params, init, lambda i: ((i + 10)**(-0.9)), K)
 
+seed_torch(0)
+m_q, l_one_iters, entropies, times = natural_rws(T, init, lambda i: ((i + 10)**(-0.9)), K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+
+# seed_torch(0)
+# m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, lambda i: ((i + 10)**(-0.9)), K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+
+seed_torch(0)
+m_q_ml2, l_one_iters_ml2, entropies, times = ml2(T, init, lambda i: ((i + 10)**(-0.9)), K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 
 seed_torch(0)
 q = Q_ml1()
@@ -78,7 +88,7 @@ elbos_ml1 = []
 for i in range(T):
     lr = ((i + 10)**(-0.9))
     
-    sample = m1.sample_same(K, reparam=False)
+    sample = m1.sample_perm(K, reparam=False)
     elbos_ml1.append(sample.elbo().item()) 
 
 
@@ -101,8 +111,10 @@ for i in range(T):
 
 
 ax_iters.plot(l_one_iters, color=colours[0], label=f'Natural RWS')
-ax_iters.plot(elbos_ml1, color=colours[1], label=f'ML1', linestyle='--')
-ax_iters.plot(elbos_ml2, color=colours[2], label=f'ML2', linestyle=':')
+# ax_iters.plot(l_one_iters_ml1, color=colours[1], label=f'ML1 Toy')
+ax_iters.plot(l_one_iters_ml2, color=colours[2], label=f'ML2 Toy')
+ax_iters.plot(elbos_ml1, color=colours[3], label=f'ML1', linestyle='--')
+ax_iters.plot(elbos_ml2, color=colours[4], label=f'ML2', linestyle=':')
 ax_iters.set_xlabel('Iteration')
 ax_iters.set_ylabel('ELBO')
 ax_iters.legend()
@@ -115,6 +127,8 @@ for i in range(1000):
         print(f'ml1: {elbos_ml1[i]}')
         print(f'ml2: {elbos_ml2[i]}')
         print(f'natural rws: {l_one_iters[i]}')
+        print(f'ml1 toy: {l_one_iters_ml1[i]}')
+        print(f'ml2 toy: {l_one_iters_ml2[i]}')
         break
     # if l_one_iters[i] != elbos_ml1[i]:
     #     print(i)

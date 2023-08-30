@@ -9,16 +9,18 @@ class ML(AlanModule):
     """
     Isn't quite ML...
     In particular, the RWS wake-phase Q update allows us to in effect compute,
-    E_P[log Q]
+    E_P[log Q] = E_Q[P/Q log Q]
     If we take Q to be exponential family,
     log Q = eta * T(x) - A(eta)
     Then,
     grad_eta E_P[log Q] = grad_eta [eta * m_0] - grad_eta A(eta)
-                        = m_0 - m
+                        = m_t - m_t-1
 
                         
                     m_t = m_t-1 + lambda * (-m_t-1 + m)
     So, we can compute the gradient of the log partition function, and then
+
+E_P(z^k | x) [log PRODUCT_i(Q({z_i}^{k_i} | z_qa(i))]
     """
     def __init__(self, platesizes=None, sample_shape=(), init_conv=None):
         super().__init__()
