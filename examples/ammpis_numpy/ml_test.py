@@ -74,8 +74,8 @@ init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
 seed_torch(0)
 m_q, l_one_iters, entropies, times = natural_rws(T, init, lambda i: ((i + 10)**(-0.9)), K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 
-# seed_torch(0)
-# m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, lambda i: ((i + 10)**(-0.9)), K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+seed_torch(0)
+m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, lambda i: ((i + 10)**(-0.9)), K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 
 seed_torch(0)
 m_q_ml2, l_one_iters_ml2, entropies, times = ml2(T, init, lambda i: ((i + 10)**(-0.9)), K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
@@ -111,7 +111,7 @@ for i in range(T):
 
 
 ax_iters.plot(l_one_iters, color=colours[0], label=f'Natural RWS')
-# ax_iters.plot(l_one_iters_ml1, color=colours[1], label=f'ML1 Toy')
+ax_iters.plot(l_one_iters_ml1, color=colours[1], label=f'ML1 Toy')
 ax_iters.plot(l_one_iters_ml2, color=colours[2], label=f'ML2 Toy')
 ax_iters.plot(elbos_ml1, color=colours[3], label=f'ML1', linestyle='--')
 ax_iters.plot(elbos_ml2, color=colours[4], label=f'ML2', linestyle=':')
