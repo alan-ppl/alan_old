@@ -18,6 +18,9 @@ t.cuda.manual_seed(0)
 
 VERBOSE = False
 
+def identity(x):
+    return x
+
 def ReLU(x):
     return x * (x > 0)
 
@@ -45,22 +48,45 @@ def fit_approx_post(moments, dist_type=Normal):
 
     return params
 
+def mean2nat(means):
+    return conv2nat(fit_approx_post(means))
 
-def IW(sample, approx_dist, post):
+
+def conv2nat(convs):
+    loc = convs[:,0]
+    scale = convs[:,1]
+    prec = 1/scale
+    mu_prec = loc * prec
+    nats = t.vstack([mu_prec, -0.5*prec]).t()
+    return nats
+
+def nat2conv(nats):
+    mu_prec = nats[:,0]
+    minus_half_prec = nats[:,1]
+    prec = -2*minus_half_prec
+    loc = mu_prec / prec
+    scale = prec.rsqrt()
+    convs = t.vstack([loc, scale]).t()
+    return convs
+
+def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=0):
     # sample is a list of samples
     # params is a vector nx2
     # post is a torch distribution
     # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
     # returns a list of IW samples and the ELBO
 
-    logp = post.log_prob(sample)
+    if post is None and (prior is not None and likelihood is not None):
+        logp = prior.log_prob(sample) + likelihood
+    else:
+        logp = post.log_prob(sample)
 
     logq = approx_dist.log_prob(sample)
     
     K = sample.shape[0]
     N = sample.shape[1]
     
-    elbo = t.logsumexp((logp - logq), dim=0).sum() - N*math.log(K)
+    elbo = t.logsumexp((logp - logq + elf), dim=0).sum() - N*math.log(K)
     
     lqp = logp - logq
     lqp_max = lqp.amax(axis=0)
@@ -306,7 +332,7 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
 
     return m_q, m_avg, l_tot, l_one_iters, [0] + dts, entropies, times
 
-def natural_rws(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
+def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
     if type(lr) == float:
         lr_fn = lambda i: lr
@@ -319,7 +345,10 @@ def natural_rws(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, 
     times = t.zeros(T+1)
     start_time = time.time()
 
-    post = post_type(post_params[:,0], post_params[:,1])
+    if prior_params is not None and lik_params is not None:
+        prior = prior_type(prior_params[:,0], prior_params[:,1])
+    else:
+        post = post_type(post_params[:,0], post_params[:,1])
 
     init_params = fit_approx_post(m_q[-1], approx_post_type)
     init_dist = approx_post_type(init_params[:,0], init_params[:,1])
@@ -330,8 +359,11 @@ def natural_rws(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, 
         Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
 
         z_t = sample(Q_t, K)
-
-        m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post)
+        if prior_params is not None and lik_params is not None:
+            likelihood = like_type(z_t, lik_params).log_prob(data)
+            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, prior = prior, likelihood = likelihood)
+        else:
+            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post)
 
         new_m_q = lr_fn(i) * m_one_iter_t + (1 - lr_fn(i)) * m_q[-1]
 
@@ -345,6 +377,117 @@ def natural_rws(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, 
         times[i+1] = time.time() - start_time
 
     return m_q, l_one_iters, entropies, times
+
+
+def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
+    # to allow for lr schedules, we'll define lr as a function of iteration number (i)
+    if type(lr) == float:
+        lr_fn = lambda i: lr
+    else:
+        lr_fn = lr
+
+    m_q = [init_moments.requires_grad_()]
+    l_one_iters = []
+    
+    times = t.zeros(T+1)
+    start_time = time.time()
+
+    if prior_params is not None and lik_params is not None:
+        prior = prior_type(prior_params[:,0], prior_params[:,1])
+    else:
+        post = post_type(post_params[:,0], post_params[:,1])
+
+    init_params = fit_approx_post(m_q[-1], approx_post_type)
+    init_dist = approx_post_type(init_params[:,0], init_params[:,1])
+    entropies = [entropy(init_dist)]
+    
+    for i in range(T):
+        nats = mean2nat(m_q[-1])
+        nats.retain_grad()
+        Q_params = nat2conv(nats)
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+
+        z_t = sample(Q_t, K)
+        if prior_params is not None and lik_params is not None:
+            likelihood = like_type(z_t, lik_params).log_prob(data)
+            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, prior = prior, likelihood = likelihood)
+        else:
+            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post)
+
+        l_one_iter_t.backward()
+        new_m_q = m_q[-1] + lr_fn(i) * nats.grad
+
+        # input(f"{i}, {(new_m_q-m_q[-1]).abs().mean()}")
+
+
+        entropies.append(entropy(Q_t))
+        l_one_iters.append(l_one_iter_t.clone())
+        m_q.append(new_m_q.clone())
+
+        times[i+1] = time.time() - start_time
+
+    for i in range(T):
+        m_q[i] = m_q[i].detach()
+        l_one_iters[i] = l_one_iters[i].detach()
+
+    return m_q, l_one_iters, entropies, times
+
+def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
+    # to allow for lr schedules, we'll define lr as a function of iteration number (i)
+    if type(lr) == float:
+        lr_fn = lambda i: lr
+    else:
+        lr_fn = lr
+
+    m_q = [init_moments]
+    l_one_iters = []
+    
+    times = t.zeros(T+1)
+    start_time = time.time()
+
+    if prior_params is not None and lik_params is not None:
+        prior = prior_type(prior_params[:,0], prior_params[:,1])
+    else:
+        post = post_type(post_params[:,0], post_params[:,1])
+
+    init_params = fit_approx_post(m_q[-1], approx_post_type)
+    init_dist = approx_post_type(init_params[:,0], init_params[:,1])
+    entropies = [entropy(init_dist)]
+    for i in range(T):
+        J_loc = t.zeros_like(init_params[:,0]).requires_grad_()
+        J_scale = t.zeros_like(init_params[:,1]).requires_grad_()
+        Q_params = fit_approx_post(m_q[-1], approx_post_type)
+
+        Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
+
+        z_t = sample(Q_t, K)
+
+
+
+        elf = sum(sum(J*f(z_t) for J,f in zip((J_loc, J_scale),(identity, t.square))))
+
+        if prior_params is not None and lik_params is not None:
+            likelihood = like_type(z_t, lik_params).log_prob(data)
+            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, prior = prior, likelihood = likelihood, elf = elf)
+        else:
+            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post, extra_log_factor = elf)
+
+
+        l_one_iter_t.backward()
+        
+        new_m_q = m_q[-1] * (1 - lr_fn(i)) + lr_fn(i) * t.vstack([J_loc.grad, J_scale.grad]).t()
+
+        # input(f"{i}, {(new_m_q-m_q[-1]).abs().mean()}")
+
+
+        entropies.append(entropy(Q_t))
+        l_one_iters.append(l_one_iter_t.clone())
+        m_q.append(new_m_q.clone())
+
+        times[i+1] = time.time() - start_time
+
+    return m_q, l_one_iters, entropies, times
+
 
 def natural_rws_difference(T, post_params, init_moments, lr, K=5, approx_post_type=Normal, post_type=Normal):
     m_q = [init_moments]
