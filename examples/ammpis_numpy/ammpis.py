@@ -78,7 +78,7 @@ def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=0):
     # returns a list of IW samples and the ELBO
 
     if post is None and (prior is not None and likelihood is not None):
-        logp = prior.log_prob(sample) + likelihood
+        logp = (prior.log_prob(sample) + likelihood)
     else:
         logp = post.log_prob(sample)
 
@@ -86,9 +86,12 @@ def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=0):
     
     K = sample.shape[0]
     N = sample.shape[1]
-    
-    elbo = t.logsumexp((logp - logq + elf), dim=0).sum() - N*math.log(K)
-    
+
+    elbo = t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum() - math.log(K)
+
+    # print('lp ml1toy')
+    # print(t.logsumexp((logp - logq + elf), dim=0).sum())
+    # print(t.logsumexp((logp - logq + elf), dim=0).sum() - math.log(K))
     lqp = logp - logq
     lqp_max = lqp.amax(axis=0)
     weights = t.exp(lqp - lqp_max)
@@ -99,7 +102,7 @@ def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=0):
     Ex_one_iter = (weights * sample).sum(axis=0)
     Ex2_one_iter = (weights * sample**2).sum(axis=0)
     m_one_iter = t.stack([Ex_one_iter, Ex2_one_iter]).t()
-
+    
     return m_one_iter, elbo
 
 
@@ -335,7 +338,7 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
 
 def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
-    if type(lr) == float:
+    if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
     else:
         lr_fn = lr
@@ -382,12 +385,12 @@ def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, po
 
 def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
-    if type(lr) == float:
+    if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
     else:
         lr_fn = lr
 
-    m_q = [init_moments.requires_grad_()]
+    m_q = [init_moments]
     l_one_iters = []
     
     times = t.zeros(T+1)
@@ -403,39 +406,43 @@ def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
     entropies = [entropy(init_dist)]
     
     for i in range(T):
-        nats = mean2nat(m_q[-1])
-        nats.retain_grad()
+        nats = mean2nat(m_q[-1]).requires_grad_()
+
         Q_params = nat2conv(nats)
         Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
 
         z_t = sample(Q_t, K)
+
         if prior_params is not None and lik_params is not None:
             likelihood = like_type(z_t, lik_params).log_prob(data)
             m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, prior = prior, likelihood = likelihood)
         else:
             m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post)
 
-        l_one_iter_t.backward(retain_graph=True)
+        (-l_one_iter_t).backward()
+        
         new_m_q = m_q[-1] + lr_fn(i) * nats.grad
 
+        # if ((new_m_q - (lr_fn(i) * m_one_iter_t + (1 - lr_fn(i)) * m_q[-1])).abs() > 0.1).any():
+        #     print(new_m_q)
+        #     print(lr_fn(i) * m_one_iter_t + (1 - lr_fn(i)) * m_q[-1])
+        #     print(i)
+        #     break
         # input(f"{i}, {(new_m_q-m_q[-1]).abs().mean()}")
 
 
         entropies.append(entropy(Q_t))
-        l_one_iters.append(l_one_iter_t.clone())
-        m_q.append(new_m_q.clone())
+        l_one_iters.append(l_one_iter_t.clone().detach())
+        m_q.append(new_m_q.clone().detach())
 
         times[i+1] = time.time() - start_time
 
-    for i in range(T):
-        m_q[i] = m_q[i].detach()
-        l_one_iters[i] = l_one_iters[i].detach()
 
     return m_q, l_one_iters, entropies, times
 
 def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
-    if type(lr) == float:
+    if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
     else:
         lr_fn = lr
@@ -465,7 +472,9 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
 
 
 
-        elf = sum(sum(J*f(z_t) for J,f in zip((J_loc, J_scale),(identity, t.square))))
+        elf = sum((J*f(z_t)).sum(dim=1) for J,f in zip((J_loc, J_scale),(identity, t.square)))
+
+
 
         if prior_params is not None and lik_params is not None:
             likelihood = like_type(z_t, lik_params).log_prob(data)

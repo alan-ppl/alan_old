@@ -121,6 +121,7 @@ class Sample():
         if detach_q:
             logq = [lq.detach() for lq in logq]
 
+
         tensors = [*logp, *[-lq for lq in logq], *extra_log_factors]
 
         ## Convert tensors to Float64
@@ -133,6 +134,7 @@ class Sample():
         assert 1==len(tensors)
         lp = tensors[0]
         assert 1==lp.numel()
+
         return lp
 
 
@@ -173,6 +175,7 @@ class Sample():
         if plate_dim in self.trp.Tdim2Ks.keys():
             Kprev, Kdim = self.trp.Tdim2Ks[plate_dim]
             Ks_to_keep = [Kdim, *Ks_to_keep]
+
 
         lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
 
