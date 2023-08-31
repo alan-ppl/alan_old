@@ -19,14 +19,14 @@ fig_iters, ax_iters = plt.subplots(1,1, figsize=(5.0, 5.0))
 
 seed_torch(0)
 
-num_latents = 200
+dim_latent = 200
 K=100
 
-T=500
-prior_mean = Normal(0,150).sample((num_latents,1)).float()
-prior_scale = Uniform(1, 2).sample((num_latents,1)).float()
+T=1000
+prior_mean = Normal(0,150).sample((dim_latent,1)).float()
+prior_scale = Uniform(1, 2).sample((dim_latent,1)).float()
 
-lik_scale = Uniform(1, 2).sample((num_latents,)).float()
+lik_scale = Uniform(1, 2).sample((dim_latent,)).float()
 def P(tr):
   '''
   Bayesian Gaussian Model
@@ -39,7 +39,7 @@ def P(tr):
 class Q_ml1(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        self.mu = alan.MLNormal(sample_shape=(num_latents,))
+        self.mu = alan.MLNormal(sample_shape=(dim_latent,))
 
     def forward(self, tr):
         tr('mu', self.mu())
@@ -47,7 +47,7 @@ class Q_ml1(alan.AlanModule):
 class Q_ml2(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        self.mu = alan.ML2Normal(sample_shape=(num_latents,))
+        self.mu = alan.ML2Normal(sample_shape=(dim_latent,))
 
     def forward(self, tr):
         tr('mu', self.mu())
@@ -68,14 +68,14 @@ data = alan.Model(P).sample_prior(varnames='obs')
 
 prior_params = t.cat([prior_mean, prior_scale], dim=1)
 lik_params = lik_scale
-init = t.tensor([0.0,1.0], dtype=t.float64).repeat((num_latents,1))
+init = t.tensor([0.0,1.0], dtype=t.float64).repeat((dim_latent,1))
 
 # lr = lambda i: ((i + 10)**(-0.9))
 seed_torch(0)
 m_q, l_one_iters, entropies, times = natural_rws(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 
 seed_torch(0)
-m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, 0.9, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 
 seed_torch(0)
 m_q_ml2, l_one_iters_ml2, entropies, times = ml2(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
@@ -86,7 +86,7 @@ m1 = alan.Model(P, q).condition(data=data)
 
 elbos_ml1 = []
 for i in range(T):
-    lr = 0.01
+    lr = 0.9
     
     sample = m1.sample_same(K, reparam=False)
     elbos_ml1.append(sample.elbo().item()) 
@@ -118,19 +118,26 @@ ax_iters.plot(elbos_ml2, color=colours[4], label=f'ML2', linestyle=':')
 ax_iters.set_xlabel('Iteration')
 ax_iters.set_ylabel('ELBO')
 ax_iters.legend()
-fig_iters.suptitle(f'K={K}, Number of latents={num_latents}')
+fig_iters.suptitle(f'K={K}, Number of latents={dim_latent}')
 fig_iters.tight_layout()
 fig_iters.savefig(f'figures/ml_test.png')
 
+
+diff_ml1_ml1toy = 0
+diff_ml2_ml2toy = 0
+diff_ml1_natural = 0
+diff_ml2_natural = 0
 for i in range(T):
     if np.abs(l_one_iters_ml1[i] - elbos_ml1[i]) > 0.001:
-        print('ML1 differs from ML1 toy')
-        print(i)
-        print(f'ml1: {elbos_ml1[i]}')
-        print(f'ml1 toy: {l_one_iters_ml1[i]}')
+        diff_ml1_ml1toy += 1
     if np.abs(l_one_iters_ml2[i] - elbos_ml2[i]) > 0.001:
-        print('ML2 differs from ML2 toy')
-        print(i)
-        print(f'ml2: {elbos_ml2[i]}')
-        print(f'ml2 toy: {l_one_iters_ml2[i]}')
+        diff_ml2_ml2toy += 1
+    if np.abs(l_one_iters[i] - elbos_ml1[i]) > 0.001:
+        diff_ml1_natural += 1
+    if np.abs(l_one_iters[i] - elbos_ml2[i]) > 0.001:
+        diff_ml2_natural += 1
 
+print(f'Number of iterations where ML1 and ML1 Toy differ: {diff_ml1_ml1toy}')
+print(f'Number of iterations where ML2 and ML2 Toy differ: {diff_ml2_ml2toy}')
+print(f'Number of iterations where ML1 and Natural RWS differ: {diff_ml1_natural}')
+print(f'Number of iterations where ML2 and Natural RWS differ: {diff_ml2_natural}')
