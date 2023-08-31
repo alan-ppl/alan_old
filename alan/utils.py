@@ -437,8 +437,12 @@ def reduce_Ks(tensors, Ks_to_sum, Es):
     result = tensors[0]
 
     Ks_to_sum_not_Es = set(Ks_to_sum).difference(Es)
+    
     if 0<len(Ks_to_sum):
+        # print('lp ml1')
+        # print(result)
         result = result - sum(math.log(K.size) for K in Ks_to_sum_not_Es)
+        # print(result)
     return result
 
 def logsumexp_sum(_Ks_to_sum, *tensors_to_reduce):
