@@ -336,7 +336,7 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
 
     return m_q, m_avg, l_tot, l_one_iters, [0] + dts, entropies, times
 
-def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
+def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
     if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
@@ -383,7 +383,7 @@ def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, po
     return m_q, l_one_iters, entropies, times
 
 
-def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
+def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
     if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
@@ -440,7 +440,7 @@ def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
 
     return m_q, l_one_iters, entropies, times
 
-def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, data=None):
+def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
     if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
