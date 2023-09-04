@@ -86,12 +86,27 @@ def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=0):
     
     K = sample.shape[0]
     N = sample.shape[1]
+    
+    # breakpoint()
+    elbo = t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum() - math.log(K) # this is the incorrect version (we think) -- not sure how to reshape/resolve elf addition issues
+    # elbo = t.logsumexp(logp - logq + elf, dim=0).sum() - N*math.log(K)
+    # elbo = t.logsumexp(logp - logq + t.t(elf.unsqueeze(0)), dim=0).sum()# - N*math.log(K)
 
-    elbo = t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum() - math.log(K)
+    # """ zoom chat meeting
+    # logp.shape = [K, N]
+    # t.logsumexp(logp-logq, dim=0).sum()
+    # """"
 
+    # print(sample)
     # print('lp ml1toy')
+    # print(t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum())
+    # print(t.logsumexp((logp - logq), dim=0).sum())
     # print(t.logsumexp((logp - logq + elf), dim=0).sum())
     # print(t.logsumexp((logp - logq + elf), dim=0).sum() - math.log(K))
+    # print(t.logsumexp((logp - logq + elf), dim=0).sum() - N*math.log(K))
+    print("elbo: ", elbo.item())
+    # print(elf)
+    # input()
     lqp = logp - logq
     lqp_max = lqp.amax(axis=0)
     weights = t.exp(lqp - lqp_max)
@@ -470,17 +485,14 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
 
         z_t = sample(Q_t, K)
 
-
-
         elf = sum((J*f(z_t)).sum(dim=1) for J,f in zip((J_loc, J_scale),(identity, t.square)))
-
-
+        # breakpoint()
 
         if prior_params is not None and lik_params is not None:
             likelihood = like_type(z_t, lik_params).log_prob(data)
             m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, prior = prior, likelihood = likelihood, elf = elf)
         else:
-            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post, extra_log_factor = elf)
+            m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, post=post, elf = elf)
 
 
         l_one_iter_t.backward(retain_graph=True)
@@ -489,11 +501,20 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
 
         # input(f"{i}, {(new_m_q-m_q[-1]).abs().mean()}")
 
-
         entropies.append(entropy(Q_t))
         l_one_iters.append(l_one_iter_t.clone())
         m_q.append(new_m_q.clone())
 
+        # print("m_new_J", t.vstack([J_loc.grad, J_scale.grad]).t())
+        # print("m_new", m_one_iter_t)
+        # print("m_q[-1]", m_q[-1])
+        num_wrong_m_entries = (abs((t.vstack([J_loc.grad, J_scale.grad]).t() - m_one_iter_t)) > 0.001).sum()
+        total_entries = 2*z_t.shape[1]
+        print(f"{num_wrong_m_entries}/{total_entries} entries match between m_J and m_IW")
+
+        with open("m_mismatch_count.txt", "a") as f:
+            f.write(f"{num_wrong_m_entries}\n")
+            
         times[i+1] = time.time() - start_time
 
     for i in range(T):

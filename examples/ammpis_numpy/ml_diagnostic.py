@@ -22,6 +22,9 @@ K = args.K
 T = args.T
 plot_ML2_only = args.plot_ML2_only
 
+with open('m_mismatch_count.txt', 'w') as f:
+    pass
+
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
@@ -85,12 +88,15 @@ init = t.tensor([0.0,1.0], dtype=t.float64).repeat((dim_latent,1))
 # lr = lambda i: ((i + 10)**(-0.9))
 seed_torch(0)
 m_q, l_one_iters, entropies, times = natural_rws(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+print("Natural RWS done.\n")
 
 seed_torch(0)
 m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+print("ML1 Toy done.\n")
 
 seed_torch(0)
 m_q_ml2, l_one_iters_ml2, entropies, times = ml2(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+print("ML2 Toy done.\n")
 
 seed_torch(0)
 q = Q_ml1()
@@ -106,6 +112,7 @@ for i in range(T):
 
     m1.update(lr, sample)
 
+print("ML1 done.\n")
 
 seed_torch(0)
 q = Q_ml2()
@@ -121,6 +128,7 @@ for i in range(T):
 
     m2.update(lr, sample)
 
+print("ML2 done.\n")
 
 ax_iters[0].plot(l_one_iters, color=colours[0], label=f'Natural RWS')
 ax_iters[0].plot(l_one_iters_ml1, color=colours[1], label=f'ML1 Toy')
@@ -165,7 +173,7 @@ if not plot_ML2_only:
     ax_iters[4].plot(elbos_ml1_diffs - l_one_iters_diffs, color=colours[3], label=f'ML1', linestyle=':')
 ax_iters[4].plot(l_one_iters_ml2_diffs - l_one_iters_diffs, color=colours[2], label=f'ML2 Toy')
 ax_iters[4].plot(elbos_ml2_diffs - l_one_iters_diffs, color=colours[4], label=f'ML2', linestyle=':')
-ax_iters[4].set_ylabel('Difference in ELBO step-sizes per iteration')
+ax_iters[4].set_ylabel('Difference in ELBO step-sizes against natural_rws')
 ax_iters[4].legend()
 
 ax_iters[-1].set_xlabel('Iteration')
@@ -174,7 +182,7 @@ fig_iters.suptitle(f'K={K}, Number of latents={dim_latent}')
 fig_iters.tight_layout()
 fig_iters.savefig(f'figures/ml_diagnostics/N{N}_K{K}_T{T}{"noML1" if plot_ML2_only else ""}.png')
 fig_iters.savefig(f'figures/ml_diagnostic.png')
-
+plt.close()
 
 diff_ml1_ml1toy = 0
 diff_ml2_ml2toy = 0
@@ -195,6 +203,44 @@ print(f'Number of iterations where ML2 and ML2 Toy differ: {diff_ml2_ml2toy}')
 print(f'Number of iterations where ML1 and Natural RWS differ: {diff_ml1_natural}')
 print(f'Number of iterations where ML2 and Natural RWS differ: {diff_ml2_natural}')
 
+
+# open the file m_mismatch_count.txt and plot the numbers in each line of the file
+with open('m_mismatch_count.txt', 'r') as f:
+    lines = f.readlines()
+    numbers = [int(line.strip()) for line in lines]
+
+# Create a figure and an axes object
+fig, ax = plt.subplots()
+
+# Plot the numbers on the axes object
+ax.plot(numbers)
+
+# Set the x and y labels
+ax.set_xlabel('Iteration')
+ax.set_ylabel('Count')
+ax.set_title(f'Number of mismatched m_new entries\n(between RWS and ML2)\nN={N}, K={K}')
+
+# fig.savefig(f"figures/m_mismatch_countN{N}_K{K}_T{T}.png")
+fig.savefig(f"figures/m_mismatch_count.png")
+plt.close()
+
 # for i in range(T):
 #     print(f"{i}\n{m_q[i]}\n{m_q_ml2[i]}\n{m_q_ml2[i]}\n")
 #     input()
+
+# get moment updates (before lr multiplication) from each iteration
+updates_rws = [init] + [(m_q[i+1] - m_q[i]*(1-lr))/lr for i in range(T-1)]
+updates_ml1 = [init] + [(m_q_ml1[i+1] - m_q_ml1[i]*(1-lr))/lr for i in range(T-1)]
+updates_ml2 = [init] + [(m_q_ml2[i+1] - m_q_ml2[i]*(1-lr))/lr for i in range(T-1)]
+
+# next_command = input("Press enter to continue, b for breakpoint, or q to quit: ")
+# if next_command != 'q':
+#     if next_command == 'b':
+#         breakpoint()
+#     for i in range(T):
+#         print(f"{i}\n{updates_rws[i]}\n{updates_ml1[i]}\n{updates_ml2[i]}\n")
+#         next_command = input("Press enter to continue, b for breakpoint, or q to quit: ")
+#         if next_command == 'q':
+#             break
+#         elif next_command == 'b':
+#             breakpoint()
