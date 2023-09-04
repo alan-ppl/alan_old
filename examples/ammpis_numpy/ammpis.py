@@ -70,7 +70,7 @@ def nat2conv(nats):
     convs = t.vstack([loc, scale]).t()
     return convs
 
-def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=0):
+def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=t.tensor(0)):
     # sample is a list of samples
     # params is a vector nx2
     # post is a torch distribution
@@ -90,9 +90,9 @@ def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=0):
     # breakpoint()
     elbo = t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum() - math.log(K) # this is the incorrect version (we think) -- not sure how to reshape/resolve elf addition issues
     # elbo = t.logsumexp(logp - logq + elf, dim=0).sum() - N*math.log(K)
-    # elbo = t.logsumexp(logp - logq + t.t(elf.unsqueeze(0)), dim=0).sum()# - N*math.log(K)
+    # elbo = t.logsumexp(logp - logq + t.t(elf.unsqueeze(0)), dim=0).sum() - N*math.log(K)
 
-    # """ zoom chat meeting
+    # """ zoom meeting chat
     # logp.shape = [K, N]
     # t.logsumexp(logp-logq, dim=0).sum()
     # """"
@@ -510,7 +510,7 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
         # print("m_q[-1]", m_q[-1])
         num_wrong_m_entries = (abs((t.vstack([J_loc.grad, J_scale.grad]).t() - m_one_iter_t)) > 0.001).sum()
         total_entries = 2*z_t.shape[1]
-        print(f"{num_wrong_m_entries}/{total_entries} entries match between m_J and m_IW")
+        print(f"{num_wrong_m_entries}/{total_entries} entries DO NOT match between m_J and m_IW")
 
         with open("m_mismatch_count.txt", "a") as f:
             f.write(f"{num_wrong_m_entries}\n")
