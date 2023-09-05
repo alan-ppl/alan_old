@@ -88,25 +88,11 @@ def IW(sample, approx_dist, post=None, prior=None, likelihood=None, elf=t.tensor
     N = sample.shape[1]
     
     # breakpoint()
-    elbo = t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum() - math.log(K) # this is the incorrect version (we think) -- not sure how to reshape/resolve elf addition issues
-    # elbo = t.logsumexp(logp - logq + elf, dim=0).sum() - N*math.log(K)
-    # elbo = t.logsumexp(logp - logq + t.t(elf.unsqueeze(0)), dim=0).sum() - N*math.log(K)
+    # elbo = t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum() - math.log(K) # this is the old incorrect version
+    elbo = t.logsumexp(logp - logq + elf, dim=0).sum() - N*math.log(K)
 
-    # """ zoom meeting chat
-    # logp.shape = [K, N]
-    # t.logsumexp(logp-logq, dim=0).sum()
-    # """"
+    # print("elbo: ", elbo.item())
 
-    # print(sample)
-    # print('lp ml1toy')
-    # print(t.logsumexp((logp.sum(dim=1) - logq.sum(dim=1) + elf), dim=0).sum())
-    # print(t.logsumexp((logp - logq), dim=0).sum())
-    # print(t.logsumexp((logp - logq + elf), dim=0).sum())
-    # print(t.logsumexp((logp - logq + elf), dim=0).sum() - math.log(K))
-    # print(t.logsumexp((logp - logq + elf), dim=0).sum() - N*math.log(K))
-    print("elbo: ", elbo.item())
-    # print(elf)
-    # input()
     lqp = logp - logq
     lqp_max = lqp.amax(axis=0)
     weights = t.exp(lqp - lqp_max)
@@ -485,8 +471,8 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
 
         z_t = sample(Q_t, K)
 
-        elf = sum((J*f(z_t)).sum(dim=1) for J,f in zip((J_loc, J_scale),(identity, t.square)))
-        # breakpoint()
+        # elf = sum((J*f(z_t)).sum(dim=1) for J,f in zip((J_loc, J_scale),(identity, t.square)))
+        elf = sum((J*f(z_t)) for J,f in zip((J_loc, J_scale),(identity, t.square)))
 
         if prior_params is not None and lik_params is not None:
             likelihood = like_type(z_t, lik_params).log_prob(data)
