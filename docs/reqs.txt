@@ -1,4 +1,0 @@
-pip install sphinx
-pip install sphinx-math-dollar
-pip install --upgrade myst-parser
-pip install sphinx-rtd-theme
