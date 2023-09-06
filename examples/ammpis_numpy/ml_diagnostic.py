@@ -137,12 +137,24 @@ print("ML1 done.\n")
 #   by treating each latent variable separately, I think the issues relating to `sum_non_dim`
 #   in `extra_log_factor` are dealt with in a way that _might_ mean ML2 behaves like ML2_toy 
 #   the problem is:
-#       1. by treating each latent variable separately, we mess up the random seeding (I'm pretty sure)
+#       1. although the seeding is generating the same random numbers for both versions of ML2, 
+#          these get assigned to mu in different orders:
+#               - regularML2 is generating N random numbers, K times
+#               - hackyML2   is generating K random numbers, N times (once for each of mu1, mu2 & mu3)
+# 
+#          this leads to the property:
+#               mu_regularML2  =  mu_hackyML2.transposed()    [*]
+#        
+#               [*]  N.B. mu has shape (2,3) in regular ML2 and shape (2,2,2,3) in hacky ML2,
+#                    but ultimately we're only generating N*K = 6 random numbers,
+#                    hackyML2 just has a bunch of redundant repetitions
+#
 #       2. this is suboptimal specification for an alan model
 #               (although hopefully if we end up changing alan to fix the `sum_non_dim` stuff, 
-#                we won't have to do this weird model specification anymore)
+#                we won't have to do this weird model specification anymore, so not a big deal)
 #
-#   although the elbos of ML2 and ML2_toy (= rws) are still different, the performances _seem_ comparable
+#   although the elbos of ML2 and ML2_toy (= rws) ARE different, the performances _seem_ comparable
+#   which makes me think that if we could transpose mu_hackyML2 we'd see exactly the same results as ML2 (and RWS)
 def P_separate(tr):
     '''
     Bayesian Gaussian Model
@@ -154,6 +166,8 @@ def P_separate(tr):
 
     mu = t.stack([tr['mu1'], tr['mu2'], tr['mu3']])
     # print(mu.squeeze(1))
+    # print(tr['mu1'])
+    # print(tr)
 
     tr('obs', alan.Normal(mu.squeeze(1), lik_scale))
 
