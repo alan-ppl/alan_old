@@ -494,12 +494,12 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
         # print("m_new_J", t.vstack([J_loc.grad, J_scale.grad]).t())
         # print("m_new", m_one_iter_t)
         # print("m_q[-1]", m_q[-1])
-        num_wrong_m_entries = (abs((t.vstack([J_loc.grad, J_scale.grad]).t() - m_one_iter_t)) > 0.001).sum()
-        total_entries = 2*z_t.shape[1]
-        print(f"{num_wrong_m_entries}/{total_entries} entries DO NOT match between m_J and m_IW")
+        # num_wrong_m_entries = (abs((t.vstack([J_loc.grad, J_scale.grad]).t() - m_one_iter_t)) > 0.001).sum()
+        # total_entries = 2*z_t.shape[1]
+        # print(f"{num_wrong_m_entries}/{total_entries} entries DO NOT match between m_J and m_IW")
 
-        with open("m_mismatch_count.txt", "a") as f:
-            f.write(f"{num_wrong_m_entries}\n")
+        # with open("m_mismatch_count.txt", "a") as f:
+        #     f.write(f"{num_wrong_m_entries}\n")
             
         times[i+1] = time.time() - start_time
 
