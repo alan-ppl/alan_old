@@ -85,6 +85,59 @@ class Q_ml2(alan.AlanModule):
     def forward(self, tr):
         tr('mu', self.mu())
 
+# nasty ml hack (for N=3)
+#   by treating each latent variable separately, the issues relating to `sum_non_dim`
+#   in `extra_log_factor` are dealt with in a way that means ML2 = ML2_toy AND ML1 = ML1_toy
+#   the problem is:
+#       1. although the seeding is generating the same random numbers for both versions of ML2, 
+#          these get assigned to mu in different orders:
+#               - regularML2 is generating N random numbers, K times
+#               - hackyML2   is generating K random numbers, N times (once for each of mu1, mu2 & mu3)
+# 
+#          Solution: rewrite the toy sample() method to generate K random numbers, N times so that
+#                    both versions of ML2 are using exactly the same samples
+#
+#       2. this is suboptimal specification for an alan model
+#               (although hopefully if we end up changing alan to fix the `sum_non_dim` stuff, 
+#                we won't have to do this weird model specification anymore, so not a big deal)
+def P_separate(tr):
+    '''
+    Bayesian Gaussian Model
+    '''
+    # breakpoint()
+    tr('mu1', alan.Normal(prior_mean[0], prior_scale[0]))
+    tr('mu2', alan.Normal(prior_mean[1], prior_scale[1]))
+    tr('mu3', alan.Normal(prior_mean[2], prior_scale[2]))
+
+    mu = t.stack([tr['mu1'], tr['mu2'], tr['mu3']])
+    # print(mu.squeeze(1))
+
+    tr('obs', alan.Normal(mu.squeeze(1), lik_scale))
+
+class Q_ml_separate(alan.AlanModule):
+    def __init__(self):
+        super().__init__()
+        self.mu1 = alan.MLNormal(sample_shape=(1,))
+        self.mu2 = alan.MLNormal(sample_shape=(1,))
+        self.mu3 = alan.MLNormal(sample_shape=(1,))
+
+    def forward(self, tr):
+        tr('mu1', self.mu1())
+        tr('mu2', self.mu2())
+        tr('mu3', self.mu3())
+
+class Q_ml2_separate(alan.AlanModule):
+    def __init__(self):
+        super().__init__()
+        self.mu1 = alan.ML2Normal(sample_shape=(1,))
+        self.mu2 = alan.ML2Normal(sample_shape=(1,))
+        self.mu3 = alan.ML2Normal(sample_shape=(1,))
+
+    def forward(self, tr):
+        tr('mu1', self.mu1())
+        tr('mu2', self.mu2())
+        tr('mu3', self.mu3())
+
 #Posterior
 data = alan.Model(P).sample_prior(varnames='obs')
 # data = alan.Model(P).sample_prior(varnames='obs', platesizes={"plate1": N})
@@ -118,8 +171,11 @@ m_q_ml2, l_one_iters_ml2, entropies, times = ml2(T, init, 0.01, K, prior_params=
 print("ML2 Toy done.\n")
 
 seed_torch(seed)
-q = Q_ml1()
-m1 = alan.Model(P, q).condition(data=data)
+# q = Q_ml1()
+# m1 = alan.Model(P, q).condition(data=data)
+
+q = Q_ml_separate()
+m1 = alan.Model(P_separate, q).condition(data=data)
 
 elbos_ml1 = []
 for i in range(T):
@@ -132,56 +188,6 @@ for i in range(T):
     m1.update(lr, sample)
 
 print("ML1 done.\n")
-
-# nasty ml2 hack (for N=3)
-#   by treating each latent variable separately, I think the issues relating to `sum_non_dim`
-#   in `extra_log_factor` are dealt with in a way that _might_ mean ML2 behaves like ML2_toy 
-#   the problem is:
-#       1. although the seeding is generating the same random numbers for both versions of ML2, 
-#          these get assigned to mu in different orders:
-#               - regularML2 is generating N random numbers, K times
-#               - hackyML2   is generating K random numbers, N times (once for each of mu1, mu2 & mu3)
-# 
-#          this leads to the property:
-#               mu_regularML2  =  mu_hackyML2.transposed()    [*]
-#        
-#               [*]  N.B. mu has shape (2,3) in regular ML2 and shape (2,2,2,3) in hacky ML2,
-#                    but ultimately we're only generating N*K = 6 random numbers,
-#                    hackyML2 just has a bunch of redundant repetitions
-#
-#       2. this is suboptimal specification for an alan model
-#               (although hopefully if we end up changing alan to fix the `sum_non_dim` stuff, 
-#                we won't have to do this weird model specification anymore, so not a big deal)
-#
-#   although the elbos of ML2 and ML2_toy (= rws) ARE different, the performances _seem_ comparable
-#   which makes me think that if we could transpose mu_hackyML2 we'd see exactly the same results as ML2 (and RWS)
-def P_separate(tr):
-    '''
-    Bayesian Gaussian Model
-    '''
-    # breakpoint()
-    tr('mu1', alan.Normal(prior_mean[0], prior_scale[0]))
-    tr('mu2', alan.Normal(prior_mean[1], prior_scale[1]))
-    tr('mu3', alan.Normal(prior_mean[2], prior_scale[2]))
-
-    mu = t.stack([tr['mu1'], tr['mu2'], tr['mu3']])
-    # print(mu.squeeze(1))
-    # print(tr['mu1'])
-    # print(tr)
-
-    tr('obs', alan.Normal(mu.squeeze(1), lik_scale))
-
-class Q_ml2_separate(alan.AlanModule):
-    def __init__(self):
-        super().__init__()
-        self.mu1 = alan.ML2Normal(sample_shape=(1,))
-        self.mu2 = alan.ML2Normal(sample_shape=(1,))
-        self.mu3 = alan.ML2Normal(sample_shape=(1,))
-
-    def forward(self, tr):
-        tr('mu1', self.mu1())
-        tr('mu2', self.mu2())
-        tr('mu3', self.mu3())
 
 seed_torch(seed)
 # q = Q_ml2()

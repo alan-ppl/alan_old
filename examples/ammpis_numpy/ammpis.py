@@ -113,7 +113,15 @@ def sample(dist, K=1):
     # dist is a torch.distributions type/constructor: Normal, Laplace or Gumbel
     # returns a list of samples
 
-    samps = dist.sample((K,))
+    # samps = dist.sample((K,))
+    
+    loc = dist.loc
+    scale = dist.scale
+    N = loc.shape[0]
+    samps = t.zeros((K, N), dtype=t.float64)
+    for i in range(N):
+        samps[:,i] = type(dist)(loc[i], scale[i]).sample((K,))
+
     return samps
 
 def entropy(dist):
