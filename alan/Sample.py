@@ -3,7 +3,7 @@ from .utils import *
 from .dist import Categorical
 from functorch.dim import dims, Tensor, Dim
 from . import traces
-
+import warnings
 
 class Sample():
     """
@@ -266,7 +266,7 @@ class Sample():
 
         return sum(E.sum() for E in Es)
 
-    def weights(self):
+    def weights(self, zero_weights_warning=True):
         """
         Produces normalized weights for each latent variable.
 
@@ -300,6 +300,14 @@ class Sample():
 
             sample = dim2named_tensor(sample).rename(**replacement_dict)
             w      = dim2named_tensor(w).rename(**replacement_dict)
+
+            if zero_weights_warning:
+                very_small_weights = (w.rename(None) < 1e-8).sum()
+                if very_small_weights > 0:
+                    warnings.warn(f"You have {very_small_weights} weights that are very small (<1e-8) (Out of {t.numel(w)} weights)."
+                                  "This may be a sign of numerical instability.", stacklevel=2)
+                
+
 
             result[var_names[i]] = (sample, w)
 
