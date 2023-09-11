@@ -9,6 +9,10 @@ from alan.experiment_utils import seed_torch, n_mean
 from torch.distributions import Normal, Uniform
 from ammpis import *
 
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-N', type=int, default=5)
@@ -18,6 +22,7 @@ parser.add_argument('-p', '--plot_ML2_only', default=False, action='store_true')
 parser.add_argument('-b', '--backup_plots',  default=False, action='store_true')
 parser.add_argument('-s', '--seed', type=int, default=0)
 parser.add_argument('-m', '--mismatch_count', default=False, action='store_true')
+parser.add_argument('-S', '--use_separated_model', default=False, action='store_true')
 args = parser.parse_args()
 
 N = args.N
@@ -27,18 +32,17 @@ plot_ML2_only = args.plot_ML2_only
 backup_plots = args.backup_plots
 seed = args.seed
 mismatch_count = args.mismatch_count
+use_separated_model = args.use_separated_model
 
-dim_latent = N  # there's some ambiguity in how we want to think about N...
+# there's some ambiguity in how we want to think about N... (is mu one rv or N rvs?)
+# (N rvs seems to be the right way to think about it)
+dim_latent = N  
 
 if mismatch_count:
     with open('m_mismatch_count.txt', 'w') as f:
-        pass
+        pass  # clear the file
 
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
 colours = ['#9e9ac8','#fbb4b9','#253494','#de2d26','#31a354']
-
 fig_iters, ax_iters = plt.subplots(5,1, figsize=(8.0, 25.0))
 
 seed_torch(seed)
@@ -51,17 +55,22 @@ def P_old(tr):
     tr('mu', alan.Normal(prior_mean.squeeze(1), prior_scale.squeeze(1)))
     tr('obs', alan.Normal(tr['mu'], lik_scale))
 
-    # use below lines instead of the above for plated model
-    # tr('mu', alan.Normal(prior_mean, prior_scale), plates="plate1")
-    # tr('obs', alan.Normal(tr['mu'], lik_scale), plates="plate1")
-    
-    # print(tr['obs'])
+# data = alan.Model(P_old).sample_prior(varnames='obs')
+# data['obs'] = data['obs'].rename('plate1')
+
+if use_separated_model:
+    covariates = {}
+else:
+    covariates = {'prior_mean':  prior_mean.clone().squeeze(1),#.rename('plate1'),
+                  'prior_scale': prior_scale.clone().squeeze(1),#.rename('plate1'),
+                  'lik_scale':   lik_scale.clone()#.rename('plate1')
+                 }
 
 def P(tr, prior_mean, prior_scale, lik_scale):
-    tr('mu', alan.Normal(prior_mean, prior_scale))
-    tr('obs', alan.Normal(tr['mu'], lik_scale), plates="plate1")
-    
-    # print(tr['obs'])
+    # the arguments are passed via the inputs=covariates dictionary
+    tr('mu', alan.Normal(prior_mean, prior_scale))#, plates="plate1")
+    tr('obs', alan.Normal(tr['mu'], lik_scale))#, plates="plate1")
+    # print(tr['mu'])
 
 class Q_ml1(alan.AlanModule):
     def __init__(self):
@@ -82,65 +91,43 @@ class Q_ml2(alan.AlanModule):
         tr('mu', self.mu())
 
 def P_separate(tr):
-    tr('mu1', alan.Normal(prior_mean[0], prior_scale[0]))
-    tr('mu2', alan.Normal(prior_mean[1], prior_scale[1]))
-    tr('mu3', alan.Normal(prior_mean[2], prior_scale[2]))
-    tr('mu4', alan.Normal(prior_mean[3], prior_scale[3]))
-    tr('mu5', alan.Normal(prior_mean[4], prior_scale[4]))
+    for i in range(N):
+        tr(f'mu{i}', alan.Normal(prior_mean[i], prior_scale[i]))
 
-    mu = t.stack([tr['mu1'], tr['mu2'], tr['mu3'], tr['mu4'], tr['mu5']]).squeeze(1)
+    mu = t.stack([tr[f'mu{i}'] for i in range(N)]).squeeze(1)
 
     tr('obs', alan.Normal(mu, lik_scale))
 
     # print(tr['obs'])
+    # print(mu)
 
 class Q_ml_separate(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        self.mu1 = alan.MLNormal(sample_shape=(1,))
-        self.mu2 = alan.MLNormal(sample_shape=(1,))
-        self.mu3 = alan.MLNormal(sample_shape=(1,))
-        self.mu4 = alan.MLNormal(sample_shape=(1,))
-        self.mu5 = alan.MLNormal(sample_shape=(1,))
+        
+        for i in range(N):
+            setattr(self, f'mu{i}', alan.MLNormal(sample_shape=(1,)))
 
     def forward(self, tr):
-        tr('mu1', self.mu1())
-        tr('mu2', self.mu2())
-        tr('mu3', self.mu3())
-        tr('mu4', self.mu4())
-        tr('mu5', self.mu5())
+        for i in range(N):
+            tr(f'mu{i}', getattr(self, f'mu{i}')())
 
 class Q_ml2_separate(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        self.mu1 = alan.ML2Normal(sample_shape=(1,))
-        self.mu2 = alan.ML2Normal(sample_shape=(1,))
-        self.mu3 = alan.ML2Normal(sample_shape=(1,))
-        self.mu4 = alan.ML2Normal(sample_shape=(1,))
-        self.mu5 = alan.ML2Normal(sample_shape=(1,))
+
+        for i in range(N):
+            setattr(self, f'mu{i}', alan.ML2Normal(sample_shape=(1,)))
 
     def forward(self, tr):
-        tr('mu1', self.mu1())
-        tr('mu2', self.mu2())
-        tr('mu3', self.mu3())
-        tr('mu4', self.mu4())
-        tr('mu5', self.mu5())
+        for i in range(N):
+            tr(f'mu{i}', getattr(self, f'mu{i}')())
 
-#Posterior
-data = alan.Model(P_old).sample_prior(varnames='obs')
-# data['obs'] = data['obs'].rename('plate1')
+if use_separated_model:
+    data = alan.Model(P_separate).sample_prior(varnames='obs', inputs={})
+else:
+    data = alan.Model(P).sample_prior(varnames='obs', platesizes={"plate1": N}, inputs=covariates)
 
-
-prior_mean_alan = prior_mean.clone().squeeze(1).rename("plate1")
-prior_scale_alan = prior_scale.clone().squeeze(1).rename("plate1")
-lik_scale_alan = lik_scale.clone().rename("plate1")
-
-covariates = {'prior_mean':  prior_mean_alan,
-              'prior_scale': prior_scale_alan,
-              'lik_scale':   lik_scale_alan}
-covariates = {}
-
-# data = alan.Model(P_old).sample_prior(varnames='obs', platesizes={"plate1": N}, inputs=covariates)
 
 # prior_scale = t.square(prior_scale)
 # lik_scale = t.square(lik_scale)
@@ -157,55 +144,52 @@ prior_params = t.cat([prior_mean, prior_scale], dim=1)
 lik_params = lik_scale
 init = t.tensor([0.0,1.0], dtype=t.float64).repeat((dim_latent,1))
 
-# lr = lambda i: ((i + 10)**(-0.9))
+# lr = lambda i: 0.01
+lr = lambda i: ((i + 10)**(-0.9))
+
 seed_torch(seed)
-m_q, l_one_iters, entropies, times = natural_rws(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+m_q, l_one_iters, entropies, times = natural_rws(T, init, lr, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 print("Natural RWS done.\n")
 
 seed_torch(seed)
-m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+m_q_ml1, l_one_iters_ml1, entropies, times = ml1(T, init, lr, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 print("ML1 Toy done.\n")
 
 seed_torch(seed)
-m_q_ml2, l_one_iters_ml2, entropies, times = ml2(T, init, 0.01, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
+m_q_ml2, l_one_iters_ml2, entropies, times = ml2(T, init, lr, K, prior_params=prior_params, lik_params=lik_params, data=data['obs'].rename(None))
 print("ML2 Toy done.\n")
 
 seed_torch(seed)
-# q = Q_ml1()
-# m1 = alan.Model(P, q).condition(data=data)
-# m1 = alan.Model(P_old, q).condition(data=data)
-
-q = Q_ml_separate()
-m1 = alan.Model(P_separate, q).condition(data=data)
+if use_separated_model:
+    q = Q_ml_separate()
+    m1 = alan.Model(P_separate, q).condition(data=data)
+else:
+    q = Q_ml1()
+    m1 = alan.Model(P, q).condition(data=data)
 
 elbos_ml1 = []
 for i in range(T):
-    lr = 0.01
-    
     sample = m1.sample_same(K, inputs=covariates, reparam=False)
     elbos_ml1.append(sample.elbo().item()) 
 
-
-    m1.update(lr, sample)
+    m1.update(lr(i), sample)
 
 print("ML1 done.\n")
 
 seed_torch(seed)
-# q = Q_ml2()
-# m2 = alan.Model(P, q).condition(data=data)
-
-q = Q_ml2_separate()
-m2 = alan.Model(P_separate, q).condition(data=data)
+if use_separated_model:
+    q = Q_ml2_separate()
+    m2 = alan.Model(P_separate, q).condition(data=data)
+else:
+    q = Q_ml2()
+    m2 = alan.Model(P, q).condition(data=data)
 
 elbos_ml2 = []
 for i in range(T):
-    lr = 0.01
-    
     sample = m2.sample_same(K, inputs=covariates, reparam=False)
     elbos_ml2.append(sample.elbo().item()) 
 
-
-    m2.update(lr, sample)
+    m2.update(lr(i), sample)
 
 print("ML2 done.\n")
 
