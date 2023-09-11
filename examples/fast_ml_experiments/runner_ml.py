@@ -49,9 +49,9 @@ def run_experiment(cfg):
 
 
 
-        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
-
-        m1 = alan.Model(P, Q).condition(data=data)
+        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, 0, cfg.use_data)
+        q = Q(  )
+        m1 = alan.Model(P, q).condition(data=data)
 
         samp = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
 
@@ -64,7 +64,7 @@ def run_experiment(cfg):
         for i in range(cfg.training.num_runs):
             seed_torch(i)
             P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
-
+            q = Q()
             if not cfg.use_data:
                 if not cfg.dataset == 'potus':
                     data = {'obs':data.pop('obs')}
@@ -72,7 +72,7 @@ def run_experiment(cfg):
                     data = {'n_democrat_state':data.pop('n_democrat_state')}
 
 
-            model = alan.Model(P, Q())
+            model = alan.Model(P, q)
             model.to(device)
 
             
@@ -155,7 +155,7 @@ def run_experiment(cfg):
                                  'non_zero_weights':non_zero_weights,}
 
 
-        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
+        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML)+ '_iters_{}'.format(cfg.training.num_iters) + '_decay_{}_'.format(cfg.training.decay) + 'K{0}.pkl'.format(K)
         with open(file, 'wb') as f:
             pickle.dump(results_dict, f)
 

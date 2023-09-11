@@ -49,9 +49,9 @@ def run_experiment(cfg):
         per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
 
-        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, 0, cfg.use_data)
 
-        m1 = alan.Model(P, Q).condition(data=data)
+        m1 = alan.Model(P, Q()).condition(data=data)
 
         samp = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
 
@@ -75,8 +75,8 @@ def run_experiment(cfg):
 
 
 
-
-            model = alan.Model(P, Q())
+            q = Q()
+            model = alan.Model(P, q)
             model.to(device)
 
             opt = t.optim.Adam(model.parameters(), lr=cfg.training.lr)
@@ -122,7 +122,7 @@ def run_experiment(cfg):
                     num_latents = 0
                         
                     for k,v in sample.weights().items():
-                        weights[k].append((v[1].rename(None) > 0.001).sum())
+                        weights[k][i,j] = (v[1].rename(None) > 0.001).sum()
 
                         non_zero_weight += (v[1].rename(None) > 0.001).sum()
                         num_latents += v[0].numel()
@@ -131,13 +131,12 @@ def run_experiment(cfg):
                         sc = q.__getattr__(k_sigma).clone().detach()
                         if hasattr(sc, "dims"):
                             sc = sc.order(*sc.dims)
-                        scales[k].append(sc.exp().mean().item())
+                        scales[k][i,j] = sc.exp().mean().item()
                     
-                    non_zero_weights.append(non_zero_weight)
+                    non_zero_weights[i,j] = non_zero_weight
 
                 if j % 100 == 0:
-                    print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
-                    print("Iteration: {0}, Predll: {1:.2f}".format(j,pred_liks[i,j]))
+                    print("Iteration: {0}, ELBO: {1:.2f}, Predll: {2:.2f}".format(j,elbo,pred_liks[i,j]))
 
             ###
             # SAVING MODELS DOESN'T WORK YET
@@ -148,10 +147,6 @@ def run_experiment(cfg):
             # t.save(model.state_dict(), cfg.dataset + '/' + 'results/' + '{0}_{1}'.format(cfg.model, i))
 
 
-        if cfg.use_data:
-            sz = sq_errs.ndim
-            sz = tuple(range(2,sz))
-            sq_errs = sq_errs.var(0, keepdims=True).mean(sz)
 
         
         results_dict = {'objs':per_seed_obj,
@@ -162,7 +157,7 @@ def run_experiment(cfg):
                                  'weights':weights,
                                  'non_zero_weights':non_zero_weights,}
 
-        file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
+        file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}.pkl'.format(K)
         with open(file, 'wb') as f:
             pickle.dump(results_dict, f)
 

@@ -12,15 +12,15 @@ linestyles = ['-',':']
 vi_colours = ['#31a354']
 
 fig_iters, ax_iters = plt.subplots(1,3, figsize=(12.0, 7.0))
-fig_scales, ax_scales = plt.subplots(2,3, figsize=(12.0, 6.0))
+fig_scales, ax_scales = plt.subplots(2,8, figsize=(12.0, 6.0))
 time_mean = 10
 K = 10
-num_iters = 1000
+num_iters = 5000
 exp_lr = 0.9
-VI_lr = 0.1
+VI_lr = 0.01
 ### ML
-for ml in [1,2]:
-    file = 'movielens/results/movielens/ML_{}'.format(ml)+ '_iters_{}'.format(num_iters) + '_decay_{}_'.format(exp_lr) + 'K{0}.pkl'.format(K)
+for ml in [1]:
+    file = 'bus_breakdown/results/bus_breakdown/ML_{}'.format(ml)+ '_iters_{}'.format(num_iters) + '_decay_{}_'.format(exp_lr) + 'K{0}.pkl'.format(K)
 
     with open(file, 'rb') as f:
         results_dict = pickle.load(f)
@@ -42,16 +42,16 @@ for ml in [1,2]:
 
     elbos = n_mean(elbos,time_mean).squeeze(0)
     pred_lls = n_mean(pred_lls,time_mean).squeeze(0)
-    non_zero_weights = n_mean(non_zero_weights,time_mean).squeeze(0)
+    non_zero_weights = n_mean(non_zero_weights,1).squeeze(0)
     elbo_lim = elbos.shape[0]
 
     # ax_times[0].plot(times, elbos, color=decay_colours[j], label=f'ML decay: {exp_lr}')
     # ax_times[1].plot(times, pred_lls, color=decay_colours[j])
     # ax_times[2].plot(times, non_zero_weights, color=decay_colours[j])
 
-    ax_iters[0].plot(np.arange(0,1000,time_mean), elbos, color=decay_colours[ml-1], label=f'ML {ml} decay: {exp_lr}', linestyle=linestyles[ml-1])
-    ax_iters[1].plot(np.arange(0,1000,time_mean), pred_lls, color=decay_colours[ml-1], linestyle=linestyles[ml-1])
-    ax_iters[2].plot(np.arange(0,1000,time_mean), non_zero_weights, color=decay_colours[ml-1], linestyle=linestyles[ml-1])
+    ax_iters[0].plot(elbos, color=decay_colours[ml-1], label=f'ML {ml} decay: {exp_lr}', linestyle=linestyles[ml-1])
+    ax_iters[1].plot(pred_lls, color=decay_colours[ml-1], linestyle=linestyles[ml-1])
+    ax_iters[2].plot(non_zero_weights, color=decay_colours[ml-1], linestyle=linestyles[ml-1])
 
 
     for i, (k,v) in enumerate(scales.items()):
@@ -77,7 +77,7 @@ for ml in [1,2]:
 
 
 #### VI
-file = 'movielens/results/movielens/VI_{}'.format(num_iters) + '_{}_'.format(VI_lr) + 'K{0}.pkl'.format(K)
+file = 'bus_breakdown/results/bus_breakdown/VI_{}'.format(num_iters) + '_{}_'.format(VI_lr) + 'K{0}.pkl'.format(K)
 
 with open(file, 'rb') as f:
     results_dict = pickle.load(f)
@@ -97,9 +97,9 @@ pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
 non_zero_weights = np.expand_dims(np.array(non_zero_weights), axis=0)
 
 
-ax_iters[0].plot(np.arange(0,1000,time_mean), n_mean(elbos,time_mean).squeeze(0), color=vi_colours[0], label=f'VI lr: {VI_lr}')
-ax_iters[1].plot(np.arange(0,1000,time_mean), n_mean(pred_lls,time_mean).squeeze(0), color=vi_colours[0])
-ax_iters[2].plot(np.arange(0,1000,time_mean), n_mean(non_zero_weights,time_mean).squeeze(0), color=vi_colours[0])
+ax_iters[0].plot(n_mean(elbos,time_mean).squeeze(0), color=vi_colours[0], label=f'VI lr: {VI_lr}')
+ax_iters[1].plot(n_mean(pred_lls,time_mean).squeeze(0), color=vi_colours[0])
+ax_iters[2].plot(n_mean(non_zero_weights,time_mean).squeeze(0), color=vi_colours[0])
 
 for i, (k,v) in enumerate(scales.items()):
     v = v.mean(0)
@@ -134,10 +134,10 @@ fig_iters.legend(loc='upper right')
 
 
 fig_iters.tight_layout()
-fig_iters.savefig(f'figures/movielens_{K}_elbo_iters.png')
+fig_iters.savefig(f'figures/bus_{K}_elbo_iters.png')
 
 ax_scales[0,0].set_ylabel('Mean Scale')
 ax_scales[1,0].set_ylabel('Mean Non zero weights')
 fig_scales.legend(loc='upper right')
 fig_scales.tight_layout()
-fig_scales.savefig(f'figures/movielens_{K}_scales_weights.png')
+fig_scales.savefig(f'figures/bus_{K}_scales_weights.png')
