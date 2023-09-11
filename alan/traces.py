@@ -108,6 +108,7 @@ class AbstractTraceQ(AbstractTrace):
     def __init__(self, K, data, mask, platedims, reparam, device, lp_dtype):
         super().__init__(device)
         self.K = K
+        self.GlobalK = Dim('GlobalK', K)
 
         self.data = data
         self.mask = mask
@@ -164,9 +165,11 @@ class AbstractTraceQ(AbstractTrace):
                 self.K_group[group] = Dim(f"Kgroup_{group}", self.K)
             Kdim = self.K_group[group]
         #non-grouped K's
-        else:
+        elif multi_sample:
             Kdim = Dim(f"Kvar_{key}", self.K)
             self.K_var[key] = Kdim
+        else:
+            self.K_var[key] = self.GlobalK
 
         if T is not None:
             dist.set_trace_Tdim(self, self.platedims[T])
@@ -272,6 +275,19 @@ class TraceQSame(AbstractTraceQ):
             logq = logq.order(*Ks)[idxs]
         return logq
 
+class TraceQGlobal(AbstractTraceQ):
+    def sample_(self, key, dist, plates=(), T=None, group=None, multi_sample=True, sum_discrete=False):
+        
+
+
+        
+    def parent_samples(self, plates, Kdim, K):
+        idxs = t.arange(self.K)[self.GlobalK].expand(*plates)
+        return idxs
+
+    def logq(self, logq, Kdim, extra_K=None):
+        ##
+        return logq
 
 class TraceSample(AbstractTrace):
     """
