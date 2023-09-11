@@ -345,7 +345,7 @@ def ammp_is_weight_all(T, post_params, init_moments, lr, K=5, approx_post_type=N
 
     return m_q, m_avg, l_tot, l_one_iters, [0] + dts, entropies, times
 
-def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None):
+def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None, device='cpu'):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
     if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
@@ -371,7 +371,7 @@ def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, po
 
         Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
 
-        z_t = sample(Q_t, K)
+        z_t = sample(Q_t, K).to(device)
         if prior_params is not None and lik_params is not None:
             likelihood = like_type(z_t, lik_params).log_prob(data)
             m_one_iter_t, l_one_iter_t = IW(z_t, Q_t, prior = prior, likelihood = likelihood)
@@ -392,7 +392,7 @@ def natural_rws(T, init_moments, lr, K=5, prior_params=None, lik_params=None, po
     return m_q, l_one_iters, entropies, times
 
 
-def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None):
+def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None, device='cpu'):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
     if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
@@ -420,7 +420,7 @@ def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
         Q_params = nat2conv(nats)
         Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
 
-        z_t = sample(Q_t, K)
+        z_t = sample(Q_t, K).to(device)
 
         if prior_params is not None and lik_params is not None:
             likelihood = like_type(z_t, lik_params).log_prob(data)
@@ -449,7 +449,7 @@ def ml1(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
 
     return m_q, l_one_iters, entropies, times
 
-def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None):
+def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_params=None, approx_post_type=Normal, prior_type=Normal, like_type=Normal, post_type=None, data=None, device='cpu'):
     # to allow for lr schedules, we'll define lr as a function of iteration number (i)
     if type(lr) == float or type(lr) == int:
         lr_fn = lambda i: lr
@@ -477,7 +477,7 @@ def ml2(T, init_moments, lr, K=5, prior_params=None, lik_params=None, post_param
 
         Q_t = approx_post_type(Q_params[:,0], Q_params[:,1])
 
-        z_t = sample(Q_t, K)
+        z_t = sample(Q_t, K).to(device)
 
         # elf = sum((J*f(z_t)).sum(dim=1) for J,f in zip((J_loc, J_scale),(identity, t.square)))
         elf = sum((J*f(z_t)) for J,f in zip((J_loc, J_scale),(identity, t.square)))
