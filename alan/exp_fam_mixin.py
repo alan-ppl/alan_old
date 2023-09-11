@@ -250,7 +250,7 @@ class NormalMixin(AbstractMixin):
 
     @staticmethod
     def conv2nat(loc, scale):
-        prec = 1/scale
+        prec = 1/scale**2
         mu_prec = loc * prec
         return mu_prec, -0.5*prec
 

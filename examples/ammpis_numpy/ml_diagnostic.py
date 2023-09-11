@@ -75,8 +75,8 @@ def P(tr, prior_mean, prior_scale, lik_scale):
 class Q_ml1(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        # self.mu = alan.MLNormal(sample_shape=(dim_latent,))
-        self.mu = alan.MLNormal(platesizes={"plate1": N}, sample_shape=(1,))
+        self.mu = alan.MLNormal(sample_shape=(dim_latent,))
+        # self.mu = alan.MLNormal(platesizes={"plate1": N}, sample_shape=(1,))
 
     def forward(self, tr, prior_mean, prior_scale, lik_scale):
         tr('mu', self.mu())
@@ -84,8 +84,8 @@ class Q_ml1(alan.AlanModule):
 class Q_ml2(alan.AlanModule):
     def __init__(self):
         super().__init__()
-        # self.mu = alan.ML2Normal(sample_shape=(dim_latent,))
-        self.mu = alan.ML2Normal(platesizes={"plate1": N}, sample_shape=(1,))
+        self.mu = alan.ML2Normal(sample_shape=(dim_latent,))
+        # self.mu = alan.ML2Normal(platesizes={"plate1": N}, sample_shape=(1,))
 
     def forward(self, tr, prior_mean, prior_scale, lik_scale):
         tr('mu', self.mu())

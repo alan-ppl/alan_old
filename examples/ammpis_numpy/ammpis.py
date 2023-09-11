@@ -56,7 +56,7 @@ def mean2nat(means):
 def conv2nat(convs):
     loc = convs[:,0]
     scale = convs[:,1]
-    prec = 1/scale
+    prec = 1/scale**2
     mu_prec = loc * prec
     nats = t.vstack([mu_prec, -0.5*prec]).t()
     return nats
