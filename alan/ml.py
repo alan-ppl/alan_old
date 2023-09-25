@@ -44,6 +44,8 @@ E_P(z^k | x) [log PRODUCT_i(Q({z_i}^{k_i} | z_qa(i))]
 
         self.platenames = tuple(platesizes.keys())
 
+        self.grads = []
+
     @property
     def dim_means(self):
         return [getattr(self, meanname) for meanname in self.meannames]
@@ -60,10 +62,15 @@ E_P(z^k | x) [log PRODUCT_i(Q({z_i}^{k_i} | z_qa(i))]
     @property
     def named_grads(self):
         return [self.get_named_grad(natname) for natname in self.natnames]
+    
+    @property
+    def grad(self):
+        return self.grads
 
     def _update(self, lr):
         with t.no_grad():
             for (mean, grad) in zip(self.named_means, self.named_grads):
+                self.grads.append(grad)
                 mean.data.add_(grad, alpha=lr)
         self.reset_nats()
 

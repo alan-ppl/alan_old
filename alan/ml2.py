@@ -27,6 +27,8 @@ class ML2(AlanModule):
 
         self.platenames = tuple(platesizes.keys())
 
+        self.grads = []
+
     @property
     def dim_means(self):
         return [getattr(self, meanname) for meanname in self.meannames]
@@ -44,8 +46,12 @@ class ML2(AlanModule):
     def named_grads(self):
         return [self.get_named_grad(Jname) for Jname in self.Jnames]
 
+    @property
+    def grad(self):
+        return self.grads
+    
     def check_J_zeros(self):
-        if not all((J==0).all() for J in self.named_Js):
+        if not all((J.rename(None)==0).all() for J in self.named_Js):
             raise Exception("One of the Js is non-zero. Presumably this is because one of the Js has been given to an optimizer as a parameter.  The solution is to use model.parameters() to extract parameters, as this avoids Js, rather than e.g. Q.parameters()")
 
     def __call__(self):
@@ -67,6 +73,7 @@ class ML2(AlanModule):
         self.check_J_zeros()
         with t.no_grad():
             for (m, g) in zip(self.named_means, self.named_grads):
+                self.grads.append(g)
                 m.data.mul_(1-lr).add_(g, alpha=lr)
 
     def local_parameters(self):

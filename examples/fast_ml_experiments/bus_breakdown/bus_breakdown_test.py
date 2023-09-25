@@ -3,43 +3,54 @@ import alan
 from alan.experiment_utils import seed_torch
 
 def generate_model(N,M,device,ML=2, run=0, use_data=True):
-    M = 3
-    J = 3
-    I = 30
+    # M = 3
+    # J = 3
+    # I = 30
 
+    # sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
+
+    # covariates = {'run_type': t.randn(M,J,I,5).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
+    #     'bus_company_name': t.randn(M,J,I,4).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
+    # test_covariates = {'run_type': t.randn(M,J,I,5).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
+    #     'bus_company_name': t.randn(M,J,I,4).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
+    # all_covariates = {'run_type': t.cat((covariates['run_type'],test_covariates['run_type']),2),
+    #     'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],2)}
+
+    I=1
+    J=1
+    M=6
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
-
-    covariates = {'run_type': t.load('bus_breakdown/data/run_type_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
-        'bus_company_name': t.load('bus_breakdown/data/bus_company_name_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
-    test_covariates = {'run_type': t.load('bus_breakdown/data/run_type_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
-        'bus_company_name': t.load('bus_breakdown/data/bus_company_name_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
+    covariates = {'run_type': t.randn(M,J,I,5).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
+        'bus_company_name': t.randn(M,J,I,4).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
+    test_covariates = {'run_type': t.randn(M,J,I,5).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
+        'bus_company_name': t.randn(M,J,I,4).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
     all_covariates = {'run_type': t.cat((covariates['run_type'],test_covariates['run_type']),2),
         'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],2)}
-
+    
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
 
     def P(tr, run_type, bus_company_name):
-      '''
-      Hierarchical Model
-      '''
+        '''
+        Hierarchical Model
+        '''
 
-      #Year level
-      tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
-      tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
-      tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
+        #Year level
+        tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
+        tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
+        tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
 
-      #Borough level
-      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Borough')
-      tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
+        #Borough level
+        tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Borough')
+        tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
 
-      #ID level
-      tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())))
-      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()))
-      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()))
-      # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
-      # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
-      tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+        #ID level
+        tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())))
+        tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()))
+        tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()))
+        # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
+        # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+        tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
 
 
 
@@ -128,10 +139,11 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
 
 
     if use_data:
-        data = {'obs':t.load('bus_breakdown/data/delay_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
-        # print(data)
-        test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
-        all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
+        # data = {'obs':t.load('bus_breakdown/data/delay_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+        # # print(data)
+        # test_data = {'obs':t.load('bus_breakdown/data/delay_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
+        # all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
+        None
     else:
         model = alan.Model(P)
 
@@ -156,17 +168,20 @@ if __name__ == "__main__":
         data = {'obs':data.pop('obs')}
         K = 10
 
+        T=2
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
         scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
         grads_loc = {k:[] for k in sample.weights().keys()}
         grads_scale = {k:[] for k in sample.weights().keys()}
-        for j in range(1):
+        elbos_1 = []
+        for j in range(T):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
             elbo = sample.elbo()
             model.update(lr, sample)
 
+            elbos_1.append(elbo)
             scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
 
             for k,v in sample.weights().items():
@@ -187,12 +202,15 @@ if __name__ == "__main__":
         scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
         grads2_loc = {k:[] for k in sample.weights().keys()}
         grads2_scale = {k:[] for k in sample.weights().keys()}
-        for j in range(1):
+
+        elbos_2 = []
+        for j in range(T):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
             elbo = sample.elbo()
             model.update(lr, sample)
 
+            elbos_2.append(elbo)
             scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
 
             for k,v in sample.weights().items():
@@ -203,8 +221,8 @@ if __name__ == "__main__":
 
 for k in sample.weights().keys():
     if k == 'sigma_alpha':
-        print(f'Scale grad difference for {k}: {(grads_scale[k][0] - grads2_scale[k][0]).abs()}')
-        print(grads_scale[k][0])
-        print(grads2_scale[k][0])
+        print(f'Scale grad difference for {k}: {(grads_scale[k][-1] - grads2_scale[k][-1]).abs()}')
+        print(grads_scale[k][-1])
+        print(grads2_scale[k][-1])
         
-    
+print('ELBO difference: ', (elbos_1[-1] - elbos_2[-1]).abs())
