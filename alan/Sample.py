@@ -114,20 +114,24 @@ class Sample():
         The key exported method.
         """
         logp = self.logp
+        # print(logp)
         if detach_p:
             logp = [lp.detach() for lp in logp]
 
         logq = self.logq
+        # print(logq)
         if detach_q:
             logq = [lq.detach() for lq in logq]
 
-
+        
+        
         tensors = [*logp, *[-lq for lq in logq], *extra_log_factors]
 
         ## Convert tensors to Float64
         tensors = [x.to(dtype=t.float64) for x in tensors]
 
         #iterate from lowest plate
+
         for plate_name in self.ordered_plate_dims[::-1]:
             tensors = self.sum_plate_T(tensors, plate_name)
 
@@ -162,6 +166,7 @@ class Sample():
     
 
     def sum_plate_T(self, lps, plate_dim):
+        # breakpoint()
         if plate_dim is not None:
             #partition tensors into those with/without plate_name
             lower_lps, higher_lps = partition_tensors(lps, plate_dim)
@@ -184,6 +189,10 @@ class Sample():
             lower_lp = reduce_Ks([lower_lp], [Kdim], self.Es)
         elif plate_dim is not None:
             lower_lp = lower_lp.sum(plate_dim)
+            # if not any(self.is_K(dim) for dim in lower_lp.dims):
+            #     lower_lp = lower_lp.sum(lower_lp.dims)
+            # else:
+            #     lower_lp = lower_lp.sum(plate_dim)
 
         return [*higher_lps, lower_lp]
 

@@ -28,6 +28,7 @@ class ML2(AlanModule):
         self.platenames = tuple(platesizes.keys())
 
         self.grads = []
+        self.elfs = []
 
     @property
     def dim_means(self):
@@ -62,6 +63,7 @@ class ML2(AlanModule):
         if len(sample.dims) != len(self.platenames) + 1:
             raise Exception(f"Unexpected sample dimensions.  We expected {self.platenames}, with an extra K-dimension.  We got {sample.dims}.  If the K-dimension is missing, you may have set multi_sample=False, which is not compatible with ML2 proposals/approximate posteriors")
         #The factor comes in through log Q, so must be negated!
+        self.elfs.append(sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats)).detach())
         return sum(sum_non_dim(J*f(sample)) for (J, f) in zip(self.dim_Js, self.sufficient_stats))
 
     def init(self):
@@ -72,9 +74,11 @@ class ML2(AlanModule):
     def _update(self, lr):
         self.check_J_zeros()
         with t.no_grad():
+            counter = 0
             for (m, g) in zip(self.named_means, self.named_grads):
-                self.grads.append(g)
+                self.grads.append(g.detach())
                 m.data.mul_(1-lr).add_(g, alpha=lr)
+                counter += 1
 
     def local_parameters(self):
         return []

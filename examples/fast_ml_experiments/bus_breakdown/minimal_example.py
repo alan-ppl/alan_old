@@ -1,6 +1,7 @@
 import torch as t
 import alan
 from alan.experiment_utils import seed_torch
+from alan.utils import reduce_Ks
 
 def generate_model(N,M,device,ML=2, run=0, use_data=True):
     # M = 3
@@ -16,9 +17,9 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
     # all_covariates = {'run_type': t.cat((covariates['run_type'],test_covariates['run_type']),2),
     #     'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],2)}
 
-    I=3
-    J=2
-    M=20
+    I=2
+    J=3
+    M=4
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
     covariates = {'run_type': t.randn(M,J,I,5).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
         'bus_company_name': t.randn(M,J,I,4).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
@@ -36,23 +37,16 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
         '''
 
         #Year level
-        tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
-        tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
-        tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
-
         #Borough level
-        tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Borough')
-        # tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
-        tr('alpha', alan.Normal(tr['sigma_alpha'], tr['beta'].exp()))
+        tr('beta', alan.Normal(0, 1), plates = 'plate_Year')
+        tr('sigma_alpha', alan.Normal(0, 1), plates = ('plate_Borough'))
+        
+        tr('alpha', alan.Normal(0, 1), plates = ('plate_Year', 'plate_Borough'))
 
 
-        #ID level
-        tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())))
-        tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()))
-        tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()))
-        # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
-        # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
-        tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+
+        # #ID level
+        tr('obs', alan.Normal(0,1), plates = 'plate_ID')
 
 
 
@@ -61,81 +55,41 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
         class Q(alan.AlanModule):
             def __init__(self):
                 super().__init__()
-                #sigma_beta
-                self.sigma_beta = alan.MLNormal()
-                #mu_beta
-                self.mu_beta = alan.MLNormal()
-                #beta
+
+                # #beta
                 self.beta = alan.MLNormal({'plate_Year': M})
                 #sigma_alpha
                 self.sigma_alpha = alan.MLNormal({'plate_Borough': J})
                 #alpha
-                self.alpha = alan.MLNormal({'plate_Year': M,'plate_Borough': J})
-                #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi = alan.MLNormal()
-                #psi
-                self.psi = alan.MLNormal(sample_shape=(run_type_dim,))
-                #phi
-                self.phi = alan.MLNormal(sample_shape=(bus_company_name_dim,))
-                #theta
-                # self.theta = alan.MLNormal({'plate_ID':I})
+                self.alpha = alan.MLNormal({'plate_Borough': J,'plate_Year': M})
 
 
             def forward(self, tr, run_type, bus_company_name):
                 #Year level
-
-                tr('sigma_beta', self.sigma_beta())
-                tr('mu_beta', self.mu_beta())
                 tr('beta', self.beta())
 
                 #Borough level
                 tr('sigma_alpha', self.sigma_alpha())
                 tr('alpha', self.alpha())
 
-                #ID level
-                tr('log_sigma_phi_psi', self.log_sigma_phi_psi())
-                tr('psi', self.psi())
-                tr('phi', self.phi())
-                # tr('theta', self.theta())
     elif ML == 2:
         class Q(alan.AlanModule):
             def __init__(self):
                 super().__init__()
-                #sigma_beta
-                self.sigma_beta = alan.ML2Normal()
-                #mu_beta
-                self.mu_beta = alan.ML2Normal()
-                #beta
+                # #beta
                 self.beta = alan.ML2Normal({'plate_Year': M})
                 #sigma_alpha
                 self.sigma_alpha = alan.ML2Normal({'plate_Borough': J})
                 #alpha
-                self.alpha = alan.ML2Normal({'plate_Year': M,'plate_Borough': J})
-                #log_sigma_phi_psi logits
-                self.log_sigma_phi_psi = alan.ML2Normal()
-                #psi
-                self.psi = alan.ML2Normal(sample_shape=(run_type_dim,))
-                #phi
-                self.phi = alan.ML2Normal(sample_shape=(bus_company_name_dim,))
-                #theta
-                # self.theta = alan.MLNormal({'plate_ID':I})
-
+                self.alpha = alan.ML2Normal({'plate_Borough': J,'plate_Year': M})
 
             def forward(self, tr, run_type, bus_company_name):
                 #Year level
-
-                tr('sigma_beta', self.sigma_beta())
-                tr('mu_beta', self.mu_beta())
                 tr('beta', self.beta())
 
                 #Borough level
                 tr('sigma_alpha', self.sigma_alpha())
                 tr('alpha', self.alpha())
-
-                #ID level
-                tr('log_sigma_phi_psi', self.log_sigma_phi_psi())
-                tr('psi', self.psi())
-                tr('phi', self.phi())
 
 
 
@@ -153,6 +107,7 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
         #data_prior_test = model.sample_prior(platesizes = sizes, inputs = test_covariates)
         data = all_data
         test_data = {}
+
         data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], -1)
 
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
@@ -160,7 +115,38 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
     return P, Q, data, covariates, all_data, all_covariates, sizes
 
 if __name__ == "__main__":
-    for lr in [0.1]:
+    
+    
+    def update(sample):
+        
+        logp = sample.logp
+        # print(logp)
+        logp = [lp.detach() for lp in logp]
+
+        logq = sample.logq
+        
+        tensors = [*logp, *[-lq for lq in logq]]
+
+        ## Convert tensors to Float64
+        tensors = [x.to(dtype=t.float64) for x in tensors]
+        sigma_alpha_lps = [tensors[1], tensors[5]]
+        beta_lps = [tensors[0], tensors[4]]
+        alpha_lps = [tensors[2], tensors[6]]
+        obs_lps = [tensors[3]]
+
+        sigma_alpha_lps = reduce_Ks(sigma_alpha_lps, [tensors[1].dims[0]], set(sample.trp.Es)).sum((sigma_alpha_lps[0].dims[1]))
+        beta_lps = reduce_Ks(beta_lps, [tensors[0].dims[0]], set(sample.trp.Es)).sum((beta_lps[0].dims[1]))
+        alpha_lps = reduce_Ks(alpha_lps, [tensors[2].dims[0]], set(sample.trp.Es)).sum((alpha_lps[0].dims[1],alpha_lps[0].dims[2]))
+        obs_lps = reduce_Ks(obs_lps, [], set(sample.trp.Es)).sum((obs_lps[0].dims[0]))
+        
+        
+        lp = sigma_alpha_lps + beta_lps + alpha_lps + obs_lps
+        
+        
+        return - lp
+    
+    
+    for lr in [0.5]:
         print('ML1')
         seed_torch(0)
         P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=1, run=0, use_data=False)
@@ -168,14 +154,14 @@ if __name__ == "__main__":
         
         model = alan.Model(P, Q())
         data = {'obs':data.pop('obs')}
-        K = 10
+        K = 1
 
-        T=10
+        T=1
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
         scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
-        grads_loc = {k:[] for k in sample.weights().keys()}
-        grads_scale = {k:[] for k in sample.weights().keys()}
+        grads_loc = {k:[] for k in sample.samples.keys()}
+        grads_scale = {k:[] for k in sample.samples.keys()}
         elbos_1 = []
         for j in range(T):
 
@@ -186,7 +172,7 @@ if __name__ == "__main__":
             elbos_1.append(elbo)
             scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
 
-            for k,v in sample.weights().items():
+            for k in sample.samples.keys():
                 grads_loc[k].append(model.Q.__getattr__(k).grad[0])
                 grads_scale[k].append(model.Q.__getattr__(k).grad[1])
 
@@ -202,9 +188,9 @@ if __name__ == "__main__":
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
         scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
-        grads2_loc = {k:[] for k in sample.weights().keys()}
-        grads2_scale = {k:[] for k in sample.weights().keys()}
-
+        grads2_loc = {k:[] for k in sample.samples.keys()}
+        grads2_scale = {k:[] for k in sample.samples.keys()}
+        elf2 = {k:[] for k in sample.samples.keys()}
         elbos_2 = []
         for j in range(T):
 
@@ -215,19 +201,90 @@ if __name__ == "__main__":
             elbos_2.append(elbo)
             scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
 
-            for k,v in sample.weights().items():
+            for k in sample.samples.keys():
                 grads2_loc[k].append(model.Q.__getattr__(k).grad[0])
                 grads2_scale[k].append(model.Q.__getattr__(k).grad[1])
+                elf2[k].append(model.Q.__getattr__(k).elfs[1])
+
+        print('ML2 fixed')
+        seed_torch(0)
+        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=2, run=0, use_data=False)
 
 
+        
+        model = alan.Model(P, Q())
+        data = {'obs':data.pop('obs')}
 
-for k in sample.weights().keys():
+        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
+        scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+        grads2_fixed_loc = {k:[] for k in sample.samples.keys()}
+        grads2_fixed_scale = {k:[] for k in sample.samples.keys()}
+        elf2_fixed = {k:[] for k in sample.samples.keys()}
+        elbos_2_fixed = []
+        for j in range(T):
+
+            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+            elbo = sample.elbo()
+            lp = update(sample)
+            lp.backward()
+        
+            for mod in model.modules():
+                if hasattr(mod, '_update'):
+                    mod._update(lr)
+            model.zero_grad()
+
+            elbos_2_fixed.append(elbo)
+            scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+
+            for k in sample.samples.keys():
+                grads2_fixed_loc[k].append(model.Q.__getattr__(k).grad[0])
+                grads2_fixed_scale[k].append(model.Q.__getattr__(k).grad[1])
+                elf2_fixed[k].append(model.Q.__getattr__(k).elfs[1])
+                
+                
+        print('ML1 fixed')
+        seed_torch(0)
+        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=1, run=0, use_data=False)
+
+
+        
+        model = alan.Model(P, Q())
+        data = {'obs':data.pop('obs')}
+
+        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+
+        scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+        grads1_fixed_loc = {k:[] for k in sample.samples.keys()}
+        grads1_fixed_scale = {k:[] for k in sample.samples.keys()}
+        elbos_1_fixed = []
+        for j in range(T):
+
+            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+            elbo = sample.elbo()
+            lp = update(sample)
+            lp.backward()
+        
+            for mod in model.modules():
+                if hasattr(mod, '_update'):
+                    mod._update(lr)
+            model.zero_grad()
+
+            elbos_1_fixed.append(elbo)
+            scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+
+            for k in sample.samples.keys():
+                grads1_fixed_loc[k].append(model.Q.__getattr__(k).grad[0])
+                grads1_fixed_scale[k].append(model.Q.__getattr__(k).grad[1])
+
+
+for k in sample.samples.keys():
     print(f'Scale grad difference for {k}: {(grads_scale[k][-1] - grads2_scale[k][-1]).abs()}')
-    print(f'Loc grad difference for {k}: {(grads_loc[k][-1] - grads2_loc[k][-1]).abs()}')
+    print(f'Scale (fixed) grad difference for {k}: {(grads_scale[k][-1] - grads2_fixed_scale[k][-1]).abs()}')
+    print(f'Scale (fixed ML1 vs fixed ML2) grad difference for {k}: {(grads1_fixed_scale[k][-1] - grads2_fixed_scale[k][-1]).abs()}')
+    # print(f'Elf for {k}: {elf2[k]}')
 
 
-
-        
-        
-print('ELBO difference: ', (elbos_1[-1] - elbos_2[-1]).abs())
+print('ELBO difference ML1 ML2: ', (elbos_1[-1] - elbos_2[-1]).abs())
+print('ELBO difference ML1 ML2 (fixed): ', (elbos_1[-1] - elbos_2_fixed[-1]).abs())
+print('ELBO difference ML1 (fixed) ML2 (fixed): ', (elbos_1_fixed[-1] - elbos_2_fixed[-1]).abs())

@@ -145,8 +145,10 @@ class TorchDimDist():
         if mask is not None:
             log_prob = log_prob * mask
 
+
         if self.unnamed_batch_dims > 0:
             log_prob = log_prob.sum()
+
 
 
         return log_prob + elf
