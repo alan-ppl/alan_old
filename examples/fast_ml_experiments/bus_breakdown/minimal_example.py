@@ -160,7 +160,7 @@ if __name__ == "__main__":
     
     for first in ['sigma', 'beta']:
         lr = 0.5
-        print('ML1')
+        print(first + ' first')
         seed_torch(0)
         P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=1, run=0, use_data=False, first=first)
 
@@ -189,7 +189,6 @@ if __name__ == "__main__":
                 grads_loc[k].append(model.Q.__getattr__(k).grad[0])
                 grads_scale[k].append(model.Q.__getattr__(k).grad[1])
 
-        print('ML2')
         seed_torch(0)
         P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=2, run=0, use_data=False)
 
