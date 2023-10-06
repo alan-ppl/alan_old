@@ -3,7 +3,7 @@ import alan
 from alan.experiment_utils import seed_torch
 from alan.utils import reduce_Ks
 
-def generate_model(N,M,device,ML=2, run=0, use_data=True):
+def generate_model(N,M,device,ML=2, run=0, use_data=True, first='sigma'):
     # M = 3
     # J = 3
     # I = 30
@@ -31,25 +31,37 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
 
-    def P(tr, run_type, bus_company_name):
-        '''
-        Hierarchical Model
-        '''
+    if first == 'sigma':
+        def P(tr, run_type, bus_company_name):
+            '''
+            Hierarchical Model
+            '''
+            #Year level
+            #Borough level
+            tr('sigma_alpha', alan.Normal(1, 1), plates = ('plate_Borough'))
+            tr('beta', alan.Normal(1, 1), plates = 'plate_Year')
+            
+            
+            tr('alpha', alan.Normal(1, 1), plates = ('plate_Year', 'plate_Borough'))
 
-        #Year level
-        #Borough level
-        tr('beta', alan.Normal(0, 1), plates = 'plate_Year')
-        tr('sigma_alpha', alan.Normal(0, 1), plates = ('plate_Borough'))
-        
-        tr('alpha', alan.Normal(0, 1), plates = ('plate_Year', 'plate_Borough'))
+            # #ID level
+            tr('obs', alan.Normal(1,1), plates = 'plate_ID')
+            
+    elif first == 'beta':
+        def P(tr, run_type, bus_company_name):
+            '''
+            Hierarchical Model
+            '''
 
+            #Year level
+            #Borough level
+            tr('beta', alan.Normal(1, 1), plates = 'plate_Year')
+            tr('sigma_alpha', alan.Normal(1, 1), plates = ('plate_Borough'))
+            
+            tr('alpha', alan.Normal(1, 1), plates = ('plate_Year', 'plate_Borough'))
 
-
-        # #ID level
-        tr('obs', alan.Normal(0,1), plates = 'plate_ID')
-
-
-
+            # #ID level
+            tr('obs', alan.Normal(1,1), plates = 'plate_ID')
 
     if ML == 1:
         class Q(alan.AlanModule):
@@ -117,39 +129,40 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
 if __name__ == "__main__":
     
     
-    def update(sample):
+    # def update(sample):
         
-        logp = sample.logp
-        # print(logp)
-        logp = [lp.detach() for lp in logp]
+    #     logp = sample.logp
+    #     # print(logp)
+    #     logp = [lp.detach() for lp in logp]
 
-        logq = sample.logq
+    #     logq = sample.logq
         
-        tensors = [*logp, *[-lq for lq in logq]]
+    #     tensors = [*logp, *[-lq for lq in logq]]
 
-        ## Convert tensors to Float64
-        tensors = [x.to(dtype=t.float64) for x in tensors]
-        sigma_alpha_lps = [tensors[1], tensors[5]]
-        beta_lps = [tensors[0], tensors[4]]
-        alpha_lps = [tensors[2], tensors[6]]
-        obs_lps = [tensors[3]]
+    #     ## Convert tensors to Float64
+    #     tensors = [x.to(dtype=t.float64) for x in tensors]
+    #     sigma_alpha_lps = [tensors[1], tensors[5]]
+    #     beta_lps = [tensors[0], tensors[4]]
+    #     alpha_lps = [tensors[2], tensors[6]]
+    #     obs_lps = [tensors[3]]
 
-        sigma_alpha_lps = reduce_Ks(sigma_alpha_lps, [tensors[1].dims[0]], set(sample.trp.Es)).sum((sigma_alpha_lps[0].dims[1]))
-        beta_lps = reduce_Ks(beta_lps, [tensors[0].dims[0]], set(sample.trp.Es)).sum((beta_lps[0].dims[1]))
-        alpha_lps = reduce_Ks(alpha_lps, [tensors[2].dims[0]], set(sample.trp.Es)).sum((alpha_lps[0].dims[1],alpha_lps[0].dims[2]))
-        obs_lps = reduce_Ks(obs_lps, [], set(sample.trp.Es)).sum((obs_lps[0].dims[0]))
+    #     sigma_alpha_lps = reduce_Ks(sigma_alpha_lps, [tensors[1].dims[0]], set(sample.trp.Es)).sum((sigma_alpha_lps[0].dims[1]))
+    #     beta_lps = reduce_Ks(beta_lps, [tensors[0].dims[0]], set(sample.trp.Es)).sum((beta_lps[0].dims[1]))
+    #     alpha_lps = reduce_Ks(alpha_lps, [tensors[2].dims[0]], set(sample.trp.Es)).sum((alpha_lps[0].dims[1],alpha_lps[0].dims[2]))
+    #     obs_lps = reduce_Ks(obs_lps, [], set(sample.trp.Es)).sum((obs_lps[0].dims[0]))
         
         
-        lp = sigma_alpha_lps + beta_lps + alpha_lps + obs_lps
+    #     lp = sigma_alpha_lps + beta_lps + alpha_lps + obs_lps
         
         
-        return - lp
+    #     return - lp
     
     
-    for lr in [0.5]:
+    for first in ['sigma', 'beta']:
+        lr = 0.5
         print('ML1')
         seed_torch(0)
-        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=1, run=0, use_data=False)
+        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=1, run=0, use_data=False, first=first)
 
         
         model = alan.Model(P, Q())
@@ -205,86 +218,90 @@ if __name__ == "__main__":
                 grads2_loc[k].append(model.Q.__getattr__(k).grad[0])
                 grads2_scale[k].append(model.Q.__getattr__(k).grad[1])
                 elf2[k].append(model.Q.__getattr__(k).elfs[1])
-
-        print('ML2 fixed')
-        seed_torch(0)
-        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=2, run=0, use_data=False)
-
-
-        
-        model = alan.Model(P, Q())
-        data = {'obs':data.pop('obs')}
-
-        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-
-        scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
-        grads2_fixed_loc = {k:[] for k in sample.samples.keys()}
-        grads2_fixed_scale = {k:[] for k in sample.samples.keys()}
-        elf2_fixed = {k:[] for k in sample.samples.keys()}
-        elbos_2_fixed = []
-        for j in range(T):
-
-            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            elbo = sample.elbo()
-            lp = update(sample)
-            lp.backward()
-        
-            for mod in model.modules():
-                if hasattr(mod, '_update'):
-                    mod._update(lr)
-            model.zero_grad()
-
-            elbos_2_fixed.append(elbo)
-            scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
-
-            for k in sample.samples.keys():
-                grads2_fixed_loc[k].append(model.Q.__getattr__(k).grad[0])
-                grads2_fixed_scale[k].append(model.Q.__getattr__(k).grad[1])
-                elf2_fixed[k].append(model.Q.__getattr__(k).elfs[1])
                 
                 
-        print('ML1 fixed')
-        seed_torch(0)
-        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=1, run=0, use_data=False)
+        print(f'Elbo: {elbos_1[-1]}')
+        # print('ML2 fixed')
+        # seed_torch(0)
+        # P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=2, run=0, use_data=False)
 
 
         
-        model = alan.Model(P, Q())
-        data = {'obs':data.pop('obs')}
+        # model = alan.Model(P, Q())
+        # data = {'obs':data.pop('obs')}
 
-        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+        # sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
-        scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
-        grads1_fixed_loc = {k:[] for k in sample.samples.keys()}
-        grads1_fixed_scale = {k:[] for k in sample.samples.keys()}
-        elbos_1_fixed = []
-        for j in range(T):
+        # scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+        # grads2_fixed_loc = {k:[] for k in sample.samples.keys()}
+        # grads2_fixed_scale = {k:[] for k in sample.samples.keys()}
+        # elf2_fixed = {k:[] for k in sample.samples.keys()}
+        # elbos_2_fixed = []
+        # for j in range(T):
 
-            sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            elbo = sample.elbo()
-            lp = update(sample)
-            lp.backward()
+        #     sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+        #     elbo = sample.elbo()
+        #     lp = update(sample)
+        #     lp.backward()
         
-            for mod in model.modules():
-                if hasattr(mod, '_update'):
-                    mod._update(lr)
-            model.zero_grad()
+        #     for mod in model.modules():
+        #         if hasattr(mod, '_update'):
+        #             mod._update(lr)
+        #     model.zero_grad()
 
-            elbos_1_fixed.append(elbo)
-            scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+        #     elbos_2_fixed.append(elbo)
+        #     scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
 
-            for k in sample.samples.keys():
-                grads1_fixed_loc[k].append(model.Q.__getattr__(k).grad[0])
-                grads1_fixed_scale[k].append(model.Q.__getattr__(k).grad[1])
+        #     for k in sample.samples.keys():
+        #         grads2_fixed_loc[k].append(model.Q.__getattr__(k).grad[0])
+        #         grads2_fixed_scale[k].append(model.Q.__getattr__(k).grad[1])
+        #         elf2_fixed[k].append(model.Q.__getattr__(k).elfs[1])
+                
+                
+        # print('ML1 fixed')
+        # seed_torch(0)
+        # P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=1, run=0, use_data=False)
 
 
-for k in sample.samples.keys():
-    print(f'Scale grad difference for {k}: {(grads_scale[k][-1] - grads2_scale[k][-1]).abs()}')
-    print(f'Scale (fixed) grad difference for {k}: {(grads_scale[k][-1] - grads2_fixed_scale[k][-1]).abs()}')
-    print(f'Scale (fixed ML1 vs fixed ML2) grad difference for {k}: {(grads1_fixed_scale[k][-1] - grads2_fixed_scale[k][-1]).abs()}')
+        
+        # model = alan.Model(P, Q())
+        # data = {'obs':data.pop('obs')}
+
+        # sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+
+        # scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+        # grads1_fixed_loc = {k:[] for k in sample.samples.keys()}
+        # grads1_fixed_scale = {k:[] for k in sample.samples.keys()}
+        # elbos_1_fixed = []
+        # for j in range(T):
+
+        #     sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
+        #     elbo = sample.elbo()
+        #     lp = update(sample)
+        #     lp.backward()
+        
+        #     for mod in model.modules():
+        #         if hasattr(mod, '_update'):
+        #             mod._update(lr)
+        #     model.zero_grad()
+
+        #     elbos_1_fixed.append(elbo)
+        #     scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
+
+        #     for k in sample.samples.keys():
+        #         grads1_fixed_loc[k].append(model.Q.__getattr__(k).grad[0])
+        #         grads1_fixed_scale[k].append(model.Q.__getattr__(k).grad[1])
+
+
+# for k in sample.samples.keys():
+#     print(f'Scale grad difference for {k}: {(grads_scale[k][-1] - grads2_scale[k][-1]).abs()}')
+    # print(f'Scale (fixed) grad difference for {k}: {(grads_scale[k][-1] - grads2_fixed_scale[k][-1]).abs()}')
+    # print(f'Scale (fixed ML1 vs fixed ML2) grad difference for {k}: {(grads1_fixed_scale[k][-1] - grads2_fixed_scale[k][-1]).abs()}')
     # print(f'Elf for {k}: {elf2[k]}')
 
 
-print('ELBO difference ML1 ML2: ', (elbos_1[-1] - elbos_2[-1]).abs())
-print('ELBO difference ML1 ML2 (fixed): ', (elbos_1[-1] - elbos_2_fixed[-1]).abs())
-print('ELBO difference ML1 (fixed) ML2 (fixed): ', (elbos_1_fixed[-1] - elbos_2_fixed[-1]).abs())
+# print('ELBO difference ML1 ML2: ', (elbos_1[-1] - elbos_2[-1]).abs())
+# print('ELBO difference ML1 ML2 (fixed): ', (elbos_1[-1] - elbos_2_fixed[-1]).abs())
+# print('ELBO difference ML1 (fixed) ML2 (fixed): ', (elbos_1_fixed[-1] - elbos_2_fixed[-1]).abs())
+
+
