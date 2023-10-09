@@ -42,10 +42,10 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True, first='sigma'):
             tr('beta', alan.Normal(1, 1), plates = 'plate_Year')
             
             
-            tr('alpha', alan.Normal(1, 1), plates = ('plate_Year', 'plate_Borough'))
+            tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
 
             # #ID level
-            tr('obs', alan.Normal(1,1), plates = 'plate_ID')
+            tr('obs', alan.Normal(tr['alpha'],1), plates = 'plate_ID')
             
     elif first == 'beta':
         def P(tr, run_type, bus_company_name):
@@ -58,10 +58,10 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True, first='sigma'):
             tr('beta', alan.Normal(1, 1), plates = 'plate_Year')
             tr('sigma_alpha', alan.Normal(1, 1), plates = ('plate_Borough'))
             
-            tr('alpha', alan.Normal(1, 1), plates = ('plate_Year', 'plate_Borough'))
+            tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
 
             # #ID level
-            tr('obs', alan.Normal(1,1), plates = 'plate_ID')
+            tr('obs', alan.Normal(tr['alpha'],1), plates = 'plate_ID')
 
     if ML == 1:
         class Q(alan.AlanModule):
@@ -120,9 +120,9 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True, first='sigma'):
         data = all_data
         test_data = {}
 
-        data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], -1)
+        data['obs'], test_data['obs'] = t.split(all_data['obs'].clone(), [I,I], 0)
 
-        all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1)}
+        all_data = {'obs': t.cat([data['obs'],test_data['obs']], 0)}
 
     return P, Q, data, covariates, all_data, all_covariates, sizes
 
