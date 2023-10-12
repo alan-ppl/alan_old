@@ -17,9 +17,9 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True, first='sigma'):
     # all_covariates = {'run_type': t.cat((covariates['run_type'],test_covariates['run_type']),2),
     #     'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],2)}
 
-    I=2
-    J=3
-    M=4
+    I=1
+    J=2
+    M=2
     sizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
     covariates = {'run_type': t.randn(M,J,I,5).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float(),
         'bus_company_name': t.randn(M,J,I,4).rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
@@ -127,6 +127,38 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True, first='sigma'):
     return P, Q, data, covariates, all_data, all_covariates, sizes
 
 if __name__ == "__main__": 
+    
+    
+    
+    def elbo(sample):
+        
+        logp = sample.logp
+        # print(logp)
+        logp = [lp.detach() for lp in logp]
+
+        logq = sample.logq
+        
+        tensors = [*logp, *[-lq for lq in logq]]
+
+        ## Convert tensors to Float64
+        tensors = [x.to(dtype=t.float64) for x in tensors]
+        sigma_alpha_lps = [tensors[1], tensors[5]]
+        beta_lps = [tensors[0], tensors[4]]
+        alpha_lps = [tensors[2], tensors[6]]
+        obs_lps = [tensors[3]]
+
+        sigma_alpha_lps = reduce_Ks(sigma_alpha_lps, [tensors[1].dims[0]], set(sample.trp.Es)).sum((sigma_alpha_lps[0].dims[1]))
+        beta_lps = reduce_Ks(beta_lps, [tensors[0].dims[0]], set(sample.trp.Es)).sum((beta_lps[0].dims[1]))
+        alpha_lps = reduce_Ks(alpha_lps, [tensors[2].dims[0]], set(sample.trp.Es)).sum((alpha_lps[0].dims[1],alpha_lps[0].dims[2]))
+        obs_lps = reduce_Ks(obs_lps, [], set(sample.trp.Es)).sum((obs_lps[0].dims[0]))
+        
+        
+        lp = sigma_alpha_lps + beta_lps + alpha_lps + obs_lps
+        
+        
+        return - lp
+    
+    
     for first in ['sigma', 'beta']:
         lr = 0.5
         print(first + ' first')
@@ -136,30 +168,25 @@ if __name__ == "__main__":
         
         model = alan.Model(P, Q())
         data = {'obs':data.pop('obs')}
-        K = 20
+        K = 2
 
-        T=10
+        T=2
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
-        scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
-        grads_loc = {k:[] for k in sample.samples.keys()}
-        grads_scale = {k:[] for k in sample.samples.keys()}
         elbos_1 = []
         for j in range(T):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            elbo = sample.elbo()
+            elbo = elbo(sample)
             model.update(lr, sample)
 
             elbos_1.append(elbo)
-            scales = [model.Q.sigma_alpha.mean2conv(*model.Q.sigma_alpha.named_means)['scale']]
 
-            for k in sample.samples.keys():
-                grads_loc[k].append(model.Q.__getattr__(k).grad[0])
-                grads_scale[k].append(model.Q.__getattr__(k).grad[1])
+            
+
 
         seed_torch(0)
-        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=2, run=0, use_data=False)
+        P, Q, data, covariates, all_data, all_covariates, sizes = generate_model(2,2, t.device("cpu"), ML=2, run=0, use_data=False, first=first)
 
 
         
@@ -176,7 +203,7 @@ if __name__ == "__main__":
         for j in range(T):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            elbo = sample.elbo()
+            elbo = elbo(sample)
             model.update(lr, sample)
 
             elbos_2.append(elbo)
@@ -192,8 +219,8 @@ if __name__ == "__main__":
         print(f'Elbo ML2: {elbos_2[-1]}')
         
 
-        for k in sample.samples.keys():
-            print(f'Scale grad difference for {k}: {(grads_scale[k][-1] - grads2_scale[k][-1]).abs()}')
+        # for k in sample.samples.keys():
+        #     print(f'Scale grad difference for {k}: {(grads_scale[k][-1] - grads2_scale[k][-1]).abs()}')
 
 
 
