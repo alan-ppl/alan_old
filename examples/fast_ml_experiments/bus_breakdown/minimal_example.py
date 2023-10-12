@@ -130,7 +130,7 @@ if __name__ == "__main__":
     
     
     
-    def elbo(sample):
+    def elbo_manual(sample):
         
         logp = sample.logp
         # print(logp)
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         for j in range(T):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            elbo = elbo(sample)
+            elbo = elbo_manual(sample)
             model.update(lr, sample)
 
             elbos_1.append(elbo)
@@ -203,7 +203,7 @@ if __name__ == "__main__":
         for j in range(T):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
-            elbo = elbo(sample)
+            elbo = elbo_manual(sample)
             model.update(lr, sample)
 
             elbos_2.append(elbo)
