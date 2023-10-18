@@ -3,7 +3,7 @@ import alan
 from alan.experiment_utils import seed_torch
 
 def generate_model(N,M,device,ML=2, run=0, use_data=True):
-    M = 3
+    M = 2
     J = 3
     I = 30
 

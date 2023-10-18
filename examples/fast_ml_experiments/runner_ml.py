@@ -52,7 +52,7 @@ def run_experiment(cfg):
         P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, 0, cfg.use_data)
         q = Q(  )
         m1 = alan.Model(P, q).condition(data=data)
-
+        m1.to(device)
         samp = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
 
         scales = {k:np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32) for k in samp.weights().keys()}
