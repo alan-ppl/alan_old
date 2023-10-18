@@ -192,18 +192,18 @@ class Sample():
         
         
         #find if any of the lower_lps is "missing" a plate
-        # for lp in lower_lps:
-        #     lp_plates = [dim for dim in generic_dims(lp) if self.is_platedim(dim)]
-        #     for plate in lower_platedims:
-        #         if plate not in set(lp_plates):
-        #             lp /= plate.size
-
-        for i in range(len(lower_lps)):
-            lp = lower_lps[i]
+        for lp in lower_lps:
             lp_plates = [dim for dim in generic_dims(lp) if self.is_platedim(dim)]
             for plate in lower_platedims:
                 if plate not in set(lp_plates):
-                    lower_lps[i] = lp / plate.size
+                    lp /= plate.size
+
+        # for i in range(len(lower_lps)):
+        #     lp = lower_lps[i]
+        #     lp_plates = [dim for dim in generic_dims(lp) if self.is_platedim(dim)]
+        #     for plate in lower_platedims:
+        #         if plate not in set(lp_plates):
+        #             lower_lps[i] = lp / plate.size
         
         lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
 

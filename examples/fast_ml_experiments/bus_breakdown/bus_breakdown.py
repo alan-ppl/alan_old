@@ -201,10 +201,10 @@ if __name__ == "__main__":
 
 
 
-for k in sample.weights().keys():
-    if k == 'sigma_alpha':
-        print(f'Scale grad difference for {k}: {(grads_scale[k][0] - grads2_scale[k][0]).abs()}')
-        print(grads_scale[k][0])
-        print(grads2_scale[k][0])
+    for k in sample.weights().keys():
+        if k == 'sigma_alpha':
+            print(f'Scale grad difference for {k}: {(grads_scale[k][0] - grads2_scale[k][0]).abs()}')
+            print(grads_scale[k][0])
+            print(grads2_scale[k][0])
         
     
