@@ -10,7 +10,7 @@ def P(tr):
   '''
   a = t.zeros(5)
   tr.sample('mu', alan.Normal(a, t.ones(5))) #, plate="plate_1")
-  tr.sample('obs', alan.MultivariateNormal(tr['mu'], t.eye(5)))
+  tr.sample('obs', alan.Normal(tr['mu'], t.ones(5)))
 
 
 
@@ -23,7 +23,7 @@ class Q(alan.QModule):
     def forward(self, tr):
         tr.sample('mu', alan.Normal(self.m_mu, self.log_s_mu.exp())) #, plate="plate_1")
 
-data = alan.sample(P, varnames=('obs',)) #, sizes={"plate_1": 2})
+data = alan.Model(P).sample_prior(platesizes=platesizes, varnames='obs')
 
 print(data)
 model = alan.Model(P, Q(), data)

@@ -270,6 +270,7 @@ class TraceQSame(AbstractTraceQ):
         if len(Ks) > 0:
             idxs = [self.parent_samples(plates, Kdim, K) for K in Ks]
             logq = logq.order(*Ks)[idxs]
+
         return logq
 
 

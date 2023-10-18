@@ -1,6 +1,6 @@
 import torch as t
 import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 import alan
 import alan.postproc as pp
 
@@ -49,17 +49,17 @@ def run_experiment(cfg):
         per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
 
-        if cfg.use_data:
-            if cfg.dataset == 'movielens':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,300,18), dtype=np.float32)
-            elif cfg.dataset == 'bus_breakdown':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,2,3), dtype=np.float32)
-            elif cfg.dataset == 'potus':
-                sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters,3), dtype=np.float32)
-        else:
-            sq_errs = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+
+        m1 = alan.Model(P, Q).condition(data=data)
+
+        samp = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+
+        scales = {k:np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32) for k in samp.weights().keys()}
+        weights = {k:np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32) for k in samp.weights().keys()}
 
         times = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
+        non_zero_weights = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
             seed_torch(i)
@@ -118,25 +118,22 @@ def run_experiment(cfg):
                         pred_liks[i,j] = np.nan
 
 
-                if cfg.do_moments:
-                    #MSE/Variance of first moment
-                    sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
-                    exps = pp.mean(sample.weights())
+                    non_zero_weight = 0  
+                    num_latents = 0
+                        
+                    for k,v in sample.weights().items():
+                        weights[k].append((v[1].rename(None) > 0.001).sum())
 
-                    rvs = list(exps.keys())
-                    if not cfg.use_data:
-                        expectation_means = {rv: data_prior[rv] for rv in rvs}  # use the true values for the sampled data
+                        non_zero_weight += (v[1].rename(None) > 0.001).sum()
+                        num_latents += v[0].numel()
 
-                        sq_err = 0
-                        for rv in rvs:
-                            sq_errs[i,j] += ((expectation_means[rv].cpu() - exps[rv].cpu())**2).rename(None).sum().cpu()/(len(rvs))
-                    else:
-                        if cfg.model == 'bus_breakdown':
-                            sq_errs[i,j] = exps['alpha'].cpu()
-                        if cfg.model == 'movielens':
-                            sq_errs[i,j] = exps['z'].cpu()
-                        if cfg.model == 'potus':
-                            sq_errs[i,j] = exps['mu_pop'].cpu()
+                        k_sigma = 'log_' + k + '_sigma'
+                        sc = q.__getattr__(k_sigma).clone().detach()
+                        if hasattr(sc, "dims"):
+                            sc = sc.order(*sc.dims)
+                        scales[k].append(sc.exp().mean().item())
+                    
+                    non_zero_weights.append(non_zero_weight)
 
                 if j % 100 == 0:
                     print("Iteration: {0}, ELBO: {1:.2f}".format(j,elbo))
@@ -161,7 +158,9 @@ def run_experiment(cfg):
                                  'pred_likelihood':pred_liks,
                                  'times':times,
                                  'nans':(nans/cfg.training.num_runs).tolist(),
-                                 'sq_errs':sq_errs}
+                                 'scales':scales,
+                                 'weights':weights,
+                                 'non_zero_weights':non_zero_weights,}
 
         file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}_{1}.pkl'.format(K,cfg.use_data)
         with open(file, 'wb') as f:

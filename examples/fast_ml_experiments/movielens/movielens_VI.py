@@ -24,21 +24,21 @@ def generate_model(N,M,device, ML=1, run=0, use_data=True):
             super().__init__()
             #mu_z
             self.m_mu_z = nn.Parameter(t.zeros((d_z,)))
-            self.log_theta_mu_z = nn.Parameter(t.zeros((d_z,)))
+            self.log_mu_z_sigma = nn.Parameter(t.zeros((d_z,)))
             #psi_z
             self.m_psi_z = nn.Parameter(t.zeros((d_z,)))
-            self.log_theta_psi_z = nn.Parameter(t.zeros((d_z,)))
+            self.log_psi_z_sigma = nn.Parameter(t.zeros((d_z,)))
 
             #z
             self.mu = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
-            self.log_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
+            self.log_z_sigma = nn.Parameter(t.zeros((M,d_z), names=('plate_1',None)))
 
 
         def forward(self, tr, x):
-            tr('mu_z', alan.Normal(self.m_mu_z, self.log_theta_mu_z.exp()))
-            tr('psi_z', alan.Normal(self.m_psi_z, self.log_theta_psi_z.exp()))
+            tr('mu_z', alan.Normal(self.m_mu_z, self.log_mu_z_sigma.exp()))
+            tr('psi_z', alan.Normal(self.m_psi_z, self.log_psi_z_sigma.exp()))
 
-            tr('z', alan.Normal(self.mu, self.log_sigma.exp()))
+            tr('z', alan.Normal(self.mu, self.log_z_sigma.exp()))
 
 
 

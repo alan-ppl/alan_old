@@ -1,11 +1,9 @@
 alan package
-===========
+============
 
-Submodules
-----------
 
 alan.Sample module
------------------
+------------------
 
 .. automodule:: alan.Sample
    :members:
@@ -13,7 +11,7 @@ alan.Sample module
    :show-inheritance:
 
 alan.alan_module module
------------------
+-----------------------
 
 .. automodule:: alan.alan_module
   :members:
@@ -21,7 +19,7 @@ alan.alan_module module
   :show-inheritance:
 
 alan.dist module
----------------
+----------------
 
 .. automodule:: alan.dist
    :members:
@@ -29,7 +27,7 @@ alan.dist module
    :show-inheritance:
 
 alan.model module
-----------------
+-----------------
 
 .. automodule:: alan.model
    :members:
@@ -37,7 +35,7 @@ alan.model module
    :show-inheritance:
 
 alan.exp\_fam\_mixin module
------------------
+---------------------------
 
 .. automodule:: alan.exp_fam_mixin
    :members:
@@ -45,7 +43,7 @@ alan.exp\_fam\_mixin module
    :show-inheritance:
 
 alan.postproc module
--------------------
+--------------------
 
 .. automodule:: alan.postproc
    :members:
@@ -53,7 +51,7 @@ alan.postproc module
    :show-inheritance:
 
 alan.timeseries module
----------------------
+----------------------
 
 .. automodule:: alan.timeseries
    :members:
@@ -61,7 +59,7 @@ alan.timeseries module
    :show-inheritance:
 
 alan.ml module
------------------
+--------------
 
 .. automodule:: alan.ml
    :members:
@@ -69,7 +67,7 @@ alan.ml module
    :show-inheritance:
 
 alan.ml2 module
------------------
+---------------
 
 .. automodule:: alan.ml2
    :members:
@@ -77,7 +75,7 @@ alan.ml2 module
    :show-inheritance:
 
 alan.traces module
------------------
+------------------
 
 .. automodule:: alan.traces
    :members:
@@ -85,17 +83,18 @@ alan.traces module
    :show-inheritance:
 
 alan.utils module
-----------------
+-----------------
 
 .. automodule:: alan.utils
    :members:
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
 
-.. automodule:: alan
-   :members:
-   :undoc-members:
-   :show-inheritance:
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

@@ -17,7 +17,7 @@ from alan.experiment_utils import seed_torch, n_mean
 from bus_breakdown.bus_breakdown import generate_model as generate_ML
 from bus_breakdown.bus_breakdown_VI import generate_model as generate_VI
 
-adaptive_colours = ['#bcbddc','#756bb1']
+decay_colours = ['#9e9ac8','#756bb1','#54278f']
 ml_colours = ['#de2d26']
 vi_colours = ['#31a354']
 
@@ -29,294 +29,364 @@ J = 3
 I = 30  
 N=0
 
-for use_data in [True]:
+for ML in [2,1]:
+    for use_data in [True]:
 
-    P, Q_ml, data, covariates, all_data, all_covariates, sizes = generate_ML(N,M, device, 2, 0, use_data)
-    P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, use_data)
-
-
-    # # True var
-    # z_scale_mean = data['mu_beta']
-
-    # # True mean
-    # z_mean = data['sigma_beta']
-
-    with open(f'posteriors/mu_beta_posterior_mean_{use_data}.pkl', 'rb') as f:
-        z_scale_mean = pickle.load(f).item()
-
-    # True posterior mean
-    with open(f'posteriors/sigma_beta_mean_{use_data}.pkl', 'rb') as f:
-        z_mean = pickle.load(f).item()
-
-    data = {'obs':data.pop('obs')}
-
-    for K in [5,10]:
-        T = 1000
-        ml_lrs = [0.9,0.75]
-        vi_lrs = [0.1]
-
-        fig, ax = plt.subplots(4,1, figsize=(7, 8.0))
-        fig2, ax2 = plt.subplots(1,3, figsize=(7.0, 5.0))
-
-        # #ML with adaptive LR
-        # print('ML adaptive')
-        # for j in range(len(ml_lrs)):
-        #     exp_lr = ml_lrs[j]
-
-        #     z_means = []
-        #     z_scales = []
-        #     z_scale_means = []
-        #     z_scale_scales = []
-
-        #     scales = []
-        #     elbos = []
-        #     times = []
-        #     pred_lls = []
-        #     seed_torch(0)
-        #     q = Q_ml()
-        #     m1 = alan.Model(P, q).condition(data=data)
-
-        #     # samp = m1.sample_same(K, reparam=False)
-        #     # mean_post = mean(samp.weights(1000))
-        #     # var_post
-        #     try:
-        #         for i in range(T):
-        #             lr = ((i + 10)**(-exp_lr))/2
-                    
-        #             sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-        #             z_means.append(pp.mean(sample.weights()['sigma_beta']).item())    
-
-        #             z_scale_means.append(pp.mean(sample.weights()['mu_beta']).item())  
-        #             elbos.append(sample.elbo().item()) 
-        #             scale = 0
-                    
-        #             scale += q.sigma_beta.mean2conv(*q.sigma_beta.named_means)['scale'].sum()
-        #             # scale += q.mu_beta.mean2conv(*q.mu_beta.named_means)['scale'].sum()
-        #             # scale += q.beta.mean2conv(*q.beta.named_means)['scale'].sum()
-        #             # scale += q.alpha.mean2conv(*q.alpha.named_means)['scale'].sum()
-        #             # scale += q.sigma_alpha.mean2conv(*q.sigma_alpha.named_means)['scale'].sum()
-        #             # scale += q.psi.mean2conv(*q.psi.named_means)['scale'].sum()
-        #             # scale += q.phi.mean2conv(*q.phi.named_means)['scale'].sum()
-        #             # scale += q.log_sigma_phi_psi.mean2conv(*q.log_sigma_phi_psi.named_means)['scale'].sum()
-
-        #             scales.append(scale)
-        #             if i % 100 == 0:
-        #                 # print(q.Nz.mean2conv(*q.Nz.named_means))
-
-        #                 print(f'Elbo: {elbos[-1]}, lr: {lr}')   
-                    
-        #             start = time.time()    
-        #             m1.update(lr, sample)
-        #             times.append(time.time() - start)
+        P, Q_ml, data, covariates, all_data, all_covariates, sizes = generate_ML(N,M, device, ML, 0, use_data)
+        P, Q_vi, _, _, _, _, _ = generate_VI(N,M, device, 2, 0, use_data)
 
 
-        #             sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-        #             try:
-        #                 pred_lls.append(m1.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'])
-        #             except:
-        #                 pred_lls.append(np.nan)
-        #     except:
-        #         z_means.append(np.nan)    
+        # # True var
+        # z_scale_mean = data['mu_beta']
 
-        #         z_scale_means.append(np.nan)  
-        #         elbos.append(np.nan) 
-        #         pred_lls.append(np.nan)
-        #         scales.append(np.nan)
-        #         times.append(np.nan)
+        # # True mean
+        # z_mean = data['sigma_beta']
 
+        # with open(f'posteriors/mu_beta_posterior_mean_{use_data}.pkl', 'rb') as f:
+        #     z_scale_mean = pickle.load(f).item()
 
-        #     elbos = np.expand_dims(np.array(elbos), axis=0)
-        #     pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
-        #     scales = np.expand_dims(np.array(scales), axis=0)
+        # # True posterior mean
+        # with open(f'posteriors/sigma_beta_mean_{use_data}.pkl', 'rb') as f:
+        #     z_mean = pickle.load(f).item()
 
-        #     z_means = np.expand_dims(np.array(z_means), axis=0)
-        #     z_scale_means = np.expand_dims(np.array(z_scale_means), axis=0)
+        data = {'obs':data.pop('obs')}
 
-        #     lim = np.cumsum(times)[::25].shape[0]
-        #     ax[0].plot(np.cumsum(times)[::25], n_mean(z_means,25).squeeze(0), color=adaptive_colours[j], label=f'ML adaptive: {exp_lr}')
-        #     ax[0].axhline(z_mean)
-        #     ax[1].axhline(z_scale_mean)
-        #     ax[1].plot(np.cumsum(times)[::25], n_mean(z_scale_means,25).squeeze(0), color=adaptive_colours[j])
-        #     ax[2].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=adaptive_colours[j])
-        #     ax2[0].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=adaptive_colours[j], label=f'ML adaptive: {exp_lr}')
-        #     ax[3].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=adaptive_colours[j])
-        #     ax2[1].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=adaptive_colours[j])
-        #     ax2[2].plot(np.cumsum(times), scales.squeeze(0), color=adaptive_colours[j])
-        #     # ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
-        #     # ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
+        for K in [5,10]:
+            T = 3000
+            ml_lrs = [1, 0.9,0.75]
+            vi_lrs = [0.1]
 
-        #ML
-        print(f'ML: 0.001')
+            # fig_times, ax_times = plt.subplots(1,3, figsize=(12.0, 7.0))
+            fig_iters, ax_iters = plt.subplots(1,3, figsize=(12.0, 7.0))
+            fig_scales, ax_scales = plt.subplots(2,8, figsize=(20.0, 6.0))
 
-        z_means = []
-        z_scales = []
-        z_scale_means = []
-        z_scale_scales = []
-
-        scales = []
-        elbos = []
-        times = []
-        pred_lls = []
-        seed_torch(0)
-        q = Q_ml()
-        m1 = alan.Model(P, q).condition(data=data)
-
-        # samp = m1.sample_same(K, reparam=False)
-        # mean_post = mean(samp.weights(1000))
-        # var_post
-        try:
-            for i in range(T):
-                lr = 0.001
-                
-                sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
-                z_means.append(pp.mean(sample.weights()['sigma_beta']).item())    
-
-                z_scale_means.append(pp.mean(sample.weights()['mu_beta']).item())  
-                elbos.append(sample.elbo().item()) 
-                scale = 0
-                
-                scale += q.sigma_beta.mean2conv(*q.sigma_beta.named_means)['scale'].sum()
-                # scale += q.mu_beta.mean2conv(*q.mu_beta.named_means)['scale'].sum()
-                # scale += q.beta.mean2conv(*q.beta.named_means)['scale'].sum()
-                # scale += q.alpha.mean2conv(*q.alpha.named_means)['scale'].sum()
-                # scale += q.sigma_alpha.mean2conv(*q.sigma_alpha.named_means)['scale'].sum()
-                # scale += q.psi.mean2conv(*q.psi.named_means)['scale'].sum()
-                # scale += q.phi.mean2conv(*q.phi.named_means)['scale'].sum()
-                # scale += q.log_sigma_phi_psi.mean2conv(*q.log_sigma_phi_psi.named_means)['scale'].sum()
-
-                scales.append(scale)
-                if i % 100 == 0:
-                    # print(q.Nz.mean2conv(*q.Nz.named_means))
-
-                    print(f'Elbo: {elbos[-1]}, lr: {lr}')   
-                
-                start = time.time()    
-                m1.update(lr, sample)
-                times.append(time.time() - start)
+            #ML with decay LR
+            print('ML Decay')
+            for j in range(len(ml_lrs)):
+                exp_lr = ml_lrs[j]
 
 
-                sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+                elbos = []
+                times = []
+                pred_lls = []
+
+                non_zero_weights = []
+                seed_torch(0)
+                q = Q_ml()
+                m1 = alan.Model(P, q).condition(data=data)
+
+                samp = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+
+                scales = {k:[] for k in samp.weights().keys()}
+                weights = {k:[] for k in samp.weights().keys()}
+
+
                 try:
-                    pred_lls.append(m1.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'])
+                    for i in range(T):
+                        lr = ((i + 10)**(-exp_lr))
+                        
+                        sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+                        elbos.append(sample.elbo().item()) 
+
+                        non_zero_weight = 0  
+                        num_latents = 0
+                            
+                        for k,v in sample.weights().items():
+                            scales[k].append(q.__getattr__(k).mean2conv(*q.__getattr__(k).named_means)['scale'].mean())
+                            weights[k].append((v[1].rename(None) > 0.001).sum())
+
+                            non_zero_weight += (v[1].rename(None) > 0.001).sum()
+                            num_latents += v[0].numel()
+
+                        non_zero_weights.append(non_zero_weight)
+
+                        if i % 100 == 0:
+                            # print(q.Nz.mean2conv(*q.Nz.named_means))
+
+                            print(f'Iteration: {i}, Elbo: {elbos[-1]}, lr: {lr}') 
+                        
+                        start = time.time()    
+                        m1.update(lr, sample)
+                        times.append(time.time() - start)
+
+
+                        sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+                        try:
+                            pred_lls.append(m1.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'])
+                        except:
+                            pred_lls.append(np.nan)
                 except:
-                    pred_lls.append(np.nan)
-        except:
-            z_means.append(np.nan)    
+                    None
 
-            z_scale_means.append(np.nan)  
-            elbos.append(np.nan) 
-            pred_lls.append(np.nan)
-            scales.append(np.nan)
-            times.append(np.nan)
 
-        elbos = np.expand_dims(np.array(elbos), axis=0)
-        pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
-        scales = np.expand_dims(np.array(scales), axis=0)
+                elbos = np.expand_dims(np.array(elbos), axis=0)
+                pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
+                
+                non_zero_weights = np.expand_dims(np.array(non_zero_weights), axis=0)
 
-        z_means = np.expand_dims(np.array(z_means), axis=0)
-        z_scale_means = np.expand_dims(np.array(z_scale_means), axis=0)
 
-        lim = np.cumsum(times)[::25].shape[0]
-        ax[0].plot(np.cumsum(times)[::25], n_mean(z_means,25).squeeze(0), color=ml_colours[0], label=f'ML lr: {lr}')
-        ax[0].axhline(z_mean)
-        ax[1].axhline(z_scale_mean)
-        ax[1].plot(np.cumsum(times)[::25], n_mean(z_scale_means,25).squeeze(0), color=ml_colours[0])
-        ax[2].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=ml_colours[0])
-        ax[3].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=ml_colours[0])
+                elbos_length = elbos.shape[1]
+                pred_lls_length = pred_lls.shape[1]
+                non_zero_weights_length = non_zero_weights.shape[1]
 
-        ax2[0].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=ml_colours[0], label=f'ML lr: {lr}')
-        ax2[1].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=ml_colours[0])
-        ax2[2].plot(np.cumsum(times), scales.squeeze(0), color=ml_colours[0])
-        # ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=ml_colours[j])
-        # ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=ml_colours[j])
+                elbos = n_mean(elbos,25).squeeze(0)
+                pred_lls = n_mean(pred_lls,25).squeeze(0)
+                non_zero_weights = n_mean(non_zero_weights,25).squeeze(0)
+                lim = np.cumsum(times)[::1].shape[0]
 
-        #VI   
-        print('VI')
-        for j in range(len(vi_lrs)):
-            lr = vi_lrs[j]
-            print(f'VI: {lr}')
-            z_means = []
-            z_scales = []
-            z_scale_means = []
-            z_scale_scales = []
+                # ax_times[0].plot(np.cumsum(times)[::1][:elbos.shape[0]], elbos, color=decay_colours[j], label=f'ML decay: {exp_lr}')
+                # ax_times[1].plot(np.cumsum(times)[::1][:pred_lls.shape[0]], pred_lls, color=decay_colours[j])
+                # ax_times[2].plot(np.cumsum(times)[::1][:non_zero_weights.shape[0]], non_zero_weights, color=decay_colours[j])
+
+                ax_iters[0].plot(np.arange(elbos_length)[::25], elbos, color=decay_colours[j], label=f'ML decay: {exp_lr}')
+                ax_iters[1].plot(np.arange(pred_lls_length)[::25], pred_lls, color=decay_colours[j])
+                ax_iters[2].plot(np.arange(non_zero_weights_length)[::25], non_zero_weights, color=decay_colours[j])
+
+
+                for i, (k,v) in enumerate(scales.items()):
+                    v = np.expand_dims(np.array(v), axis=0)
+                    if i == 0:
+                        ax_scales[0,i].plot(v.squeeze(0), color=decay_colours[j], label=f'ML decay: {exp_lr}')
+                    else:
+                        ax_scales[0,i].plot(v.squeeze(0), color=decay_colours[j])
+                        
+                    ax_scales[0,i].set_title(k)
+
+
+                for i, (k,v) in enumerate(weights.items()):
+                    v = np.expand_dims(np.array(v), axis=0)
+                    if i == 0:
+                        ax_scales[1,i].plot(v.squeeze(0), color=decay_colours[j])
+                    else:
+                        ax_scales[1,i].plot(v.squeeze(0), color=decay_colours[j])
+                        
+                    ax_scales[1,i].set_title(k)
+
+            #ML
+            print(f'ML: 0.001')
+
             elbos = []
             times = []
             pred_lls = []
+
+            non_zero_weights = []
+
             seed_torch(0)
-            q = Q_vi()
-            cond_model = alan.Model(P, q).condition(data=data)
-            opt = t.optim.Adam(cond_model.parameters(), lr=lr)
-            for i in range(T):
-                opt.zero_grad()
-                sample = cond_model.sample_same(K, reparam=True, inputs=covariates, device=device)
-                z_means.append(pp.mean(sample.weights()['sigma_beta']).item())    
+            q = Q_ml()
+            m1 = alan.Model(P, q).condition(data=data)
 
-                z_scale_means.append(pp.mean(sample.weights()['mu_beta']).item())  
-                elbo = sample.elbo()
-                elbos.append(elbo.item())
-                
-                start = time.time()
-                (-elbo).backward()
-                opt.step()
-                times.append(time.time() - start)
+            samp = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+
+            scales = {k:[] for k in samp.weights().keys()}
+            weights = {k:[] for k in samp.weights().keys()}
+            try:
+                for i in range(T):
+                    lr = 0.001
+                    
+                    sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+
+                    elbos.append(sample.elbo().item()) 
+
+                    non_zero_weight = 0  
+                    num_latents = 0
+                        
+                    for k,v in sample.weights().items():
+                        scales[k].append(q.__getattr__(k).mean2conv(*q.__getattr__(k).named_means)['scale'].mean())
+                        weights[k].append((v[1].rename(None) > 0.001).sum())
+
+                        non_zero_weight += (v[1].rename(None) > 0.001).sum()
+                        num_latents += v[0].numel()
+
+                    non_zero_weights.append(non_zero_weight)
+
+                    if i % 100 == 0:
+                        # print(q.Nz.mean2conv(*q.Nz.named_means))
+
+                        print(f'Iteration: {i}, Elbo: {elbos[-1]}, lr: {lr}')   
+                    
+                    start = time.time()    
+                    m1.update(lr, sample)
+                    times.append(time.time() - start)
 
 
-                sample = cond_model.sample_same(K, reparam=False, inputs=covariates, device=device)
-                pred_lls.append(cond_model.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'])
-
-
-                if i % 100 == 0:
-                    print(f'Elbo: {elbos[-1]}')        
-
+                    sample = m1.sample_same(K, inputs=covariates, reparam=False, device=device)
+                    try:
+                        pred_lls.append(m1.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'])
+                    except:
+                        pred_lls.append(np.nan)
+            except:
+                None
 
             elbos = np.expand_dims(np.array(elbos), axis=0)
             pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
+            non_zero_weights = np.expand_dims(np.array(non_zero_weights), axis=0)
 
-            z_means = np.expand_dims(np.array(z_means), axis=0)
-            z_scale_means = np.expand_dims(np.array(z_scale_means), axis=0)
 
-            ax[0].plot(np.cumsum(times)[::25], n_mean(z_means,25).squeeze(0), color=vi_colours[j], label=f'VI lr: {lr}')
-            ax[0].axhline(z_mean)
-            ax[1].axhline(z_scale_mean)
-            ax[1].plot(np.cumsum(times)[::25], n_mean(z_scale_means,25).squeeze(0), color=vi_colours[j])
-            ax[2].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j])
+
+            elbos_length = elbos.shape[1]
+            pred_lls_length = pred_lls.shape[1]
+            non_zero_weights_length = non_zero_weights.shape[1]
             
-            ax[3].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
+            elbos = n_mean(elbos,25).squeeze(0)
+            pred_lls = n_mean(pred_lls,25).squeeze(0)
+            non_zero_weights = n_mean(non_zero_weights,25).squeeze(0)
+            lim = np.cumsum(i)[::1].shape[0]
 
-            ax2[0].plot(np.cumsum(times)[::25], n_mean(elbos,25).squeeze(0), color=vi_colours[j], label=f'VI lr: {lr}')
-            ax2[1].plot(np.cumsum(times)[::25], n_mean(pred_lls,25).squeeze(0), color=vi_colours[j])
-            # ax[2].plot(np.cumsum(times), elbos.squeeze(0), color=vi_colours[j])
-            # ax[3].plot(np.cumsum(times), pred_lls.squeeze(0), color=vi_colours[j])
+            # ax_times[0].plot(np.cumsum(times)[::1], elbos, color=ml_colours[0], label=f'ML lr: {lr}')
+            # ax_times[1].plot(np.cumsum(times)[::1], pred_lls, color=ml_colours[0])
+            # ax_times[2].plot(np.cumsum(times)[::1], non_zero_weights, color=ml_colours[0])
+
+            ax_iters[0].plot(np.arange(elbos_length)[::25], elbos, color=ml_colours[0], label=f'ML lr: {lr}')
+            ax_iters[1].plot(np.arange(pred_lls_length)[::25], pred_lls, color=ml_colours[0])
+            ax_iters[2].plot(np.arange(non_zero_weights_length)[::25], non_zero_weights, color=ml_colours[0])
+
+            for i, (k,v) in enumerate(scales.items()):
+                v = np.expand_dims(np.array(v), axis=0)
+                if i == 0:
+                    ax_scales[0,i].plot(v.squeeze(0), color=ml_colours[0], label=f'ML lr: {lr}')
+                else:
+                    ax_scales[0,i].plot(v.squeeze(0), color=ml_colours[0])
+
+                ax_scales[0,i].set_title(k)
+
+            for i, (k,v) in enumerate(weights.items()):
+                v = np.expand_dims(np.array(v), axis=0)
+                if i == 0:
+                    ax_scales[1,i].plot(v.squeeze(0), color=ml_colours[0])
+                else:
+                    ax_scales[1,i].plot(v.squeeze(0), color=ml_colours[0])
+                    
+                ax_scales[1,i].set_title(k)
+            #VI   
+            print('VI')
+            for j in range(len(vi_lrs)):
+                lr = vi_lrs[j]
+                print(f'VI: {lr}')
 
 
-        ax[0].set_title(f'K: {K}, Smoothed, Use data: {use_data}')
-        ax2[0].set_title(f'K: {K}, Smoothed, Use data: {use_data}')
+                elbos = []
+                times = []
+                pred_lls = []
+                non_zero_weights = []
+                seed_torch(0)
+                q = Q_vi()
+                cond_model = alan.Model(P, q).condition(data=data)
+                opt = t.optim.Adam(cond_model.parameters(), lr=lr)
 
-        ax[0].set_ylabel('mu_beta')
+                samp = cond_model.sample_same(K, inputs=covariates, reparam=False, device=device)
+
+                scales = {k:[] for k in samp.weights().keys()}
+                weights = {k:[] for k in samp.weights().keys()}
+
+                for i in range(T):
+                    opt.zero_grad()
+                    sample = cond_model.sample_same(K, reparam=True, inputs=covariates, device=device)
+    
+                    elbo = sample.elbo()
+                    elbos.append(elbo.item())
+                    
+                    start = time.time()
+                    (-elbo).backward()
+                    opt.step()
+                    times.append(time.time() - start)
 
 
-        ax[1].set_ylabel('sigma_beta')
+                    sample = cond_model.sample_same(K, reparam=False, inputs=covariates, device=device)
+                    pred_lls.append(cond_model.predictive_ll(sample, N = 10, inputs_all=all_covariates, data_all=all_data)['obs'])
+
+
+
+                    non_zero_weight = 0  
+                    num_latents = 0
+                        
+                    for k,v in sample.weights().items():
+                        weights[k].append((v[1].rename(None) > 0.001).sum())
+
+                        non_zero_weight += (v[1].rename(None) > 0.001).sum()
+                        num_latents += v[0].numel()
+
+                        k_sigma = 'log_' + k + '_sigma'
+                        sc = q.__getattr__(k_sigma).clone().detach()
+                        if hasattr(sc, "dims"):
+                            sc = sc.order(*sc.dims)
+                        scales[k].append(sc.exp().mean().item())
+                    
+                    non_zero_weights.append(non_zero_weight)
+                        
+                    if i % 100 == 0:
+                        print(f'Iteration: {i}, Elbo: {elbos[-1]}, lr: {lr}')     
+
+                elbos = np.expand_dims(np.array(elbos), axis=0)
+                pred_lls = np.expand_dims(np.array(pred_lls), axis=0)
+                non_zero_weights = np.expand_dims(np.array(non_zero_weights), axis=0)
+
+                elbos_length = elbos.shape[1]
+                pred_lls_length = pred_lls.shape[1]
+                non_zero_weights_length = non_zero_weights.shape[1]
+
+
+                elbos = n_mean(elbos,25).squeeze(0)
+                pred_lls = n_mean(pred_lls,25).squeeze(0)
+                non_zero_weights = n_mean(non_zero_weights,25).squeeze(0)
+                lim = np.cumsum(i)[::1].shape[0]
+
+                # ax_times[0].plot(np.cumsum(times)[::1], n_mean(elbos,1).squeeze(0), color=vi_colours[j], label=f'VI lr: {lr}')
+                # ax_times[1].plot(np.cumsum(times)[::1], n_mean(pred_lls,1).squeeze(0), color=vi_colours[j])
+                # ax_times[2].plot(np.cumsum(times)[::1], n_mean(non_zero_weights,1).squeeze(0), color=vi_colours[j])
+
+                ax_iters[0].plot(np.arange(elbos_length)[::25], elbos, color=vi_colours[j], label=f'VI lr: {lr}')
+                ax_iters[1].plot(np.arange(pred_lls_length)[::25], pred_lls, color=vi_colours[j])
+                ax_iters[2].plot(np.arange(non_zero_weights_length)[::25], non_zero_weights, color=vi_colours[j])
+
+                for i, (k,v) in enumerate(scales.items()):
+                    v = np.expand_dims(np.array(v), axis=0)
+                    if i == 0:
+                        ax_scales[0,i].plot(v.squeeze(0), color=vi_colours[j], label=f'VI lr: {lr}')
+                    else:
+                        ax_scales[0,i].plot(v.squeeze(0), color=vi_colours[j])
+                    ax_scales[0,i].set_title(k)
+
+
+                for i, (k,v) in enumerate(weights.items()):
+                    v = np.expand_dims(np.array(v), axis=0)
+                    if i == 0:
+                        ax_scales[1,i].plot(v.squeeze(0), color=vi_colours[j])
+                    else:
+                        ax_scales[1,i].plot(v.squeeze(0), color=vi_colours[j])
+                        
+                    ax_scales[1,i].set_title(k)
 
 
 
 
-        ax[2].set_ylabel('ELBO')
-        ax2[0].set_ylabel('ELBO')
-        # ax[2].set_ylim(-3500,-2900)
-        ax[3].set_ylabel('Predictive LL')
-        ax2[1].set_ylabel('Predictive LL')
-
-        ax2[2].set_ylabel('Approx posterior Scale')
-        # ax[3].set_ylim(-4000,-3100)
-        ax[3].set_xlabel('Time')
-        ax2[1].set_xlabel('Time')
-
-        ax[0].legend(loc='upper right')
-        fig2.legend(loc='upper right')
+            # ax_times[1].set_title(f'K: {K}, Smoothed, Use data: {use_data}')
+            # ax_times[0].set_ylabel('ELBO')
+            # ax_times[0].set_ylim(-4500,-1400)
+            # ax_times[1].set_ylabel('Predictive LL')
+            # ax_times[2].set_ylabel('Non zero weights')
+            # ax_times[1].set_xlabel('Time')
+            # fig_times.legend(loc='upper right')
 
 
+            # fig_times.tight_layout()
+            # fig_times.savefig(f'figures/bus_test_data_{K}_{use_data}_elbo_ML_{ML}.png')
 
-        fig.savefig(f'figures/bus_test_data_{K}_{use_data}.png')
 
-        fig2.tight_layout()
-        fig2.savefig(f'figures/bus_test_data_{K}_{use_data}_elbo.png')
+            ax_iters[1].set_title(f'K: {K}, Smoothed, Use data: {use_data}')
+            ax_iters[0].set_ylabel('ELBO')
+            ax_iters[0].set_ylim(-4000,-1400)
+            ax_iters[1].set_ylabel('Predictive LL')
+            ax_iters[2].set_ylabel('Non zero weights')
+            ax_iters[1].set_xlabel('Iters')
+            fig_iters.legend(loc='upper right')
+
+
+            fig_iters.tight_layout()
+            fig_iters.savefig(f'figures/bus_test_data_{K}_{use_data}_elbo_iters_ML_{ML}.png')
+
+            ax_scales[0,0].set_ylabel('Mean Scale')
+            ax_scales[1,0].set_ylabel('Mean Non zero weights')
+            fig_scales.legend(loc='upper right')
+            fig_scales.tight_layout()
+            fig_scales.savefig(f'figures/bus_test_data_{K}_{use_data}_scales_weights_ML_{ML}.png')
+

@@ -55,7 +55,7 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             super().__init__()
             #sigma_beta
             self.sigma_beta_mean = nn.Parameter(t.zeros(()))
-            self.sigma_beta_sigma = nn.Parameter(t.zeros(()))
+            self.log_sigma_beta_sigma = nn.Parameter(t.zeros(()))
             #mu_beta
             self.mu_beta_mean = nn.Parameter(t.zeros(()))
             self.log_mu_beta_sigma = nn.Parameter(t.zeros(()))
@@ -64,13 +64,13 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
             #sigma_alpha
             self.sigma_alpha_mean = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
-            self.sigma_alpha_sigma = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
+            self.log_sigma_alpha_sigma = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
             #alpha
             self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             #log_sigma_phi_psi logits
             self.log_sigma_phi_psi_mean = nn.Parameter(t.zeros(()))
-            self.log_sigma_phi_psi_sigma = nn.Parameter(t.zeros(()))
+            self.log_log_sigma_phi_psi_sigma = nn.Parameter(t.zeros(()))
             #psi
             self.psi_mean = nn.Parameter(t.zeros((run_type_dim,)))
             self.log_psi_sigma = nn.Parameter(t.zeros((run_type_dim,)))
@@ -85,16 +85,16 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
         def forward(self, tr, run_type, bus_company_name):
             #Year level
 
-            tr('sigma_beta', alan.Normal(self.sigma_beta_mean, self.sigma_beta_sigma.exp()))
+            tr('sigma_beta', alan.Normal(self.sigma_beta_mean, self.log_sigma_beta_sigma.exp()))
             tr('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()))
             tr('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()))
 
             #Borough level
-            tr('sigma_alpha', alan.Normal(self.sigma_alpha_mean, self.sigma_alpha_sigma.exp()))
+            tr('sigma_alpha', alan.Normal(self.sigma_alpha_mean, self.log_sigma_alpha_sigma.exp()))
             tr('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))
 
             #ID level
-            tr('log_sigma_phi_psi', alan.Normal(self.log_sigma_phi_psi_mean, self.log_sigma_phi_psi_sigma.exp()))
+            tr('log_sigma_phi_psi', alan.Normal(self.log_sigma_phi_psi_mean, self.log_log_sigma_phi_psi_sigma.exp()))
             tr('psi', alan.Normal(self.psi_mean, self.log_psi_sigma.exp()))
             tr('phi', alan.Normal(self.phi_mean, self.log_phi_sigma.exp()))
             # tr('theta', alan.Normal(self.theta_mean, self.log_theta_sigma.exp()))
