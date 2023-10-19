@@ -52,10 +52,13 @@ class TorchDimDist():
     from distributions with non-dimmed arguments as well as sampling from distributions with dimmed arguments
 
     Note that at present there is no sample_shape dimension, to do IID sampling over
-    new non-torchdim dimensions.  To achieve the same effect, do something like
-    ```
-    alan.Normal(t.randn(3)[:, None].expand(-1, 4), 1)
-    ```
+    new non-torchdim dimensions.  To achieve the same effect, do something like:
+    
+     .. highlight:: python
+     .. code-block:: python
+     
+        alan.Normal(t.randn(3)[:, None].expand(-1, 4), 1)
+    
 
     Also note that log-probabilities returned by these classes sum over all non-torchdim
     dimensions (because these are irrelevant for all of Alan's downstream processing)
@@ -125,6 +128,17 @@ class TorchDimDist():
         return generic_getitem(sample, dims)
 
     def log_prob(self, x, mask=None, Kdim=None):
+        """Calculate log probability of x, can apply a mask to the log probability if desired and add an 
+        extra log factor for use in the source term trick.
+
+        Args:
+            x (Tensor): sample tensor
+            mask (Tensor, optional): Optional mask to be applied to log probabilities. Defaults to None.
+            Kdim (TorchDim, optional): Unused argument?. Defaults to None.
+
+        Returns:
+            log_prob + elf (Tensor): log probability of x (with mask applied if necessary) plus extra_log_factor(x)
+        """
         assert isinstance(x, Tensor)
 
         #Same number of unnamed batch dims
@@ -152,9 +166,14 @@ class TorchDimDist():
         return log_prob + elf
 
     def log_prob_Q(self, x, Kdim=None):
+        """Helper function for tracing Q
+        """
         return self.log_prob(x, Kdim=Kdim)
     
     def entropy(self):
+        """Calculate entropy of distribution
+        """
+        
         return self.dist(**self.all_args).entropy()
 
 def new_dist(name, dist, result_ndim, param_ndim):

@@ -17,6 +17,7 @@ This library showcases Massively Parallel Importance Weighting in the context of
    alan_modules
    model
    exp_fam
+   dists
 
 
 

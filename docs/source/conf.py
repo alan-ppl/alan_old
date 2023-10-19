@@ -20,6 +20,15 @@ import torch
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+
+def skip(app, what, name, obj, would_skip, options):
+    if name == "__init__":
+        return False
+    return would_skip
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)
+    
 extensions = ["myst_parser",
               'sphinx.ext.autodoc', 
               'sphinx.ext.coverage', 
