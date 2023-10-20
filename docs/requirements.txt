@@ -4,3 +4,6 @@ pandas
 scipy
 tqdm
 sphinx_rtd_theme
+myst-parser
+sphinx_math_dollar
+nbsphinx
