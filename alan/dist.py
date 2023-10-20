@@ -64,7 +64,8 @@ class TorchDimDist():
     dimensions (because these are irrelevant for all of Alan's downstream processing)
 
     .. warning::
-    For people editting the class in future: self.dist and self.dims are exposed!
+    
+        For people editting the class in future: self.dist and self.dims are exposed!
     """
     def __init__(self, *args, extra_log_factor=lambda x: 0, **kwargs):
         r"""

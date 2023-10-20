@@ -4,6 +4,7 @@ Model
 Given a generative model $P$ and an approximate posterior $Q$ we define models as:
 
 .. code-block:: python
+    
     model = alan.Model(P, Q())
 
 This handles things such as:
