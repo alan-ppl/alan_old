@@ -9,6 +9,7 @@ setup(
     packages = find_packages(),
     install_requires=[
     "torch>=1.13.0",
+    "opt-einsum"
     ],
     extras_requires=[
     'numpy',

@@ -1,4 +1,5 @@
 torch>=1.13.0
+opt-einsum
 numpy
 pandas
 scipy
