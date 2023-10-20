@@ -3,3 +3,4 @@ numpy
 pandas
 scipy
 tqdm
+sphinx_rtd_theme
