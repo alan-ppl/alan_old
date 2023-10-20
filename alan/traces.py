@@ -10,12 +10,22 @@ from .dist import Categorical, Uniform
 from . import model
 
 class GetItem():
+    """Parent class of AbstractTrace. Defines the __getitem__ and __contains__ methods for TraceP and TraceQ.
+    """
     def __init__(self, data, samples, platedims):
         self.data = data
         self.samples = samples
         self.platedims = platedims
 
     def __getitem__(self, key):
+        """Retrieves data and samples from the trace
+
+        Raises:
+            Exception: If key is not in data or samples
+
+        Returns:
+            Tensor: Data or samples
+        """
         if not key in self:
             raise Exception(f"Called tr['{key}'], but {key} not present in data or samples")
         if key in self.data:
@@ -26,6 +36,11 @@ class GetItem():
             assert False
 
     def __contains__(self, key):
+        """Checks if a variable is in the trace.
+
+        Returns:
+            Bool: True if key is in data or samples, False otherwise
+        """
         in_data   = key in self.data
         in_sample = key in self.samples
         result = in_data + in_sample
@@ -33,10 +48,26 @@ class GetItem():
         return result == 1
 
 class AbstractTrace(GetItem):
+    """Parent class of the TraceP and TraceQ classes. Defines the __init__, __call__, __contains__, and __getitem__ methods for TraceP and TraceQ.
+    """
     def __init__(self, device):
         self.device = device
 
     def __call__(self, key, dist, plates=(), T=None, **kwargs):
+        """This method is triggered for each latent in P or Q. It samples the latent and stores it in the trace.
+
+        Args:
+            key (string): Name of the latent variable
+            dist (AlanDist): Marginal distribution of the latent variable
+            plates (tuple, optional): Tuple of plate names. Defaults to ().
+            T (int, optional): Number of timesteps for timeseries. Defaults to None.
+
+        Raises:
+            Exception: If plate is not in ``self.platedims``
+            Exception: If key is already in ``self.samples``
+            Exception: If T is not None and dist is not a Timeseries
+            Exception: If T is None and dist is a Timeseries
+        """
         if isinstance(plates, str):
             plates = (plates,)
 
@@ -58,17 +89,51 @@ class AbstractTrace(GetItem):
         self.sample_(key, dist, plates=plates, T=T, **kwargs)
 
     def filter_platedims(self, dims):
+        """Filters out the plate dimensions that are not in ``self.platedims``
+
+        Args:
+            dims (tuple): Tuple of torchdims
+
+        Returns:
+            tuple: Tuple of dims that are in ``self.platedims``
+        """
         platedims = set(self.platedims.values())
         return tuple(dim for dim in dims if (dim in platedims))
 
     def filter_Kdims(self, dims):
+        """Filters out the K dimensions that are not in ``self.Ks``
+
+        Args:
+            dims (tuple): Tuple of torchdims
+
+        Returns:
+            tuple: Tuple of dims that are in ``self.Ks``
+        """
         self_Ks = self.Ks
         return tuple(dim for dim in dims if (dim in self_Ks))
 
     def extract_platedims(self, x):
+        """Extracts the plate dimensions from a tensor
+
+        Args:
+            x (torchdim.Tensor): Tensor to extract plate dimensions from
+
+        Returns:
+            tuple: platedims in x
+        """
         return self.filter_platedims(generic_dims(x))
 
     def extract_Kdims(self, x, exclude=None, extra_K=None):
+        """Extracts the K dimensions from a tensor
+
+        Args:
+            x (torchdim.Tensor): Tensor to extract K dimensions from
+            exclude (torchdim, optional): K dimension to exclude. Defaults to None.
+            extra_K (torchdim, optional): Extra K dimension to include. Defaults to None.
+
+        Returns:
+            tuple: K dims in x
+        """
         result = self.filter_Kdims(generic_dims(x))
         result = set(result)
         if extra_K is not None:
@@ -93,9 +158,22 @@ class AbstractTrace(GetItem):
 
     @property
     def Ks(self):
+        """Returns the set of K dimensions
+
+        Returns:
+            set: Set of K dims
+        """
         return set([*self.K_var.values(), *self.K_group.values()])
 
     def key2Kdim(self, key):
+        """Returns the K dimension corresponding to a key
+
+        Args:
+            key (string): Name of the latent variable
+
+        Returns:
+            torchdim: K dimension corresponding to key
+        """
         if key in self.K_var:
             return self.K_var[key]
         if key in self.group:
@@ -105,7 +183,21 @@ class AbstractTrace(GetItem):
 
 
 class AbstractTraceQ(AbstractTrace):
+    """Parent class to all TraceQ classes
+    """
     def __init__(self, K, data, mask, platedims, reparam, device, lp_dtype):
+        """ This class is used to sample from the approximate posterior Q. It is a parent class to TraceQCategorical, TraceQPermutation, and TraceQSame.
+        It defines the methods needed to sample from the approximate posterior Q.
+
+        Args:
+            K (int): Number of K samples
+            data (dict): Dictionary of data tensors
+            mask (dict): Dictionary of masks, should have the same keys as the corresponding tensors in data
+            platedims (tuple): Tuple of torchdims corresponding to the plates
+            reparam (bool): Whether to use the repameterization trick when sampling, needed for Variational Inference
+            device (torch.device): device to store the samples and data on
+            lp_dtype (torch.dtype): desired dtyple of samples and data
+        """
         super().__init__(device)
         self.K = K
 
@@ -130,6 +222,26 @@ class AbstractTraceQ(AbstractTrace):
         self.group_parent_idxs = {}
 
     def sample_(self, key, dist, plates=(), T=None, group=None, multi_sample=True, sum_discrete=False):
+        """Samples from the marginal distribution ``dist`` corresponding to the latent variable ``key``. Stores the samples in ``self.samples``.
+
+        Args:
+            key (string): Name of the latent variable
+            dist (AlanDist): Marginal distribution of the latent variable
+            plates (tuple, optional): Tuple of plate names. Defaults to ().
+            T (int, optional): Number of timesteps for timeseries. Defaults to None.
+            group (dict, optional): Dictionary of ``group_name``->``Ks``. Used to group K dims together for `Global K' variational inference.  Defaults to None.
+            multi_sample (bool, optional): Whether to sample multiple K samples. Defaults to True.
+            sum_discrete (bool, optional): Whether to sum over discrete latents. Defaults to False.
+
+        Raises:
+            Exception: If sum_discrete=True, as we don't need an approximate posterior if sum_discrete=True
+            Exception: If multi_sample=False and group is not None, as it doesn't make sense to group the variable ``key`` when multi_sample=False
+            Exception: If T is not None and group is not None, as timeseries cannot currently be grouped
+
+        Returns:
+            _type_: _description_
+        """
+        
         #Make sure the kwargs make sense
         if sum_discrete:
             raise Exception("We don't need an approximate posterior if sum_discrete=True")
@@ -191,6 +303,19 @@ class AbstractTraceQ(AbstractTrace):
             self.logq_var[key] = logq
 
     def index_sample(self, sample, Kdim, group):
+        """Sample is of shape (K_parent_1,K_parent_2,...,K_parent_n,K_var,...), for K>=1.  We want it to have shape (K_var,...) so we index into sample 
+        with the appropriate values of K_parent_1,K_parent_2,...,K_parent_n.  This is done by calling parent_samples which depending on the TraceQ class,
+        will either sample from a Categorical distribution, a Uniform distribution, or just return the same value for all K's.
+         
+
+        Args:
+            sample (torch.tensor): Sampled values of the latent variable
+            Kdim (torchdim): K dimension of the latent variable
+            group (string): Group name that the latent variable belongs to
+
+        Returns:
+            sample: Sampled values of the latent variable with shape (K_var,...)
+        """
         plates = self.extract_platedims(sample)
         Ks = self.extract_Kdims(sample, exclude=Kdim)
 
@@ -202,9 +327,10 @@ class AbstractTraceQ(AbstractTrace):
         for K in Ks:
             if K not in idxs:
                 idxs[K] = self.parent_samples(plates, Kdim, K)
-
+                
         if 0 < len(Ks):
             sample = sample.order(*Ks)[[idxs[K] for K in Ks]]
+            
         return sample
 
     def finalize_logq(self):
@@ -223,8 +349,7 @@ class AbstractTraceQ(AbstractTrace):
         return logq_group, logq_var
 
     def reduce_plate(self, f, x, plate):
-        """
-        We may want an approximate posterior that samples the low-level latents
+        """We may want an approximate posterior that samples the low-level latents
         plates before the high-level parameters.  We may also want the approximate
         posterior for the parameters to depend on e.g. the sampled values of the
         low-level latents.  As the latents will have a plate dimension that doesn't
@@ -240,30 +365,100 @@ class AbstractTraceQ(AbstractTrace):
         return f(x, self.platedims[plate])
 
     def mean(x, plate):
+        """Computes the mean of x along the plate dimension ``plate``
+
+        Args:
+            x (tensor): Sample
+            plate (string): Name of the plate dimension
+
+        Returns:
+            tensor: x with the plate dimension ``plate`` reduced
+        """
         return reduce_plate(t.mean, x, plate)
 
 
 class TraceQCategorical(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):
+        """Each of the K particles is sampled conditioned on a parent selected using
+        a categorical distribution
+
+        Args:
+            plates (tuple): Tuple of torchdims corresponding to the plates
+            Kdim (torchdim): K dimension of the latent variable
+            K (int): Number of K samples
+
+        Returns:
+            tensor: Tensor of sampled indices for Kdim
+        """
         return Categorical(t.ones(K.size)/K.size).sample(False, sample_dims=[Kdim, *plates])
 
     def logq(self, logq, Kdim, extra_K=None):
+        """Marginalise over Kdims in logq excluding Kdim
+
+        Args:
+            logq (tensor): Log-probability 
+            Kdim (torchdim): K dimension of the latent variable
+            extra_K (torchdim, optional): Extra Kdim to marginalise over. Defaults to None.
+
+        Returns:
+            tensor: Marginalised log-probability
+        """
         return logmeanexp_dims(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
 
 class TraceQPermutation(AbstractTraceQ):
     def parent_samples(self, plates, Kdim, K):
+        """Each of the K particles is sampled conditioned on a parent selected using a permutation
+
+        Args:
+            plates (tuple): Tuple of torchdims corresponding to the plates
+            Kdim (torchdim): K dimension of the latent variable
+            K (int): Number of K samples
+
+        Returns:
+            tensor: Tensor of sampled indices for Kdim
+        """
         assert Kdim.size == K.size
         return Uniform(0,1).sample(False, sample_dims=[Kdim, *plates]).argsort(Kdim)
 
     def logq(self, logq, Kdim, extra_K=None):
+        """Marginalise over Kdims in logq excluding Kdim
+
+        Args:
+            logq (tensor): Log-probability 
+            Kdim (torchdim): K dimension of the latent variable
+            extra_K (torchdim, optional): Extra Kdim to marginalise over. Defaults to None.
+
+        Returns:
+            tensor: Marginalised log-probability
+        """
         return logmeanexp_dims(logq, self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K))
 
 class TraceQSame(AbstractTraceQ):
-    def parent_samples(self, plates, Kdim, K):
+    def parent_samples(self, plates, Kdim, K):  
+        """Each of the K particles is sampled conditioned on the K'th parent
+
+        Args:
+            plates (tuple): Tuple of torchdims corresponding to the plates
+            Kdim (torchdim): K dimension of the latent variable
+            K (int): Number of K samples
+
+        Returns:
+            tensor: Tensor of indices for Kdim
+        """
         idxs = t.arange(self.K)[Kdim].expand(*plates)
         return idxs
 
     def logq(self, logq, Kdim, extra_K=None):
+        """Marginalise over Kdims in logq excluding Kdim
+
+        Args:
+            logq (tensor): Log-probability 
+            Kdim (torchdim): K dimension of the latent variable
+            extra_K (torchdim, optional): Extra Kdim to marginalise over. Defaults to None.
+
+        Returns:
+            tensor: Marginalised log-probability
+        """
         plates = self.extract_platedims(logq)
         Ks = self.extract_Kdims(logq, exclude=Kdim, extra_K=extra_K)
 
@@ -282,6 +477,12 @@ class TraceSample(AbstractTrace):
     If we want to draw multiple samples, we use samples.
     """
     def __init__(self, N, platedims, device):
+        """
+        Args:
+            N (int): Number of samples
+            platedims (tuple): Tuple of torchdims corresponding to the plates
+            device (torch.device): device to store the samples and data on
+        """
         super().__init__(device)
         self.Ns = () if (N is None) else (Dim('N', N),)
         self.platedims = platedims
@@ -293,6 +494,16 @@ class TraceSample(AbstractTrace):
         self.data    = {} #Unused, just here to make generic __contains__ and __getitem__ happy
 
     def sample_(self, key, dist, plates=(), T=None, group=None, sum_discrete=False):
+        """Samples from the marginal distribution ``dist`` corresponding to the latent variable ``key``. Stores the samples in ``self.samples``.
+  
+        Args:
+            key (string): Name of the latent variable
+            dist (AlanDist): Marginal distribution of the latent variable
+            plates (tuple, optional): Tuple of plate names. Defaults to ().
+            T (int, optional): Number of timesteps for timeseries. Defaults to None.
+            group (dict, optional): Dictionary of ``group_name``->``Ks``. Used to group K dims together for `Global K' variational inference.  Defaults to None.
+            sum_discrete (bool, optional): Whether to sum over discrete latents. Defaults to False.
+        """
         del group, sum_discrete
 
         if T is not None:
@@ -307,7 +518,14 @@ class TraceSample(AbstractTrace):
         return set()
 
 class TraceP(AbstractTrace):
+    """ Draws samples from the generative model $P$.
+
+    """
     def __init__(self, trq):
+        """
+        Args:
+            trq (TraceQ): TraceQ object
+        """
         super().__init__(trq.device)
         self.platedims = trq.platedims
         self.data = trq.data
@@ -330,8 +548,19 @@ class TraceP(AbstractTrace):
         self.used_platenames = set()
 
     def sum_discrete(self, key, dist, plates):
-        """
-        Enumerates discrete variables.
+        """Enumerates discrete variables.
+
+
+        Args:
+            key (string): Name of the latent variable
+            dist (AlanDist): Marginal distribution of the latent variable
+            plates (tuple, optional): Tuple of plate names. Defaults to ().
+            
+        Raises:
+            Exception: If dist is not a Bernoulli or Categorical distribution
+
+        Returns:
+            tensor: Tensor of enumerated values
         """
         if dist.dist not in [t.distributions.Bernoulli, t.distributions.Categorical]:
             raise Exception(
@@ -364,6 +593,21 @@ class TraceP(AbstractTrace):
         return values, Edim
 
     def sample_(self, key, dist, group=None, plates=(), T=None, sum_discrete=False):
+        """Samples from the marginal distribution ``dist`` corresponding to the latent variable ``key``. Stores the samples in ``self.samples``.
+
+        Args:
+            key (string): Name of the latent variable
+            dist (AlanDist): Marginal distribution of the latent variable
+            plates (tuple, optional): Tuple of plate names. Defaults to ().
+            T (int, optional): Number of timesteps for timeseries. Defaults to None.
+            group (dict, optional): Dictionary of ``group_name``->``Ks``. Used to group K dims together for `Global K' variational inference.  Defaults to None.
+            sum_discrete (bool, optional): Whether to sum over discrete latents. Defaults to False.
+
+        Raises:
+            Exception: If sum_discrete=True and key is already in ``self.samples`` or ``self.data``
+            Exception: If key is not in ``self.samples_q`` or ``self.data`` and sum_discrete=False
+            Exception: If T is not None and T is already in ``self.used_platenames``
+        """
         if sum_discrete and (key in self):
             raise Exception(
                 f"Trying to sum over {key}, but variable already present in"
@@ -412,7 +656,7 @@ class TraceP(AbstractTrace):
 
 class TracePred(AbstractTrace):
     """
-    Draws samples from P conditioned on samples from ...
+    Draws samples from P conditioned on samples from the trained posterior.
     Usually just used to sample fake data from the model.
     post_rvs is posterior samples of all latents + training data.
     We can choose to provide data or sizes.
@@ -420,6 +664,22 @@ class TracePred(AbstractTrace):
       If we provide sizes, then we compute predictive samples
     """
     def __init__(self, N, samples_train, data_train, data_all, platedims_train, platedims_all, device):
+        """
+
+        Args:
+            N (int): Number of samples
+            samples_train (dict): Dictionary of samples from the trained posterior.
+            data_train (dict): Dictionary of training data
+            data_all (dict): Dictionary of training + test data
+            platedims_train (tuple): Tuple of torchdims corresponding to the plates in the training data
+            platedims_all (tuple): Tuple of torchdims corresponding to the plates in the training + test data
+            device (torch.device): device to store the samples and data on
+
+        Raises:
+            Exception: If any new dimensions exist in the training data, and are bigger than those in the training data
+            Exception: If any plates from platedims_train are missing in platedims
+            Exception: If none of the data tensors or plate sizes provided for prediction is bigger than those at training time
+        """
         super().__init__(device)
         self.N = N
 
@@ -436,7 +696,7 @@ class TracePred(AbstractTrace):
 
         self.reparam      = False
 
-        #Check that any new dimensions exist in training, and are bigger than those in training
+        #Check that any new dimensions exist in the training data, and are bigger than those in the training data
         for platename, platedim_all in self.platedims.items():
             if platename not in self.train.platedims:
                 raise Exception(f"Provided a plate dimension '{platename}' in platesizes_all or data which isn't present in the training data.")

@@ -18,6 +18,8 @@ This library showcases Massively Parallel Importance Weighting in the context of
    model
    exp_fam
    dists
+   traces
+   post_processing
 
 
 

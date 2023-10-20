@@ -56,6 +56,7 @@ master_doc = "index"
 # extend timeout
 nbsphinx_timeout = 120
 
+autodoc_member_order = 'bysource'
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

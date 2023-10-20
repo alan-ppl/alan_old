@@ -179,6 +179,17 @@ class SampleMixin():
         return tr, N
 
     def predictive_samples(self, sample, N, inputs_all=None, platesizes_all=None):
+        """Samples from the predictive distribution.
+
+        Args:
+            sample (alan.Sample): Sample object from the trained posterior
+            N (int): Number of samples to draw
+            inputs_all (dict, optional): Dictionary of training + test covariates. Defaults to None.
+            platesizes_all (tuple, optional): Tuple of plate sizes. Defaults to None.
+
+        Returns:
+            samples: Sample object from the predictive distribution
+        """
         if platesizes_all is None:
             platesizes_all = {}
         trace_pred, N = self._predictive(sample, N, data_all=None, inputs_all=inputs_all, platesizes_all=platesizes_all)
@@ -193,8 +204,17 @@ class SampleMixin():
 
         >>> obs = t.randn((4, 6, 8), names=("plate_1", "plate_2", "plate_3"))
         >>> model.predictive_ll(5, 10, data_all={"obs": obs})
+        
+        Args:
+            sample (alan.Sample): Sample object from the trained posterior
+            N (int): Number of samples to draw
+            data_all (dict, optional): Dictionary of training + test data. Defaults to None.
+            inputs_all (dict, optional): Dictionary of training + test covariates. Defaults to None.
+            
+        Returns:
+            dict: Dictionary of predictive log-likelihoods for each variable
         """
-
+        
         trace_pred, N = self._predictive(sample, N, data_all, inputs_all, None)
         lls_all   = trace_pred.ll_all
         lls_train = trace_pred.ll_train
@@ -239,7 +259,7 @@ class SampleMixin():
 
     def ammpis_update(self, lr, sample):
         """
-        Will call update on Model
+        Will call update on ammpis models
         """
         # assert not sample.reparam
 
@@ -297,6 +317,8 @@ class SampleMixin():
                 mod._update_means(lr)
 
     def ng_update(self, lr, sample):
+        """Natural gradient update
+        """
         assert sample.reparam
         sample.elbo().backward()
 
