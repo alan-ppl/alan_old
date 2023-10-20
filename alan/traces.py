@@ -48,7 +48,7 @@ class GetItem():
         return result == 1
 
 class AbstractTrace(GetItem):
-    """Parent class of the TraceP and TraceQ classes. Defines the __init__, __call__, __contains__, and __getitem__ methods for TraceP and TraceQ.
+    """Parent class of the TraceP and TraceQ classes. Defines the __init__, and __call__ methods for TraceP and TraceQ.
     """
     def __init__(self, device):
         self.device = device

@@ -24,6 +24,8 @@ import torch
 def skip(app, what, name, obj, would_skip, options):
     if name == "__init__":
         return False
+    if name == "__call__":
+        return False
     return would_skip
 
 def setup(app):
