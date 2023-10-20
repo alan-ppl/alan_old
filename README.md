@@ -1,3 +1,7 @@
+[![Documentation Status](https://readthedocs.org/projects/alan-ppl/badge/?version=dev)](http://alan-ppl.readthedocs.io/en/stable/?badge=dev)
+
+[Documentation](https://alan-ppl.readthedocs.io/en/latest/) |
+
 <!-- To get started:
 
 ```
