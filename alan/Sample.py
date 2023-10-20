@@ -7,7 +7,7 @@ from . import traces
 
 class Sample():
     """
-    Does error checking on the log-ps, and does the tensor product.
+    Sample object which stores the samples and log probabilites for P and Q, and then performs computations with them to compute the ELBO.
 
     TODO:
       Check that latents (in samples) appear in logps and logqs
