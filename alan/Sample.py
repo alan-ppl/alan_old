@@ -7,7 +7,22 @@ from . import traces
 
 class Sample():
     """
-    Sample object which stores the samples and log probabilites for P and Q, and then performs computations with them to compute the ELBO.
+    Sample object which stores the samples and log probabilites for P and Q, and then performs computations with them (Elbo, importance weights...).
+    
+    The user will access and use samples as so:
+    
+     .. highlight:: python
+     .. code-block:: python
+     
+        # Can pick different ways of sampling from the extended state space
+        # this one samples children directly from parents (i.e. ancestral sampling)
+        samples = model.sample_same(K)
+        
+        #Evidence lower bound
+        elbo = samples.elbo()
+        
+        #Importance weights
+        weights = samples.weights()
 
     TODO:
       Check that latents (in samples) appear in logps and logqs
@@ -15,6 +30,17 @@ class Sample():
       Check that all dims are something (plate, timeseries, K)
     """
     def __init__(self, trp, lp_dtype, lp_device):
+        """
+        Args:
+            trp (trace): Trace object storing logps, logqs, samples and data
+            lp_dtype (torch.dtype): dtype to use for log-probabilities
+            lp_device (torch.device): device to use for log-probabilities
+
+        Raises:
+            Exception: If more variables are sampled in Q than in P
+            Exception: If any variable is sampled in Q but not P
+            Exception: If a variable is provided in the data but not specified in P
+        """
         self.trp = trp
         for lp in [*trp.logp.values(), *trp.logq_group.values(), *trp.logq_var.values()]:
             assert lp.shape == ()
@@ -113,6 +139,19 @@ class Sample():
         Sums over plates, starting at the lowest plate.
         The key exported method.
         """
+        """Computes the tensor product:
+        
+        .. math::
+           \tfrac{1}{K^n} \sum_{\k^n} f^x_{\k_{\pa{x}}}(z) \prod_i f^i_{k_i,\k_{\pa{i}}}(z)
+
+        Args:
+            detach_p (bool, optional): Whether to detach gradients on logps. Defaults to False.
+            detach_q (bool, optional): Whether to detach gradients on logqs. Defaults to False.
+            extra_log_factors (tuple, optional): Any extra log factors to add to the tensor product. Defaults to ().
+
+        Returns:
+            tensor: The tensor product
+        """
         logp = self.logp
         if detach_p:
             logp = [lp.detach() for lp in logp]
@@ -162,6 +201,21 @@ class Sample():
     
 
     def sum_plate_T(self, lps, plate_dim):
+        r"""Sums over a plate dimension in the tensor product, it will also log-sum-exp over K dimensions that appear only in that plate. 
+        This corresponds to taking the product over the plate dimension in the tensor product.
+        
+        .. warning::
+           We are unsure if this function is working correctly, we have noticed that changing the order of log factors in
+           the tensor product can change the result.
+
+        Args:
+            lps (list): list of log-probability tensors
+            plate_dim (string): Name of plate to be summed over
+
+        Returns:
+            list: List of log-probability tensors with the plate dimension summed out and any K dims that appear in the plate
+            being log-sum-exp'ed over 
+        """
         if plate_dim is not None:
             #partition tensors into those with/without plate_name
             lower_lps, higher_lps = partition_tensors(lps, plate_dim)
@@ -212,8 +266,6 @@ class Sample():
         #     self.warn=False
         return self.tensor_product()
 
-    # def cubo(self):
-    #     return self.tensor_product(fn=lambda x:x**2)
 
     def rws(self):
         # Wake-phase P update
@@ -223,8 +275,13 @@ class Sample():
         return p_obj, q_obj
 
     def moments(self, fs):
-        """
-        fs: iterable containing (f, ["a", "b"]) pairs.
+        """Compute importance weighted moments.
+
+        Arguments:
+            fs: iterable containing (f, ["a", "b"]) function, latent name pairs.
+            
+        Returns:
+            list: List of computed moments
         """
         if callable(fs[0]):
             fs = (fs,)
@@ -250,7 +307,8 @@ class Sample():
 
     def Elogq(self):
         r"""
-        Uses importance weighting to approximate E_{P(z|x)}[log Q(z)].
+        Uses importance weighting to approximate $E_{P(z|x)}[log Q(z)]$.
+        
         Could also implement using importance weights?
         """
         ms = list(self.logq.values())
@@ -271,7 +329,7 @@ class Sample():
 
     def weights(self):
         """
-        Produces normalized weights for each latent variable.
+        Produces normalized importance weights for each latent variable.
 
         Make a little function that converts all the unnamed to dim tensors
         """
