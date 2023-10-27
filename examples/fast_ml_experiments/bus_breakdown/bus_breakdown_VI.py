@@ -32,15 +32,13 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
       tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
-      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
 
       #Borough level
-      tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()), plates = 'plate_Borough')
+      tr('alpha', alan.Normal(tr['beta'], tr.ones(())), plates = 'plate_Borough')
 
       #ID level
-      tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())))
-      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr['log_sigma_phi_psi'].exp()))
-      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr['log_sigma_phi_psi'].exp()))
+      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr.ones(())))
+      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr.ones(())))
       # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
       # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
       tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
@@ -63,14 +61,12 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             self.beta_mu = nn.Parameter(t.zeros((M,),names=('plate_Year',)))
             self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
             #sigma_alpha
-            self.sigma_alpha_mean = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
-            self.log_sigma_alpha_sigma = nn.Parameter(t.zeros((J,), names=('plate_Borough',)))
+
             #alpha
             self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             #log_sigma_phi_psi logits
-            self.log_sigma_phi_psi_mean = nn.Parameter(t.zeros(()))
-            self.log_log_sigma_phi_psi_sigma = nn.Parameter(t.zeros(()))
+
             #psi
             self.psi_mean = nn.Parameter(t.zeros((run_type_dim,)))
             self.log_psi_sigma = nn.Parameter(t.zeros((run_type_dim,)))
@@ -90,11 +86,10 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             tr('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()))
 
             #Borough level
-            tr('sigma_alpha', alan.Normal(self.sigma_alpha_mean, self.log_sigma_alpha_sigma.exp()))
             tr('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))
 
             #ID level
-            tr('log_sigma_phi_psi', alan.Normal(self.log_sigma_phi_psi_mean, self.log_log_sigma_phi_psi_sigma.exp()))
+
             tr('psi', alan.Normal(self.psi_mean, self.log_psi_sigma.exp()))
             tr('phi', alan.Normal(self.phi_mean, self.log_phi_sigma.exp()))
             # tr('theta', alan.Normal(self.theta_mean, self.log_theta_sigma.exp()))

@@ -148,7 +148,7 @@ if __name__ == "__main__":
         
         model = alan.Model(P, Q())
         data = {'obs':data.pop('obs')}
-        K = 1
+        K = 10
 
         sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
