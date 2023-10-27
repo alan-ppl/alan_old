@@ -155,7 +155,7 @@ def run_experiment(cfg):
                                  'non_zero_weights':non_zero_weights,}
 
 
-        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML)+ '_iters_{}'.format(cfg.training.num_iters) + '_decay_{}_'.format(cfg.training.decay) + 'K{0}.pkl'.format(K)
+        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML)+ '_iters_{}'.format(cfg.training.num_iters) + '_lr_{}_'.format(cfg.training.lr) + 'K{0}.pkl'.format(K)
         with open(file, 'wb') as f:
             pickle.dump(results_dict, f)
 

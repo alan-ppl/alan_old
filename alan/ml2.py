@@ -78,7 +78,7 @@ class ML2(AlanModule):
             for (m, g) in zip(self.named_means, self.named_grads):
                 self.grads.append(g.detach())
                 m.data.mul_(1-lr).add_(g, alpha=lr)
-                counter += 1
+
 
     def local_parameters(self):
         return []
