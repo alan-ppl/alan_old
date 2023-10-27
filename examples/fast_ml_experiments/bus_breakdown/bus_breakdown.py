@@ -28,14 +28,13 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
       tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
-      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
 
       #Borough level
-      tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()), plates = 'plate_Borough')
+      tr('alpha', alan.Normal(tr['beta'], tr.ones(())), plates = 'plate_Borough')
 
       #ID level
-      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr.ones(())), plates= ('plate_Borough', 'plate_Year', 'plate_ID'))
-      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr.ones(())), plates= ('plate_Borough', 'plate_Year', 'plate_ID'))
+      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr.ones(())))
+      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr.ones(())))
       # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
       # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
       tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
@@ -54,13 +53,13 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
                 #beta
                 self.beta = alan.MLNormal({'plate_Year': M})
                 #sigma_alpha
-                self.sigma_alpha = alan.MLNormal({'plate_Year': M})
+
                 #alpha
                 self.alpha = alan.MLNormal({'plate_Year': M,'plate_Borough': J})
                 #psi
-                self.psi = alan.MLNormal(sample_shape=(run_type_dim,), platesizes={'plate_Year': M,'plate_Borough': J, 'plate_ID': I})
+                self.psi = alan.MLNormal(sample_shape=(run_type_dim,))
                 #phi
-                self.phi = alan.MLNormal(sample_shape=(bus_company_name_dim,), platesizes={'plate_Year': M,'plate_Borough': J, 'plate_ID': I})
+                self.phi = alan.MLNormal(sample_shape=(bus_company_name_dim,))
                 #theta
                 # self.theta = alan.MLNormal({'plate_ID':I})
 
@@ -70,10 +69,11 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
 
                 tr('sigma_beta', self.sigma_beta())
                 tr('mu_beta', self.mu_beta())
+                
                 tr('beta', self.beta())
 
                 #Borough level
-                tr('sigma_alpha', self.sigma_alpha())
+                
                 tr('alpha', self.alpha())
 
                 #ID level
@@ -91,13 +91,13 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
                 #beta
                 self.beta = alan.ML2Normal({'plate_Year': M})
                 #sigma_alpha
-                self.sigma_alpha = alan.ML2Normal({'plate_Year': M})
+                
                 #alpha
                 self.alpha = alan.ML2Normal({'plate_Year': M,'plate_Borough': J})
                 #psi
-                self.psi = alan.ML2Normal(sample_shape=(run_type_dim,), platesizes={'plate_Year': M,'plate_Borough': J, 'plate_ID': I})
+                self.psi = alan.ML2Normal(sample_shape=(run_type_dim,))
                 #phi
-                self.phi = alan.ML2Normal(sample_shape=(bus_company_name_dim,), platesizes={'plate_Year': M,'plate_Borough': J, 'plate_ID': I})
+                self.phi = alan.ML2Normal(sample_shape=(bus_company_name_dim,))
                 #theta
                 # self.theta = alan.MLNormal({'plate_ID':I})
 
@@ -107,10 +107,11 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
 
                 tr('sigma_beta', self.sigma_beta())
                 tr('mu_beta', self.mu_beta())
+
                 tr('beta', self.beta())
 
                 #Borough level
-                tr('sigma_alpha', self.sigma_alpha())
+                
                 tr('alpha', self.alpha())
 
                 #ID level
