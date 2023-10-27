@@ -32,10 +32,10 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
       tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
+      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
 
       #Borough level
-      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Borough')
-      tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()))
+      tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()), plates = 'plate_Borough')
 
       #ID level
       tr('log_sigma_phi_psi', alan.Normal(tr.zeros(()), tr.ones(())))

@@ -166,6 +166,10 @@ class Sample():
     
 
     def sum_plate_T(self, lps, plate_dim):
+        ### WARNING
+        #
+        # We have not thought carefully about how the changes made here (compared to main) might affect
+        # timeseries. We should think about this carefully.
         # breakpoint()
         if plate_dim is not None:
             #partition tensors into those with/without plate_name
@@ -182,6 +186,25 @@ class Sample():
             Ks_to_keep = [Kdim, *Ks_to_keep]
 
 
+        #find plates in lower_lps
+        lower_platedims = [dim for dim in unify_dims(lower_lps) if self.is_platedim(dim)]
+        
+        
+        
+        #find if any of the lower_lps is "missing" a plate
+        # for lp in lower_lps:
+        #     lp_plates = [dim for dim in generic_dims(lp) if self.is_platedim(dim)]
+        #     for plate in lower_platedims:
+        #         if plate not in set(lp_plates):
+        #             lp /= plate.size
+
+        for i in range(len(lower_lps)):
+            lp = lower_lps[i]
+            lp_plates = [dim for dim in generic_dims(lp) if self.is_platedim(dim)]
+            for plate in lower_platedims:
+                if plate not in set(lp_plates):
+                    lower_lps[i] = lp / plate.size
+        
         lower_lp = self.reduce_Ks_to_keep(lower_lps, Ks_to_keep)
 
         if plate_dim in self.trp.Tdim2Ks.keys():
@@ -189,10 +212,7 @@ class Sample():
             lower_lp = reduce_Ks([lower_lp], [Kdim], self.Es)
         elif plate_dim is not None:
             lower_lp = lower_lp.sum(plate_dim)
-            # if not any(self.is_K(dim) for dim in lower_lp.dims):
-            #     lower_lp = lower_lp.sum(lower_lp.dims)
-            # else:
-            #     lower_lp = lower_lp.sum(plate_dim)
+
 
         return [*higher_lps, lower_lp]
 
