@@ -33,6 +33,7 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
       tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
 
+      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
       #Borough level
       tr('alpha', alan.Normal(tr['beta'], tr.ones(())), plates = 'plate_Borough')
 
@@ -61,7 +62,8 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             self.beta_mu = nn.Parameter(t.zeros((M,),names=('plate_Year',)))
             self.log_beta_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
             #sigma_alpha
-
+            self.sigma_alpha_mu = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
+            self.log_sigma_alpha_sigma = nn.Parameter(t.zeros((M,), names=('plate_Year',)))
             #alpha
             self.alpha_mu = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
             self.log_alpha_sigma = nn.Parameter(t.zeros((M,J), names=('plate_Year', 'plate_Borough')))
@@ -84,6 +86,7 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
             tr('sigma_beta', alan.Normal(self.sigma_beta_mean, self.log_sigma_beta_sigma.exp()))
             tr('mu_beta', alan.Normal(self.mu_beta_mean, self.log_mu_beta_sigma.exp()))
             tr('beta', alan.Normal(self.beta_mu, self.log_beta_sigma.exp()))
+            tr('sigma_alpha', alan.Normal(self.sigma_alpha_mu, self.log_sigma_alpha_sigma.exp()))
 
             #Borough level
             tr('alpha', alan.Normal(self.alpha_mu, self.log_alpha_sigma.exp()))

@@ -28,9 +28,11 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
       tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
       tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
-
+      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
+      
+      
       #Borough level
-      tr('alpha', alan.Normal(tr['beta'], tr.ones(())), plates = 'plate_Borough')
+      tr('alpha', alan.Normal(tr['beta'], tr['sigma_alpha'].exp()), plates = 'plate_Borough')
 
       #ID level
       tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr.ones(())))
@@ -53,7 +55,7 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
                 #beta
                 self.beta = alan.MLNormal({'plate_Year': M})
                 #sigma_alpha
-
+                self.sigma_alpha = alan.MLNormal({'plate_Year': M})
                 #alpha
                 self.alpha = alan.MLNormal({'plate_Year': M,'plate_Borough': J})
                 #psi
@@ -71,6 +73,7 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
                 tr('mu_beta', self.mu_beta())
                 
                 tr('beta', self.beta())
+                tr('sigma_alpha', self.sigma_alpha())
 
                 #Borough level
                 
@@ -91,7 +94,7 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
                 #beta
                 self.beta = alan.ML2Normal({'plate_Year': M})
                 #sigma_alpha
-                
+                self.sigma_alpha = alan.MLNormal({'plate_Year': M})
                 #alpha
                 self.alpha = alan.ML2Normal({'plate_Year': M,'plate_Borough': J})
                 #psi
@@ -109,7 +112,7 @@ def generate_model(N,M,device,ML=2, run=0, use_data=True):
                 tr('mu_beta', self.mu_beta())
 
                 tr('beta', self.beta())
-
+                tr('sigma_alpha', self.sigma_alpha())
                 #Borough level
                 
                 tr('alpha', self.alpha())
@@ -148,11 +151,10 @@ if __name__ == "__main__":
         
         model = alan.Model(P, Q())
         data = {'obs':data.pop('obs')}
-        K = 10
+        K = 2
 
-        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
-        for j in range(1):
+        for j in range(10):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
             elbo = sample.elbo()
@@ -169,9 +171,8 @@ if __name__ == "__main__":
         model = alan.Model(P, Q())
         data = {'obs':data.pop('obs')}
 
-        sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
 
-        for j in range(1):
+        for j in range(10):
 
             sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=t.device('cpu'))
             elbo = sample.elbo()
