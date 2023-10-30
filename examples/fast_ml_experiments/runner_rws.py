@@ -90,7 +90,8 @@ def run_experiment(cfg):
                 p_obj, q_obj = sample.rws()
                 
                 (-q_obj).backward()
-                per_seed_obj[i,j] = sample.elbo().item()
+                elbo = sample.elbo().item()
+                per_seed_obj[i,j] = elbo
                 
                 opt.step()
                 if t.cuda.is_available():
