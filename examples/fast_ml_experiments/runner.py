@@ -121,17 +121,17 @@ def run_experiment(cfg):
                     non_zero_weight = 0  
                     num_latents = 0
                         
-                    for k,v in sample.weights().items():
-                        weights[k][i,j] = (v[1].rename(None) > 0.001).sum()
+                    # for k,v in sample.weights().items():
+                    #     weights[k][i,j] = (v[1].rename(None) > 0.001).sum()
 
-                        non_zero_weight += (v[1].rename(None) > 0.001).sum()
-                        num_latents += v[0].numel()
+                    #     non_zero_weight += (v[1].rename(None) > 0.001).sum()
+                    #     num_latents += v[0].numel()
 
-                        k_sigma = 'log_' + k + '_sigma'
-                        sc = q.__getattr__(k_sigma).clone().detach()
-                        if hasattr(sc, "dims"):
-                            sc = sc.order(*sc.dims)
-                        scales[k][i,j] = sc.exp().mean().item()
+                    #     k_sigma = 'log_' + k + '_sigma'
+                    #     sc = q.__getattr__(k_sigma).clone().detach()
+                    #     if hasattr(sc, "dims"):
+                    #         sc = sc.order(*sc.dims)
+                    #     scales[k][i,j] = sc.exp().mean().item()
                     
                     non_zero_weights[i,j] = non_zero_weight
 
