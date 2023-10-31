@@ -86,10 +86,10 @@ def run_experiment(cfg):
                     t.cuda.synchronize()
                 start = time.time()
                 opt.zero_grad()
-                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=True, device=device)
+                sample = model.sample_perm(K, data=data, inputs=covariates, reparam=False, device=device)
                 p_obj, q_obj = sample.rws()
                 
-                (-q_obj).backward()
+                (q_obj).backward()
                 elbo = sample.elbo().item()
                 per_seed_obj[i,j] = elbo
                 
