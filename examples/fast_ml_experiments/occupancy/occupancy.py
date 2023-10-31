@@ -82,9 +82,9 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
 
 
     if use_data:
-        data = {'obs':t.load('occupancy/data/birds_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Birds', 'plate_Ids','plate_Replicate')}
+        data = {'obs':t.load('occupancy/data/birds_train_{}.pt'.format(run)).rename('plate_Year', 'plate_Birds', 'plate_Ids','plate_Replicate').float()}
         # print(data)
-        test_data = {'obs':t.load('occupancy/data/birds_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Birds', 'plate_Ids','plate_Replicate')}
+        test_data = {'obs':t.load('occupancy/data/birds_test_{}.pt'.format(run)).rename('plate_Year', 'plate_Birds', 'plate_Ids','plate_Replicate').float()}
         all_data = {'obs': t.cat([data['obs'],test_data['obs']],-2)}
 
     else:
