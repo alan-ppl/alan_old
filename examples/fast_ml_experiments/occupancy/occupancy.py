@@ -46,9 +46,9 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
         def __init__(self):
             super().__init__()
             #Year
-            self.year_mean = alan.ML2Normal({'plate_Years': M})
+            self.year = alan.ML2Normal({'plate_Years': M})
             #Bird
-            self.bird_mean = alan.ML2Normal({'plate_Years': M, 'plate_Birds':J})
+            self.bird = alan.ML2Normal({'plate_Years': M, 'plate_Birds':J})
             #Beta
             self.beta = alan.ML2Normal({'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I})
             #z
