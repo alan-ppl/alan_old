@@ -1,4 +1,7 @@
-lbatch -c 1 -g 1 -m 22 -t 6 -q cnu -a cosc020762 --cmd python runner.py dataset=movielens model=movielens training.lr=1e-1 training.N=5 training.M=300 training.num_iters=10 training.Ks=[10]
+lbatch -c 1 -g 1 -m 22 -t 24 -q cnu -a cosc020762 -n Movie_VI --cmd python runner.py dataset=movielens model=movielens training.lr=1e-2 training.Ks=[1,3,5,10] training.num_iters=2000
 
+lbatch -c 1 -g 1 -m 22 -t 24 -q cnu -a cosc020762 -n Movie_VI --cmd python runner.py dataset=movielens model=movielens training.lr=1e-1 training.Ks=[1,3,5,10] training.num_iters=2000
 
+lbatch -c 1 -g 1 -m 22 -t 24 -q cnu -a cosc020762 -n Movie_VI --cmd python runner.py dataset=movielens model=movielens training.lr=5e-2 training.Ks=[1,3,5,10] training.num_iters=2000
 
+lbatch -c 1 -g 1 -m 22 -t 24 -q cnu -a cosc020762 -n Movie_VI --cmd python runner.py dataset=movielens model=movielens training.lr=5e-1 training.Ks=[1,3,5,10] training.num_iters=2000
