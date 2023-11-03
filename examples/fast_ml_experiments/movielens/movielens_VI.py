@@ -3,21 +3,33 @@ import torch.nn as nn
 import alan
 from alan.experiment_utils import seed_torch
 
-def generate_model(N,M,device, ML=1, run=0, use_data=True):
+def generate_model(N,M,device, ML=2, run=0, use_data=True, adjust_scale=False):
     sizes = {'plate_1':M, 'plate_2':N}
     d_z = 18
-    def P(tr, x):
-      '''
-      Heirarchical Model
-      '''
+    if adjust_scale:
+        def P(tr, x):
+            '''
+            Heirarchical Model
+            '''
 
-      tr('mu_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
-      tr('psi_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
+            tr('mu_z', alan.Normal(tr.zeros((d_z,)), 100*tr.ones((d_z,))))
+            tr('psi_z', alan.Normal(tr.zeros((d_z,)), 0.01*tr.ones((d_z,))))
 
-      tr('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
+            tr('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
 
-      tr('obs', alan.Bernoulli(logits = tr['z'] @ x))
-      #tr('obs', alan.Normal(tr['z'] @ x, tr.ones(())))
+            tr('obs', alan.Bernoulli(logits = tr['z'] @ x))
+    else:
+        def P(tr, x):
+            '''
+            Heirarchical Model
+            '''
+
+            tr('mu_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
+            tr('psi_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
+
+            tr('z', alan.Normal(tr['mu_z'], tr['psi_z'].exp()), plates='plate_1')
+
+            tr('obs', alan.Bernoulli(logits = tr['z'] @ x))
 
     class Q(alan.AlanModule):
         def __init__(self):

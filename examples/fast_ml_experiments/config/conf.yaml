@@ -1,6 +1,7 @@
 ---
   dataset: ???
   model: ???
+  adjust_scale: False
   training:
     num_iters: 3000
     N: 2

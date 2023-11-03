@@ -5,7 +5,7 @@ import numpy as np
 
 from alan.experiment_utils import seed_torch
 
-def generate_model(N,M,device,ML=1, run=0, use_data=True):
+def generate_model(N,M,device,ML=1, run=0, use_data=True, adjust_scale=False):
     M = 2
     J = 3
     I = 30
@@ -22,28 +22,48 @@ def generate_model(N,M,device,ML=1, run=0, use_data=True):
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
 
+    if adjust_scale:
+        def P(tr, run_type, bus_company_name):
+            '''
+            Hierarchical Model
+            '''
 
-    def P(tr, run_type, bus_company_name):
-      '''
-      Hierarchical Model
-      '''
+            #Year level
+            tr('sigma_beta', alan.Normal(tr.zeros(()), 100*tr.ones(())))
+            tr('mu_beta', alan.Normal(tr.zeros(()), 0.01*tr.ones(())))
+            tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
 
-      #Year level
-      tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
-      tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
-      tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
+            tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
+            #Borough level
+            tr('alpha', alan.Normal(tr['beta'], tr.ones(())), plates = 'plate_Borough')
 
-      tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
-      #Borough level
-      tr('alpha', alan.Normal(tr['beta'], tr.ones(())), plates = 'plate_Borough')
+            #ID level
+            tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr.ones(())))
+            tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr.ones(())))
+            # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
+            # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+            tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+    else:
+        def P(tr, run_type, bus_company_name):
+            '''
+            Hierarchical Model
+            '''
 
-      #ID level
-      tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr.ones(())))
-      tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr.ones(())))
-      # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
-      # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
-      tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+            #Year level
+            tr('sigma_beta', alan.Normal(tr.zeros(()), tr.ones(())))
+            tr('mu_beta', alan.Normal(tr.zeros(()), tr.ones(())))
+            tr('beta', alan.Normal(tr['mu_beta'], tr['sigma_beta'].exp()), plates = 'plate_Year')
 
+            tr('sigma_alpha', alan.Normal(tr.zeros(()), tr.ones(())), plates = 'plate_Year')
+            #Borough level
+            tr('alpha', alan.Normal(tr['beta'], tr.ones(())), plates = 'plate_Borough')
+
+            #ID level
+            tr('psi', alan.Normal(tr.zeros((run_type_dim,)), tr.ones(())))
+            tr('phi', alan.Normal(tr.zeros((bus_company_name_dim,)), tr.ones(())))
+            # tr('theta', alan.Normal(np.log(1) * tr.ones(()), np.log(5) * tr.ones(())))
+            # tr('obs', alan.NegativeBinomial(total_count=tr['theta'].exp(), logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
+            tr('obs', alan.Binomial(total_count=131, logits=tr['alpha'] + tr['phi'] @ bus_company_name + tr['psi'] @ run_type))
 
 
 

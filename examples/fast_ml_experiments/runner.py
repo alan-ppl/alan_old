@@ -49,7 +49,7 @@ def run_experiment(cfg):
         per_seed_obj = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
         pred_liks = np.zeros((cfg.training.num_runs,cfg.training.num_iters), dtype=np.float32)
 
-        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, 0, cfg.use_data)
+        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, 0, cfg.use_data, cfg.adjust_scale)
 
         m1 = alan.Model(P, Q()).condition(data=data)
         m1.to(device)
@@ -63,7 +63,7 @@ def run_experiment(cfg):
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
             seed_torch(i)
-            P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+            P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data, cfg.adjust_scale)
 
 
             if not cfg.use_data:
@@ -157,7 +157,7 @@ def run_experiment(cfg):
                                  'weights':weights,
                                  'non_zero_weights':non_zero_weights,}
 
-        file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + 'K{0}.pkl'.format(K)
+        file = cfg.dataset + '/results/' + cfg.model + '/VI_{}'.format(cfg.training.num_iters) + '_{}_'.format(cfg.training.lr) + '{}_'.format(cfg.adjust_scale) + 'K{0}.pkl'.format(K)
         with open(file, 'wb') as f:
             pickle.dump(results_dict, f)
 

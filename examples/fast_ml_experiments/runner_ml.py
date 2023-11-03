@@ -49,7 +49,7 @@ def run_experiment(cfg):
 
 
 
-        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, 0, cfg.use_data)
+        P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, 0, cfg.use_data, cfg.adjust_scale)
         q = Q(  )
         m1 = alan.Model(P, q).condition(data=data)
         m1.to(device)
@@ -63,7 +63,7 @@ def run_experiment(cfg):
         nans = np.asarray([0]*cfg.training.num_runs)
         for i in range(cfg.training.num_runs):
             seed_torch(i)
-            P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data)
+            P, Q, data, covariates, all_data, all_covariates, sizes = foo.generate_model(N,M, device, cfg.training.ML, i, cfg.use_data, cfg.adjust_scale)
             q = Q()
             if not cfg.use_data:
                 if not cfg.dataset == 'potus':
@@ -155,7 +155,7 @@ def run_experiment(cfg):
                                  'non_zero_weights':non_zero_weights,}
 
 
-        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML)+ '_iters_{}'.format(cfg.training.num_iters) + '_lr_{}_'.format(cfg.training.lr) + 'K{0}.pkl'.format(K)
+        file = cfg.dataset + '/results/' + cfg.model + '/ML_{}'.format(cfg.training.ML)+ '_iters_{}'.format(cfg.training.num_iters) + '_lr_{}_'.format(cfg.training.decay if cfg.training.decay is not None else cfg.training.lr) + '{}_'.format(cfg.adjust_scale) + 'K{0}.pkl'.format(K)
         with open(file, 'wb') as f:
             pickle.dump(results_dict, f)
 
