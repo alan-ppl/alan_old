@@ -12,10 +12,10 @@ def generate_model(N,M,device, ML=2, run=0, use_data=True, adjust_scale=False):
             Heirarchical Model
             '''
 
-            tr('mu_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
-            tr('psi_z', alan.Normal(tr.zeros((d_z,)), tr.ones((d_z,))))
+            tr('mu_z', alan.Normal(tr.zeros((d_z,)), 0.01*tr.ones((d_z,))))
+            tr('psi_z', alan.Normal(tr.zeros((d_z,)), 100*tr.ones((d_z,))))
 
-            tr('z', alan.Normal(0.01*tr['mu_z'], 100*tr['psi_z'].exp()), plates='plate_1')
+            tr('z', alan.Normal(100*tr['mu_z'], (0.01*tr['psi_z']).exp()), plates='plate_1')
 
             tr('obs', alan.Bernoulli(logits = tr['z'] @ x))
     else:

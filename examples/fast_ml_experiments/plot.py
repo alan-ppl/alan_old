@@ -212,14 +212,14 @@ for smooth in [True, False]:
 
 
 
-                ax_iters[1].set_title(f'K: {K}, Smoothed over {time_mean} iters')
+                ax_iters[1].set_title(f'K: {K}, Smoothed over {time_mean} iters, Adjust scale: {adjust_scale}')
                 ax_iters[0].set_ylabel('ELBO')
                 ax_iters[0].set_ylim(low,upp)
                 ax_iters[1].set_ylim(low_pred,upp_pred)
                 ax_iters[1].set_ylabel('Predictive LL')
                 for i in range(2):
                     ax_iters[i].set_xlabel('Iters')
-                fig_iters.legend(loc='upper right')
+                fig_iters.legend(loc='upper left')
 
 
                 fig_iters.tight_layout()
