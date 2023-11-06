@@ -76,11 +76,11 @@ def run_experiment(cfg):
             model.to(device)
 
             if cfg.training.decay is not None:
-                lr = 5         
+                lr = 10        
             for j in range(cfg.training.num_iters):
 
                 if cfg.training.decay is not None:
-                    lr = lr * 0.95 ^ (j / 10)
+                    lr = lr * 0.95**(j / 10)
                 else:
                     lr = cfg.training.lr
 
